@@ -68,6 +68,46 @@ interface DiscriminatorInfo {
 }
 
 /**
+ * Builder hints for specific nodes to guide the LLM to use correct node combinations
+ */
+interface NodeBuilderHint {
+	hint: string;
+	relatedNodes?: string[];
+}
+
+const NODE_BUILDER_HINTS: Record<string, NodeBuilderHint> = {
+	'n8n-nodes-base.formTrigger': {
+		hint: 'Use with n8n-nodes-base.form to build a full form experience, with pages and final page',
+		relatedNodes: ['n8n-nodes-base.form'],
+	},
+	'n8n-nodes-base.form': {
+		hint: 'Use with n8n-nodes-base.formTrigger to build a full form experience. Form node creates additional pages/steps after the trigger',
+		relatedNodes: ['n8n-nodes-base.formTrigger'],
+	},
+	'n8n-nodes-base.respondToWebhook': {
+		hint: 'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
+		relatedNodes: ['n8n-nodes-base.webhook'],
+	},
+};
+
+/**
+ * Format builder hint for a node
+ */
+function formatBuilderHint(nodeId: string): string {
+	const hint = NODE_BUILDER_HINTS[nodeId];
+	if (!hint) return '';
+	return `  Builder Hint: ${hint.hint}`;
+}
+
+/**
+ * Get related nodes for a node ID from builder hints
+ */
+function getRelatedNodeIds(nodeId: string): string[] {
+	const hint = NODE_BUILDER_HINTS[nodeId];
+	return hint?.relatedNodes ?? [];
+}
+
+/**
  * Maps NodeConnectionType to SDK function and subnode field
  */
 const CONNECTION_TYPE_TO_SDK: Record<string, { fn: string; subnodeField: string }> = {
@@ -259,18 +299,69 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 				if (results.length === 0) {
 					allResults.push(`## "${query}"\nNo nodes found. Try a different search term.`);
 				} else {
+					// Collect IDs of nodes already in search results
+					const resultNodeIds = new Set(results.map((node) => node.id));
+
+					// Collect related nodes from builder hints that aren't already in results
+					const relatedNodeIds = new Set<string>();
+					for (const node of results) {
+						for (const relatedId of getRelatedNodeIds(node.id)) {
+							if (!resultNodeIds.has(relatedId)) {
+								relatedNodeIds.add(relatedId);
+							}
+						}
+					}
+
 					const resultLines = results.map((node) => {
 						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
 						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
+
+						// Get builder hint
+						const builderHint = formatBuilderHint(node.id);
 
 						// Get discriminator info
 						const discInfo = getDiscriminatorInfo(nodeTypeParser, node.id, node.version);
 						const discStr = formatDiscriminatorInfo(discInfo, node.id);
 
-						return discStr ? `${basicInfo}\n${discStr}` : basicInfo;
+						const parts = [basicInfo];
+						if (builderHint) parts.push(builderHint);
+						if (discStr) parts.push(discStr);
+
+						return parts.join('\n');
 					});
+
+					// Add related nodes with [RELATED] tag
+					const relatedLines: string[] = [];
+					for (const relatedId of relatedNodeIds) {
+						const nodeType = nodeTypeParser.getNodeType(relatedId);
+						if (nodeType) {
+							const isTrigger =
+								relatedId.toLowerCase().includes('trigger') ||
+								relatedId.toLowerCase().includes('webhook') ||
+								relatedId.toLowerCase().includes('schedule') ||
+								relatedId.toLowerCase().includes('poll');
+							const version = Array.isArray(nodeType.version)
+								? nodeType.version[nodeType.version.length - 1]
+								: nodeType.version;
+							const triggerTag = isTrigger ? ' [TRIGGER]' : '';
+							const basicInfo = `- ${relatedId}${triggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
+
+							// Get builder hint for related node too
+							const builderHint = formatBuilderHint(relatedId);
+
+							const parts = [basicInfo];
+							if (builderHint) parts.push(builderHint);
+
+							relatedLines.push(parts.join('\n'));
+						}
+					}
+
+					const allNodeLines = [...resultLines, ...relatedLines];
+					const relatedCount = relatedNodeIds.size;
+					const countSuffix = relatedCount > 0 ? ` (+ ${relatedCount} related)` : '';
+
 					allResults.push(
-						`## "${query}"\nFound ${results.length} nodes:\n\n${resultLines.join('\n\n')}`,
+						`## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`,
 					);
 				}
 			}
