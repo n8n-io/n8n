@@ -122,10 +122,17 @@ describe('ExecutionPersistence', () => {
 					}),
 				);
 				expect(mockTx.insert).toHaveBeenCalledTimes(1);
+				const expectedWorkflowSnapshot = {
+					id: workflowData.id,
+					name: workflowData.name,
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					settings: workflowData.settings,
+				};
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId: 'workflow-123', executionId: 'exec-2' },
 					expect.objectContaining({
-						workflowData,
+						workflowData: expectedWorkflowSnapshot,
 						workflowVersionId: 'version-abc',
 					}),
 				);

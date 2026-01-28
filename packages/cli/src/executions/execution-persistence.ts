@@ -9,7 +9,7 @@ import { stringify } from 'flatted';
 import { BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { FsStore } from './execution-data/fs-store';
-import type { ExecutionRef } from './execution-data/types';
+import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
@@ -26,9 +26,15 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 	) {}
 
+	/**
+	 * Create an execution entity and persist its data to the configured storage.
+	 * - In `db` mode, we write both entity and data to the DB in a transaction.
+	 * - In `fs` mode, we write the entity to the DB and its data to the filesystem.
+	 */
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { connections, nodes, name, settings, id } = workflowData;
+		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
 		const data = stringify(rawData);
@@ -41,7 +47,7 @@ export class ExecutionPersistence {
 			if (storedAt === 'db') {
 				await tx.insert(ExecutionData, {
 					executionId,
-					workflowData: { connections, nodes, name, settings, id },
+					workflowData: workflowSnapshot,
 					data,
 					workflowVersionId,
 				});
@@ -49,8 +55,8 @@ export class ExecutionPersistence {
 			}
 
 			await this.fsStore.write(
-				{ workflowId: workflowData.id, executionId },
-				{ data, workflowData, workflowVersionId },
+				{ workflowId: id, executionId },
+				{ data, workflowData: workflowSnapshot, workflowVersionId },
 			);
 			return executionId;
 		});
