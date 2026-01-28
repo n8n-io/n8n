@@ -740,7 +740,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum!);
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 	}
 
@@ -749,7 +749,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum!);
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 	}
 
