@@ -484,7 +484,7 @@ describe('Runner - LangSmith Mode', () => {
 			const lsClient = createMockLangsmithClient();
 
 			const evaluateContextual: Evaluator['evaluate'] = async (_workflow, ctx) => [
-				{ evaluator: 'contextual', metric: 'score', score: ctx.dos ? 1 : 0, kind: 'score' },
+				{ evaluator: 'contextual', metric: 'score', score: ctx.specs ? 1 : 0, kind: 'score' },
 			];
 
 			const evaluator: Evaluator = {
@@ -514,14 +514,14 @@ describe('Runner - LangSmith Mode', () => {
 
 			const result = await callLangsmithTarget(target, {
 				prompt: 'Test',
-				evals: { dos: 'Use Slack', donts: 'No HTTP' },
+				evals: { specs: 'Use Slack\nDo not use HTTP' },
 			});
 			expect(isLangsmithTargetOutput(result)).toBe(true);
 			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
 			expect(evaluator.evaluate).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ dos: 'Use Slack', donts: 'No HTTP' }),
+				expect.objectContaining({ specs: 'Use Slack\nDo not use HTTP' }),
 			);
 			expect(result.feedback).toContainEqual({
 				evaluator: 'contextual',
@@ -598,12 +598,12 @@ describe('Runner - LangSmith Mode', () => {
 			const examples: Example[] = [
 				mock<Example>({
 					id: 'e1',
-					inputs: { prompt: 'One', evals: { dos: 'Use Slack', donts: 'No HTTP' } },
+					inputs: { prompt: 'One', evals: { specs: 'Use Slack\nDo not use HTTP' } },
 					metadata: { notion_id: 'n1', categories: ['data_transformation'] },
 				}),
 				mock<Example>({
 					id: 'e2',
-					inputs: { prompt: 'Two', evals: { dos: 'Use Gmail', donts: 'No Slack' } },
+					inputs: { prompt: 'Two', evals: { specs: 'Use Gmail\nDo not use Slack' } },
 					metadata: { notion_id: 'n2', categories: ['other'] },
 				}),
 			];
@@ -625,7 +625,7 @@ describe('Runner - LangSmith Mode', () => {
 					experimentName: 'test',
 					repetitions: 1,
 					concurrency: 1,
-					filters: { notionId: 'n1', technique: 'data_transformation', doSearch: 'slack' },
+					filters: { notionId: 'n1', technique: 'data_transformation', specSearch: 'slack' },
 				},
 				logger: silentLogger,
 			};
@@ -651,7 +651,7 @@ describe('Runner - LangSmith Mode', () => {
 				(async function* () {
 					yield mock<Example>({
 						id: 'e1',
-						inputs: { prompt: 'One', evals: { dos: 'Use Slack', donts: 'No HTTP' } },
+						inputs: { prompt: 'One', evals: { specs: 'Use Slack\nDo not use HTTP' } },
 						metadata: { notion_id: 'n1', categories: ['data_transformation'] },
 					});
 				})(),

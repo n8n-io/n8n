@@ -110,7 +110,7 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 			{
 				prompt: match.prompt,
 				id: match.id,
-				context: { dos: args.dos, donts: args.donts },
+				context: { specs: args.specs },
 			},
 		];
 
@@ -122,10 +122,7 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 		const testCases: TestCase[] = [
 			{
 				prompt: args.prompt,
-				context: {
-					dos: args.dos,
-					donts: args.donts,
-				},
+				context: { specs: args.specs },
 			},
 		];
 		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;

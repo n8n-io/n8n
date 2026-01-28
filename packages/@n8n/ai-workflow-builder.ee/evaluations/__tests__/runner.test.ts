@@ -146,8 +146,7 @@ describe('Runner - Local Mode', () => {
 
 		it('should pass context from test case to evaluators', async () => {
 			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
-				expect(ctx.dos).toBe('Use Slack');
-				expect(ctx.donts).toBe('No HTTP');
+				expect(ctx.specs).toBe('Use Slack\nDo not use HTTP');
 				return [{ evaluator: 'contextual', metric: 'score', score: 1, kind: 'score' }];
 			};
 
@@ -161,7 +160,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [
 					{
 						prompt: 'Test',
-						context: { dos: 'Use Slack', donts: 'No HTTP' },
+						context: { specs: 'Use Slack\nDo not use HTTP' },
 					},
 				],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
@@ -177,8 +176,7 @@ describe('Runner - Local Mode', () => {
 
 		it('should merge global context with test case context', async () => {
 			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
-				expect(ctx.dos).toBe('Use Slack');
-				expect(ctx.donts).toBe('No HTTP');
+				expect(ctx.specs).toBe('Use Slack');
 				return [{ evaluator: 'merged', metric: 'score', score: 1, kind: 'score' }];
 			};
 
@@ -189,10 +187,10 @@ describe('Runner - Local Mode', () => {
 
 			const config: RunConfig = {
 				mode: 'local',
-				dataset: [{ prompt: 'Test', context: { donts: 'No HTTP' } }],
+				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
-				context: { dos: 'Use Slack' },
+				context: { specs: 'Use Slack' },
 				logger: silentLogger,
 			};
 
