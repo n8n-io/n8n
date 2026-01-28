@@ -1,24 +1,29 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import type { SetupPanelTabs } from '@/features/setupPanel/types';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nTabs } from '@n8n/design-system';
 
 const i18n = useI18n();
 
-const props = defineProps<{
-	tabLabels?: {
-		setup?: string;
-		focus?: string;
-	};
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue?: SetupPanelTabs;
+		tabLabels?: {
+			setup?: string;
+			focus?: string;
+		};
+	}>(),
+	{
+		modelValue: 'setup',
+		tabLabels: () => ({}),
+	},
+);
 
 const emit = defineEmits<{
-	tabSelected: [tab: SetupPanelTabs];
+	'update:modelValue': [tab: SetupPanelTabs];
 }>();
-
-const selectedTab = ref<SetupPanelTabs>('setup');
 
 const tabs = computed<Array<TabOptions<SetupPanelTabs>>>(() => [
 	{
@@ -32,15 +37,14 @@ const tabs = computed<Array<TabOptions<SetupPanelTabs>>>(() => [
 ]);
 
 const onTabSelected = (tab: SetupPanelTabs) => {
-	selectedTab.value = tab;
-	emit('tabSelected', tab);
+	emit('update:modelValue', tab);
 };
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="setup-panel-tabs">
 		<N8nTabs
-			:model-value="selectedTab"
+			:model-value="modelValue"
 			:options="tabs"
 			size="small"
 			@update:model-value="onTabSelected"

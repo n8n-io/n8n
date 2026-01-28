@@ -410,6 +410,15 @@ watch([() => focusPanelStore.lastFocusTimestamp, () => expressionModeEnabled.val
 );
 
 watch(
+	() => resolvedParameter.value,
+	(newValue, oldValue) => {
+		if (newValue && newValue !== oldValue) {
+			selectedTab.value = 'focus';
+		}
+	},
+);
+
+watch(
 	() => focusPanelStore.focusPanelActive,
 	(newValue) => {
 		if (newValue) {
@@ -470,10 +479,6 @@ function onRenameNode(value: string) {
 	}
 }
 
-const onTabSelected = (tab: SetupPanelTabsType) => {
-	selectedTab.value = tab;
-};
-
 const tabLabels = computed(() => {
 	const focusLabel = resolvedParameter.value?.parameter.displayName ?? node.value?.name;
 	return focusLabel ? { focus: focusLabel } : undefined;
@@ -503,7 +508,7 @@ const tabLabels = computed(() => {
 		>
 			<div :class="$style.container">
 				<div v-if="isSetupPanelEnabled">
-					<SetupPanelTabs :tab-labels="tabLabels" @tab-selected="onTabSelected" />
+					<SetupPanelTabs v-model="selectedTab" :tab-labels="tabLabels" />
 				</div>
 				<div v-if="showSetupPanel" :class="$style.content">
 					<SetupPanel />
