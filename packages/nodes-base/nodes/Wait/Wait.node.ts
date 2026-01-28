@@ -305,6 +305,8 @@ export class Wait extends Webhook {
 				displayName: 'Resume',
 				name: 'resume',
 				type: 'options',
+				builderHint:
+					'If using "webhook", then webhook URL will be generated at run time. It can be referenced with the {{ $execution.resumeUrl }} variable in an expression. Send it somewhere before getting to this node. ',
 				options: [
 					{
 						name: 'After Time Interval',
