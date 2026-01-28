@@ -1281,23 +1281,147 @@ export type DisplayOptions = {
 };
 
 /**
- * Check if a field should be visible based on displayOptions and current parameter values
+ * Context for evaluating displayOptions
+ */
+export type DisplayOptionsContext = {
+	/** Current parameter values at this level */
+	parameters: Record<string, unknown>;
+	/** Node version for @version meta-property */
+	nodeVersion?: number;
+	/** Root parameter values for / prefix paths */
+	rootParameters?: Record<string, unknown>;
+};
+
+/**
+ * A condition using the _cnd operator syntax
+ */
+type DisplayCondition = {
+	_cnd: Record<string, unknown>;
+};
+
+function isDisplayCondition(value: unknown): value is DisplayCondition {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'_cnd' in value &&
+		Object.keys(value).length === 1
+	);
+}
+
+function isEqual(a: unknown, b: unknown): boolean {
+	if (a === b) return true;
+	if (typeof a !== typeof b) return false;
+	if (typeof a !== 'object' || a === null || b === null) return false;
+	const keysA = Object.keys(a as object);
+	const keysB = Object.keys(b as object);
+	if (keysA.length !== keysB.length) return false;
+	for (const key of keysA) {
+		if (!isEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function get(obj: unknown, path: string): unknown {
+	const parts = path.split('.');
+	let current: unknown = obj;
+	for (const part of parts) {
+		if (current === null || current === undefined) return undefined;
+		current = (current as Record<string, unknown>)[part];
+	}
+	return current;
+}
+
+/**
+ * Check if conditions are met against actual values.
+ * Supports simple value inclusion and _cnd operators (eq, not, gte, lte, gt, lt, between, includes, startsWith, endsWith, regex, exists).
+ */
+export function checkConditions(conditions: unknown[], actualValues: unknown[]): boolean {
+	return conditions.some((condition) => {
+		if (isDisplayCondition(condition)) {
+			const [key, targetValue] = Object.entries(condition._cnd)[0];
+
+			if (actualValues.length === 0) {
+				if (key === 'not') return true;
+				return false;
+			}
+
+			return actualValues.every((propertyValue) => {
+				if (key === 'eq') return isEqual(propertyValue, targetValue);
+				if (key === 'not') return !isEqual(propertyValue, targetValue);
+				if (key === 'gte') return (propertyValue as number) >= (targetValue as number);
+				if (key === 'lte') return (propertyValue as number) <= (targetValue as number);
+				if (key === 'gt') return (propertyValue as number) > (targetValue as number);
+				if (key === 'lt') return (propertyValue as number) < (targetValue as number);
+				if (key === 'between') {
+					const { from, to } = targetValue as { from: number; to: number };
+					return (propertyValue as number) >= from && (propertyValue as number) <= to;
+				}
+				if (key === 'includes') return (propertyValue as string).includes(targetValue as string);
+				if (key === 'startsWith') return (propertyValue as string).startsWith(targetValue as string);
+				if (key === 'endsWith') return (propertyValue as string).endsWith(targetValue as string);
+				if (key === 'regex') return new RegExp(targetValue as string).test(propertyValue as string);
+				if (key === 'exists') return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
+				return false;
+			});
+		}
+		return actualValues.includes(condition);
+	});
+}
+
+/**
+ * Get property values from context for a given property name.
+ * Handles root paths (/ prefix), @version meta-property, and resource locator unwrapping.
+ */
+export function getPropertyValue(context: DisplayOptionsContext, propertyName: string): unknown[] {
+	let value: unknown;
+
+	if (propertyName.charAt(0) === '/') {
+		const rootParams = context.rootParameters ?? context.parameters;
+		value = get(rootParams, propertyName.slice(1));
+	} else if (propertyName === '@version') {
+		value = context.nodeVersion ?? 0;
+	} else {
+		value = get(context.parameters, propertyName);
+	}
+
+	if (value && typeof value === 'object' && '__rl' in value && (value as { __rl: boolean }).__rl) {
+		value = (value as { value: unknown }).value;
+	}
+
+	if (!Array.isArray(value)) {
+		return [value];
+	}
+	return value;
+}
+
+/**
+ * Check if a field should be visible based on displayOptions and current context.
+ * Supports _cnd operators, root paths, @version, and expression detection.
  */
 export function matchesDisplayOptions(
-	parameters: Record<string, unknown>,
+	context: DisplayOptionsContext,
 	displayOptions: DisplayOptions,
 ): boolean {
-	if (displayOptions.show) {
-		for (const [key, allowedValues] of Object.entries(displayOptions.show)) {
-			if (!allowedValues.includes(parameters[key])) {
+	const { show, hide } = displayOptions;
+
+	if (show) {
+		for (const propertyName of Object.keys(show)) {
+			const values = getPropertyValue(context, propertyName);
+			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
+				return true;
+			}
+			if (!checkConditions(show[propertyName], values)) {
 				return false;
 			}
 		}
 	}
 
-	if (displayOptions.hide) {
-		for (const [key, hiddenValues] of Object.entries(displayOptions.hide)) {
-			if (hiddenValues.includes(parameters[key])) {
+	if (hide) {
+		for (const propertyName of Object.keys(hide)) {
+			const values = getPropertyValue(context, propertyName);
+			if (values.length !== 0 && checkConditions(hide[propertyName], values)) {
 				return false;
 			}
 		}
@@ -1314,6 +1438,8 @@ export type ResolveSchemaConfig = {
 	schema: z.ZodTypeAny;
 	required: boolean;
 	displayOptions: DisplayOptions;
+	nodeVersion?: number;
+	rootParameters?: Record<string, unknown>;
 };
 
 /**
@@ -1331,8 +1457,11 @@ export function resolveSchema({
 	schema,
 	required,
 	displayOptions,
+	nodeVersion,
+	rootParameters,
 }: ResolveSchemaConfig): z.ZodTypeAny {
-	const isVisible = matchesDisplayOptions(parameters, displayOptions);
+	const context: DisplayOptionsContext = { parameters, nodeVersion, rootParameters };
+	const isVisible = matchesDisplayOptions(context, displayOptions);
 
 	if (isVisible) {
 		return required ? schema : schema.optional();

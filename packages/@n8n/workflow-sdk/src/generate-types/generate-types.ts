@@ -29,6 +29,7 @@ import {
 	generateBaseSchemaFile,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
 // Configuration
@@ -1013,7 +1014,13 @@ export function extractDiscriminatorCombinations(
 }
 
 /**
- * Get properties applicable to a specific discriminator combination
+ * Get properties applicable to a specific discriminator combination.
+ *
+ * This function filters properties for code generation purposes.
+ * It checks if a property "potentially applies" to a given discriminator combination
+ * (resource, operation, mode) by evaluating show/hide conditions.
+ *
+ * Uses the centralized checkConditions function to support _cnd operators.
  */
 export function getPropertiesForCombination(
 	node: NodeTypeDescription,
@@ -1037,10 +1044,11 @@ export function getPropertiesForCombination(
 			let matches = true;
 
 			// Check each discriminator in the show condition
-			for (const [key, values] of Object.entries(prop.displayOptions.show)) {
+			for (const [key, conditions] of Object.entries(prop.displayOptions.show)) {
 				if (combination[key] !== undefined) {
 					// This property has a condition on this discriminator
-					if (!values.includes(combination[key])) {
+					// Use checkConditions to support _cnd operators
+					if (!checkConditions(conditions, [combination[key]])) {
 						matches = false;
 						break;
 					}
@@ -1050,9 +1058,24 @@ export function getPropertiesForCombination(
 			if (matches) {
 				result.push(prop);
 			}
-		} else if (!prop.displayOptions?.hide) {
+		} else if (prop.displayOptions?.hide) {
+			// Check hide conditions - only exclude if combination explicitly matches hide
+			let excluded = false;
+
+			for (const [key, conditions] of Object.entries(prop.displayOptions.hide)) {
+				if (combination[key] !== undefined) {
+					if (checkConditions(conditions, [combination[key]])) {
+						excluded = true;
+						break;
+					}
+				}
+			}
+
+			if (!excluded) {
+				result.push(prop);
+			}
+		} else {
 			// Property has no conditions - include it (global property)
-			// But only if it doesn't have hide conditions that exclude this combination
 			result.push(prop);
 		}
 	}
