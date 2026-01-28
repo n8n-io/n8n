@@ -93,12 +93,12 @@ describe('DataTableBreadcrumbs', () => {
 				delete: true,
 				create: true,
 			},
-		};
+		} as any;
 
 		// Mock source control to not be in read-only mode
 		sourceControlStore.preferences = {
 			branchReadOnly: false,
-		};
+		} as any;
 	});
 
 	describe('Breadcrumbs rendering', () => {
