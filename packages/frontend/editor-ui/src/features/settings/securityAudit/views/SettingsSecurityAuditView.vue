@@ -53,7 +53,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="settings-security-audit">
 		<div :class="$style.header">
 			<div :class="$style.headerContent">
 				<N8nHeading tag="h2" size="2xlarge">{{
@@ -74,14 +74,22 @@ onMounted(() => {
 			</N8nButton>
 		</div>
 
-		<div v-if="securityAuditStore.isLoading" :class="$style.loading">
+		<div
+			v-if="securityAuditStore.isLoading"
+			:class="$style.loading"
+			data-test-id="security-audit-loading"
+		>
 			<N8nLoading :rows="5" />
 			<N8nText color="text-light" :class="$style.loadingText">{{
 				i18n.baseText('settings.securityAudit.loading')
 			}}</N8nText>
 		</div>
 
-		<div v-else-if="securityAuditStore.error" :class="$style.errorState">
+		<div
+			v-else-if="securityAuditStore.error"
+			:class="$style.errorState"
+			data-test-id="security-audit-error"
+		>
 			<N8nCallout theme="danger">
 				<template #icon>
 					<N8nIcon icon="triangle-alert" size="large" />
@@ -103,7 +111,7 @@ onMounted(() => {
 			</N8nCallout>
 		</div>
 
-		<div v-else :class="$style.results">
+		<div v-else :class="$style.results" data-test-id="security-audit-results">
 			<div :class="$style.summary">
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('settings.securityAudit.lastRun') }}: {{ formattedLastRunAt }}
