@@ -12,6 +12,8 @@ import {
 	fetchOAuthClients,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	getAllowedRedirectUris,
+	updateAllowedRedirectUris,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -26,6 +28,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const allowedRedirectUris = ref<string[]>([]);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
@@ -137,6 +140,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		connectPopoverOpen.value = false;
 	}
 
+	async function fetchAllowedRedirectUris(): Promise<string[]> {
+		const response = await getAllowedRedirectUris(rootStore.restApiContext);
+		allowedRedirectUris.value = response.uris;
+		return response.uris;
+	}
+
+	async function setAllowedRedirectUris(uris: string[]): Promise<void> {
+		await updateAllowedRedirectUris(rootStore.restApiContext, uris);
+		allowedRedirectUris.value = uris;
+	}
+
 	return {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
@@ -150,6 +164,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getAllOAuthClients,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		allowedRedirectUris,
+		fetchAllowedRedirectUris,
+		setAllowedRedirectUris,
 		connectPopoverOpen,
 		openConnectPopover,
 		closeConnectPopover,
