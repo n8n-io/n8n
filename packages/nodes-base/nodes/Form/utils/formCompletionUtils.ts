@@ -49,7 +49,11 @@ export const renderFormCompletion = async (
 	trigger: NodeTypeAndVersion,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
-	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
+	const completionMessage = sanitizeHtml(
+		context.getNodeParameter('completionMessage', '') as string,
+	)
+		.replace(/\\n/g, '\n')
+		.replace(/<br>/g, '\n');
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -77,7 +81,7 @@ export const renderFormCompletion = async (
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
-		message: sanitizeHtml(completionMessage),
+		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
 		responseText,
