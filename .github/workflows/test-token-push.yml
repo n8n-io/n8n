@@ -1,0 +1,53 @@
+name: 'Test: App Token Push'
+
+# Tests pushing a branch with outdated/different workflows
+# to verify GitHub App has correct permissions (especially `workflows` scope)
+#
+# Mimics release workflow: runs from master, pushes an outdated branch to a new target.
+# Setup: Create a branch `test/outdated-workflows` with different workflow files
+# than master (delete some, modify others) to trigger GitHub's workflow validation.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-branch:
+        description: 'Branch with outdated workflows to push from'
+        required: true
+        default: 'test/outdated-workflows'
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout (mimics release - checkout from master with fetch-depth 0)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Test push (mimics release branch push)
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          SOURCE_BRANCH: ${{ github.event.inputs.source-branch }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          echo "Pushing ${SOURCE_BRANCH} to test-release/0.0.0-test..."
+          git push -f origin "refs/remotes/origin/${SOURCE_BRANCH}:refs/heads/test-release/0.0.0-test"
+          echo "Push succeeded!"
+
+      - name: Cleanup test branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          git push origin --delete test-release/0.0.0-test || echo "Branch already deleted or doesn't exist"
