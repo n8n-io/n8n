@@ -10,14 +10,8 @@ export default [
 			'ms-playwright-cache/**/*',
 			'coverage/**/*',
 			'scripts/**/*',
+			'janitor.config.mjs',
 		],
-	},
-	{
-		// Allow default export for config files
-		files: ['janitor.config.ts'],
-		rules: {
-			'import-x/no-default-export': 'off',
-		},
 	},
 	{
 		rules: {
