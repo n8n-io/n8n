@@ -1,8 +1,5 @@
-import type {
-	SecretProviderConnection,
-	SecretsProviderState,
-	SecretsProviderType,
-} from '@n8n/api-types';
+import type { SecretsProviderType } from '@n8n/api-types';
+import { CreateSecretsProviderConnectionDto } from '@n8n/api-types/src';
 import type { SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
@@ -14,6 +11,7 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -24,29 +22,29 @@ export class SecretsProvidersConnectionsService {
 	) {}
 
 	async createConnection(
-		providerKey: string,
-		type: string,
-		projectIds: string[],
-		settings: IDataObject,
+		proposedConnection: CreateSecretsProviderConnectionDto,
 	): Promise<SecretsProviderConnection> {
-		const existing = await this.repository.findOne({ where: { providerKey } });
+		const existing = await this.repository.findOne({
+			where: { providerKey: proposedConnection.providerKey },
+		});
 		if (existing) {
-			throw new BadRequestError(`Connection with key "${providerKey}" already exists`);
+			throw new BadRequestError(
+				`Connection with key "${proposedConnection.providerKey}" already exists`,
+			);
 		}
 
-		const encryptedSettings = this.encryptConnectionSettings(settings);
+		const encryptedSettings = this.encryptConnectionSettings(proposedConnection.settings);
 
 		const connection = this.repository.create({
-			providerKey,
-			type,
+			...proposedConnection,
 			encryptedSettings,
 			isEnabled: false,
 		});
 
 		const savedConnection = await this.repository.save(connection);
 
-		if (projectIds.length > 0) {
-			const entries = projectIds.map((projectId) =>
+		if (proposedConnection.projectIds.length > 0) {
+			const entries = proposedConnection.projectIds.map((projectId) =>
 				this.projectAccessRepository.create({
 					secretsProviderConnectionId: savedConnection.id,
 					projectId,
@@ -56,7 +54,9 @@ export class SecretsProvidersConnectionsService {
 		}
 
 		// Do a new lookup as we eagerly fill out projects
-		return (await this.repository.findOne({ where: { providerKey } }))!;
+		return (await this.repository.findOne({
+			where: { providerKey: proposedConnection.providerKey },
+		}))!;
 	}
 
 	async updateConnection(
@@ -74,6 +74,11 @@ export class SecretsProvidersConnectionsService {
 		}
 		if (updates.type !== undefined) {
 			connection.type = updates.type;
+			if (!updates.settings) {
+				throw new BadRequestError(
+					'When changing the connection type, new settings must be provided as well',
+				);
+			}
 		}
 		if (updates.settings !== undefined) {
 			connection.encryptedSettings = this.encryptConnectionSettings(updates.settings);
@@ -115,24 +120,20 @@ export class SecretsProvidersConnectionsService {
 		return await this.repository.findAll();
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
+	toPublicConnection(
+		connection: SecretsProviderConnection,
+	): SecretsProvidersResponses.StrippedConnection {
 		return {
-			id: connection.providerKey,
+			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
-
 			isEnabled: connection.isEnabled,
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
 			})),
-			settings: {}, // We should never return these back to the FE so force it to an empty object
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
-
-			//TODO - These fields will need filling when we come to do that actual connections piece
-			secretsCount: 0,
-			state: 'initializing' as SecretsProviderState,
 		};
 	}
 

@@ -14,7 +14,7 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 
 import { MockProviders } from '../shared/external-secrets/utils';
-import { createOwner } from './shared/db/users';
+import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
@@ -71,14 +71,11 @@ describe('Secret Providers Connections API', () => {
 				.expect(200);
 
 			expect(response.body.data).toEqual({
-				id: 'aws-prod',
+				id: expect.any(String),
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				state: 'initializing',
 				isEnabled: false,
 				projects: [],
-				settings: {},
-				secretsCount: 0,
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -163,7 +160,10 @@ describe('Secret Providers Connections API', () => {
 
 			const response = await ownerAgent
 				.patch('/secret-providers/connections/update-type-test')
-				.send({ type: 'gcpSecretsManager' })
+				.send({
+					type: 'gcpSecretsManager',
+					settings: { projectId: 'my-project' },
+				})
 				.expect(200);
 
 			expect(response.body.data.type).toBe('gcpSecretsManager');
@@ -298,7 +298,7 @@ describe('Secret Providers Connections API', () => {
 				.delete('/secret-providers/connections/delete-test')
 				.expect(200);
 
-			expect(response.body.data.id).toBe('delete-test');
+			expect(response.body.data.name).toBe('delete-test');
 			expect(response.body.data.projects).toHaveLength(2);
 
 			// Verify deletion via GET
@@ -361,21 +361,21 @@ describe('Secret Providers Connections API', () => {
 					id: expect.any(String),
 					name: expect.any(String),
 					type: expect.any(String),
-					state: 'initializing',
-					isEnabled: false,
+					isEnabled: expect.any(Boolean),
 					projects: expect.any(Array),
-					settings: {},
-					secretsCount: 0,
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
 				});
-				expect(connection).not.toHaveProperty('secrets');
 			}
 
-			const connection1 = response.body.data.find((c: { id: string }) => c.id === 'list-test-1');
+			const connection1 = response.body.data.find(
+				(c: { name: string }) => c.name === 'list-test-1',
+			);
 			expect(connection1.projects).toHaveLength(1);
 
-			const connection3 = response.body.data.find((c: { id: string }) => c.id === 'list-test-3');
+			const connection3 = response.body.data.find(
+				(c: { name: string }) => c.name === 'list-test-3',
+			);
 			expect(connection3.projects).toEqual([]);
 		});
 
@@ -404,13 +404,10 @@ describe('Secret Providers Connections API', () => {
 			const response = await ownerAgent.get('/secret-providers/connections/get-test').expect(200);
 
 			expect(response.body.data).toMatchObject({
-				id: 'get-test',
+				id: expect.any(String),
 				name: 'get-test',
 				type: 'awsSecretsManager',
-				state: 'initializing',
 				isEnabled: false,
-				settings: {},
-				secretsCount: 0,
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -446,7 +443,7 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			expect(createResponse.body.data.settings).toEqual({});
+			expect(createResponse.body.data).not.toHaveProperty('settings');
 			expect(JSON.stringify(createResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
 			expect(JSON.stringify(createResponse.body.data)).not.toContain('very-secret-session-token');
 
@@ -455,32 +452,194 @@ describe('Secret Providers Connections API', () => {
 				.get('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(getResponse.body.data.settings).toEqual({});
+			expect(getResponse.body.data).not.toHaveProperty('settings');
 			expect(JSON.stringify(getResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
 
 			// LIST
 			const listResponse = await ownerAgent.get('/secret-providers/connections').expect(200);
 
 			const securityConnection = listResponse.body.data.find(
-				(c: { id: string }) => c.id === 'security-test',
+				(c: { name: string }) => c.name === 'security-test',
 			);
-			expect(securityConnection.settings).toEqual({});
+			expect(securityConnection).not.toHaveProperty('settings');
 			expect(JSON.stringify(listResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
 
 			// UPDATE
 			const updateResponse = await ownerAgent
 				.patch('/secret-providers/connections/security-test')
-				.send({ type: 'awsSecretsManager' })
+				.send({
+					type: 'awsSecretsManager',
+					settings: { region: 'eu-west-1' },
+				})
 				.expect(200);
 
-			expect(updateResponse.body.data.settings).toEqual({});
+			expect(updateResponse.body.data).not.toHaveProperty('settings');
 
 			// DELETE
 			const deleteResponse = await ownerAgent
 				.delete('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(deleteResponse.body.data.settings).toEqual({});
+			expect(deleteResponse.body.data).not.toHaveProperty('settings');
+		});
+	});
+
+	describe('Access Control', () => {
+		let memberAgent: SuperAgentTest;
+		let adminAgent: SuperAgentTest;
+		let agents: Record<string, SuperAgentTest>;
+
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+
+		beforeAll(async () => {
+			const [member, admin] = await Promise.all([createMember(), createAdmin()]);
+
+			memberAgent = testServer.authAgentFor(member);
+			adminAgent = testServer.authAgentFor(admin);
+
+			agents = {
+				owner: ownerAgent,
+				admin: adminAgent,
+				member: memberAgent,
+			};
+		});
+
+		async function createTestConnection(providerKey: string, projectIds: string[] = []) {
+			await ownerAgent
+				.post('/secret-providers/connections')
+				.send({
+					providerKey,
+					type: 'awsSecretsManager',
+					projectIds,
+					settings: { region: 'us-east-1' },
+				})
+				.expect(200);
+		}
+
+		describe('Create connection', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to create connection', async ({ role, allowed }) => {
+				const providerKey = `${role}-create-test`;
+				const response = await agents[role]
+					.post('/secret-providers/connections')
+					.send({
+						providerKey,
+						type: 'awsSecretsManager',
+						projectIds: [],
+						settings: { region: 'us-east-1' },
+					})
+					.expect(allowed ? 200 : 403);
+
+				if (allowed) {
+					expect(response.body.data.name).toBe(providerKey);
+				} else {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
+			});
+		});
+
+		describe('read connections', () => {
+			beforeEach(async () => {
+				await createTestConnection('read-test-connection', [teamProject1.id]);
+			});
+
+			describe('list all connections', () => {
+				test.each([
+					{ role: 'owner', allowed: true },
+					{ role: 'admin', allowed: true },
+					{ role: 'member', allowed: false },
+				])('should allow=$allowed for $role to list connections', async ({ role, allowed }) => {
+					const response = await agents[role]
+						.get('/secret-providers/connections')
+						.expect(allowed ? 200 : 403);
+
+					if (allowed) {
+						expect(Array.isArray(response.body.data)).toBe(true);
+						const connection = response.body.data.find(
+							(c: { name: string }) => c.name === 'read-test-connection',
+						);
+						expect(connection).toBeDefined();
+					} else {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				});
+			});
+
+			describe('get single connection', () => {
+				test.each([
+					{ role: 'owner', allowed: true },
+					{ role: 'admin', allowed: true },
+					{ role: 'member', allowed: false },
+				])(
+					'should allow=$allowed for $role to get single connection',
+					async ({ role, allowed }) => {
+						const response = await agents[role]
+							.get('/secret-providers/connections/read-test-connection')
+							.expect(allowed ? 200 : 403);
+
+						if (allowed) {
+							expect(response.body.data.name).toBe('read-test-connection');
+						} else {
+							expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+						}
+					},
+				);
+			});
+		});
+
+		describe('update connections', () => {
+			beforeEach(async () => {
+				await createTestConnection('update-auth-test');
+			});
+
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to update connection', async ({ role, allowed }) => {
+				const response = await agents[role]
+					.patch('/secret-providers/connections/update-auth-test')
+					.send({ projectIds: [teamProject1.id] })
+					.expect(allowed ? 200 : 403);
+
+				if (allowed) {
+					expect(response.body.data.projects).toHaveLength(1);
+				} else {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
+			});
+		});
+
+		describe('delete connections', () => {
+			beforeEach(async () => {
+				await Promise.all(
+					['owner', 'admin', 'member'].map(
+						async (role) => await createTestConnection(`delete-auth-${role}-test`),
+					),
+				);
+			});
+
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to delete connection', async ({ role, allowed }) => {
+				const providerKey = `delete-auth-${role}-test`;
+				const response = await agents[role]
+					.delete(`/secret-providers/connections/${providerKey}`)
+					.expect(allowed ? 200 : 403);
+
+				if (allowed) {
+					expect(response.body.data.name).toBe(providerKey);
+					await ownerAgent.get(`/secret-providers/connections/${providerKey}`).expect(404);
+				} else {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					await ownerAgent.get(`/secret-providers/connections/${providerKey}`).expect(200);
+				}
+			});
 		});
 	});
 
@@ -508,8 +667,8 @@ describe('Secret Providers Connections API', () => {
 
 			const response = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			const provider1 = response.body.data.find((c: { id: string }) => c.id === 'provider-1');
-			const provider2 = response.body.data.find((c: { id: string }) => c.id === 'provider-2');
+			const provider1 = response.body.data.find((c: { name: string }) => c.name === 'provider-1');
+			const provider2 = response.body.data.find((c: { name: string }) => c.name === 'provider-2');
 
 			expect(provider1).toBeDefined();
 			expect(provider2).toBeDefined();

@@ -12,7 +12,7 @@ export class ProjectSecretsProviderAccess extends WithTimestamps {
 	@PrimaryColumn()
 	secretsProviderConnectionId: number;
 
-	@ManyToOne('Project', 'secretsProviderAccess', { eager: true })
+	@ManyToOne('Project', 'secretsProviderAccess')
 	project: Project;
 
 	@PrimaryColumn()
