@@ -82,15 +82,66 @@ function formatBuilderHint(
 }
 
 /**
- * Get related nodes for a node ID from its node type definition
+ * Get direct related nodes for a node ID from its node type definition
  */
-function getRelatedNodeIds(
+function getDirectRelatedNodeIds(
 	nodeTypeParser: NodeTypeParser,
 	nodeId: string,
 	version: number,
 ): string[] {
 	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
 	return nodeType?.builderHint?.relatedNodes ?? [];
+}
+
+/**
+ * Recursively collect all related nodes for a set of node IDs.
+ * Uses a visited set to prevent infinite recursion from circular references.
+ */
+function collectAllRelatedNodeIds(
+	nodeTypeParser: NodeTypeParser,
+	initialNodeIds: Array<{ id: string; version: number }>,
+	excludeNodeIds: Set<string>,
+): Set<string> {
+	const allRelated = new Set<string>();
+	const visited = new Set<string>();
+
+	// Add initial nodes to visited to avoid re-processing them
+	for (const node of initialNodeIds) {
+		visited.add(node.id);
+	}
+
+	// Also mark excluded nodes as visited
+	for (const id of excludeNodeIds) {
+		visited.add(id);
+	}
+
+	// Process queue of nodes to check for related nodes
+	const queue: Array<{ id: string; version: number }> = [...initialNodeIds];
+
+	while (queue.length > 0) {
+		const current = queue.shift()!;
+		const relatedIds = getDirectRelatedNodeIds(nodeTypeParser, current.id, current.version);
+
+		for (const relatedId of relatedIds) {
+			if (visited.has(relatedId)) {
+				continue; // Already processed or excluded
+			}
+
+			visited.add(relatedId);
+			allRelated.add(relatedId);
+
+			// Get the related node's version and add to queue for recursive processing
+			const relatedNodeType = nodeTypeParser.getNodeType(relatedId);
+			if (relatedNodeType) {
+				const relatedVersion = Array.isArray(relatedNodeType.version)
+					? relatedNodeType.version[relatedNodeType.version.length - 1]
+					: relatedNodeType.version;
+				queue.push({ id: relatedId, version: relatedVersion });
+			}
+		}
+	}
+
+	return allRelated;
 }
 
 /**
@@ -288,15 +339,12 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 					// Collect IDs of nodes already in search results
 					const resultNodeIds = new Set(results.map((node) => node.id));
 
-					// Collect related nodes from builder hints that aren't already in results
-					const relatedNodeIds = new Set<string>();
-					for (const node of results) {
-						for (const relatedId of getRelatedNodeIds(nodeTypeParser, node.id, node.version)) {
-							if (!resultNodeIds.has(relatedId)) {
-								relatedNodeIds.add(relatedId);
-							}
-						}
-					}
+					// Recursively collect all related nodes from builder hints
+					const relatedNodeIds = collectAllRelatedNodeIds(
+						nodeTypeParser,
+						results.map((node) => ({ id: node.id, version: node.version })),
+						resultNodeIds,
+					);
 
 					const resultLines = results.map((node) => {
 						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';

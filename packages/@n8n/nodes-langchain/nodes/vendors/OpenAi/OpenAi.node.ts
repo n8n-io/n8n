@@ -42,6 +42,11 @@ export class OpenAi extends VersionedNodeType {
 					],
 				},
 			},
+			builderHint: {
+				message:
+					'For AI agent workflows, use @n8n/n8n-nodes-langchain.agent with @n8n/n8n-nodes-langchain.lmOpenAi as the language model instead',
+				relatedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmOpenAi'],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
