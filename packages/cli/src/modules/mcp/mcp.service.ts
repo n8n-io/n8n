@@ -1,6 +1,10 @@
-import { GlobalConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import type { IRun } from 'n8n-workflow';
+import { createDeferredPromise, type IDeferredPromise } from 'n8n-workflow';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -16,9 +20,26 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+/**
+ * Pending MCP execution response, used for queue mode support.
+ */
+interface PendingMcpResponse {
+	promise: IDeferredPromise<IRun | undefined>;
+	createdAt: Date;
+}
+
 @Service()
 export class McpService {
+	/**
+	 * Map of execution ID to pending response promise.
+	 * Used in queue mode to wait for worker responses.
+	 */
+	private readonly pendingResponses = new Map<string, PendingMcpResponse>();
+
 	constructor(
+		private readonly logger: Logger,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
@@ -57,6 +78,7 @@ export class McpService {
 			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
+			this,
 		);
 		server.registerTool(
 			executeWorkflowTool.name,
@@ -85,4 +107,63 @@ export class McpService {
 
 		return server;
 	}
+
+	// #region Queue Mode Support
+
+	/**
+	 * Whether n8n is running in queue mode.
+	 */
+	get isQueueMode(): boolean {
+		return this.executionsConfig.mode === 'queue';
+	}
+
+	/**
+	 * Get the host ID of this main instance (for multi-main routing).
+	 */
+	get hostId(): string {
+		return this.instanceSettings.hostId;
+	}
+
+	/**
+	 * Create a pending response for an MCP execution in queue mode.
+	 * Returns a promise that will be resolved when the worker sends the response.
+	 */
+	createPendingResponse(executionId: string): IDeferredPromise<IRun | undefined> {
+		const deferred = createDeferredPromise<IRun | undefined>();
+		this.pendingResponses.set(executionId, {
+			promise: deferred,
+			createdAt: new Date(),
+		});
+
+		this.logger.debug('Created pending MCP response', { executionId });
+		return deferred;
+	}
+
+	/**
+	 * Handle a response from a worker for an MCP execution.
+	 * Called by ScalingService when it receives an mcp-response message.
+	 */
+	handleWorkerResponse(executionId: string, runData: IRun | undefined): void {
+		const pending = this.pendingResponses.get(executionId);
+		if (!pending) {
+			this.logger.warn('Received MCP response for unknown execution', { executionId });
+			return;
+		}
+
+		this.logger.debug('Resolving pending MCP response', { executionId });
+		pending.promise.resolve(runData);
+		this.pendingResponses.delete(executionId);
+	}
+
+	/**
+	 * Clean up a pending response (e.g., on timeout or cancellation).
+	 */
+	removePendingResponse(executionId: string): void {
+		if (this.pendingResponses.has(executionId)) {
+			this.pendingResponses.delete(executionId);
+			this.logger.debug('Removed pending MCP response', { executionId });
+		}
+	}
+
+	// #endregion
 }

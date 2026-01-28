@@ -2733,6 +2733,16 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	startedAt?: Date;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** ID of the main instance that started this execution (for multi-main routing). */
+	originMainId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
