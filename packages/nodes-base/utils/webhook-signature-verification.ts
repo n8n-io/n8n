@@ -6,54 +6,60 @@ import { timingSafeEqual } from 'crypto';
  */
 const MAX_TIMESTAMP_AGE_SECONDS = 300;
 
-/**
- * Options for generic signature verification.
- */
 export interface VerifySignatureOptions {
 	/**
-	 * Function that returns the expected signature/secret to compare against.
-	 * This is what the webhook provider should have sent.
+	 * Returns the expected signature/secret. For HMAC, compute using the same algorithm.
+	 * Return `null` if signature cannot be computed (missing secret/body).
 	 */
 	getExpectedSignature: () => string | null;
 	/**
-	 * If true, skip validation if no expected signature is provided.
-	 * Use when signing is optional or you need to support existing webhooks without a signature.
+	 * If true, skip validation when `getExpectedSignature()` returns `null`.
+	 * Use for backward compatibility with unsigned webhooks.
+	 * @default false
 	 */
 	skipIfNoExpectedSignature?: boolean;
 	/**
-	 * Function that returns the actual signature/secret from the request.
-	 * This is typically extracted from headers.
+	 * Returns the actual signature from request headers, or `null` if not present.
 	 */
 	getActualSignature: () => string | null;
 	/**
-	 * Optional function that returns the timestamp from the request.
-	 * If provided, enables replay attack prevention by validating the timestamp
-	 * is within the acceptable window (default: 5 minutes).
-	 * The timestamp should be in seconds (Unix epoch).
-	 * If the provider sends milliseconds, convert to seconds before returning.
+	 * Optional. Returns timestamp from request (seconds or milliseconds, auto-converted).
+	 * Enables replay attack prevention (default: 5 minute window).
 	 */
 	getTimestamp?: () => number | string | null;
 	/**
-	 * If true, skip validation if no timestamp is provided.
+	 * If true, skip timestamp validation when `getTimestamp()` returns `null`.
+	 * @default false
 	 */
 	skipIfNoTimestamp?: boolean;
 	/**
-	 * Maximum allowed age for the timestamp in seconds.
-	 * Defaults to 300 seconds (5 minutes).
+	 * Maximum allowed timestamp age in seconds.
+	 * @default 300 (5 minutes)
 	 */
 	maxTimestampAgeSeconds?: number;
 }
 
 /**
- * Generic function to verify webhook signatures and prevent replay attacks.
+ * Verifies webhook signatures and prevents replay attacks.
  *
- * This function:
- * 1. Validates that both expected and actual signatures are present
- * 2. Optionally validates timestamp to prevent replay attacks
- * 3. Performs constant-time comparison of signatures to prevent timing attacks
+ * Features:
+ * - Signature verification using constant-time comparison (prevents timing attacks)
+ * - Optional timestamp validation (prevents replay attacks)
+ * - Supports HMAC-based and simple secret comparison patterns
  *
- * @param options - Configuration options for signature verification
- * @returns true if the signature is valid, false otherwise
+ * @param options - Configuration options
+ * @returns `true` if valid, `false` otherwise. Never throws.
+ *
+ * @example
+ * verifySignature({
+ *   getExpectedSignature: () => {
+ *     const hmac = createHmac('sha256', secret);
+ *     hmac.update(rawBody);
+ *     return `sha256=${hmac.digest('base64')}`;
+ *   },
+ *   getActualSignature: () => req.header('x-signature'),
+ *   getTimestamp: () => req.header('x-timestamp'),
+ * });
  */
 export function verifySignature(options: VerifySignatureOptions): boolean {
 	const { getExpectedSignature, getActualSignature, getTimestamp, maxTimestampAgeSeconds } =
@@ -96,6 +102,9 @@ export function verifySignature(options: VerifySignatureOptions): boolean {
 	}
 }
 
+/**
+ * Validates timestamp is within acceptable window (auto-detects seconds/milliseconds).
+ */
 function isTimestampValid(
 	timestamp: number | string | null,
 	maxTimestampAgeSeconds?: number,
