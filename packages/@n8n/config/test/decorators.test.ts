@@ -48,10 +48,11 @@ describe('decorators', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalledWith(filePath, 'utf8');
 	});
 
-	it('should trim whitespace from _FILE env variable values', () => {
+	it('should warn when _FILE env variable value contains whitespace', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;
 		mockFs.readFileSync.mockReturnValueOnce('secret-value\n');
+		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
 		@Config
 		class TestConfig {
@@ -61,6 +62,10 @@ describe('decorators', () => {
 
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('secret-value');
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('TEST_VALUE_FILE contains leading or trailing whitespace'),
+		);
+		consoleWarnSpy.mockRestore();
 	});
 
 	it('should prefer direct env variable over _FILE variant', () => {

@@ -511,7 +511,7 @@ describe('GlobalConfig', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
-	it('should trim whitespace from _FILE env variable values', () => {
+	it('should warn when _FILE env variable value contains whitespace', () => {
 		const passwordFile = '/path/to/postgres/password';
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
@@ -522,6 +522,11 @@ describe('GlobalConfig', () => {
 
 		const config = Container.get(GlobalConfig);
 		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
 	});
 
 	it('should handle invalid numbers', () => {

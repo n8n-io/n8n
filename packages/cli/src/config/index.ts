@@ -41,13 +41,18 @@ if (!inE2ETests && !inTest) {
 			if (key) {
 				let value: string;
 				try {
-					value = readFileSync(fileName, 'utf8').trim();
+					value = readFileSync(fileName, 'utf8');
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
 						throw new UserError('File not found', { extra: { fileName } });
 					}
 					throw error;
+				}
+				if (value !== value.trim()) {
+					console.warn(
+						`[n8n] Warning: The file specified by ${envName} contains leading or trailing whitespace, which may cause authentication failures.`,
+					);
 				}
 				config.set(key, value);
 			}
