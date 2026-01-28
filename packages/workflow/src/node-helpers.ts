@@ -892,9 +892,11 @@ export function getNodeParameters(
 						continue;
 					}
 					// Iterate over all items as it contains multiple ones
-					for (const nodeValue of (propertyValues as INodeParameters)[
-						itemName
-					] as INodeParameters[]) {
+					const itemValues = (propertyValues as INodeParameters)[itemName];
+					if (!Array.isArray(itemValues)) {
+						continue;
+					}
+					for (const nodeValue of itemValues) {
 						nodePropertyOptions = nodeProperties.options!.find(
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
