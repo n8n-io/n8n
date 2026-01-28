@@ -11,9 +11,7 @@ export function generateUrlSignature(url: string, secret: string): string {
 }
 
 /**
- * Prepare URL for signing by extracting pathname and search params.
- * Excludes the signature param itself to avoid circular signing.
- * Does not include host to make signatures portable across environments.
+ * Prepare url for signing
  */
 export function prepareUrlForSigning(url: URL): string {
 	const urlForSigning = new URL(url.toString());
