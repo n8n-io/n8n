@@ -5,10 +5,10 @@ import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
+ * id should be 16 characters but we allow <=21 to support longer IDs from December 2025
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	// TODO: could also check if id only contains nanoId characters
-	return typeof id === 'string' && id?.length <= 16;
+	return typeof id === 'string' && id.length > 0 && id.length <= 21;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {

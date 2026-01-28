@@ -9,7 +9,8 @@ export {
 	DateTimeColumn,
 } from './entities/abstract-entity';
 
-export { generateNanoId } from './utils/generators';
+export { generateNanoId } from '@n8n/utils';
+export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isValidEmail } from './utils/is-valid-email';
 export { separate } from './utils/separate';

@@ -9,9 +9,8 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils';
 import type { Class } from 'n8n-core';
-
-import { generateNanoId } from '../utils/generators';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;
 
