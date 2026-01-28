@@ -31,11 +31,11 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
-      - name: Checkout (mimics release - checkout from master with fetch-depth 0)
+      - name: Checkout (mimics release - checkout source branch with fetch-depth 0)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.event.inputs.source-branch || github.head_ref }}
           token: ${{ steps.generate_token.outputs.token }}
 
       - name: Test push (mimics release branch push)
@@ -44,7 +44,6 @@ jobs:
           SOURCE_BRANCH: ${{ github.event.inputs.source-branch || github.head_ref }}
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git fetch origin "${SOURCE_BRANCH}"
           echo "Pushing ${SOURCE_BRANCH} to test-release/0.0.0-test..."
           git push -f origin "refs/remotes/origin/${SOURCE_BRANCH}:refs/heads/test-release/0.0.0-test"
           echo "Push succeeded!"
