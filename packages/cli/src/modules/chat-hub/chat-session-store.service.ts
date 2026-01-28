@@ -16,7 +16,7 @@ export interface StreamState {
 	sessionId: ChatSessionId;
 	/** Message ID being streamed */
 	messageId: ChatMessageId;
-	/** User ID - required for sending to all user connections */
+	/** User ID */
 	userId: string;
 	/** Current sequence number */
 	sequenceNumber: number;
@@ -205,7 +205,7 @@ export class ChatSessionStoreService {
 	}
 
 	/**
-	 * Buffer a chunk for potential reconnection replay
+	 * Buffer a chunk for reconnection replay
 	 */
 	async bufferChunk(sessionId: ChatSessionId, chunk: BufferedChunk): Promise<void> {
 		if (this.useRedis) {

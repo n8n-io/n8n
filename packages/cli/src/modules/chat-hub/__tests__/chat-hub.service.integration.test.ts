@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import type { ChatExecutionEnd, ChatStreamError } from '@n8n/api-types';
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
@@ -1155,6 +1156,77 @@ describe('chatHub', () => {
 				expect(messages[1]?.status).toBe('error');
 				expect(messages[1]?.content).toBe('wf error');
 				expect(messages[1]?.previousMessageId).toBe(messageId);
+			});
+
+			it('should handle early errors before streaming starts by saving error message and notifying frontend', async () => {
+				// Mock executeChatWorkflow to throw immediately before any streaming starts
+				spyExecute.mockRejectedValueOnce(new Error('Early execution failure'));
+
+				// Clear previous push calls
+				mockPush.sendToUsers.mockClear();
+
+				await chatHubService.sendHumanMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				// Wait for the error to be processed
+				const messages = await retryUntil(async () => {
+					const messages = await messagesRepository.getManyBySessionId(sessionId);
+					expect(messages.length).toBeGreaterThanOrEqual(2);
+					expect(messages[1]?.status).toBe('error');
+					return messages;
+				});
+
+				// Verify human message was saved
+				expect(messages[0]?.sessionId).toBe(sessionId);
+				expect(messages[0]?.id).toBe(messageId);
+				expect(messages[0]?.type).toBe('human');
+				expect(messages[0]?.status).toBe('success');
+				expect(messages[0]?.content).toBe('Test message');
+
+				// Verify error AI message was saved with proper linking
+				expect(messages[1]?.sessionId).toBe(sessionId);
+				expect(messages[1]?.type).toBe('ai');
+				expect(messages[1]?.status).toBe('error');
+				expect(messages[1]?.content).toBe('Early execution failure');
+				expect(messages[1]?.previousMessageId).toBe(messageId);
+
+				// Verify frontend was notified via push
+				const pushCalls = mockPush.sendToUsers.mock.calls;
+				const errorEvent = pushCalls.find(
+					(call) => call[0]?.type === 'chatStreamError' && call[1]?.includes(member.id),
+				) as [ChatStreamError, string[]] | undefined;
+				expect(errorEvent).toBeDefined();
+				expect(errorEvent![0].data.error).toBe('Early execution failure');
+				expect(errorEvent![0].data.sessionId).toBe(sessionId);
+
+				// Verify execution end was sent with error status
+				const endEvent = pushCalls.find(
+					(call) =>
+						call[0]?.type === 'chatExecutionEnd' &&
+						call[0]?.data?.status === 'error' &&
+						call[1]?.includes(member.id),
+				) as [ChatExecutionEnd, string[]] | undefined;
+				expect(endEvent).toBeDefined();
+				expect(endEvent![0].data.sessionId).toBe(sessionId);
 			});
 		});
 

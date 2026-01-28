@@ -1268,8 +1268,6 @@ export class ChatHubService {
 			return;
 		}
 
-		const responseMessageId = uuidv4();
-
 		// Start the workflow execution with streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanup(
 			user,
@@ -1278,7 +1276,6 @@ export class ChatHubService {
 			workflow.executionData,
 			sessionId,
 			messageId,
-			responseMessageId,
 			null,
 			workflow.responseMode,
 			previousMessageId,
@@ -1410,8 +1407,6 @@ export class ChatHubService {
 			})),
 		});
 
-		const responseMessageId = uuidv4();
-
 		// Start the workflow execution with streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanup(
 			user,
@@ -1420,7 +1415,6 @@ export class ChatHubService {
 			transactionResult.workflow.executionData,
 			sessionId,
 			messageId,
-			responseMessageId,
 			null,
 			transactionResult.workflow.responseMode,
 			null,
@@ -1493,8 +1487,6 @@ export class ChatHubService {
 				};
 			});
 
-		const responseMessageId = uuidv4();
-
 		// Start the workflow execution with streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanup(
 			user,
@@ -1503,7 +1495,6 @@ export class ChatHubService {
 			workflow.executionData,
 			sessionId,
 			previousMessageId,
-			responseMessageId,
 			retryOfMessageId,
 			workflow.responseMode,
 			null,
@@ -1523,7 +1514,6 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		responseMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
 		originalPreviousMessageId: ChatMessageId | null,
@@ -1541,18 +1531,33 @@ export class ChatHubService {
 				executionData,
 				sessionId,
 				previousMessageId,
-				responseMessageId,
 				retryOfMessageId,
 				executionMode,
 				responseMode,
 			);
 		} catch (error) {
 			this.logger.error(`Error in chat execution: ${error}`);
-			await this.chatStreamService.sendError(
+
+			const errorMessageId = uuidv4();
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			await this.saveAIMessage({
+				id: errorMessageId,
 				sessionId,
-				responseMessageId,
-				error instanceof Error ? error.message : 'Unknown error',
+				previousMessageId,
+				content: errorMessage,
+				model,
+				retryOfMessageId,
+				status: 'error',
+			});
+
+			await this.chatStreamService.sendErrorDirect(
+				user.id,
+				sessionId,
+				errorMessageId,
+				errorMessage,
 			);
+			await this.chatStreamService.endExecution(user.id, sessionId, 'error');
 		} finally {
 			if (model.provider !== 'n8n') {
 				await this.deleteChatWorkflow(workflowData.id);
@@ -1586,7 +1591,6 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		responseMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
 		executionMode: WorkflowExecuteMode,
 		responseMode: ChatTriggerResponseMode,
@@ -1619,7 +1623,6 @@ export class ChatHubService {
 				executionData,
 				sessionId,
 				previousMessageId,
-				responseMessageId,
 				retryOfMessageId,
 				executionMode,
 			);
@@ -1963,7 +1966,6 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: string,
 		previousMessageId: string,
-		_responseMessageId: string,
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
 	) {
@@ -2023,12 +2025,16 @@ export class ChatHubService {
 					emptyErrorMessageIds.push(message.id);
 				}
 
-				// Update the message in the database
-				// Note: message.content already has the error text appended by the aggregator
 				await this.messageRepository.updateChatMessage(message.id, {
 					content: message.content,
 					status: 'error',
 				});
+
+				await this.chatStreamService.sendError(
+					sessionId,
+					message.id,
+					message.content || 'Unknown error',
+				);
 
 				// End the stream with error
 				await this.chatStreamService.endStream(sessionId, message.id, 'error');

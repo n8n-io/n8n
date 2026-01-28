@@ -173,7 +173,7 @@ export class ChatStreamService {
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
 		if (!streamState) {
-			this.logger.warn(`No active execution found for session ${sessionId}`);
+			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -210,7 +210,7 @@ export class ChatStreamService {
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
 		if (!streamState) {
-			this.logger.warn(`No active execution found for session ${sessionId}`);
+			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -247,7 +247,7 @@ export class ChatStreamService {
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
 		if (!streamState) {
-			this.logger.warn(`No active execution found for session ${sessionId}`);
+			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -271,6 +271,43 @@ export class ChatStreamService {
 		);
 
 		// Don't clean up session state here - endExecution() handles that
+	}
+
+	/**
+	 * Send an error directly via Push without requiring stream state.
+	 * Used for errors that occur before streaming starts.
+	 */
+	async sendErrorDirect(
+		userId: string,
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		error: string,
+	): Promise<void> {
+		const message: ChatStreamError = {
+			type: 'chatStreamError',
+			data: {
+				sessionId,
+				messageId,
+				sequenceNumber: 0,
+				timestamp: Date.now(),
+				error,
+			},
+		};
+		this.push.sendToUsers(message, [userId]);
+
+		if (this.shouldRelayViaPubSub()) {
+			await this.publisher.publishCommand({
+				command: 'relay-chat-stream-event',
+				payload: {
+					eventType: 'error',
+					userId,
+					sessionId,
+					messageId,
+					sequenceNumber: 0,
+					payload: { error },
+				},
+			});
+		}
 	}
 
 	// #endregion
