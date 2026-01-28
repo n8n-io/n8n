@@ -15,7 +15,6 @@ env:
 jobs:
   prepare:
     name: 'Prepare E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
     runs-on: blacksmith-4vcpu-ubuntu-2204
     permissions:
       packages: write
@@ -52,12 +51,10 @@ jobs:
         run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)" >> "$GITHUB_OUTPUT"
 
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
-  # Only runs for internal PRs (not community/fork PRs)
   # Pulls pre-built Docker image from GHCR
   multi-main-e2e:
     needs: [prepare]
     name: 'Multi-Main: E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -69,28 +66,14 @@ jobs:
       workers: '1'
       use-custom-orchestration: true
       pre-generated-matrix: ${{ needs.prepare.outputs.matrix }}
-    secrets: inherit
-
-  # Community PR tests: Local mode with SQLite (no container building, no secrets required)
-  # Runs on GitHub-hosted runners without Currents reporting
-  community-e2e:
-    name: 'Community: E2E'
-    if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ inputs.branch }}
-      test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
-      shards: 7
-      runner: ubuntu-latest
-      workers: '1'
       upload-failure-artifacts: true
+    secrets: inherit
 
   # Cleanup ephemeral Docker image from GHCR after tests complete
   cleanup-docker:
     name: 'Cleanup Docker Image'
     needs: [prepare, multi-main-e2e]
-    if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-slim
     permissions:
       packages: write

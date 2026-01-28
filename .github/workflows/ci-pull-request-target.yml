@@ -1,0 +1,26 @@
+name: 'CI: Pull Request Target (Fork PRs)'
+
+# This workflow handles CI for fork/community PRs.
+# It uses pull_request_target to run in the base repo context (access to secrets).
+# Security: GitHub's "Require approval for all outside collaborators" setting
+# ensures maintainer approval before this runs on fork PRs.
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-target-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    # Only run for fork PRs - internal PRs use ci-pull-requests.yml
+    if: ${{ github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/ci-pull-requests-reusable.yml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
