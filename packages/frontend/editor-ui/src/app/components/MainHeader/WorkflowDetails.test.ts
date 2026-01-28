@@ -162,6 +162,8 @@ describe('WorkflowDetails', () => {
 			'1': workflow as unknown as IWorkflowDb,
 			'123': workflow as unknown as IWorkflowDb,
 		};
+		workflowsStore.workflowId = '1';
+		workflowsStore.workflow = workflow as unknown as IWorkflowDb;
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
