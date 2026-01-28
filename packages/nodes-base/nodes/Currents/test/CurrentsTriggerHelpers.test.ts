@@ -5,45 +5,12 @@ import {
 	deleteWebhook,
 	findWebhookByUrl,
 	generateWebhookSecret,
-	isTimestampValid,
 	listWebhooks,
 	updateWebhook,
 	verifyWebhook,
 } from '../CurrentsTriggerHelpers';
 
 describe('CurrentsTriggerHelpers', () => {
-	describe('isTimestampValid', () => {
-		it('should return true for current timestamp in milliseconds', () => {
-			const nowSec = Math.floor(Date.now() / 1000);
-			const nowMs = nowSec * 1000;
-			expect(isTimestampValid(nowMs, nowSec)).toBe(true);
-		});
-
-		it('should return true for timestamp within 5 minutes', () => {
-			const nowSec = Math.floor(Date.now() / 1000);
-			const fourMinutesAgoMs = (nowSec - 240) * 1000;
-			expect(isTimestampValid(fourMinutesAgoMs, nowSec)).toBe(true);
-		});
-
-		it('should return false for timestamp older than 5 minutes', () => {
-			const nowSec = Math.floor(Date.now() / 1000);
-			const sixMinutesAgoMs = (nowSec - 360) * 1000;
-			expect(isTimestampValid(sixMinutesAgoMs, nowSec)).toBe(false);
-		});
-
-		it('should return false for timestamp from the future beyond tolerance', () => {
-			const nowSec = Math.floor(Date.now() / 1000);
-			const sixMinutesInFutureMs = (nowSec + 360) * 1000;
-			expect(isTimestampValid(sixMinutesInFutureMs, nowSec)).toBe(false);
-		});
-
-		it('should return true for timestamp at exactly 5 minutes', () => {
-			const nowSec = Math.floor(Date.now() / 1000);
-			const fiveMinutesAgoMs = (nowSec - 300) * 1000;
-			expect(isTimestampValid(fiveMinutesAgoMs, nowSec)).toBe(true);
-		});
-	});
-
 	describe('generateWebhookSecret', () => {
 		it('should generate a 64-character hex string', () => {
 			const secret = generateWebhookSecret();
