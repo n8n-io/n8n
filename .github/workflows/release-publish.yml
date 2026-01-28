@@ -35,6 +35,8 @@ jobs:
     outputs:
       release: ${{ steps.set-release.outputs.release }}
       release_type: ${{ steps.set-release.outputs.release_type }}
+      current_beta: ${{ steps.get-dist-tags.outputs.current_beta }}
+      current_stable: ${{ steps.get-dist-tags.outputs.current_stable }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -51,6 +53,12 @@ jobs:
           else
             echo "type=stable" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Get current npm dist-tags
+        id: get-dist-tags
+        run: |
+          echo "current_beta=$(npm view n8n@beta version 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
+          echo "current_stable=$(npm view n8n@stable version 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
@@ -233,3 +241,105 @@ jobs:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.publish-to-npm.outputs.release }} >
+
+  # =============================================================================
+  # Channel Push Jobs - Minor Release
+  # =============================================================================
+
+  push-to-beta:
+    name: Push to beta channel
+    needs: [publish-to-npm, publish-to-docker-hub]
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'release:minor') &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.')
+    uses: ./.github/workflows/release-push-to-channel.yml
+    with:
+      version: ${{ needs.publish-to-npm.outputs.release }}
+      release-channel: beta
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      N8N_WEBHOOK_DOCS_PASSWORD: ${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  push-prev-to-stable:
+    name: Push previous beta to stable channel
+    needs: [publish-to-npm, publish-to-docker-hub]
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'release:minor') &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.') &&
+      needs.publish-to-npm.outputs.current_beta != ''
+    uses: ./.github/workflows/release-push-to-channel.yml
+    with:
+      version: ${{ needs.publish-to-npm.outputs.current_beta }}
+      release-channel: stable
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      N8N_WEBHOOK_DOCS_PASSWORD: ${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # =============================================================================
+  # Channel Push Jobs - Patch Release
+  # =============================================================================
+
+  get-channel-for-patch:
+    name: Determine channel for patch
+    needs: [publish-to-npm, publish-to-docker-hub]
+    if: |
+      github.event.pull_request.merged == true &&
+      !contains(github.event.pull_request.labels.*.name, 'release:minor') &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.')
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.detect.outputs.channel }}
+    steps:
+      - name: Detect target channel
+        id: detect
+        env:
+          PATCH_VERSION: ${{ needs.publish-to-npm.outputs.release }}
+          CURRENT_BETA: ${{ needs.publish-to-npm.outputs.current_beta }}
+          CURRENT_STABLE: ${{ needs.publish-to-npm.outputs.current_stable }}
+        run: |
+          if [[ -z "$CURRENT_BETA" || -z "$CURRENT_STABLE" ]]; then
+            echo "::error::Could not fetch dist-tags from npm (beta='$CURRENT_BETA', stable='$CURRENT_STABLE')"
+            exit 1
+          fi
+
+          patch_minor=$(echo "$PATCH_VERSION" | cut -d. -f1,2)
+          beta_minor=$(echo "$CURRENT_BETA" | cut -d. -f1,2)
+          stable_minor=$(echo "$CURRENT_STABLE" | cut -d. -f1,2)
+
+          echo "Patch version: $PATCH_VERSION (minor: $patch_minor)"
+          echo "Current beta: $CURRENT_BETA (minor: $beta_minor)"
+          echo "Current stable: $CURRENT_STABLE (minor: $stable_minor)"
+
+          if [[ "$patch_minor" == "$beta_minor" ]]; then
+            echo "→ Pushing to channel: beta"
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "$patch_minor" == "$stable_minor" ]]; then
+            echo "→ Pushing to channel: stable"
+            echo "channel=stable" >> "$GITHUB_OUTPUT"
+          else
+            echo "→ No channel push needed (older minor)"
+            echo "channel=none" >> "$GITHUB_OUTPUT"
+          fi
+
+  push-patch-to-channel:
+    name: Push patch to channel
+    needs: [publish-to-npm, publish-to-docker-hub, get-channel-for-patch]
+    if: needs.get-channel-for-patch.outputs.channel != 'none'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    with:
+      version: ${{ needs.publish-to-npm.outputs.release }}
+      release-channel: ${{ needs.get-channel-for-patch.outputs.channel }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      N8N_WEBHOOK_DOCS_PASSWORD: ${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
