@@ -32,7 +32,7 @@ export function verifySignature(this: IWebhookFunctions): boolean {
 			const computedSignature = `sha256=${hash}`;
 			return computedSignature;
 		},
-		skipIfNoExpectedSignature: true,
+		skipIfNoExpectedSignature: !secret || typeof secret !== 'string',
 		getActualSignature: () => {
 			const receivedSignature = req.header('typeform-signature');
 			return typeof receivedSignature === 'string' ? receivedSignature : null;

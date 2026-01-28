@@ -90,18 +90,15 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 		return false;
 	}
 
+	const signatureSecret = credential.signatureSecret;
 	try {
 		const isValid = verifySignatureGeneric({
 			getExpectedSignature: () => {
-				if (
-					!credential.signatureSecret ||
-					typeof credential.signatureSecret !== 'string' ||
-					!req.rawBody
-				) {
+				if (!signatureSecret || typeof signatureSecret !== 'string' || !req.rawBody) {
 					return null;
 				}
 
-				const hmac = createHmac('sha256', credential.signatureSecret);
+				const hmac = createHmac('sha256', signatureSecret);
 
 				if (Buffer.isBuffer(req.rawBody)) {
 					hmac.update(`v0:${timestamp}:`);
@@ -115,7 +112,7 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 				const computedSignature = `v0=${hmac.digest('hex')}`;
 				return computedSignature;
 			},
-			skipIfNoExpectedSignature: true,
+			skipIfNoExpectedSignature: !signatureSecret || typeof signatureSecret !== 'string',
 			getActualSignature: () => {
 				const actualSignature = req.header('x-slack-signature');
 				return typeof actualSignature === 'string' ? actualSignature : null;
