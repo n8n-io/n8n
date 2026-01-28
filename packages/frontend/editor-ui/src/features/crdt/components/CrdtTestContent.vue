@@ -32,7 +32,8 @@ const doc = useWorkflowDoc();
 const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 provide(WorkflowAwarenessKey, awareness);
 
-const instance = useVueFlow(doc.workflowId);
+// Use instanceId for Vue Flow so each view has independent viewport state
+const instance = useVueFlow(doc.instanceId);
 const { getDownstreamNodes } = useCanvasTraversal(instance);
 const selectedNode = ref<string | null>(null);
 

@@ -36,7 +36,7 @@ import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
 } from './operations/storeVersion';
-import { createCrdtPort as createCrdtPortOp, cleanupCrdtSubscription } from './operations/crdt';
+import { initializeCrdtSubscription, cleanupCrdtSubscription } from './operations/crdt';
 import { initialize as initializeOp } from './initialize';
 
 const state: CoordinatorState = {
@@ -56,10 +56,17 @@ const state: CoordinatorState = {
 
 const coordinatorApi = {
 	/**
-	 * Register a tab and its dedicated data worker with the coordinator
+	 * Register a tab and its dedicated data worker with the coordinator.
+	 * Also accepts a CRDT port for binary CRDT messages.
+	 *
+	 * @param dataWorkerPort - Port to communicate with the tab's data worker
+	 * @param crdtPort - Port for CRDT binary messages (established once per tab)
 	 */
-	async registerTab(dataWorkerPort: MessagePort): Promise<string> {
-		return registerTabOp(state, dataWorkerPort);
+	async registerTab(dataWorkerPort: MessagePort, crdtPort: MessagePort): Promise<string> {
+		const tabId = registerTabOp(state, dataWorkerPort);
+		// Initialize CRDT subscription with the provided port
+		initializeCrdtSubscription(state, tabId, crdtPort);
+		return tabId;
 	},
 
 	/**
@@ -140,19 +147,6 @@ const coordinatorApi = {
 	async getStoredVersion(): Promise<string | null> {
 		return await getStoredVersionOp(state);
 	},
-
-	/**
-	 * Get a MessagePort for CRDT binary messages (Worker Mode).
-	 * The returned port uses the same protocol as the CRDT SharedWorker.
-	 *
-	 * @param tabId - The tab ID requesting the port
-	 * @returns A MessagePort for CRDT binary messages (transferred via Comlink)
-	 */
-	getCrdtPort(tabId: string): MessagePort {
-		const port = createCrdtPortOp(state, tabId);
-		// Use Comlink.transfer to properly transfer the MessagePort
-		return Comlink.transfer(port, [port]);
-	},
 };
 
 export type CoordinatorApi = typeof coordinatorApi;
@@ -173,8 +167,8 @@ self.onconnect = (e: MessageEvent) => {
 	// Create a wrapped API that tracks the tab ID on registration
 	const wrappedApi = {
 		...coordinatorApi,
-		async registerTab(dataWorkerPort: MessagePort): Promise<string> {
-			connectedTabId = await coordinatorApi.registerTab(dataWorkerPort);
+		async registerTab(dataWorkerPort: MessagePort, crdtPort: MessagePort): Promise<string> {
+			connectedTabId = await coordinatorApi.registerTab(dataWorkerPort, crdtPort);
 			return connectedTabId;
 		},
 	};

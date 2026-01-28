@@ -150,7 +150,10 @@ export interface NodeNameChange {
  * No Vue Flow types here - just raw workflow data.
  */
 export interface WorkflowDocument {
+	/** The workflow/document ID (shared for same workflow across views) */
 	readonly workflowId: string;
+	/** Unique instance ID for this view (use for Vue Flow and awareness) */
+	readonly instanceId: string;
 	readonly state: Ref<WorkflowDocumentState>;
 	readonly error: Ref<string | null>;
 	readonly isReady: ComputedRef<boolean>;

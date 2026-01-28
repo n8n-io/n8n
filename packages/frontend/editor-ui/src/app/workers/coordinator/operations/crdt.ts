@@ -59,34 +59,30 @@ export function ensureCRDTProvider(state: CoordinatorState): void {
 // =============================================================================
 
 /**
- * Create a CRDT port for a tab.
- * Returns a MessagePort that the tab will use for CRDT binary messages.
+ * Initialize CRDT subscription for a tab with the provided port.
+ * The port is created by the tab during registration and transferred to the coordinator.
+ * This ensures one port per tab, managed by the browser.
+ *
+ * @param state - Coordinator state
+ * @param tabId - The tab ID
+ * @param crdtPort - The CRDT port transferred from the tab
  */
-export function createCrdtPort(state: CoordinatorState, tabId: string): MessagePort {
-	// Create a new MessageChannel
-	const channel = new MessageChannel();
-
-	// Set up the internal port (stays in coordinator)
-	const internalPort = channel.port1;
-	internalPort.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+export function initializeCrdtSubscription(
+	state: CoordinatorState,
+	tabId: string,
+	crdtPort: MessagePort,
+): void {
+	// Set up message handler on the port
+	crdtPort.onmessage = (event: MessageEvent<ArrayBuffer>) => {
 		void handleCrdtMessage(state, tabId, event.data);
 	};
-	internalPort.start();
+	crdtPort.start();
 
-	// Initialize subscription if not exists
-	if (!state.crdtSubscriptions.has(tabId)) {
-		state.crdtSubscriptions.set(tabId, {
-			docIds: new Set(),
-			crdtPort: internalPort,
-		});
-	} else {
-		// Update the port
-		const sub = state.crdtSubscriptions.get(tabId)!;
-		sub.crdtPort = internalPort;
-	}
-
-	// Return the external port for the tab
-	return channel.port2;
+	// Initialize subscription
+	state.crdtSubscriptions.set(tabId, {
+		docIds: new Set(),
+		crdtPort,
+	});
 }
 
 /**
@@ -293,7 +289,7 @@ function handleSyncMessage(
  */
 function handleAwarenessMessage(
 	state: CoordinatorState,
-	tabId: string,
+	_tabId: string,
 	docId: string,
 	payload: Uint8Array,
 ): void {
@@ -304,8 +300,11 @@ function handleAwarenessMessage(
 	const awareness = docState.doc.getAwareness();
 	awareness.applyUpdate(payload);
 
-	// Broadcast to other tabs
-	broadcastToSubscribedTabs(state, docId, MESSAGE_AWARENESS, payload, tabId);
+	// Broadcast to ALL tabs (including sender) to support split-view within the same tab.
+	// Each view has a unique awareness clientId, so echoing back is safe - views filter
+	// out their own clientId when rendering collaborators, and the origin tracking in
+	// useCRDTSync prevents re-sending (only local changes are sent to the coordinator).
+	broadcastToSubscribedTabs(state, docId, MESSAGE_AWARENESS, payload);
 }
 
 // =============================================================================

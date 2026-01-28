@@ -34,8 +34,8 @@ const edgesHoveredById = ref<Record<string, boolean>>({});
 // Get injected document
 const doc = useWorkflowDoc();
 
-// Get VueFlow instance
-const instance = useVueFlow(doc.workflowId);
+// Get VueFlow instance - use instanceId to ensure independent viewports per view
+const instance = useVueFlow(doc.instanceId);
 
 // Inject awareness from parent (CrdtTestContent provides it)
 const awareness = useWorkflowAwarenessInject();
@@ -113,7 +113,7 @@ function onEdgeDelete(id: string) {
 <template>
 	<div :class="$style.canvasWrapper">
 		<VueFlow
-			:id="doc.workflowId"
+			:id="doc.instanceId"
 			:nodes="initialNodes"
 			:edges="initialEdges"
 			:node-types="nodeTypes"

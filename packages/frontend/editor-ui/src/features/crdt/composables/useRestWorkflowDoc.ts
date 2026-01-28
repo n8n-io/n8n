@@ -50,6 +50,9 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 
 	const workflowsStore = useWorkflowsStore();
 
+	// Generate unique instance ID for this view (for Vue Flow and awareness)
+	const instanceId = crypto.randomUUID();
+
 	// Internal state
 	const nodesCache = ref<WorkflowNode[]>([]);
 	const edgesCache = ref<WorkflowEdge[]>([]);
@@ -278,6 +281,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 
 	return {
 		workflowId,
+		instanceId,
 		state,
 		error,
 		isReady,

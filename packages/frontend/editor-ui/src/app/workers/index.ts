@@ -10,7 +10,7 @@
  * - Only one dedicated worker accesses OPFS at a time (prevents corruption)
  */
 
-import { coordinator, registerTab, getTabId } from './coordinator';
+import { coordinator, registerTab, getCrdtPort as getCoordinatorCrdtPort } from './coordinator';
 import type { SQLiteParam } from './data/types';
 
 /**
@@ -100,14 +100,16 @@ export async function getStoredVersion(): Promise<string | null> {
  * - Computes handles on parameter changes
  * - Broadcasts updates to all subscribed tabs
  *
+ * The port is established once during tab registration, not on-demand.
+ * This ensures all CRDT documents in the same tab share the same port.
+ *
  * @returns A MessagePort for CRDT binary messages
  */
 export async function getCrdtPort(): Promise<MessagePort> {
 	await ensureRegistered();
-	const tabId = getTabId();
-	if (!tabId) {
-		throw new Error('Tab not registered');
+	const port = getCoordinatorCrdtPort();
+	if (!port) {
+		throw new Error('CRDT port not initialized');
 	}
-	// Get the port from the coordinator (already transferred via Comlink.transfer in worker)
-	return await coordinator.getCrdtPort(tabId);
+	return port;
 }

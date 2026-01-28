@@ -64,6 +64,9 @@ export interface UseCrdtWorkflowDocOptions {
 export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): WorkflowDocument {
 	const { docId, immediate = true, transport = 'worker' } = options;
 
+	// Generate unique instance ID for this view (for Vue Flow and awareness)
+	const instanceId = crypto.randomUUID();
+
 	// Use existing CRDT sync composable
 	const crdt = useCRDTSync({ docId, immediate, transport });
 
@@ -734,6 +737,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 
 	return {
 		workflowId: docId,
+		instanceId,
 		state,
 		error: crdt.error,
 		isReady,
