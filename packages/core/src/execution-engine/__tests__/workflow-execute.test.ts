@@ -1967,6 +1967,7 @@ describe('WorkflowExecute', () => {
 				mode: 'manual',
 				startedAt,
 				stoppedAt: startedAt,
+				storedAt: 'db',
 				status: 'new',
 			});
 
@@ -1982,6 +1983,7 @@ describe('WorkflowExecute', () => {
 				mode: 'manual',
 				startedAt,
 				stoppedAt,
+				storedAt: 'db',
 				status: 'running',
 			});
 		});
