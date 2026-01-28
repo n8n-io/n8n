@@ -7,6 +7,7 @@ import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
 
 import { RedisClientService } from '@/services/redis-client.service';
+import { Time } from '@n8n/constants';
 
 /**
  * Stream state for an active chat session
@@ -49,14 +50,14 @@ export interface StartExecutionParams {
 	userId: string;
 }
 
-/** TTL for stream state in seconds */
-const STREAM_STATE_TTL = 60 * 5; // 5 minutes
-
 /** Maximum number of chunks to buffer for reconnection */
-const MAX_BUFFERED_CHUNKS = 100;
+const MAX_BUFFERED_CHUNKS = 1000;
+
+/** TTL for stream state in seconds */
+const STREAM_STATE_TTL = 5 * 60; // 5 minutes
 
 /** TTL for cleanup timers in single-main mode */
-const CLEANUP_DELAY_MS = STREAM_STATE_TTL * 1000;
+const CLEANUP_DELAY_MS = STREAM_STATE_TTL * Time.seconds.toMilliseconds;
 
 /**
  * Service responsible for storing chat session state for reconnection support.
@@ -212,7 +213,6 @@ export class ChatSessionStoreService {
 			const chunks = await this.getRedisChunks(sessionId);
 			chunks.push(chunk);
 
-			// Keep only the last MAX_BUFFERED_CHUNKS
 			while (chunks.length > MAX_BUFFERED_CHUNKS) {
 				chunks.shift();
 			}
@@ -227,7 +227,6 @@ export class ChatSessionStoreService {
 
 			chunks.push(chunk);
 
-			// Keep only the last MAX_BUFFERED_CHUNKS
 			while (chunks.length > MAX_BUFFERED_CHUNKS) {
 				chunks.shift();
 			}

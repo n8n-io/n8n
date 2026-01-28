@@ -55,6 +55,7 @@ export {
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
+	ChatReconnectRequest,
 } from './chat-hub';
 
 export type {

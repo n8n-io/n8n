@@ -520,6 +520,13 @@ export interface ChatSendMessageResponse {
 }
 
 /**
+ * Request query parameters for reconnecting to a chat stream
+ */
+export class ChatReconnectRequest extends Z.class({
+	lastSequence: z.coerce.number().int().min(0).optional(),
+}) {}
+
+/**
  * Response containing pending chunks for reconnection replay
  */
 export interface ChatReconnectResponse {

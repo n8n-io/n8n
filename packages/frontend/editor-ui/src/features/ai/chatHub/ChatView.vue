@@ -442,6 +442,18 @@ watch(
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
+
+				// Check for active stream after loading messages (handles page refresh during streaming)
+				const reconnectResult = await chatStore.reconnectToStream(id, 0);
+				if (reconnectResult?.hasActiveStream && reconnectResult.currentMessageId) {
+					// Initialize push handler to receive future chunks
+					chatPushHandler.initializeStreamState(
+						id,
+						reconnectResult.currentMessageId,
+						reconnectResult.lastSequenceNumber,
+					);
+					// Pending chunks are already replayed by reconnectToStream()
+				}
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });

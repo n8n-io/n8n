@@ -14,6 +14,7 @@ import {
 	ViewableMimeTypes,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
+	ChatReconnectRequest,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -218,12 +219,12 @@ export class ChatHubController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
-		@Query query: { lastSequence?: string },
+		@Query query: ChatReconnectRequest,
 	): Promise<ChatReconnectResponse> {
 		// Verify user has access to this session
 		await this.chatService.ensureConversation(req.user.id, sessionId);
 
-		const lastReceivedSequence = query.lastSequence ? parseInt(query.lastSequence, 10) : 0;
+		const lastReceivedSequence = query.lastSequence ?? 0;
 
 		return await this.chatService.reconnectToStream(sessionId, lastReceivedSequence);
 	}

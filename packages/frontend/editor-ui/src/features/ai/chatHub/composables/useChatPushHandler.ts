@@ -231,6 +231,23 @@ export function useChatPushHandler() {
 	}
 
 	/**
+	 * Initialize stream state for reconnection after page refresh.
+	 * This allows the push handler to receive future chunks for an existing stream.
+	 */
+	function initializeStreamState(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		lastSequenceNumber: number,
+	): void {
+		activeStreams.value.set(sessionId, {
+			sessionId,
+			messageId,
+			lastSequenceNumber,
+			content: '',
+		});
+	}
+
+	/**
 	 * Get the last received sequence number for a session
 	 */
 	function getLastSequenceNumber(sessionId: ChatSessionId): number {
@@ -244,6 +261,7 @@ export function useChatPushHandler() {
 		getStreamState,
 		hasActiveStream,
 		getLastSequenceNumber,
+		initializeStreamState,
 	};
 }
 
