@@ -3814,6 +3814,83 @@ describe('useCanvasOperations', () => {
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
 		});
+
+		it('should remove preview token from node type when initializing', () => {
+			const updateNodeAtIndexSpy = vi.spyOn(workflowState, 'updateNodeAtIndex');
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeWithPreview = createTestNode({
+				type: 'n8n-nodes-community.testNode-preview',
+				name: 'testNode',
+			});
+			const workflow = createTestWorkflow({
+				nodes: [nodeWithPreview],
+				connections: {},
+			});
+			workflowsStore.workflow.nodes = [nodeWithPreview];
+			const { initializeUnknownNodes } = useCanvasOperations();
+			initializeUnknownNodes(workflow.nodes);
+
+			expect(updateNodeAtIndexSpy).toHaveBeenCalledTimes(1);
+			const updatedNode = updateNodeAtIndexSpy.mock.calls[0][1];
+			expect(updatedNode.type).toBe('n8n-nodes-community.testNode');
+			expect(updatedNode.type).not.toContain('-preview');
+		});
+	});
+
+	describe('resolveNodeData', () => {
+		it('should resolve node parameters and webhooks for installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(true);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: 'GET',
+						path: 'test',
+						responseMode: 'onReceived',
+					},
+				],
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith('n8n-nodes-base.httpRequest');
+			expect(node).toBeDefined();
+		});
+
+		it('should skip resolving parameters and webhooks for non-installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.notInstalled',
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-community.notInstalled',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith(
+				'n8n-nodes-community.notInstalled',
+			);
+			expect(node).toBeDefined();
+		});
 	});
 
 	describe('resetWorkspace', () => {

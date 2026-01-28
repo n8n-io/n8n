@@ -513,7 +513,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeTypes: {},
 			init: async (): Promise<void> => {},
 			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-				const nodeTypeDescription = nodeTypesStore.getNodeType(nodeType, version);
+				const nodeTypeDescription =
+					nodeTypesStore.getNodeType(nodeType, version) ??
+					nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+					null;
 				if (nodeTypeDescription === null) {
 					return undefined;
 				}
