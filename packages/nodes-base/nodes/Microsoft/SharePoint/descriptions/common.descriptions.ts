@@ -157,5 +157,5 @@ export const siteRLC: INodeProperties = {
 
 export const ignoreHttpStatusErrorsConfig = {
 	ignore: true as const,
-	except: [404],
+	except: [401],
 };
