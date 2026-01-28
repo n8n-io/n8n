@@ -500,7 +500,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			await sendMessageApi(rootStore.restApiContext, payload);
 
-			// Note: Actual streaming content comes via Push events
+			// Note: Actual streaming content comes via Push events using pushConnection store.
 			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
 		} catch (error) {
@@ -849,8 +849,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return saved;
 	}
 
-	// #region WebSocket streaming handlers
-
 	/**
 	 * Handle the beginning of a WebSocket stream
 	 */
@@ -953,16 +951,14 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		message.status = 'error';
 
 		updateMessage(sessionId, messageId, 'error', message.content);
-
-		// NOTE: Don't clear streaming state or show error toast here - the execution
-		// may continue with recovery. Errors are shown in handleWebSocketExecutionEnd.
 	}
 
 	/**
 	 * Handle execution begin (whole streaming session starts)
 	 */
 	function handleWebSocketExecutionBegin(data: { sessionId: ChatSessionId }) {
-		// For local streams, streaming.value is already set by sendMessage/editMessage/regenerate.
+		// For local streams (streaming started on this browser client),
+		// streaming.value is already set by sendMessage/editMessage/regenerate.
 		// For remote streams (from other clients), we don't set streaming state since
 		// we're not the one driving the conversation.
 
@@ -971,7 +967,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			// This is a remote stream - no action needed
 			return;
 		}
-		// For local streams, streaming.value is already set correctly
 	}
 
 	/**
@@ -1090,6 +1085,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const conversation = conversationsBySession.value.get(data.sessionId);
 		if (!conversation) {
 			// Session not loaded in this client, skip
+			// TODO: We could probably load the session, it should be one this user can access?
 			return;
 		}
 
@@ -1129,8 +1125,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		addMessage(data.sessionId, message);
 	}
-
-	// #endregion
 
 	return {
 		/**

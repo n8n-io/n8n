@@ -62,7 +62,6 @@ export function useChatPushHandler() {
 		const { sessionId, messageId, sequenceNumber, previousMessageId, retryOfMessageId } =
 			event.data;
 
-		// Initialize stream state
 		activeStreams.value.set(sessionId, {
 			sessionId,
 			messageId,
@@ -79,7 +78,6 @@ export function useChatPushHandler() {
 			}
 		}
 
-		// Emit a begin event to the store handler
 		chatStore.handleWebSocketStreamBegin?.({
 			sessionId,
 			messageId,
