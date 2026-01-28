@@ -118,13 +118,6 @@ const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
 
-const currentProjectName = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return locale.baseText('projects.menu.personal');
-	}
-	return projectsStore.currentProject?.name;
-});
-
 const currentFolderForBreadcrumbs = computed(() => {
 	if (!isNewWorkflow.value && props.currentFolder) {
 		return props.currentFolder;
