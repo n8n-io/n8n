@@ -36,7 +36,8 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
-	| 'extract_sub_workflow';
+	| 'extract_sub_workflow'
+	| 'focus_ai_on_selected';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -211,6 +212,12 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				...layoutActions,
 				...extractionActions,
 				...selectionActions,
+				!onlyStickies && {
+					id: 'focus_ai_on_selected',
+					divided: true,
+					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
+					disabled: isReadOnly.value,
+				},
 				{
 					id: 'delete',
 					divided: true,
