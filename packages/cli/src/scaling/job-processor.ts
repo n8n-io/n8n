@@ -14,17 +14,6 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import type {
-	Job,
-	JobFinishedMessage,
-	JobId,
-	JobResult,
-	McpResponseMessage,
-	RespondToWebhookMessage,
-	RunningJob,
-	SendChunkMessage,
-} from './scaling.types';
-
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -39,6 +28,7 @@ import type {
 	JobId,
 	JobResult,
 	RespondToWebhookMessage,
+	McpResponseMessage,
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
@@ -310,7 +300,7 @@ export class JobProcessor {
 				mcpType: job.data.mcpType ?? 'service',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
-				response: { success: !hasErrors }, // Main will fetch full data from DB
+				response: { success: props.success }, // Main will fetch full data from DB
 				workerId: this.instanceSettings.hostId,
 				targetMainId: job.data.originMainId,
 			};

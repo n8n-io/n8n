@@ -1088,5 +1088,179 @@ describe('execute-workflow MCP tool', () => {
 				expect(runCall.executionMode).toBe('webhook');
 			});
 		});
+
+		describe('queue mode support', () => {
+			let queueModeMcpService: McpService;
+
+			beforeEach(() => {
+				queueModeMcpService = mockInstance(McpService, {
+					isQueueMode: true,
+					hostId: 'main-host-id',
+					createPendingResponse: jest.fn().mockReturnValue({
+						promise: Promise.resolve({
+							status: 'success',
+							data: { resultData: { runData: {} } },
+						}),
+						resolve: jest.fn(),
+						reject: jest.fn(),
+					}),
+				});
+			});
+
+			test('uses pending response promise in queue mode', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-queue');
+
+				const result = await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					queueModeMcpService,
+					'queue-workflow',
+					undefined,
+				);
+
+				expect(queueModeMcpService.createPendingResponse).toHaveBeenCalledWith('exec-queue');
+				expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					success: true,
+					executionId: 'exec-queue',
+				});
+			});
+
+			test('passes MCP metadata in run data for queue mode', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-mcp-meta');
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					queueModeMcpService,
+					'mcp-meta-workflow',
+					undefined,
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+				expect(runCall.isMcpExecution).toBe(true);
+				expect(runCall.mcpType).toBe('service');
+				expect(runCall.mcpSessionId).toBeDefined();
+				expect(runCall.mcpMessageId).toBeDefined();
+				expect(runCall.originMainId).toBe('main-host-id');
+			});
+
+			test('sets isMcpExecution to false in regular mode', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-regular');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'regular-workflow',
+					undefined,
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+				// isMcpExecution should be false in regular mode - this is the key flag that
+				// determines whether queue mode MCP handling is applied
+				expect(runCall.isMcpExecution).toBe(false);
+			});
+
+			test('uses activeExecutions.getPostExecutePromise in regular mode', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-regular-2');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'regular-workflow-2',
+					undefined,
+				);
+
+				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-regular-2');
+			});
+		});
 	});
 });
