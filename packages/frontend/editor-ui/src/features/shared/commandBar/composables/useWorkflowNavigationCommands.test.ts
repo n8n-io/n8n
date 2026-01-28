@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import type { IWorkflowDb } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -64,34 +65,34 @@ describe('useWorkflowNavigationCommands', () => {
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let mockFoldersStore: ReturnType<typeof useFoldersStore>;
 
-	const allWorkflows: IWorkflowDb[] = [
-		{
+	const allWorkflows = [
+		createTestWorkflow({
 			id: 'w1',
 			name: 'Alpha',
 			active: false,
 			isArchived: false,
-			homeProject: { id: 'proj-1', type: ProjectTypes.Personal },
-			parentFolder: { id: 'f2', name: 'Child' },
-			tags: ['Marketing'],
-		} as unknown as IWorkflowDb,
-		{
+			homeProject: { id: 'proj-1', type: ProjectTypes.Personal } as IWorkflowDb['homeProject'],
+			parentFolder: { id: 'f2', name: 'Child' } as IWorkflowDb['parentFolder'],
+			tags: ['Marketing'] as IWorkflowDb['tags'],
+		}),
+		createTestWorkflow({
 			id: 'w2',
 			name: 'Beta',
 			active: true,
 			isArchived: false,
-			homeProject: { id: 'proj-2', name: 'Team A' },
+			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
 			parentFolder: undefined,
 			tags: [],
-		} as unknown as IWorkflowDb,
-		{
+		}),
+		createTestWorkflow({
 			id: 'w3',
 			name: 'Gamma',
 			active: true,
 			isArchived: true, // should be filtered out
-			homeProject: { id: 'proj-2', name: 'Team A' },
+			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
 			parentFolder: undefined,
 			tags: [],
-		} as unknown as IWorkflowDb,
+		}),
 	];
 
 	beforeEach(() => {
