@@ -3,7 +3,12 @@ import { Container } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
-type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
+type Resolvers =
+	| 'environment'
+	| 'podIdentity'
+	| 'containerMetadata'
+	| 'instanceMetadata'
+	| 'roleForServiceAccount';
 type RetrunData = {
 	accessKeyId: string;
 	secretAccessKey: string;
@@ -17,6 +22,7 @@ export const credentialsResolver: Record<Resolvers, () => Promise<RetrunData | n
 	instanceMetadata: getInstanceMetadataCredentials,
 	containerMetadata: getContainerMetadataCredentials,
 	podIdentity: getPodIdentityCredentials,
+	roleForServiceAccount: getRoleForServiceAccountCredentials,
 };
 
 /**
@@ -39,6 +45,7 @@ export async function getSystemCredentials() {
 		'podIdentity',
 		'containerMetadata',
 		'instanceMetadata',
+		'roleForServiceAccount',
 	];
 
 	for (const resolver of resolveOrder) {
@@ -258,6 +265,62 @@ async function getPodIdentityCredentials() {
 			accessKeyId: credentialsData.AccessKeyId,
 			secretAccessKey: credentialsData.SecretAccessKey,
 			sessionToken: credentialsData.Token,
+		};
+	} catch (error) {
+		return null;
+	}
+}
+
+async function getRoleForServiceAccountCredentials() {
+	const iamRole = envGetter('AWS_ROLE_ARN');
+	const webIdentityTokenFile = envGetter('AWS_WEB_IDENTITY_TOKEN_FILE');
+
+	try {
+		if (!iamRole || !webIdentityTokenFile) {
+			return null;
+		}
+
+		const token = (await readFile(webIdentityTokenFile, 'utf8')).trim();
+		if (!token) {
+			return null;
+		}
+
+		const headers: Record<string, string> = {
+			'User-Agent': 'n8n-aws-credential',
+			Accept: 'application/json',
+		};
+
+		const qs = new URLSearchParams({
+			Action: 'AssumeRoleWithWebIdentity',
+			RoleArn: iamRole,
+			RoleSessionName: 'n8n-web-identity-session',
+			WebIdentityToken: token,
+			Version: '2011-06-15',
+		});
+
+		// TODO what about endpoints for sts?
+		const credentialsResponse = await fetch(`https://sts.amazonaws.com?${qs.toString()}`, {
+			method: 'GET',
+			headers,
+			signal: AbortSignal.timeout(2000),
+		});
+
+		if (!credentialsResponse.ok) {
+			return null;
+		}
+
+		const data = await credentialsResponse.json();
+		const credentialsData =
+			data?.AssumeRoleWithWebIdentityResponse?.AssumeRoleWithWebIdentityResult?.Credentials;
+
+		if (!credentialsData || !credentialsData?.AccessKeyId || !credentialsData?.SecretAccessKey) {
+			return null;
+		}
+
+		return {
+			accessKeyId: credentialsData.AccessKeyId,
+			secretAccessKey: credentialsData.SecretAccessKey,
+			sessionToken: credentialsData.SessionToken,
 		};
 	} catch (error) {
 		return null;

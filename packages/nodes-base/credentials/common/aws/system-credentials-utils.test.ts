@@ -20,6 +20,10 @@ jest.mock('@n8n/config', () => ({
 	SecurityConfig: MockSecurityConfig,
 }));
 
+jest.mock('node:fs/promises', () => ({
+	readFile: jest.fn(),
+}));
+
 jest.mock('fs/promises', () => ({
 	readFile: mockReadFile,
 }));
@@ -808,6 +812,157 @@ describe('system-credentials-utils', () => {
 			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
 			const result = await credentialsResolver.instanceMetadata();
+			expect(result).toBeNull();
+		});
+	});
+
+	describe('getRoleForServiceAccountCredentials', () => {
+		it('should return null when AWS_ROLE_ARN or AWS_WEB_IDENTITY_TOKEN_FILE is not available via envGetter', async () => {
+			mockEnvGetter.mockImplementation(() => undefined);
+
+			const result = await credentialsResolver.roleForServiceAccount();
+			expect(result).toBeNull();
+			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_ROLE_ARN');
+			expect(mockEnvGetter).toHaveBeenCalledWith('AWS_WEB_IDENTITY_TOKEN_FILE');
+		});
+
+		it('should fetch credentials successfully with role and token file from envGetter', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+
+			const mockCredentials = {
+				AssumeRoleWithWebIdentityResponse: {
+					AssumeRoleWithWebIdentityResult: {
+						Credentials: {
+							AccessKeyId: 'test-access-key',
+							SecretAccessKey: 'test-secret-key',
+							SessionToken: 'test-token',
+						},
+					},
+				},
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			const result = await credentialsResolver.roleForServiceAccount();
+			expect(result).toEqual({
+				accessKeyId: 'test-access-key',
+				secretAccessKey: 'test-secret-key',
+				sessionToken: 'test-token',
+			});
+
+			expect(mockReadFile).toHaveBeenCalledWith('/tmp/token', 'utf8');
+			expect(global.fetch).toHaveBeenCalledWith(
+				expect.stringContaining('https://sts.amazonaws.com?'),
+				expect.objectContaining({
+					method: 'GET',
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Accept: 'application/json',
+					},
+				}),
+			);
+			expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
+				'Action=AssumeRoleWithWebIdentity',
+			);
+			expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
+				'RoleArn=arn%3Aaws%3Aiam%3A%3A123456789012%3Arole%2Ftest-role',
+			);
+		});
+
+		it('should return null when fetch fails', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+			(global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+
+			const result = await credentialsResolver.roleForServiceAccount();
+			expect(result).toBeNull();
+		});
+
+		it('should return null when credentials are incomplete', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+			const incomplete = {
+				AssumeRoleWithWebIdentityResponse: {
+					AssumeRoleWithWebIdentityResult: {
+						Credentials: {
+							AccessKeyId: 'test-access-key',
+						},
+					},
+				},
+			};
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(incomplete),
+			});
+
+			const result = await credentialsResolver.roleForServiceAccount();
+			expect(result).toBeNull();
+		});
+
+		it('should return null when fetch throws an error', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('test-web-identity-token');
+			(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+			const result = await credentialsResolver.roleForServiceAccount();
+			expect(result).toBeNull();
+		});
+
+		it('should return null when token file is empty', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_ROLE_ARN':
+						return 'arn:aws:iam::123456789012:role/test-role';
+					case 'AWS_WEB_IDENTITY_TOKEN_FILE':
+						return '/tmp/token';
+					default:
+						return undefined;
+				}
+			});
+			mockReadFile.mockResolvedValue('');
+
+			const result = await credentialsResolver.roleForServiceAccount();
 			expect(result).toBeNull();
 		});
 	});
