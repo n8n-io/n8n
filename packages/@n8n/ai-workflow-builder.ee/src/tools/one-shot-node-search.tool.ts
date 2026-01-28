@@ -261,7 +261,7 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 				} else {
 					const resultLines = results.map((node) => {
 						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
-						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Description: ${node.description}`;
+						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
 
 						// Get discriminator info
 						const discInfo = getDiscriminatorInfo(nodeTypeParser, node.id, node.version);
