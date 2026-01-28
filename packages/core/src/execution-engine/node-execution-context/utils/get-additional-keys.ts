@@ -22,11 +22,16 @@ import { getSecretsProxy } from './get-secrets-proxy';
  * This ensures the URL cannot be tampered with.
  */
 function appendResumeSignature(url: string, secret: string): string {
-	const urlObj = new URL(url);
-	const urlForSigning = prepareUrlForSigning(urlObj);
-	const signature = generateUrlSignature(urlForSigning, secret);
-	urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
-	return urlObj.toString();
+	try {
+		const urlObj = new URL(url);
+		const urlForSigning = prepareUrlForSigning(urlObj);
+		const signature = generateUrlSignature(urlForSigning, secret);
+		urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
+		return urlObj.toString();
+	} catch {
+		LoggerProxy.warn(`Failed to sign resume URL: invalid URL "${url}"`);
+		return url;
+	}
 }
 
 /** Returns the additional keys for Expressions and Function-Nodes */
