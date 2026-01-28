@@ -3,7 +3,7 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IRequestOptions,
+	IHttpRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -17,20 +17,20 @@ export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	jwtToken: string,
+	authHeader: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
-			Authorization: `JWT ${jwtToken}`,
+			Authorization: authHeader,
 		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		url: `${credentials.host}${endpoint}`,
 		json: true,
 	};
 
@@ -43,7 +43,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -71,7 +71,7 @@ export async function baserowApiRequestAllItems(
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData.push.apply(returnData, responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -86,25 +86,35 @@ export async function baserowApiRequestAllItems(
 /**
  * Get a JWT token based on Baserow account username and password.
  */
-export async function getJwtToken(
+export async function getAuthorizationHeader(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	{ username, password, host }: BaserowCredentials,
+	{ username, password, authType, token, host }: BaserowCredentials,
 ) {
-	const options: IRequestOptions = {
-		method: 'POST',
-		body: {
-			username,
-			password,
-		},
-		uri: `${host}/api/user/token-auth/`,
-		json: true,
-	};
+	if (authType === 'basic') {
+		const options: IHttpRequestOptions = {
+			method: 'POST',
+			body: {
+				username,
+				password,
+			},
+			url: `${host}/api/user/token-auth/`,
+			json: true,
+		};
 
-	try {
-		const { token } = (await this.helpers.request(options)) as { token: string };
-		return token;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		try {
+			const { token } = (await this.helpers.httpRequest(options)) as { token: string };
+			return `JWT ${token}`;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error as JsonObject);
+		}
+	} else {
+		if (!token) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Missing or empty token. Please provide a valid token in credentials.',
+			});
+		}
+
+		return `Token ${token}`;
 	}
 }
 
