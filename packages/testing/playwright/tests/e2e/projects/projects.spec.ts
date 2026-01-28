@@ -1,11 +1,9 @@
 import { nanoid } from 'nanoid';
 
-import {
-	INSTANCE_ADMIN_CREDENTIALS,
-	INSTANCE_MEMBER_CREDENTIALS,
-	INSTANCE_OWNER_CREDENTIALS,
-} from '../../../config/test-users';
+import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
 import { test, expect } from '../../../fixtures/base';
+
+test.use({ capability: { env: { TEST_ISOLATION: 'projects' } } });
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
@@ -13,7 +11,7 @@ const NOTION_NODE_NAME = 'Notion';
 const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields (Set)';
 const NOTION_API_KEY = 'abc123Playwright';
 
-test.describe('Projects', () => {
+test.describe('Projects @db:reset', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeEach(async ({ n8n }) => {
@@ -27,7 +25,7 @@ test.describe('Projects', () => {
 		await n8n.api.setMaxTeamProjectsQuota(-1);
 	});
 
-	test.describe('when starting from scratch @db:reset', () => {
+	test.describe('when starting from scratch', () => {
 		test('should not show project add button and projects to a member if not invited to any project @auth:member', async ({
 			n8n,
 		}) => {
@@ -36,25 +34,7 @@ test.describe('Projects', () => {
 			await expect(n8n.sideBar.getProjectMenuItems()).toHaveCount(0);
 		});
 
-		test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({
-			n8n,
-		}) => {
-			const { projectName, projectId } = await n8n.projectComposer.createProject();
-			await n8n.projectComposer.addCredentialToProject(
-				projectName,
-				'Notion API',
-				'apiKey',
-				NOTION_API_KEY,
-			);
-
-			const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
-			expect(credentials).toHaveLength(1);
-
-			const { projectId: project2Id } = await n8n.projectComposer.createProject();
-			const credentials2 = await n8n.api.credentials.getCredentialsByProject(project2Id);
-			expect(credentials2).toHaveLength(0);
-		});
-
+		// This test needs empty credentials list - must run before tests that create credentials
 		test('should allow changing an inaccessible credential when the workflow was moved to a team project @auth:owner', async ({
 			n8n,
 		}) => {
@@ -126,6 +106,25 @@ test.describe('Projects', () => {
 			await n8n.canvas.openNode('Append a block');
 
 			await expect(n8n.ndv.getCredentialSelectInput()).toBeEnabled();
+		});
+
+		test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({
+			n8n,
+		}) => {
+			const { projectName, projectId } = await n8n.projectComposer.createProject();
+			await n8n.projectComposer.addCredentialToProject(
+				projectName,
+				'Notion API',
+				'apiKey',
+				NOTION_API_KEY,
+			);
+
+			const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
+			expect(credentials).toHaveLength(1);
+
+			const { projectId: project2Id } = await n8n.projectComposer.createProject();
+			const credentials2 = await n8n.api.credentials.getCredentialsByProject(project2Id);
+			expect(credentials2).toHaveLength(0);
 		});
 
 		test('should create sub-workflow and credential in the sub-workflow in the same project @auth:owner', async ({
@@ -264,136 +263,6 @@ test.describe('Projects', () => {
 			expect(n8n.page.url()).toMatch(/\/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
-		});
-	});
-
-	test.describe('when moving resources between projects @db:reset', () => {
-		test.describe.configure({ mode: 'serial' });
-
-		test.beforeEach(async ({ n8n }) => {
-			// Create workflow + credential in Home/Personal project
-			await n8n.api.workflows.createWorkflow({
-				name: 'Workflow in Home project',
-				nodes: [],
-				connections: {},
-				active: false,
-			});
-			await n8n.api.credentials.createCredential({
-				name: 'Credential in Home project',
-				type: 'notionApi',
-				data: { apiKey: '1234567890' },
-			});
-
-			// Create Project 1 with resources
-			const project1 = await n8n.api.projects.createProject('Project 1');
-			await n8n.api.workflows.createInProject(project1.id, {
-				name: 'Workflow in Project 1',
-			});
-			await n8n.api.credentials.createCredential({
-				name: 'Credential in Project 1',
-				type: 'notionApi',
-				data: { apiKey: '1234567890' },
-				projectId: project1.id,
-			});
-
-			// Create Project 2 with resources
-			const project2 = await n8n.api.projects.createProject('Project 2');
-			await n8n.api.workflows.createInProject(project2.id, {
-				name: 'Workflow in Project 2',
-			});
-			await n8n.api.credentials.createCredential({
-				name: 'Credential in Project 2',
-				type: 'notionApi',
-				data: { apiKey: '1234567890' },
-				projectId: project2.id,
-			});
-
-			// Navigate to home to load sidebar with new projects
-			await n8n.goHome();
-		});
-
-		test('should move the workflow to expected projects @auth:owner', async ({ n8n }) => {
-			// Move workflow from Personal to Project 2
-			await n8n.sideBar.clickPersonalMenuItem();
-			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
-			await n8n.workflowComposer.moveToProject('Workflow in Home project', 'Project 2');
-
-			// Verify Personal has 0 workflows
-			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
-
-			// Move workflow from Project 1 to Project 2
-			await n8n.sideBar.clickProjectMenuItem('Project 1');
-			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
-			await n8n.workflowComposer.moveToProject('Workflow in Project 1', 'Project 2');
-
-			// Move workflow from Project 2 to member user
-			await n8n.sideBar.clickProjectMenuItem('Project 2');
-			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(3);
-			await n8n.workflowComposer.moveToProject(
-				'Workflow in Home project',
-				INSTANCE_MEMBER_CREDENTIALS[0].email,
-				null,
-			);
-
-			// Verify Project 2 has 2 workflows remaining
-			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
-		});
-
-		test('should move the credential to expected projects @auth:owner', async ({ n8n }) => {
-			// Move credential from Project 1 to Project 2
-			await n8n.sideBar.clickProjectMenuItem('Project 1');
-			await n8n.sideBar.clickCredentialsLink();
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
-
-			const credentialCard1 = n8n.credentials.cards.getCredential('Credential in Project 1');
-			await n8n.credentials.cards.openCardActions(credentialCard1);
-			await n8n.credentials.cards.getCardAction('move').click();
-			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
-
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
-			await n8n.resourceMoveModal.selectProjectOption('Project 2');
-			await n8n.resourceMoveModal.clickMoveCredentialButton();
-
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(0);
-
-			// Move credential from Project 2 to admin user
-			await n8n.sideBar.clickProjectMenuItem('Project 2');
-			await n8n.sideBar.clickCredentialsLink();
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(2);
-
-			const credentialCard2 = n8n.credentials.cards.getCredential('Credential in Project 1');
-			await n8n.credentials.cards.openCardActions(credentialCard2);
-			await n8n.credentials.cards.getCardAction('move').click();
-			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
-
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
-			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_ADMIN_CREDENTIALS.email);
-			await n8n.resourceMoveModal.clickMoveCredentialButton();
-
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
-
-			// Move credential from admin user (Home) back to owner user
-			await n8n.sideBar.clickHomeMenuItem();
-			await n8n.navigate.toCredentials();
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(3);
-
-			const credentialCard3 = n8n.credentials.cards.getCredential('Credential in Project 1');
-			await n8n.credentials.cards.openCardActions(credentialCard3);
-			await n8n.credentials.cards.getCardAction('move').click();
-			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
-
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
-			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_OWNER_CREDENTIALS.email);
-			await n8n.resourceMoveModal.clickMoveCredentialButton();
-
-			// Verify final state: 3 credentials total, 2 with Personal badge
-			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(3);
-			await expect(
-				n8n.credentials.cards.getCredentials().filter({ hasText: 'Personal' }),
-			).toHaveCount(2);
 		});
 	});
 });

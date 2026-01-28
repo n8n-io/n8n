@@ -4,6 +4,8 @@ import { test, expect } from '../../../fixtures/base';
 import type { TestRequirements } from '../../../Types';
 import { resolveFromRoot } from '../../../utils/path-helper';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'template-setup-experiment' } } });
+
 const TEMPLATE_HOSTNAME = 'custom.template.host';
 const TEMPLATE_HOST = `https://${TEMPLATE_HOSTNAME}/api`;
 const TEMPLATE_ID = 1205;

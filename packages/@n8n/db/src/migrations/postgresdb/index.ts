@@ -138,6 +138,7 @@ import { AddStoredAtToExecutionEntity1768557000000 } from '../common/17685570000
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -281,4 +282,5 @@ export const postgresMigrations: Migration[] = [
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddNodeGovernanceTables1768981346000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateSecretsProviderConnectionTables1769433700000,
 ];

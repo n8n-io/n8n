@@ -879,7 +879,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-canvas'
 	| 'custom-roles'
 	| 'main-sidebar'
-	| 'chat-hub';
+	| 'chat-hub'
+	| 'empty-state-builder-prompt';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'

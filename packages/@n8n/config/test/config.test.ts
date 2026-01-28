@@ -186,6 +186,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -254,6 +255,9 @@ describe('GlobalConfig', () => {
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
 					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
