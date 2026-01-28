@@ -134,7 +134,7 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			1,
 			{ resource: 'task', operation: 'create' },
 			props,
-			6,
+			5,
 			[],
 		);
 
@@ -165,7 +165,7 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			1,
 			{ resource: 'task', operation: 'create' },
 			props,
-			6,
+			5,
 			[],
 		);
 
@@ -173,7 +173,7 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 		expect(code).toContain('"mode"'); // Remaining condition preserved
 	});
 
-	it('uses static schema when displayOptions only contain discriminator keys', () => {
+	it('uses static property schema when displayOptions only contain discriminator keys', () => {
 		const node: NodeTypeDescription = {
 			...baseNodeProps,
 			name: 'n8n-nodes-base.testNode',
@@ -197,15 +197,18 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			1,
 			{ resource: 'task', operation: 'create' },
 			props,
-			6,
+			5,
 			[],
 		);
 
-		expect(code).not.toContain('resolveSchema');
-		expect(code).toContain('stringOrExpression');
+		// All discriminated schemas export factory functions
+		expect(code).toContain('export default function getSchema');
+		// But the property uses static schema (no resolveSchema call in body)
+		expect(code).toContain('simpleField: stringOrExpression');
+		expect(code).not.toMatch(/simpleField:.*resolveSchema/);
 	});
 
-	it('generates factory function when properties have remaining displayOptions', () => {
+	it('always exports factory function for discriminated schemas', () => {
 		const node: NodeTypeDescription = {
 			...baseNodeProps,
 			name: 'n8n-nodes-base.testNode',
@@ -229,16 +232,16 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			1,
 			{ resource: 'task', operation: 'create' },
 			props,
-			6,
+			5,
 			[],
 		);
 
-		expect(code).toContain('export function get');
+		expect(code).toContain('export default function getSchema');
 		expect(code).toContain('{ parameters, resolveSchema }');
 		expect(code).toContain('return z.object({');
 	});
 
-	it('does not import resolveSchema when no properties have remaining displayOptions', () => {
+	it('does not import resolveSchema when no properties need dynamic resolution', () => {
 		const node: NodeTypeDescription = {
 			...baseNodeProps,
 			name: 'n8n-nodes-base.testNode',
@@ -261,11 +264,14 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			1,
 			{ resource: 'task', operation: 'create' },
 			props,
-			6,
+			5,
 			[],
 		);
 
-		expect(code).not.toContain('resolveSchema');
+		// Factory function always has resolveSchema in signature
+		expect(code).toContain('export default function getSchema');
+		// But should not import resolveSchema from base.schema if not used in body
+		expect(code).not.toMatch(/import\s*\{[^}]*resolveSchema[^}]*\}/);
 	});
 });
 

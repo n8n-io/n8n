@@ -135,11 +135,26 @@ function buildExpectedFactoryName(
 }
 
 /**
+ * Try to load a schema module from a given path
+ * @returns The module if found, null otherwise
+ */
+function tryLoadSchemaModule(schemaPath: string): Record<string, unknown> | null {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		return require(schemaPath) as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Load and cache schema for a node type/version
  *
  * Supports both:
  * - Static schemas: ConfigSchema exports (ZodSchema)
  * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
+ * - Flat structure: {version}.schema.ts
+ * - Split structure: {version}/index.schema.ts (for discriminated nodes)
  *
  * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
  * @param version - Node version (e.g., 2, 4.2, 1.7)
@@ -157,66 +172,80 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	const versionStr = versionToString(version);
 	const isLangchain = pkg === 'n8n-nodes-langchain';
 
-	// Schema file path: nodes/{pkg}/{nodeName}/{version}.schema.ts
-	const schemaPath = path.join(schemaBasePath, 'nodes', pkg, nodeName, `${versionStr}.schema`);
+	// Try flat structure first: nodes/{pkg}/{nodeName}/{version}.schema.ts
+	const flatSchemaPath = path.join(schemaBasePath, 'nodes', pkg, nodeName, `${versionStr}.schema`);
+	// Try split structure: nodes/{pkg}/{nodeName}/{version}/index.schema.ts
+	const splitSchemaPath = path.join(
+		schemaBasePath,
+		'nodes',
+		pkg,
+		nodeName,
+		versionStr,
+		'index.schema',
+	);
 
-	try {
-		// Dynamic require to load the schema module
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const schemaModule = require(schemaPath);
+	// Try flat structure first, then split structure
+	const schemaModule = tryLoadSchemaModule(flatSchemaPath) ?? tryLoadSchemaModule(splitSchemaPath);
 
-		// Build the expected names to find the right export
-		const expectedSchemaName = buildExpectedSchemaName(nodeName, versionStr, isLangchain);
-		const expectedFactoryName = buildExpectedFactoryName(nodeName, versionStr, isLangchain);
-
-		// Try exact match for static schema first
-		if (schemaModule[expectedSchemaName]) {
-			const schema = schemaModule[expectedSchemaName] as ZodSchema;
-			schemaCache.set(cacheKey, schema);
-			return schema;
-		}
-
-		// Try exact match for factory function
-		if (typeof schemaModule[expectedFactoryName] === 'function') {
-			const factory = schemaModule[expectedFactoryName] as SchemaOrFactory;
-			schemaCache.set(cacheKey, factory);
-			return factory;
-		}
-
-		// Fallback: find any export ending with ConfigSchema but NOT SubnodeConfigSchema
-		const schemaName = Object.keys(schemaModule).find(
-			(k) => k.endsWith('ConfigSchema') && !k.includes('Subnode'),
-		);
-
-		if (schemaName && schemaModule[schemaName]) {
-			const schema = schemaModule[schemaName] as ZodSchema;
-			schemaCache.set(cacheKey, schema);
-			return schema;
-		}
-
-		// Fallback: find any factory function (starts with 'get', ends with 'ConfigSchema')
-		const factoryName = Object.keys(schemaModule).find(
-			(k) =>
-				k.startsWith('get') &&
-				k.endsWith('ConfigSchema') &&
-				!k.includes('Subnode') &&
-				typeof schemaModule[k] === 'function',
-		);
-
-		if (factoryName && schemaModule[factoryName]) {
-			const factory = schemaModule[factoryName] as SchemaOrFactory;
-			schemaCache.set(cacheKey, factory);
-			return factory;
-		}
-
-		// No ConfigSchema found
-		schemaCache.set(cacheKey, null);
-		return null;
-	} catch {
-		// Schema file not found or failed to load - graceful fallback
+	if (!schemaModule) {
 		schemaCache.set(cacheKey, null);
 		return null;
 	}
+
+	// Build the expected names to find the right export
+	const expectedSchemaName = buildExpectedSchemaName(nodeName, versionStr, isLangchain);
+	const expectedFactoryName = buildExpectedFactoryName(nodeName, versionStr, isLangchain);
+
+	// Try default export first (for split structure factory functions)
+	if (typeof schemaModule.default === 'function') {
+		const factory = schemaModule.default as SchemaOrFactory;
+		schemaCache.set(cacheKey, factory);
+		return factory;
+	}
+
+	// Try exact match for static schema
+	if (schemaModule[expectedSchemaName]) {
+		const schema = schemaModule[expectedSchemaName] as ZodSchema;
+		schemaCache.set(cacheKey, schema);
+		return schema;
+	}
+
+	// Try exact match for factory function
+	if (typeof schemaModule[expectedFactoryName] === 'function') {
+		const factory = schemaModule[expectedFactoryName] as SchemaOrFactory;
+		schemaCache.set(cacheKey, factory);
+		return factory;
+	}
+
+	// Fallback: find any export ending with ConfigSchema but NOT SubnodeConfigSchema
+	const schemaName = Object.keys(schemaModule).find(
+		(k) => k.endsWith('ConfigSchema') && !k.includes('Subnode'),
+	);
+
+	if (schemaName && schemaModule[schemaName]) {
+		const schema = schemaModule[schemaName] as ZodSchema;
+		schemaCache.set(cacheKey, schema);
+		return schema;
+	}
+
+	// Fallback: find any factory function (starts with 'get', ends with 'ConfigSchema')
+	const factoryName = Object.keys(schemaModule).find(
+		(k) =>
+			k.startsWith('get') &&
+			k.endsWith('ConfigSchema') &&
+			!k.includes('Subnode') &&
+			typeof schemaModule[k] === 'function',
+	);
+
+	if (factoryName && schemaModule[factoryName]) {
+		const factory = schemaModule[factoryName] as SchemaOrFactory;
+		schemaCache.set(cacheKey, factory);
+		return factory;
+	}
+
+	// No ConfigSchema found
+	schemaCache.set(cacheKey, null);
+	return null;
 }
 
 /**

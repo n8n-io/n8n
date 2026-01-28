@@ -1351,10 +1351,8 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
 /**
  * Generate a Zod schema file for a single discriminator combination (e.g., ticket/get)
  *
- * This parallels generateDiscriminatorFile() but outputs Zod schemas.
- * Generates ParametersSchema and ConfigSchema for each discriminator combination.
- * When properties have displayOptions with conditions beyond the discriminators,
- * generates a factory function for dynamic schema resolution.
+ * Always exports a factory function (export default) for consistency.
+ * This allows index files to uniformly call all schema factories.
  *
  * @param node The node type description
  * @param version The specific version number
@@ -1376,16 +1374,6 @@ export function generateDiscriminatorSchemaFile(
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const versionSuffix = versionToTypeName(version);
 	const baseSchemaName = `${nodeName}${versionSuffix}`;
-
-	// Build type name from discriminator values
-	const comboValues = Object.entries(combo)
-		.filter(([_, v]) => v !== undefined)
-		.map(([_, v]) => toPascalCase(v!));
-	const comboSuffix = comboValues.join('');
-	const parametersSchemaName = `${baseSchemaName}${comboSuffix}ParametersSchema`;
-	const parametersFactoryName = `get${baseSchemaName}${comboSuffix}ParametersSchema`;
-	const configSchemaName = `${baseSchemaName}${comboSuffix}ConfigSchema`;
-	const configFactoryName = `get${baseSchemaName}${comboSuffix}ConfigSchema`;
 
 	// Get discriminator keys to strip from displayOptions
 	const discriminatorKeys = Object.keys(combo).filter((k) => combo[k] !== undefined);
@@ -1429,165 +1417,92 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
-
-	// Add resolveSchema import if we need factory functions
 	if (hasRemainingDisplayOptions) {
 		lines.push('\tresolveSchema,');
 	}
-
 	lines.push(`} from '${basePath}';`);
 
 	// Import subnode schema from version index if AI node
 	if (hasAiInputs) {
-		// Calculate path to version index - we're inside resource_x/operation_y.schema.ts
-		// Need to go up to version index: ../index.schema
-		const versionIndexPath = importDepth === 6 ? '../index.schema' : './index.schema';
+		const versionIndexPath = importDepth === 5 ? '../index.schema' : './index.schema';
 		lines.push(`import { ${baseSchemaName}SubnodeConfigSchema } from '${versionIndexPath}';`);
 	}
 
 	lines.push('');
 
-	// Schema definition
+	// Schema definition - always export default factory function
 	lines.push('// ' + '='.repeat(75));
 	lines.push('// Validation Schema');
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	if (hasRemainingDisplayOptions) {
-		// Generate Parameters Schema Factory Function
-		lines.push(
-			`export function ${parametersFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
-		);
-		lines.push('\treturn z.object({');
+	lines.push(
+		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
+	);
+	lines.push('\treturn z.object({');
+	lines.push('\t\tparameters: z.object({');
 
-		// Add discriminator fields as literals
-		for (const [key, value] of Object.entries(combo)) {
-			if (value !== undefined) {
-				lines.push(`\t\t${key}: z.literal('${value}'),`);
-			}
+	// Add discriminator fields as literals
+	for (const [key, value] of Object.entries(combo)) {
+		if (value !== undefined) {
+			lines.push(`\t\t\t${key}: z.literal('${value}'),`);
 		}
+	}
 
-		// Add other properties
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue;
-			}
-			seenNames.add(prop.name);
+	// Add other properties
+	const seenNames = new Set<string>();
+	for (const prop of props) {
+		if (seenNames.has(prop.name)) {
+			continue;
+		}
+		seenNames.add(prop.name);
 
-			// Check if property has remaining displayOptions after stripping discriminators
-			if (prop.displayOptions) {
-				const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
-					prop.displayOptions,
-					discriminatorKeys,
-				);
-				if (strippedDisplayOptions) {
-					// Use conditional schema line with stripped displayOptions
-					const propWithStrippedOptions: NodeProperty = {
-						...prop,
-						displayOptions: strippedDisplayOptions,
-					};
-					const propLine = generateConditionalSchemaLine(propWithStrippedOptions);
-					if (propLine) {
-						// Add extra tab for nested function body
-						lines.push('\t' + propLine);
-					}
-				} else {
-					// All displayOptions were discriminator keys, use static schema
-					const propLine = generateSchemaPropertyLine(prop, !prop.required);
-					if (propLine) {
-						lines.push('\t' + propLine);
-					}
+		if (prop.displayOptions) {
+			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
+				prop.displayOptions,
+				discriminatorKeys,
+			);
+			if (strippedDisplayOptions) {
+				const propWithStrippedOptions: NodeProperty = {
+					...prop,
+					displayOptions: strippedDisplayOptions,
+				};
+				const propLine = generateConditionalSchemaLine(propWithStrippedOptions);
+				if (propLine) {
+					lines.push('\t\t' + propLine);
 				}
 			} else {
 				const propLine = generateSchemaPropertyLine(prop, !prop.required);
 				if (propLine) {
-					lines.push('\t' + propLine);
+					lines.push('\t\t' + propLine);
 				}
 			}
-		}
-
-		lines.push('\t});');
-		lines.push('}');
-		lines.push('');
-
-		// Generate Combined Config Schema Factory Function
-		lines.push(`// Combined config schema factory (parameters + subnodes)`);
-		lines.push(
-			`export function ${configFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
-		);
-		lines.push('\treturn z.object({');
-		lines.push(
-			`\t\tparameters: ${parametersFactoryName}({ parameters, resolveSchema }).optional(),`,
-		);
-		if (hasAiInputs) {
-			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
-			lines.push(
-				`\t\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
-			);
-		}
-		lines.push(`\t\t// TODO: Add other NodeConfig fields`);
-		lines.push('\t});');
-		lines.push('}');
-		lines.push('');
-		lines.push('// TODO: Add credentials schema');
-		lines.push('// TODO: Add full node schema');
-	} else {
-		// Generate static Parameters Schema
-		lines.push(`export const ${parametersSchemaName} = z.object({`);
-
-		// Add discriminator fields as literals
-		for (const [key, value] of Object.entries(combo)) {
-			if (value !== undefined) {
-				lines.push(`\t${key}: z.literal('${value}'),`);
-			}
-		}
-
-		// Add other properties
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue;
-			}
-			seenNames.add(prop.name);
+		} else {
 			const propLine = generateSchemaPropertyLine(prop, !prop.required);
 			if (propLine) {
-				lines.push(propLine);
+				lines.push('\t\t' + propLine);
 			}
 		}
-
-		lines.push('});');
-		lines.push('');
-
-		// Generate Combined Config Schema
-		lines.push(`// Combined config schema (parameters + subnodes)`);
-		lines.push(`export const ${configSchemaName} = z.object({`);
-		lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
-		if (hasAiInputs) {
-			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
-			lines.push(
-				`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
-			);
-		}
-		lines.push(`\t// TODO: Add other NodeConfig fields`);
-		lines.push('});');
-		lines.push('');
-
-		// Generate inferred type
-		lines.push(
-			`export type ${baseSchemaName}${comboSuffix}ConfigValidated = z.infer<typeof ${configSchemaName}>;`,
-		);
-		lines.push('');
-		lines.push('// TODO: Add credentials schema');
-		lines.push('// TODO: Add full node schema');
 	}
+
+	lines.push('\t\t}).optional(),');
+
+	if (hasAiInputs) {
+		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+		lines.push(
+			`\t\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+		);
+	}
+
+	lines.push('\t});');
+	lines.push('}');
 
 	return lines.join('\n');
 }
 
 /**
  * Generate a Zod schema index file for a resource directory (e.g., resource_ticket/index.schema.ts)
- * Re-exports all operation schemas within this resource.
+ * Exports a factory function that calls all operation schema factories and unions them.
  *
  * @param node The node type description
  * @param version The specific version number
@@ -1600,142 +1515,115 @@ export function generateResourceIndexSchemaFile(
 	resource: string,
 	operations: string[],
 ): string {
-	const prefix = getPackagePrefix(node.name);
-	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
-	const versionSuffix = versionToTypeName(version);
+	const basePath = '../../../../../base.schema';
 
 	const lines: string[] = [];
 
 	lines.push('/**');
-	lines.push(` * ${node.displayName} - ${toPascalCase(resource)} Resource - Zod Schemas`);
-	lines.push(' * Re-exports all operation schemas for this resource.');
+	lines.push(` * ${node.displayName} - ${toPascalCase(resource)} Resource - Zod Schema Factory`);
+	lines.push(' * Exports a factory that unions all operation schemas for this resource.');
 	lines.push(' */');
 	lines.push('');
 
-	// Import schema names for union
-	const schemaNames: string[] = [];
+	lines.push("import { z } from 'zod';");
+
+	// Import default exports from operation schema files
 	for (const op of operations.sort()) {
 		const fileName = `operation_${toSnakeCase(op)}.schema`;
-		const schemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}${toPascalCase(op)}ConfigSchema`;
-		schemaNames.push(schemaName);
-		lines.push(`import { ${schemaName} } from './${fileName}';`);
+		const importName = `get${toPascalCase(op)}Schema`;
+		lines.push(`import ${importName} from './${fileName}';`);
 	}
 	lines.push('');
 
-	// Re-export all operation schemas
-	for (const op of operations.sort()) {
-		const fileName = `operation_${toSnakeCase(op)}.schema`;
-		lines.push(`export * from './${fileName}';`);
-	}
-	lines.push('');
-
-	// Union schema for this resource
-	const resourceSchemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigSchema`;
-	if (schemaNames.length === 1) {
-		lines.push(`export const ${resourceSchemaName} = ${schemaNames[0]};`);
-	} else {
-		lines.push(`export const ${resourceSchemaName} = z.union([`);
-		for (const name of schemaNames) {
-			lines.push(`\t${name},`);
-		}
-		lines.push(']);');
-	}
-	lines.push('');
+	// Export factory function
 	lines.push(
-		`export type ${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigValidated = z.infer<typeof ${resourceSchemaName}>;`,
+		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
 
-	// Need z import for union
-	if (schemaNames.length > 1) {
-		// Prepend z import at line 6 (after header comments)
-		const zImport = "import { z } from 'zod';";
-		const insertIndex = lines.findIndex((line) => line.startsWith('import {'));
-		if (insertIndex !== -1) {
-			lines.splice(insertIndex, 0, zImport);
+	if (operations.length === 1) {
+		const importName = `get${toPascalCase(operations[0])}Schema`;
+		lines.push(`\treturn ${importName}({ parameters, resolveSchema });`);
+	} else {
+		lines.push('\treturn z.union([');
+		for (const op of operations.sort()) {
+			const importName = `get${toPascalCase(op)}Schema`;
+			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
 		}
+		lines.push('\t]);');
 	}
+	lines.push('}');
 
 	return lines.join('\n');
 }
 
 /**
  * Generate a version-level index file for split structure schemas (e.g., v1/index.schema.ts)
- * Re-exports all discriminator schemas and generates the subnode config schema for AI nodes.
+ * Exports a factory function that unions all discriminator schemas.
+ * Also generates the subnode config schema for AI nodes.
  *
  * @param node The node type description
  * @param version The specific version number
  * @param tree The discriminator tree structure
  * @param aiInputTypes AI input types for subnode schema generation
+ * @param comboFactoryMap Map tracking which combos need factory functions (unused, all use factories now)
  */
 export function generateSplitVersionIndexSchemaFile(
 	node: NodeTypeDescription,
 	version: number,
 	tree: DiscriminatorTree,
 	aiInputTypes: AIInputTypeInfo[] = [],
+	_comboFactoryMap: Map<string, boolean> = new Map(),
 ): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const versionSuffix = versionToTypeName(version);
 	const baseSchemaName = `${nodeName}${versionSuffix}`;
 	const hasAiInputs = aiInputTypes.length > 0;
+	const basePath = '../../../../base.schema';
 
 	const lines: string[] = [];
 
 	lines.push('/**');
-	lines.push(` * ${node.displayName} Node - Version ${version} - Zod Schemas`);
-	lines.push(' * Re-exports all discriminator combination schemas.');
+	lines.push(` * ${node.displayName} Node - Version ${version} - Zod Schema Factory`);
+	lines.push(' * Exports a factory that unions all discriminator schemas.');
 	lines.push(' */');
 	lines.push('');
 
-	// Collect all schema names for the union
-	const schemaNames: string[] = [];
-
-	// Determine import depth for base.schema (from v1/index.schema.ts -> base.schema)
-	// Path: nodes/package/nodeName/v1/index.schema.ts -> ../../../../base.schema
-	const basePath = '../../../../base.schema';
-
-	// Imports section
-	const importLines: string[] = [];
-	importLines.push("import { z } from 'zod';");
+	lines.push("import { z } from 'zod';");
 
 	// Add base schema imports if we have AI inputs
 	if (hasAiInputs) {
 		const subnodeImports = getSubnodeSchemaImports(aiInputTypes);
 		if (subnodeImports.length > 0) {
-			importLines.push('import {');
+			lines.push('import {');
 			for (const schemaImport of subnodeImports) {
-				importLines.push(`\t${schemaImport},`);
+				lines.push(`\t${schemaImport},`);
 			}
-			importLines.push(`} from '${basePath}';`);
+			lines.push(`} from '${basePath}';`);
 		}
 	}
 
+	// Import default exports from child schemas
+	const importNames: string[] = [];
 	if (tree.type === 'resource_operation' && tree.resources) {
-		// Import resource schemas for union
 		for (const [resource] of tree.resources) {
-			const resourceSchemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigSchema`;
-			schemaNames.push(resourceSchemaName);
 			const resourceDir = `resource_${toSnakeCase(resource)}`;
-			importLines.push(`import { ${resourceSchemaName} } from './${resourceDir}/index.schema';`);
+			const importName = `get${toPascalCase(resource)}Schema`;
+			importNames.push(importName);
+			lines.push(`import ${importName} from './${resourceDir}/index.schema';`);
 		}
 	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
-		// Single discriminator pattern (mode, etc.)
 		const discName = tree.discriminatorName;
-
-		// Import schemas
 		for (const value of tree.discriminatorValues.sort()) {
 			const fileName = `${discName}_${toSnakeCase(value)}.schema`;
-			const schemaName = `${nodeName}${versionSuffix}${toPascalCase(value)}ConfigSchema`;
-			schemaNames.push(schemaName);
-			importLines.push(`import { ${schemaName} } from './${fileName}';`);
+			const importName = `get${toPascalCase(value)}Schema`;
+			importNames.push(importName);
+			lines.push(`import ${importName} from './${fileName}';`);
 		}
 	}
-
-	// Add all imports
-	lines.push(...importLines);
 	lines.push('');
 
-	// Generate Subnode Config Schema if AI node (must be defined before it's used in re-exports)
+	// Generate Subnode Config Schema if AI node (must be defined before it's used)
 	if (hasAiInputs) {
 		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
 		if (subnodeCode) {
@@ -1748,41 +1636,23 @@ export function generateSplitVersionIndexSchemaFile(
 		}
 	}
 
-	// Re-export section
-	if (tree.type === 'resource_operation' && tree.resources) {
-		// Re-export resource schema directories
-		for (const [resource] of tree.resources) {
-			const resourceDir = `resource_${toSnakeCase(resource)}`;
-			lines.push(`export * from './${resourceDir}/index.schema';`);
-		}
-		lines.push('');
-	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
-		// Re-export discriminator schema files
-		for (const value of tree.discriminatorValues.sort()) {
-			const fileName = `${tree.discriminatorName}_${toSnakeCase(value)}.schema`;
-			lines.push(`export * from './${fileName}';`);
-		}
-		lines.push('');
-	}
-
-	// Generate the combined schema union
-	const combinedSchemaName = `${baseSchemaName}ConfigSchema`;
-	if (schemaNames.length === 1) {
-		lines.push(`export const ${combinedSchemaName} = ${schemaNames[0]};`);
-	} else if (schemaNames.length > 1) {
-		lines.push(`export const ${combinedSchemaName} = z.union([`);
-		for (const name of schemaNames) {
-			lines.push(`\t${name},`);
-		}
-		lines.push(']);');
-	}
-	lines.push('');
+	// Export factory function
 	lines.push(
-		`export type ${baseSchemaName}ConfigValidated = z.infer<typeof ${combinedSchemaName}>;`,
+		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
-	lines.push('');
-	lines.push('// TODO: Add credentials schema');
-	lines.push('// TODO: Add full node schema (type, version, credentials, config)');
+
+	if (importNames.length === 1) {
+		lines.push(`\treturn ${importNames[0]}({ parameters, resolveSchema });`);
+	} else if (importNames.length > 1) {
+		lines.push('\treturn z.union([');
+		for (const importName of importNames) {
+			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
+		}
+		lines.push('\t]);');
+	} else {
+		lines.push('\treturn z.object({});');
+	}
+	lines.push('}');
 
 	return lines.join('\n');
 }
@@ -1790,6 +1660,7 @@ export function generateSplitVersionIndexSchemaFile(
 /**
  * Plan schema files for a split version directory.
  * Returns a Map of relative file paths to their content, to be merged with type files.
+ * All discriminated schema files export factory functions for consistency.
  *
  * @param node The node type description
  * @param version The specific version number
@@ -1821,20 +1692,19 @@ export function planSplitVersionSchemaFiles(
 			// Generate operation schema files within resource directory
 			for (const operation of operations) {
 				const combo = { resource, operation };
-				// Filter properties by version before getting combination-specific props
 				const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
 				const nodeForCombination = { ...node, properties: versionFilteredProps };
 				const props = getPropertiesForCombination(nodeForCombination, combo);
 				const fileName = `operation_${toSnakeCase(operation)}.schema.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
-				// Import depth: 6 levels deep (node/version/resource_x/operation.schema.ts -> base.schema)
+				// Import depth: 5 levels deep (nodes/pkg/nodeName/version/resource_x/operation.schema.ts -> base.schema)
 				const content = generateDiscriminatorSchemaFile(
 					node,
 					version,
 					combo,
 					props,
-					6,
+					5,
 					aiInputTypes,
 				);
 				files.set(filePath, content);
@@ -1855,14 +1725,13 @@ export function planSplitVersionSchemaFiles(
 
 		for (const value of tree.discriminatorValues) {
 			const combo: DiscriminatorCombination = { [discName]: value };
-			// Filter properties by version before getting combination-specific props
 			const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
 			const nodeForCombination = { ...node, properties: versionFilteredProps };
 			const props = getPropertiesForCombination(nodeForCombination, combo);
 			const fileName = `${discName}_${toSnakeCase(value)}.schema.ts`;
 
-			// Import depth: 5 levels deep (node/version/mode.schema.ts -> base.schema)
-			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 5, aiInputTypes);
+			// Import depth: 4 levels deep (nodes/pkg/nodeName/version/mode.schema.ts -> base.schema)
+			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 4, aiInputTypes);
 			files.set(fileName, content);
 		}
 	}

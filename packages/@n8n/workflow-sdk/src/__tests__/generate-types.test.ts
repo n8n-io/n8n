@@ -3037,16 +3037,13 @@ describe('generate-types', () => {
 				// Should have version schema index file
 				expect(plan.has('index.schema.ts')).toBe(true);
 
-				// Operation schema files should have correct content
+				// Operation schema files should export factory functions
 				const ticketGetSchemaContent = plan.get('resource_ticket/operation_get.schema.ts');
 				expect(ticketGetSchemaContent).toContain("import { z } from 'zod'");
-				expect(ticketGetSchemaContent).toContain("from '../../../../../../base.schema'");
+				expect(ticketGetSchemaContent).toContain("from '../../../../../base.schema'");
 				expect(ticketGetSchemaContent).toContain("resource: z.literal('ticket')");
 				expect(ticketGetSchemaContent).toContain("operation: z.literal('get')");
-				expect(ticketGetSchemaContent).toContain('FreshserviceV1TicketGetConfigSchema');
-				expect(ticketGetSchemaContent).toContain(
-					'FreshserviceV1TicketGetConfigValidated = z.infer',
-				);
+				expect(ticketGetSchemaContent).toContain('export default function getSchema');
 			});
 
 			it('should generate schema files alongside type files for single discriminator (mode)', () => {
@@ -3059,30 +3056,34 @@ describe('generate-types', () => {
 				// Should have version schema index file
 				expect(plan.has('index.schema.ts')).toBe(true);
 
-				// Mode schema files should have correct content
+				// Mode schema files should export factory functions
 				const modeSchemaContent = plan.get('mode_run_once_for_all_items.schema.ts');
 				expect(modeSchemaContent).toContain("import { z } from 'zod'");
-				expect(modeSchemaContent).toContain("from '../../../../../base.schema'");
+				expect(modeSchemaContent).toContain("from '../../../../base.schema'");
 				expect(modeSchemaContent).toContain("mode: z.literal('runOnceForAllItems')");
-				expect(modeSchemaContent).toContain('CodeV2RunOnceForAllItemsConfigSchema');
+				expect(modeSchemaContent).toContain('export default function getSchema');
 			});
 
-			it('should generate schema index files that re-export and create union schemas', () => {
+			it('should generate schema index files with factory functions', () => {
 				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
 
-				// Resource index.schema.ts should re-export operations and create union
+				// Resource index.schema.ts should import operation factories and export factory
 				const resourceSchemaIndex = plan.get('resource_ticket/index.schema.ts');
-				expect(resourceSchemaIndex).toContain("export * from './operation_get.schema'");
-				expect(resourceSchemaIndex).toContain("export * from './operation_create.schema'");
-				expect(resourceSchemaIndex).toContain("export * from './operation_delete.schema'");
-				expect(resourceSchemaIndex).toContain('FreshserviceV1TicketConfigSchema');
+				expect(resourceSchemaIndex).toContain(
+					"import getCreateSchema from './operation_create.schema'",
+				);
+				expect(resourceSchemaIndex).toContain("import getGetSchema from './operation_get.schema'");
+				expect(resourceSchemaIndex).toContain('export default function getSchema');
 
-				// Version index.schema.ts should re-export resources and create union
+				// Version index.schema.ts should import resource factories and export factory
 				const versionSchemaIndex = plan.get('index.schema.ts');
-				expect(versionSchemaIndex).toContain("export * from './resource_ticket/index.schema'");
-				expect(versionSchemaIndex).toContain("export * from './resource_agent/index.schema'");
-				expect(versionSchemaIndex).toContain('FreshserviceV1ConfigSchema');
-				expect(versionSchemaIndex).toContain('FreshserviceV1ConfigValidated');
+				expect(versionSchemaIndex).toContain(
+					"import getTicketSchema from './resource_ticket/index.schema'",
+				);
+				expect(versionSchemaIndex).toContain(
+					"import getAgentSchema from './resource_agent/index.schema'",
+				);
+				expect(versionSchemaIndex).toContain('export default function getSchema');
 			});
 		});
 	});
