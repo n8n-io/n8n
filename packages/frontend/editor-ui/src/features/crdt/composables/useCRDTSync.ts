@@ -29,8 +29,9 @@ export type CRDTSyncState = 'idle' | 'connecting' | 'ready' | 'disconnected' | '
  * - 'worker': Uses CRDT SharedWorker for cross-tab sync + server connection (default)
  * - 'websocket': Direct WebSocket connection to server (no cross-tab sync)
  * - 'coordinator': Uses Database Coordinator SharedWorker for Worker Mode (local-only, no server)
+ * - 'coordinator-server': Uses Database Coordinator SharedWorker for Server Mode (WebSocket to server)
  */
-export type CRDTTransportType = 'worker' | 'websocket' | 'coordinator';
+export type CRDTTransportType = 'worker' | 'websocket' | 'coordinator' | 'coordinator-server';
 
 export interface UseCRDTSyncOptions {
 	docId: string;
@@ -322,7 +323,16 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 			return new WorkerTransport({
 				port: coordinatorPort,
 				docId,
-				serverUrl: rootStore.baseUrl, // Used by coordinator for REST API calls
+				serverUrl: rootStore.baseUrl, // Used by coordinator for REST API calls (REST URL = worker mode)
+			});
+		} else if (transportType === 'coordinator-server') {
+			// Coordinator transport (Server Mode - WebSocket proxy via Coordinator)
+			// Pass WebSocket URL so coordinator uses server mode (proxies to WebSocket server)
+			const coordinatorPort = await workers.getCrdtPort();
+			return new WorkerTransport({
+				port: coordinatorPort,
+				docId,
+				serverUrl: getServerUrl(), // WebSocket URL = server mode (coordinator proxies to server)
 			});
 		} else {
 			// Worker transport (cross-tab sync via CRDT SharedWorker)

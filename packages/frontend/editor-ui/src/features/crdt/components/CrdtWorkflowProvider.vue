@@ -13,6 +13,7 @@ const props = withDefaults(
 		 * - 'worker': SharedWorker + server connection
 		 * - 'websocket': Direct WebSocket to server
 		 * - 'coordinator': Database Coordinator (Worker Mode - local only)
+		 * - 'coordinator-server': Database Coordinator (Server Mode - WebSocket proxy)
 		 */
 		transport?: CRDTTransportType;
 	}>(),

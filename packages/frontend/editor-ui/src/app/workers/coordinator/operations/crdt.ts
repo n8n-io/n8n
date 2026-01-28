@@ -1,24 +1,36 @@
 /**
  * CRDT Operations for Coordinator SharedWorker
  *
- * The Coordinator acts as the "CRDT server" for Worker Mode:
+ * The Coordinator supports two modes per document:
+ *
+ * **Worker Mode** (serverUrl is empty or REST URL):
  * - Holds CRDT documents in memory (source of truth)
  * - Computes handles on parameter changes
  * - Broadcasts updates to all subscribed tabs
+ * - Persists to server via REST API
  *
- * This mirrors the server's CRDTWebSocketService responsibilities.
+ * **Server Mode** (serverUrl is WebSocket URL):
+ * - Proxies CRDT messages to/from WebSocket server
+ * - Server holds documents and computes handles
+ * - Coordinator maintains local proxy doc for awareness
+ * - Server handles persistence
  */
 
 import {
 	CRDTEngine,
 	createCRDTProvider,
+	WebSocketTransport,
 	MESSAGE_SYNC,
 	MESSAGE_AWARENESS,
 	MESSAGE_SUBSCRIBE,
 	MESSAGE_UNSUBSCRIBE,
 	MESSAGE_INITIAL_SYNC,
+	MESSAGE_CONNECTED,
+	MESSAGE_DISCONNECTED,
 	decodeWithDocId,
 	decodeString,
+	decodeMessage,
+	encodeMessage,
 	seedValueDeep,
 	setNestedValue,
 } from '@n8n/crdt';
@@ -30,6 +42,8 @@ import {
 	setupHandleRecomputation,
 	setupExpressionRenaming,
 	seedWorkflowDoc,
+	crdtNodeMapToINode,
+	type CRDTMapLike,
 	type IConnections,
 	type INode,
 	type INodeTypeDescription,
@@ -37,6 +51,7 @@ import {
 	type IPinData,
 	type SeedValueDeepFn,
 	type SetNestedValueFn,
+	type NodeConnectionType,
 } from 'n8n-workflow';
 
 import type { CoordinatorState, CRDTDocumentState } from '../types';
@@ -137,17 +152,149 @@ async function handleCrdtMessage(
 }
 
 // =============================================================================
+// Mode Detection
+// =============================================================================
+
+/**
+ * Detect if a URL indicates server mode (WebSocket) vs worker mode (REST).
+ * Server mode uses WebSocket for real-time sync with the server.
+ * Worker mode uses REST API for persistence, coordinator holds the document.
+ */
+function isServerMode(serverUrl: string): boolean {
+	return serverUrl.startsWith('ws://') || serverUrl.startsWith('wss://');
+}
+
+/**
+ * Extract REST URL from WebSocket URL (ws://host/path → http://host)
+ * Used in server mode to fetch node types via REST API.
+ */
+function extractRestUrl(wsUrl: string): string {
+	return wsUrl
+		.replace(/^wss:/, 'https:')
+		.replace(/^ws:/, 'http:')
+		.replace(/\/crdt\?.*$/, ''); // Remove /crdt?docId=... path
+}
+
+/**
+ * Extract nodes array from CRDT document (for fetching node types).
+ * Used to determine which node types to fetch before creating Workflow instance.
+ */
+function getNodesFromDoc(doc: CRDTDocumentState['doc']): INode[] {
+	const nodesMap = doc.getMap('nodes');
+	const nodes: INode[] = [];
+	for (const [id, value] of nodesMap.entries()) {
+		if (value && typeof value === 'object') {
+			const node = crdtNodeMapToINode(value as CRDTMapLike<unknown>, id);
+			if (node) nodes.push(node);
+		}
+	}
+	return nodes;
+}
+
+/**
+ * Extract connections from CRDT document.
+ * Converts flat edge format (Vue Flow) to nested IConnections format (Workflow).
+ */
+function getConnectionsFromDoc(doc: CRDTDocumentState['doc']): IConnections {
+	const nodesMap = doc.getMap('nodes');
+	const edgesMap = doc.getMap('edges');
+
+	// Build node ID -> name lookup
+	const nodeNameById = new Map<string, string>();
+	for (const [id, value] of nodesMap.entries()) {
+		if (value && typeof value === 'object') {
+			const node = crdtNodeMapToINode(value as CRDTMapLike<unknown>, id);
+			if (node?.name) {
+				nodeNameById.set(id, node.name);
+			}
+		}
+	}
+
+	// Convert edges to IConnections
+	const connections: IConnections = {};
+	for (const [, edgeValue] of edgesMap.entries()) {
+		if (!edgeValue || typeof edgeValue !== 'object') continue;
+
+		// Handle CRDTMap or plain object
+		const edge =
+			'toJSON' in edgeValue
+				? (
+						edgeValue as {
+							toJSON(): {
+								source: string;
+								target: string;
+								sourceHandle: string;
+								targetHandle: string;
+							};
+						}
+					).toJSON()
+				: (edgeValue as {
+						source: string;
+						target: string;
+						sourceHandle: string;
+						targetHandle: string;
+					});
+
+		const sourceName = nodeNameById.get(edge.source);
+		const targetName = nodeNameById.get(edge.target);
+		if (!sourceName || !targetName) continue;
+
+		// Parse handle format: "outputs/main/0" or "inputs/main/0"
+		const sourceHandle = edge.sourceHandle.split('/');
+		const targetHandle = edge.targetHandle.split('/');
+		const sourceType = (sourceHandle[1] ?? 'main') as keyof IConnections[string];
+		const sourceIndex = parseInt(sourceHandle[2] ?? '0', 10);
+		const targetType = (targetHandle[1] ?? 'main') as NodeConnectionType;
+		const targetIndex = parseInt(targetHandle[2] ?? '0', 10);
+
+		// Initialize nested structure
+		connections[sourceName] ??= {};
+		connections[sourceName][sourceType] ??= [];
+
+		// Ensure array has enough slots
+		while (connections[sourceName][sourceType].length <= sourceIndex) {
+			connections[sourceName][sourceType].push(null);
+		}
+
+		connections[sourceName][sourceType][sourceIndex] ??= [];
+		connections[sourceName][sourceType][sourceIndex]!.push({
+			node: targetName,
+			type: targetType,
+			index: targetIndex,
+		});
+	}
+
+	return connections;
+}
+
+/**
+ * Extract workflow metadata from CRDT document.
+ */
+function getMetaFromDoc(
+	doc: CRDTDocumentState['doc'],
+	defaultName: string,
+): { name: string; settings?: Record<string, unknown> } {
+	const metaMap = doc.getMap('meta');
+	const name = (metaMap.get('name') as string | undefined) ?? defaultName;
+	const settings = metaMap.get('settings') as Record<string, unknown> | undefined;
+	return { name, settings };
+}
+
+// =============================================================================
 // Subscription Handling
 // =============================================================================
 
 /**
- * Handle SUBSCRIBE message - create/get doc, seed from Data Worker, send initial state
+ * Handle SUBSCRIBE message - branch based on server mode vs worker mode.
+ *
+ * Worker Mode: Seed from REST API, hold document locally, compute handles.
+ * Server Mode: Connect to WebSocket server, proxy messages, server holds document.
  */
 async function handleSubscribe(
 	state: CoordinatorState,
 	tabId: string,
 	docId: string,
-	baseUrl: string,
+	serverUrl: string,
 ): Promise<void> {
 	ensureCRDTProvider(state);
 
@@ -160,6 +307,9 @@ async function handleSubscribe(
 	// Add doc to subscription
 	subscription.docIds.add(docId);
 
+	// Determine mode based on URL
+	const serverMode = isServerMode(serverUrl);
+
 	// Get or create document state
 	let docState = state.crdtDocuments.get(docId);
 	if (!docState) {
@@ -169,30 +319,207 @@ async function handleSubscribe(
 			nodeTypes: new Map(),
 			handleObserverUnsub: null,
 			seeded: false,
-			baseUrl,
+			baseUrl: serverUrl,
 			room: null,
+			// Server mode fields
+			serverMode,
+			serverTransport: null,
+			serverTransportUnsub: null,
 		};
 		state.crdtDocuments.set(docId, docState);
 	}
 
-	// Seed the document if not already seeded
-	if (!docState.seeded) {
-		await seedDocument(state, docId, docState);
+	if (docState.serverMode) {
+		// =================================================================
+		// SERVER MODE: Connect to WebSocket server, proxy messages
+		// =================================================================
+		console.log('[CRDT Coordinator] Server mode for document', docId);
+
+		if (!docState.serverTransport) {
+			await connectToServer(state, docId, docState, serverUrl);
+		}
+		// Server sends initial state - we forward it to tabs via the transport handler
+		// No need to send initial state here, the transport handler does it on first MESSAGE_SYNC
+	} else {
+		// =================================================================
+		// WORKER MODE: Seed from REST, hold locally (existing behavior)
+		// =================================================================
+		console.log('[CRDT Coordinator] Worker mode for document', docId);
+
+		// Seed the document if not already seeded
+		if (!docState.seeded) {
+			await seedDocument(state, docId, docState);
+		}
+
+		// Send initial state to the tab
+		const initialState = docState.doc.encodeState();
+		sendToTab(subscription.crdtPort, MESSAGE_SYNC, docId, initialState);
+
+		// Send initial awareness state
+		const awareness = docState.doc.getAwareness();
+		const awarenessState = awareness.encodeState();
+		if (awarenessState.length > 0) {
+			sendToTab(subscription.crdtPort, MESSAGE_AWARENESS, docId, awarenessState);
+		}
+
+		// Send initial sync complete signal
+		sendToTab(subscription.crdtPort, MESSAGE_INITIAL_SYNC, docId, new Uint8Array(0));
 	}
+}
 
-	// Send initial state to the tab
-	const initialState = docState.doc.encodeState();
-	sendToTab(subscription.crdtPort, MESSAGE_SYNC, docId, initialState);
+// =============================================================================
+// Server Mode: WebSocket Connection
+// =============================================================================
 
-	// Send initial awareness state
-	const awareness = docState.doc.getAwareness();
-	const awarenessState = awareness.encodeState();
-	if (awarenessState.length > 0) {
-		sendToTab(subscription.crdtPort, MESSAGE_AWARENESS, docId, awarenessState);
+/**
+ * Connect to WebSocket server for server mode.
+ * The server holds the document and computes handles.
+ * We proxy messages between tabs and server.
+ */
+async function connectToServer(
+	state: CoordinatorState,
+	docId: string,
+	docState: CRDTDocumentState,
+	serverUrl: string,
+): Promise<void> {
+	const transport = new WebSocketTransport({
+		url: serverUrl,
+		reconnect: true,
+	});
+
+	let initialSyncSent = false;
+	let workflowInitialized = false;
+
+	// Handle messages FROM server
+	const unsubReceive = transport.onReceive((data: Uint8Array) => {
+		const { messageType, payload } = decodeMessage(data);
+
+		if (messageType === MESSAGE_SYNC) {
+			// Apply to local proxy doc (for awareness state)
+			docState.doc.applyUpdate(payload);
+			// Forward to all subscribed tabs
+			broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, payload);
+
+			// Send INITIAL_SYNC to tabs on first sync message from server
+			if (!initialSyncSent) {
+				initialSyncSent = true;
+				broadcastToSubscribedTabs(state, docId, MESSAGE_INITIAL_SYNC, new Uint8Array(0));
+				console.log('[CRDT Coordinator] Server mode initial sync complete', docId);
+
+				// Initialize local Workflow after first sync (doc now has data)
+				// This is needed for expression resolution during local execution
+				if (!workflowInitialized) {
+					workflowInitialized = true;
+					void initializeWorkflowForServerMode(state, docId, docState);
+				}
+			}
+		} else if (messageType === MESSAGE_AWARENESS) {
+			// Apply to local awareness
+			const awareness = docState.doc.getAwareness();
+			awareness.applyUpdate(payload);
+			// Forward to all tabs (including for split-view support)
+			broadcastToSubscribedTabs(state, docId, MESSAGE_AWARENESS, payload);
+		}
+	});
+
+	// Handle connection state changes
+	const unsubConnection = transport.onConnectionChange((connected) => {
+		if (connected) {
+			console.log('[CRDT Coordinator] Server connected', docId);
+			broadcastToSubscribedTabs(state, docId, MESSAGE_CONNECTED, new Uint8Array(0));
+		} else {
+			console.log('[CRDT Coordinator] Server disconnected', docId);
+			broadcastToSubscribedTabs(state, docId, MESSAGE_DISCONNECTED, new Uint8Array(0));
+			initialSyncSent = false; // Reset for reconnection
+		}
+	});
+
+	// Handle errors
+	const unsubError = transport.onError((error) => {
+		console.error('[CRDT Coordinator] Server transport error', docId, error);
+	});
+
+	docState.serverTransport = transport;
+	docState.serverTransportUnsub = () => {
+		unsubReceive();
+		unsubConnection();
+		unsubError();
+		transport.disconnect();
+	};
+
+	await transport.connect();
+}
+
+/**
+ * Initialize a local Workflow instance for server mode.
+ * The Workflow is kept in sync with the CRDT doc for expression resolution.
+ * Handle computation is NOT set up - the server does that.
+ */
+async function initializeWorkflowForServerMode(
+	state: CoordinatorState,
+	docId: string,
+	docState: CRDTDocumentState,
+): Promise<void> {
+	try {
+		// Extract current state from CRDT doc (already populated from server sync)
+		const nodes = getNodesFromDoc(docState.doc);
+		const connections = getConnectionsFromDoc(docState.doc);
+		const { name, settings } = getMetaFromDoc(docState.doc, docId);
+
+		// Fetch node types (needed for Workflow construction)
+		const restUrl = extractRestUrl(docState.baseUrl);
+		const nodeTypes = await fetchNodeTypesForWorkflow(restUrl, nodes, state);
+		docState.nodeTypes = nodeTypes;
+
+		const workerNodeTypes = createWorkerNodeTypes(nodeTypes);
+
+		// Create Workflow instance with current CRDT state
+		const workflow = new Workflow({
+			id: docId,
+			name,
+			nodes,
+			connections,
+			active: false,
+			nodeTypes: workerNodeTypes,
+			settings,
+		});
+		docState.workflow = workflow;
+
+		// Set up sync to keep Workflow updated as CRDT changes arrive from server
+		const syncUnsub = syncWorkflowWithDoc(docState.doc, workflow);
+
+		// Store unsub in serverTransportUnsub (combined with transport cleanup)
+		const existingUnsub = docState.serverTransportUnsub;
+		docState.serverTransportUnsub = () => {
+			syncUnsub();
+			existingUnsub?.();
+		};
+
+		// Detailed logging for verification against server
+		console.log('[CRDT Coordinator] Workflow initialized for server mode', docId);
+		console.log('[CRDT Coordinator] === SYNCHRONIZED WORKFLOW DATA ===');
+		console.log('[CRDT Coordinator] Name:', name);
+		console.log('[CRDT Coordinator] Settings:', JSON.stringify(settings, null, 2));
+		console.log(
+			'[CRDT Coordinator] Nodes:',
+			JSON.stringify(
+				nodes.map((n) => ({
+					id: n.id,
+					name: n.name,
+					type: n.type,
+					position: n.position,
+					parameters: n.parameters,
+					typeVersion: n.typeVersion,
+				})),
+				null,
+				2,
+			),
+		);
+		console.log('[CRDT Coordinator] Connections:', JSON.stringify(connections, null, 2));
+		console.log('[CRDT Coordinator] === END SYNCHRONIZED WORKFLOW DATA ===');
+	} catch (error) {
+		console.error('[CRDT Coordinator] Failed to initialize workflow for server mode', docId, error);
 	}
-
-	// Send initial sync complete signal
-	sendToTab(subscription.crdtPort, MESSAGE_INITIAL_SYNC, docId, new Uint8Array(0));
 }
 
 /**
@@ -203,7 +530,9 @@ function handleUnsubscribe(state: CoordinatorState, tabId: string, docId: string
 }
 
 /**
- * Unsubscribe a tab from a document
+ * Unsubscribe a tab from a document.
+ * In worker mode, triggers final save before cleanup.
+ * In server mode, just disconnects (server handles persistence).
  */
 function unsubscribeFromDocument(state: CoordinatorState, tabId: string, docId: string): void {
 	const subscription = state.crdtSubscriptions.get(tabId);
@@ -223,8 +552,11 @@ function unsubscribeFromDocument(state: CoordinatorState, tabId: string, docId: 
 	// Clean up document if no subscribers
 	if (!hasSubscribers) {
 		const docState = state.crdtDocuments.get(docId);
-		if (docState?.room) {
-			// Trigger final save via room, then cleanup
+		if (docState?.serverMode) {
+			// SERVER MODE: No final save needed, server handles persistence
+			cleanupDocument(state, docId);
+		} else if (docState?.room) {
+			// WORKER MODE: Trigger final save via room, then cleanup
 			void docState.room.finalSave().finally(() => {
 				cleanupDocument(state, docId);
 			});
@@ -235,27 +567,35 @@ function unsubscribeFromDocument(state: CoordinatorState, tabId: string, docId: 
 }
 
 /**
- * Clean up a document when no tabs are subscribed
+ * Clean up a document when no tabs are subscribed.
+ * Server mode: Disconnect from server.
+ * Worker mode: Destroy room and unsubscribe from observers.
  */
 function cleanupDocument(state: CoordinatorState, docId: string): void {
 	const docState = state.crdtDocuments.get(docId);
 	if (!docState) return;
 
-	// Destroy the room (handles cleanup of sync subscriptions and debounce)
-	if (docState.room) {
-		docState.room.destroy();
+	if (docState.serverMode) {
+		// SERVER MODE: Disconnect from server
+		if (docState.serverTransportUnsub) {
+			docState.serverTransportUnsub();
+		}
+		console.log('[CRDT Coordinator] Server mode document cleaned up', docId);
+	} else {
+		// WORKER MODE: Destroy room and unsubscribe from observers
+		if (docState.room) {
+			docState.room.destroy();
+		}
+
+		if (docState.handleObserverUnsub) {
+			docState.handleObserverUnsub();
+		}
+		console.log('[CRDT Coordinator] Worker mode document cleaned up', docId);
 	}
 
-	// Unsubscribe from handle recomputation
-	if (docState.handleObserverUnsub) {
-		docState.handleObserverUnsub();
-	}
-
-	// Destroy the document
+	// Destroy the document (both modes)
 	docState.doc.destroy();
 	state.crdtDocuments.delete(docId);
-
-	console.log('[CRDT Coordinator] Document cleaned up', docId);
 }
 
 // =============================================================================
@@ -263,7 +603,8 @@ function cleanupDocument(state: CoordinatorState, docId: string): void {
 // =============================================================================
 
 /**
- * Handle SYNC message from a tab
+ * Handle SYNC message from a tab.
+ * In server mode, forward to server. In worker mode, apply locally and broadcast.
  */
 function handleSyncMessage(
 	state: CoordinatorState,
@@ -274,18 +615,22 @@ function handleSyncMessage(
 	const docState = state.crdtDocuments.get(docId);
 	if (!docState) return;
 
-	// Apply update to local document
-	docState.doc.applyUpdate(payload);
+	if (docState.serverMode && docState.serverTransport?.connected) {
+		// SERVER MODE: Forward to server (server applies and broadcasts back)
+		docState.serverTransport.send(encodeMessage(MESSAGE_SYNC, payload));
+	} else {
+		// WORKER MODE: Apply locally and broadcast to other tabs
+		docState.doc.applyUpdate(payload);
+		broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, payload, tabId);
 
-	// Broadcast to other tabs
-	broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, payload, tabId);
-
-	// Schedule a debounced save to persist changes to the server
-	docState.room?.scheduleSave();
+		// Schedule a debounced save to persist changes to the server
+		docState.room?.scheduleSave();
+	}
 }
 
 /**
- * Handle AWARENESS message from a tab
+ * Handle AWARENESS message from a tab.
+ * In server mode, forward to server. In worker mode, apply locally and broadcast.
  */
 function handleAwarenessMessage(
 	state: CoordinatorState,
@@ -296,15 +641,20 @@ function handleAwarenessMessage(
 	const docState = state.crdtDocuments.get(docId);
 	if (!docState) return;
 
-	// Apply awareness update
-	const awareness = docState.doc.getAwareness();
-	awareness.applyUpdate(payload);
+	if (docState.serverMode && docState.serverTransport?.connected) {
+		// SERVER MODE: Forward to server (server applies and broadcasts back)
+		docState.serverTransport.send(encodeMessage(MESSAGE_AWARENESS, payload));
+	} else {
+		// WORKER MODE: Apply locally and broadcast
+		const awareness = docState.doc.getAwareness();
+		awareness.applyUpdate(payload);
 
-	// Broadcast to ALL tabs (including sender) to support split-view within the same tab.
-	// Each view has a unique awareness clientId, so echoing back is safe - views filter
-	// out their own clientId when rendering collaborators, and the origin tracking in
-	// useCRDTSync prevents re-sending (only local changes are sent to the coordinator).
-	broadcastToSubscribedTabs(state, docId, MESSAGE_AWARENESS, payload);
+		// Broadcast to ALL tabs (including sender) to support split-view within the same tab.
+		// Each view has a unique awareness clientId, so echoing back is safe - views filter
+		// out their own clientId when rendering collaborators, and the origin tracking in
+		// useCRDTSync prevents re-sending (only local changes are sent to the coordinator).
+		broadcastToSubscribedTabs(state, docId, MESSAGE_AWARENESS, payload);
+	}
 }
 
 // =============================================================================

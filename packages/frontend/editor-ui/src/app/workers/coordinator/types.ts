@@ -7,7 +7,7 @@
  */
 
 import type * as Comlink from 'comlink';
-import type { CRDTDoc, CRDTProvider, Unsubscribe } from '@n8n/crdt';
+import type { CRDTDoc, CRDTProvider, SyncTransport, Unsubscribe } from '@n8n/crdt';
 import type { INodeTypeDescription, Workflow, WorkflowRoom } from 'n8n-workflow';
 
 import type { DataWorkerApi } from '../data/worker';
@@ -33,23 +33,37 @@ export interface CRDTSubscription {
 }
 
 /**
- * CRDT document state held by the coordinator
+ * CRDT document state held by the coordinator.
+ *
+ * The coordinator supports two modes per document:
+ * - **Worker Mode**: Coordinator holds the document, computes handles, saves via REST API
+ * - **Server Mode**: Coordinator proxies to WebSocket server, server holds the document
+ *
+ * Mode is determined by the serverUrl: WebSocket URL = server mode, otherwise worker mode.
  */
 export interface CRDTDocumentState {
-	/** CRDT document (source of truth in worker mode) */
+	/** CRDT document (source of truth in worker mode, proxy in server mode) */
 	doc: CRDTDoc;
-	/** Node types cache for handle computation */
+	/** Node types cache for handle computation (worker mode only) */
 	nodeTypes: Map<string, INodeTypeDescription>;
-	/** Unsubscribe function for handle recomputation observer */
+	/** Unsubscribe function for handle recomputation observer (worker mode only) */
 	handleObserverUnsub: Unsubscribe | null;
-	/** Whether the document has been seeded with initial data */
+	/** Whether the document has been seeded with initial data (worker mode only) */
 	seeded: boolean;
-	/** Base URL for REST API calls */
+	/** Base URL for REST API calls (worker mode) or WebSocket URL (server mode) */
 	baseUrl: string;
-	/** Workflow room managing persistence (null until seeded) */
+	/** Workflow room managing persistence (worker mode only, null until seeded) */
 	room: WorkflowRoom | null;
-	/** Workflow instance for handle computation (null until seeded) */
+	/** Workflow instance for handle computation (worker mode only, null until seeded) */
 	workflow?: Workflow;
+
+	// Server mode fields
+	/** True if using server mode (WebSocket proxy to server) */
+	serverMode: boolean;
+	/** WebSocket transport for server mode (null in worker mode) */
+	serverTransport: SyncTransport | null;
+	/** Cleanup function for server transport subscriptions (null in worker mode) */
+	serverTransportUnsub: (() => void) | null;
 }
 
 /**
