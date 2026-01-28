@@ -24,6 +24,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import {
+	generateSingleVersionSchemaFile,
+	generateBaseSchemaFile,
+	planSplitVersionSchemaFiles,
+} from './generate-zod-schemas';
+
 // =============================================================================
 // Configuration
 // =============================================================================
@@ -2227,6 +2233,12 @@ export function planSplitVersionFiles(
 	// Generate version index file
 	files.set('index.ts', generateSplitVersionIndexFile(node, version, tree));
 
+	// Generate Zod schema files alongside type files
+	const schemaFiles = planSplitVersionSchemaFiles(node, version);
+	for (const [path, content] of schemaFiles) {
+		files.set(path, content);
+	}
+
 	return files;
 }
 
@@ -2593,6 +2605,12 @@ export function generateVersionIndexFile(
 		// Both flat files and directories use the same export syntax
 		// TypeScript resolves ./v1 to either ./v1.ts or ./v1/index.ts
 		lines.push(`export * from './${fileName}';`);
+		// Export schemas - split versions have index.schema.ts, flat versions have v1.schema.ts
+		if (splitVersions.has(version)) {
+			lines.push(`export * from './${fileName}/index.schema';`);
+		} else {
+			lines.push(`export * from './${fileName}.schema';`);
+		}
 	}
 	lines.push('');
 
@@ -3620,12 +3638,18 @@ async function generateVersionSpecificFiles(
 					splitVersionsSet.add(version);
 					splitVersions++;
 				} else {
-					// Generate flat file
+					// Generate flat type file
 					const content = generateSingleVersionTypeFile(sourceNode, version);
 					const filePath = path.join(nodeDir, `${fileName}.ts`);
 					await fs.promises.writeFile(filePath, content);
 					generatedFiles++;
 					flatVersions++;
+
+					// Generate corresponding Zod schema file
+					const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
+					const schemaFilePath = path.join(nodeDir, `${fileName}.schema.ts`);
+					await fs.promises.writeFile(schemaFilePath, schemaContent);
+					generatedFiles++;
 				}
 			}
 
@@ -3659,6 +3683,11 @@ export async function generateTypes(): Promise<void> {
 
 	await fs.promises.mkdir(nodesBaseDir, { recursive: true });
 	await fs.promises.mkdir(nodesLangchainDir, { recursive: true });
+
+	// Generate base.schema.ts with common Zod helpers
+	const baseSchemaContent = generateBaseSchemaFile();
+	await fs.promises.writeFile(path.join(OUTPUT_PATH, 'base.schema.ts'), baseSchemaContent);
+	console.log('Generated base.schema.ts with Zod helpers');
 
 	const allNodes: NodeTypeDescription[] = [];
 

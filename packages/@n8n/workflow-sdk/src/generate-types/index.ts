@@ -10,6 +10,7 @@ export {
 	type NodeProperty,
 	type NodeTypeDescription,
 	type DiscriminatorCombination,
+	type DiscriminatorTree,
 	type VersionGroup,
 	type OutputSchema,
 	type JsonSchema,
@@ -22,6 +23,7 @@ export {
 	propertyAppliesToVersion,
 	filterPropertiesForVersion,
 	generateDiscriminatedUnion,
+	buildDiscriminatorTree,
 	generatePropertyJSDoc,
 	generateNodeJSDoc,
 	generatePropertyLine,
@@ -50,3 +52,25 @@ export {
 	loadNodeTypes,
 	generateTypes,
 } from './generate-types';
+
+// Zod schema generation
+export {
+	// Types
+	type SchemaGenerationResult,
+	type SchemaInfo,
+	// Core functions
+	mapPropertyToZodSchema,
+	generateSchemaPropertyLine,
+	// File generation (flat versions)
+	generateSingleVersionSchemaFile,
+	generateBaseSchemaFile,
+	generateSchemaIndexFile,
+	// File generation (split versions with discriminators)
+	generateDiscriminatorSchemaFile,
+	generateResourceIndexSchemaFile,
+	generateSplitVersionIndexSchemaFile,
+	planSplitVersionSchemaFiles,
+} from './generate-zod-schemas';
+
+// Zod helpers (for use in generated files)
+export * from './zod-helpers';

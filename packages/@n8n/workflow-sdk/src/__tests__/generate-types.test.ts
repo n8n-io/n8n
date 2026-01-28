@@ -3019,6 +3019,71 @@ describe('generate-types', () => {
 				expect(ticketGetContent).toContain('version: 1');
 				expect(ticketGetContent).not.toContain('FreshserviceV1NodeBase');
 			});
+
+			it('should generate schema files alongside type files for resource/operation pattern', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
+
+				// Should have schema files alongside type files
+				expect(plan.has('resource_ticket/operation_get.schema.ts')).toBe(true);
+				expect(plan.has('resource_ticket/operation_create.schema.ts')).toBe(true);
+				expect(plan.has('resource_ticket/operation_delete.schema.ts')).toBe(true);
+				expect(plan.has('resource_agent/operation_get.schema.ts')).toBe(true);
+				expect(plan.has('resource_agent/operation_create.schema.ts')).toBe(true);
+
+				// Should have resource schema index files
+				expect(plan.has('resource_ticket/index.schema.ts')).toBe(true);
+				expect(plan.has('resource_agent/index.schema.ts')).toBe(true);
+
+				// Should have version schema index file
+				expect(plan.has('index.schema.ts')).toBe(true);
+
+				// Operation schema files should have correct content
+				const ticketGetSchemaContent = plan.get('resource_ticket/operation_get.schema.ts');
+				expect(ticketGetSchemaContent).toContain("import { z } from 'zod'");
+				expect(ticketGetSchemaContent).toContain("from '../../../../../../base.schema'");
+				expect(ticketGetSchemaContent).toContain("resource: z.literal('ticket')");
+				expect(ticketGetSchemaContent).toContain("operation: z.literal('get')");
+				expect(ticketGetSchemaContent).toContain('FreshserviceV1TicketGetConfigSchema');
+				expect(ticketGetSchemaContent).toContain(
+					'FreshserviceV1TicketGetConfigValidated = z.infer',
+				);
+			});
+
+			it('should generate schema files alongside type files for single discriminator (mode)', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
+
+				// Should have schema files
+				expect(plan.has('mode_run_once_for_all_items.schema.ts')).toBe(true);
+				expect(plan.has('mode_run_once_for_each_item.schema.ts')).toBe(true);
+
+				// Should have version schema index file
+				expect(plan.has('index.schema.ts')).toBe(true);
+
+				// Mode schema files should have correct content
+				const modeSchemaContent = plan.get('mode_run_once_for_all_items.schema.ts');
+				expect(modeSchemaContent).toContain("import { z } from 'zod'");
+				expect(modeSchemaContent).toContain("from '../../../../../base.schema'");
+				expect(modeSchemaContent).toContain("mode: z.literal('runOnceForAllItems')");
+				expect(modeSchemaContent).toContain('CodeV2RunOnceForAllItemsConfigSchema');
+			});
+
+			it('should generate schema index files that re-export and create union schemas', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
+
+				// Resource index.schema.ts should re-export operations and create union
+				const resourceSchemaIndex = plan.get('resource_ticket/index.schema.ts');
+				expect(resourceSchemaIndex).toContain("export * from './operation_get.schema'");
+				expect(resourceSchemaIndex).toContain("export * from './operation_create.schema'");
+				expect(resourceSchemaIndex).toContain("export * from './operation_delete.schema'");
+				expect(resourceSchemaIndex).toContain('FreshserviceV1TicketConfigSchema');
+
+				// Version index.schema.ts should re-export resources and create union
+				const versionSchemaIndex = plan.get('index.schema.ts');
+				expect(versionSchemaIndex).toContain("export * from './resource_ticket/index.schema'");
+				expect(versionSchemaIndex).toContain("export * from './resource_agent/index.schema'");
+				expect(versionSchemaIndex).toContain('FreshserviceV1ConfigSchema');
+				expect(versionSchemaIndex).toContain('FreshserviceV1ConfigValidated');
+			});
 		});
 	});
 

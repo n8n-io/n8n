@@ -41,6 +41,7 @@
 	},
 	"dependencies": {
 		"n8n-workflow": "workspace:*",
-		"uuid": "catalog:"
+		"uuid": "catalog:",
+		"zod": "catalog:"
 	}
 }
