@@ -9,12 +9,21 @@ import type { ZodSchema, ZodIssue } from 'zod';
 import * as os from 'os';
 import * as path from 'path';
 
+// Import resolveSchema for factory function support
+import { resolveSchema } from './resolve-schema';
+
 // Default path to generated schemas
 const DEFAULT_SCHEMA_BASE_PATH = path.join(os.homedir(), '.n8n', 'generated-types');
 let schemaBasePath = DEFAULT_SCHEMA_BASE_PATH;
 
-// Cache for loaded schemas
-const schemaCache = new Map<string, ZodSchema | null>();
+// Cache for loaded schemas (either ZodSchema or factory function)
+type SchemaOrFactory =
+	| ZodSchema
+	| ((args: {
+			parameters: Record<string, unknown>;
+			resolveSchema: typeof resolveSchema;
+	  }) => ZodSchema);
+const schemaCache = new Map<string, SchemaOrFactory | null>();
 
 /**
  * Validation result from schema validation
@@ -100,13 +109,43 @@ function buildExpectedSchemaName(
 }
 
 /**
+ * Build the expected factory function name for a node
+ *
+ * Factory naming conventions (for nodes with displayOptions):
+ * - n8n-nodes-base.set v2 -> getSetV2ConfigSchema
+ * - n8n-nodes-langchain.agent v1 -> getLcAgentV1ConfigSchema (Lc prefix for langchain)
+ *
+ * @param nodeName - Node name from node type
+ * @param versionStr - Version string (e.g., "v2", "v42")
+ * @param isLangchain - Whether this is a langchain node
+ * @returns Expected factory function name
+ */
+function buildExpectedFactoryName(
+	nodeName: string,
+	versionStr: string,
+	isLangchain: boolean,
+): string {
+	// Convert first letter to uppercase for PascalCase
+	const pascalName = nodeName.charAt(0).toUpperCase() + nodeName.slice(1);
+	// Convert versionStr to PascalCase: "v2" -> "V2", "v42" -> "V42"
+	const pascalVersion = versionStr.charAt(0).toUpperCase() + versionStr.slice(1);
+	// Add Lc prefix for langchain nodes
+	const prefix = isLangchain ? 'Lc' : '';
+	return `get${prefix}${pascalName}${pascalVersion}ConfigSchema`;
+}
+
+/**
  * Load and cache schema for a node type/version
+ *
+ * Supports both:
+ * - Static schemas: ConfigSchema exports (ZodSchema)
+ * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
  *
  * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
  * @param version - Node version (e.g., 2, 4.2, 1.7)
- * @returns ZodSchema if found, null otherwise
+ * @returns ZodSchema or factory function if found, null otherwise
  */
-export function loadSchema(nodeType: string, version: number): ZodSchema | null {
+export function loadSchema(nodeType: string, version: number): SchemaOrFactory | null {
 	const cacheKey = `${nodeType}@${version}`;
 
 	// Check cache first
@@ -126,15 +165,22 @@ export function loadSchema(nodeType: string, version: number): ZodSchema | null 
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const schemaModule = require(schemaPath);
 
-		// Build the expected schema name to find the right export
-		// (avoids accidentally picking SubnodeConfigSchema instead of ConfigSchema)
+		// Build the expected names to find the right export
 		const expectedSchemaName = buildExpectedSchemaName(nodeName, versionStr, isLangchain);
+		const expectedFactoryName = buildExpectedFactoryName(nodeName, versionStr, isLangchain);
 
-		// Try exact match first
+		// Try exact match for static schema first
 		if (schemaModule[expectedSchemaName]) {
 			const schema = schemaModule[expectedSchemaName] as ZodSchema;
 			schemaCache.set(cacheKey, schema);
 			return schema;
+		}
+
+		// Try exact match for factory function
+		if (typeof schemaModule[expectedFactoryName] === 'function') {
+			const factory = schemaModule[expectedFactoryName] as SchemaOrFactory;
+			schemaCache.set(cacheKey, factory);
+			return factory;
 		}
 
 		// Fallback: find any export ending with ConfigSchema but NOT SubnodeConfigSchema
@@ -146,6 +192,21 @@ export function loadSchema(nodeType: string, version: number): ZodSchema | null 
 			const schema = schemaModule[schemaName] as ZodSchema;
 			schemaCache.set(cacheKey, schema);
 			return schema;
+		}
+
+		// Fallback: find any factory function (starts with 'get', ends with 'ConfigSchema')
+		const factoryName = Object.keys(schemaModule).find(
+			(k) =>
+				k.startsWith('get') &&
+				k.endsWith('ConfigSchema') &&
+				!k.includes('Subnode') &&
+				typeof schemaModule[k] === 'function',
+		);
+
+		if (factoryName && schemaModule[factoryName]) {
+			const factory = schemaModule[factoryName] as SchemaOrFactory;
+			schemaCache.set(cacheKey, factory);
+			return factory;
 		}
 
 		// No ConfigSchema found
@@ -241,7 +302,18 @@ function formatZodErrors(issues: ZodIssue[]): Array<{ path: string; message: str
 }
 
 /**
+ * Check if a value is a Zod schema (has safeParse method)
+ */
+function isZodSchema(value: SchemaOrFactory): value is ZodSchema {
+	return typeof value === 'object' && value !== null && 'safeParse' in value;
+}
+
+/**
  * Validate node config against its Zod schema
+ *
+ * Supports both static schemas and factory functions.
+ * For factory functions, calls them with the node's parameters to get
+ * a context-aware schema that respects displayOptions conditions.
  *
  * @param nodeType - Full node type string
  * @param version - Node version
@@ -253,11 +325,22 @@ export function validateNodeConfig(
 	version: number,
 	config: { parameters?: unknown; subnodes?: unknown },
 ): SchemaValidationResult {
-	const schema = loadSchema(nodeType, version);
+	const schemaOrFactory = loadSchema(nodeType, version);
 
-	if (!schema) {
+	if (!schemaOrFactory) {
 		// No schema available - skip validation (graceful fallback)
 		return { valid: true, errors: [] };
+	}
+
+	// Determine if this is a static schema or factory function
+	let schema: ZodSchema;
+	if (isZodSchema(schemaOrFactory)) {
+		// Static schema - use directly
+		schema = schemaOrFactory;
+	} else {
+		// Factory function - call it with parameters to get the schema
+		const parameters = (config.parameters ?? {}) as Record<string, unknown>;
+		schema = schemaOrFactory({ parameters, resolveSchema });
 	}
 
 	const result = schema.safeParse(config);

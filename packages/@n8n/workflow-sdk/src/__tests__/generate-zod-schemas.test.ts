@@ -1,6 +1,8 @@
 import {
 	generateConditionalSchemaLine,
 	generateSingleVersionSchemaFile,
+	stripDiscriminatorKeysFromDisplayOptions,
+	generateDiscriminatorSchemaFile,
 } from '../generate-types/generate-zod-schemas';
 import type { NodeProperty, NodeTypeDescription } from '../generate-types/generate-types';
 
@@ -53,6 +55,217 @@ describe('generateConditionalSchemaLine', () => {
 		expect(line).toContain('displayOptions:');
 		expect(line).toContain('hide');
 		expect(line).toContain('none');
+	});
+});
+
+describe('stripDiscriminatorKeysFromDisplayOptions', () => {
+	it('removes discriminator keys from show conditions', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{ show: { resource: ['task'], operation: ['create'], mode: ['advanced'] } },
+			['resource', 'operation'],
+		);
+		expect(result).toEqual({ show: { mode: ['advanced'] } });
+	});
+
+	it('returns undefined when all conditions are discriminator keys', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{ show: { resource: ['task'], operation: ['create'] } },
+			['resource', 'operation'],
+		);
+		expect(result).toBeUndefined();
+	});
+
+	it('removes discriminator keys from hide conditions', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{ hide: { resource: ['task'], advanced: ['false'] } },
+			['resource'],
+		);
+		expect(result).toEqual({ hide: { advanced: ['false'] } });
+	});
+
+	it('handles both show and hide conditions', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{
+				show: { resource: ['task'], mode: ['advanced'] },
+				hide: { operation: ['delete'], status: ['disabled'] },
+			},
+			['resource', 'operation'],
+		);
+		expect(result).toEqual({
+			show: { mode: ['advanced'] },
+			hide: { status: ['disabled'] },
+		});
+	});
+
+	it('handles empty displayOptions', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions({}, ['resource']);
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('generateDiscriminatorSchemaFile with displayOptions', () => {
+	const baseNodeProps = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('imports resolveSchema when properties have remaining displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'conditionalField',
+				displayName: 'Conditional',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['task'], mode: ['advanced'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			6,
+			[],
+		);
+
+		expect(code).toContain('resolveSchema,');
+	});
+
+	it('uses resolveSchema for properties with remaining displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'conditionalField',
+				displayName: 'Conditional',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['task'], mode: ['advanced'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			6,
+			[],
+		);
+
+		expect(code).toContain('resolveSchema({');
+		expect(code).toContain('"mode"'); // Remaining condition preserved
+	});
+
+	it('uses static schema when displayOptions only contain discriminator keys', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'simpleField',
+				displayName: 'Simple',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['task'], operation: ['create'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			6,
+			[],
+		);
+
+		expect(code).not.toContain('resolveSchema');
+		expect(code).toContain('stringOrExpression');
+	});
+
+	it('generates factory function when properties have remaining displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'conditionalField',
+				displayName: 'Conditional',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { mode: ['advanced'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			6,
+			[],
+		);
+
+		expect(code).toContain('export function get');
+		expect(code).toContain('{ parameters, resolveSchema }');
+		expect(code).toContain('return z.object({');
+	});
+
+	it('does not import resolveSchema when no properties have remaining displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'simpleField',
+				displayName: 'Simple',
+				type: 'string',
+				default: '',
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			6,
+			[],
+		);
+
+		expect(code).not.toContain('resolveSchema');
 	});
 });
 

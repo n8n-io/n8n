@@ -527,6 +527,51 @@ export function generateSchemaPropertyLine(prop: NodeProperty, optional: boolean
 }
 
 /**
+ * Strip discriminator keys from displayOptions.
+ * Used to remove resource/operation/version keys from displayOptions since
+ * the discriminator file split already handles those conditions.
+ *
+ * @param displayOptions - The original displayOptions with show/hide conditions
+ * @param discriminatorKeys - Keys to strip (e.g., ['resource', 'operation'])
+ * @returns Cleaned displayOptions or undefined if all conditions were stripped
+ */
+export function stripDiscriminatorKeysFromDisplayOptions(
+	displayOptions: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> },
+	discriminatorKeys: string[],
+): { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> } | undefined {
+	const result: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> } = {};
+
+	if (displayOptions.show) {
+		const cleanedShow: Record<string, unknown[]> = {};
+		for (const [key, values] of Object.entries(displayOptions.show)) {
+			if (!discriminatorKeys.includes(key)) {
+				cleanedShow[key] = values;
+			}
+		}
+		if (Object.keys(cleanedShow).length > 0) {
+			result.show = cleanedShow;
+		}
+	}
+
+	if (displayOptions.hide) {
+		const cleanedHide: Record<string, unknown[]> = {};
+		for (const [key, values] of Object.entries(displayOptions.hide)) {
+			if (!discriminatorKeys.includes(key)) {
+				cleanedHide[key] = values;
+			}
+		}
+		if (Object.keys(cleanedHide).length > 0) {
+			result.hide = cleanedHide;
+		}
+	}
+
+	if (!result.show && !result.hide) {
+		return undefined;
+	}
+	return result;
+}
+
+/**
  * Generate a conditional schema property line using resolveSchema helper.
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
  *
@@ -1308,6 +1353,8 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
  *
  * This parallels generateDiscriminatorFile() but outputs Zod schemas.
  * Generates ParametersSchema and ConfigSchema for each discriminator combination.
+ * When properties have displayOptions with conditions beyond the discriminators,
+ * generates a factory function for dynamic schema resolution.
  *
  * @param node The node type description
  * @param version The specific version number
@@ -1336,7 +1383,22 @@ export function generateDiscriminatorSchemaFile(
 		.map(([_, v]) => toPascalCase(v!));
 	const comboSuffix = comboValues.join('');
 	const parametersSchemaName = `${baseSchemaName}${comboSuffix}ParametersSchema`;
+	const parametersFactoryName = `get${baseSchemaName}${comboSuffix}ParametersSchema`;
 	const configSchemaName = `${baseSchemaName}${comboSuffix}ConfigSchema`;
+	const configFactoryName = `get${baseSchemaName}${comboSuffix}ConfigSchema`;
+
+	// Get discriminator keys to strip from displayOptions
+	const discriminatorKeys = Object.keys(combo).filter((k) => combo[k] !== undefined);
+
+	// Check if any properties have remaining displayOptions after stripping discriminators
+	const hasRemainingDisplayOptions = props.some((prop) => {
+		if (!prop.displayOptions) return false;
+		const stripped = stripDiscriminatorKeysFromDisplayOptions(
+			prop.displayOptions,
+			discriminatorKeys,
+		);
+		return stripped !== undefined;
+	});
 
 	const lines: string[] = [];
 
@@ -1367,6 +1429,12 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
+
+	// Add resolveSchema import if we need factory functions
+	if (hasRemainingDisplayOptions) {
+		lines.push('\tresolveSchema,');
+	}
+
 	lines.push(`} from '${basePath}';`);
 
 	// Import subnode schema from version index if AI node
@@ -1385,53 +1453,134 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	// Generate Parameters Schema
-	lines.push(`export const ${parametersSchemaName} = z.object({`);
-
-	// Add discriminator fields as literals
-	for (const [key, value] of Object.entries(combo)) {
-		if (value !== undefined) {
-			lines.push(`\t${key}: z.literal('${value}'),`);
-		}
-	}
-
-	// Add other properties
-	const seenNames = new Set<string>();
-	for (const prop of props) {
-		if (seenNames.has(prop.name)) {
-			continue;
-		}
-		seenNames.add(prop.name);
-		const propLine = generateSchemaPropertyLine(prop, !prop.required);
-		if (propLine) {
-			lines.push(propLine);
-		}
-	}
-
-	lines.push('});');
-	lines.push('');
-
-	// Generate Combined Config Schema
-	lines.push(`// Combined config schema (parameters + subnodes)`);
-	lines.push(`export const ${configSchemaName} = z.object({`);
-	lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
-	if (hasAiInputs) {
-		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+	if (hasRemainingDisplayOptions) {
+		// Generate Parameters Schema Factory Function
 		lines.push(
-			`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			`export function ${parametersFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 		);
-	}
-	lines.push(`\t// TODO: Add other NodeConfig fields`);
-	lines.push('});');
-	lines.push('');
+		lines.push('\treturn z.object({');
 
-	// Generate inferred type
-	lines.push(
-		`export type ${baseSchemaName}${comboSuffix}ConfigValidated = z.infer<typeof ${configSchemaName}>;`,
-	);
-	lines.push('');
-	lines.push('// TODO: Add credentials schema');
-	lines.push('// TODO: Add full node schema');
+		// Add discriminator fields as literals
+		for (const [key, value] of Object.entries(combo)) {
+			if (value !== undefined) {
+				lines.push(`\t\t${key}: z.literal('${value}'),`);
+			}
+		}
+
+		// Add other properties
+		const seenNames = new Set<string>();
+		for (const prop of props) {
+			if (seenNames.has(prop.name)) {
+				continue;
+			}
+			seenNames.add(prop.name);
+
+			// Check if property has remaining displayOptions after stripping discriminators
+			if (prop.displayOptions) {
+				const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
+					prop.displayOptions,
+					discriminatorKeys,
+				);
+				if (strippedDisplayOptions) {
+					// Use conditional schema line with stripped displayOptions
+					const propWithStrippedOptions: NodeProperty = {
+						...prop,
+						displayOptions: strippedDisplayOptions,
+					};
+					const propLine = generateConditionalSchemaLine(propWithStrippedOptions);
+					if (propLine) {
+						// Add extra tab for nested function body
+						lines.push('\t' + propLine);
+					}
+				} else {
+					// All displayOptions were discriminator keys, use static schema
+					const propLine = generateSchemaPropertyLine(prop, !prop.required);
+					if (propLine) {
+						lines.push('\t' + propLine);
+					}
+				}
+			} else {
+				const propLine = generateSchemaPropertyLine(prop, !prop.required);
+				if (propLine) {
+					lines.push('\t' + propLine);
+				}
+			}
+		}
+
+		lines.push('\t});');
+		lines.push('}');
+		lines.push('');
+
+		// Generate Combined Config Schema Factory Function
+		lines.push(`// Combined config schema factory (parameters + subnodes)`);
+		lines.push(
+			`export function ${configFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
+		);
+		lines.push('\treturn z.object({');
+		lines.push(
+			`\t\tparameters: ${parametersFactoryName}({ parameters, resolveSchema }).optional(),`,
+		);
+		if (hasAiInputs) {
+			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+			lines.push(
+				`\t\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			);
+		}
+		lines.push(`\t\t// TODO: Add other NodeConfig fields`);
+		lines.push('\t});');
+		lines.push('}');
+		lines.push('');
+		lines.push('// TODO: Add credentials schema');
+		lines.push('// TODO: Add full node schema');
+	} else {
+		// Generate static Parameters Schema
+		lines.push(`export const ${parametersSchemaName} = z.object({`);
+
+		// Add discriminator fields as literals
+		for (const [key, value] of Object.entries(combo)) {
+			if (value !== undefined) {
+				lines.push(`\t${key}: z.literal('${value}'),`);
+			}
+		}
+
+		// Add other properties
+		const seenNames = new Set<string>();
+		for (const prop of props) {
+			if (seenNames.has(prop.name)) {
+				continue;
+			}
+			seenNames.add(prop.name);
+			const propLine = generateSchemaPropertyLine(prop, !prop.required);
+			if (propLine) {
+				lines.push(propLine);
+			}
+		}
+
+		lines.push('});');
+		lines.push('');
+
+		// Generate Combined Config Schema
+		lines.push(`// Combined config schema (parameters + subnodes)`);
+		lines.push(`export const ${configSchemaName} = z.object({`);
+		lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
+		if (hasAiInputs) {
+			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+			lines.push(
+				`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			);
+		}
+		lines.push(`\t// TODO: Add other NodeConfig fields`);
+		lines.push('});');
+		lines.push('');
+
+		// Generate inferred type
+		lines.push(
+			`export type ${baseSchemaName}${comboSuffix}ConfigValidated = z.infer<typeof ${configSchemaName}>;`,
+		);
+		lines.push('');
+		lines.push('// TODO: Add credentials schema');
+		lines.push('// TODO: Add full node schema');
+	}
 
 	return lines.join('\n');
 }
