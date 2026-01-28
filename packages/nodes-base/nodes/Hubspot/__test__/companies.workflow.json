@@ -56,7 +56,8 @@
 					"postalCode": "9000",
 					"twitterHandle": "x",
 					"websiteUrl": "example.com",
-					"yearFounded": "2000"
+					"yearFounded": "2000",
+					"facebookCompanyPage": "https://facebook.com/test"
 				}
 			},
 			"type": "n8n-nodes-base.hubspot",
@@ -171,7 +172,8 @@
 				},
 				"updateFields": {
 					"aboutUs": "test about us",
-					"city": "Gent"
+					"city": "Gent",
+					"facebookCompanyPage": "https://facebook.com/test-url"
 				}
 			},
 			"type": "n8n-nodes-base.hubspot",
