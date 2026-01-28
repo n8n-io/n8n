@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { SetupPanelTabs } from '@/features/setupPanel/types';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nTabs } from '@n8n/design-system';
 
 const i18n = useI18n();
+
+const props = defineProps<{
+	tabLabels?: {
+		setup?: string;
+		focus?: string;
+	};
+}>();
 
 const emit = defineEmits<{
 	tabSelected: [tab: SetupPanelTabs];
@@ -13,13 +20,13 @@ const emit = defineEmits<{
 
 const selectedTab = ref<SetupPanelTabs>('setup');
 
-const tabs = ref<Array<TabOptions<SetupPanelTabs>>>([
+const tabs = computed<Array<TabOptions<SetupPanelTabs>>>(() => [
 	{
-		label: i18n.baseText('setupPanel.tabs.setup'),
+		label: props.tabLabels?.setup ?? i18n.baseText('setupPanel.tabs.setup'),
 		value: 'setup',
 	},
 	{
-		label: i18n.baseText('setupPanel.tabs.focus'),
+		label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
 		value: 'focus',
 	},
 ]);

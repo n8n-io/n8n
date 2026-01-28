@@ -473,6 +473,11 @@ function onRenameNode(value: string) {
 const onTabSelected = (tab: SetupPanelTabsType) => {
 	selectedTab.value = tab;
 };
+
+const tabLabels = computed(() => {
+	const focusLabel = resolvedParameter.value?.parameter.displayName ?? node.value?.name;
+	return focusLabel ? { focus: focusLabel } : undefined;
+});
 </script>
 
 <template>
@@ -498,9 +503,9 @@ const onTabSelected = (tab: SetupPanelTabsType) => {
 		>
 			<div :class="$style.container">
 				<div v-if="isSetupPanelEnabled">
-					<SetupPanelTabs @tab-selected="onTabSelected" />
+					<SetupPanelTabs :tab-labels="tabLabels" @tab-selected="onTabSelected" />
 				</div>
-				<div v-if="showSetupPanel" :data-test-id="setup - panel" :class="$style.content">
+				<div v-if="showSetupPanel" :class="$style.content">
 					<SetupPanel />
 				</div>
 				<div v-else data-test-id="focus-panels" :class="$style.content">
