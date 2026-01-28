@@ -179,7 +179,7 @@ const dataTableWarningContent = computed(() => {
 
 	const tableList = conflictedDataTables.value.map((dt) => `<li>${dt.name}</li>`).join('');
 
-	return `${message}<ul>${tableList}</ul>`;
+	return `<div>${message}</div><ul>${tableList}</ul>`;
 });
 
 // Active data source based on tab
