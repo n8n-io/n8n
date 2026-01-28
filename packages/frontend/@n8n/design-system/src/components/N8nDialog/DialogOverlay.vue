@@ -16,36 +16,37 @@ defineProps<DialogOverlayProps>();
 </template>
 
 <style module lang="scss">
+@keyframes overlayFadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes overlayFadeOut {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
 .overlay {
 	position: fixed;
 	inset: 0;
 	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
 	backdrop-filter: blur(8px);
 	z-index: 999998;
-
-	& [data-state='open'] {
-		animation: fadeIn 0.2s ease;
-	}
-
-	& [data-state='closed'] {
-		animation: fadeOut 0.2s ease;
-	}
-}
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
 }
 
-@keyframes fadeOut {
-	from {
-		opacity: 1;
-	}
-	to {
-		opacity: 0;
-	}
+.overlay[data-state='open'] {
+	animation: overlayFadeIn var(--animation--duration--snappy) ease;
+}
+
+.overlay[data-state='closed'] {
+	animation: overlayFadeOut var(--animation--duration--snappy) ease;
 }
 </style>

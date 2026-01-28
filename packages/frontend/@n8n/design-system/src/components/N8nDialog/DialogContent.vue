@@ -113,6 +113,28 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 </template>
 
 <style module lang="scss">
+@keyframes dialogFadeIn {
+	from {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+}
+
+@keyframes dialogFadeOut {
+	from {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+	to {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
+	}
+}
+
 .content {
 	position: fixed;
 	top: 50%;
@@ -134,19 +156,14 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 	&:focus {
 		outline: none;
 	}
+}
 
-	@media (prefers-reduced-motion: reduce) {
-		transform:
-			opacity 0.1s,
-			translate(-50%, -50%);
-	}
-	&[data-state='open'] {
-		animation: fadeIn 0.2s var(--easing--ease-out);
-	}
+.content[data-state='open'] {
+	animation: dialogFadeIn var(--animation--duration--snappy) ease-out;
+}
 
-	&[data-state='closed'] {
-		animation: fadeOut 0.2s var(--easing--ease-out);
-	}
+.content[data-state='closed'] {
+	animation: dialogFadeOut var(--animation--duration--snappy) ease-out;
 }
 
 .small {
@@ -203,27 +220,5 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
-	}
-	to {
-		opacity: 1;
-		transform: translate(-50%, -50%);
-	}
-}
-
-@keyframes fadeOut {
-	from {
-		opacity: 1;
-		transform: translate(-50%, -50%);
-	}
-	to {
-		opacity: 0;
-		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
-	}
 }
 </style>
