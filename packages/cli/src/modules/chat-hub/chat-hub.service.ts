@@ -2008,26 +2008,46 @@ export class ChatHubService {
 				// End the stream for this message
 				await this.chatStreamService.endStream(sessionId, message.id, message.status);
 			},
-			onError: async (message) => {
-				executionStatus = 'error';
+			onError: async (message, errorText) => {
+				await this.messageRepository.manager.transaction(async (trx) => {
+					// Always update the content to whatever was generated so far
+					// If no content was generated, use the error text
+					let contentToSave = message.content;
+					if (!contentToSave && errorText) {
+						contentToSave = errorText;
+					} else if (!contentToSave) {
+						contentToSave = executionId
+							? ((await this.waitForErrorDetails(executionId, workflowId)) ?? 'Unknown error')
+							: 'Request was not processed';
+					}
 
-				// If error has no content, wait for execution to complete and get error details
-				let errorContent = message.content;
-				if (!errorContent) {
-					errorContent = executionId
-						? ((await this.waitForErrorDetails(executionId, workflowId)) ?? 'Unknown error')
-						: 'Request was not processed';
-				}
+					await this.messageRepository.updateChatMessage(
+						message.id,
+						{ content: contentToSave },
+						trx,
+					);
 
-				await this.messageRepository.updateChatMessage(message.id, {
-					content: errorContent,
-					status: 'error',
+					// When messages are cancelled they're already marked cancelled on `stopGeneration`
+					const savedMessage = await this.messageRepository.getOneById(
+						message.id,
+						sessionId,
+						[],
+						trx,
+					);
+					if (savedMessage?.status === 'cancelled') {
+						executionStatus = 'cancelled';
+						// End the stream with cancelled status
+						await this.chatStreamService.endStream(sessionId, message.id, 'cancelled');
+						return;
+					}
+
+					// Otherwise mark them as errored
+					executionStatus = 'error';
+					await this.messageRepository.updateChatMessage(message.id, { status: 'error' }, trx);
+
+					await this.chatStreamService.sendError(sessionId, message.id, contentToSave);
+					await this.chatStreamService.endStream(sessionId, message.id, 'error');
 				});
-
-				await this.chatStreamService.sendError(sessionId, message.id, errorContent);
-
-				// End the stream with error
-				await this.chatStreamService.endStream(sessionId, message.id, 'error');
 			},
 		});
 
