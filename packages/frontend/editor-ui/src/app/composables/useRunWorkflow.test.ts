@@ -39,6 +39,7 @@ import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
 } from '../constants';
 
 vi.mock('@/app/stores/workflows.store', () => {
@@ -885,7 +886,12 @@ describe('useRunWorkflow({ router })', () => {
 				expect(toast.showMessage).not.toHaveBeenCalled();
 			});
 
-			it.each([[CHAT_NODE_TYPE], [CHAT_TOOL_NODE_TYPE], [RESPOND_TO_WEBHOOK_NODE_TYPE]])(
+			it.each([
+				[CHAT_NODE_TYPE],
+				[CHAT_TOOL_NODE_TYPE],
+				[CHAT_HITL_TOOL_NODE_TYPE],
+				[RESPOND_TO_WEBHOOK_NODE_TYPE],
+			])(
 				'should not show a warning if the there are response nodes in the workflow (%s)',
 				async (responseNodeType) => {
 					const { runWorkflow } = useRunWorkflow({ router });
