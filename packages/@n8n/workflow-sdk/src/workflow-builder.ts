@@ -55,6 +55,62 @@ function parseVersion(version: string | undefined): number {
 }
 
 /**
+ * Check if an object looks like a resource locator value.
+ * Resource locators have a 'mode' property (typically 'list', 'id', 'url', or 'name')
+ * and a 'value' property.
+ */
+function isResourceLocatorLike(obj: unknown): obj is Record<string, unknown> {
+	if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+		return false;
+	}
+	const record = obj as Record<string, unknown>;
+	// Must have 'mode' property - this is the key identifier
+	// Common modes: 'list', 'id', 'url', 'name'
+	if (!('mode' in record)) {
+		return false;
+	}
+	// Should have 'value' property as well (the actual selected value)
+	if (!('value' in record)) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Recursively normalize resource locator values in parameters.
+ * Adds __rl: true to objects that look like resource locator values but are missing it.
+ */
+function normalizeResourceLocators(params: unknown): unknown {
+	if (typeof params !== 'object' || params === null) {
+		return params;
+	}
+
+	if (Array.isArray(params)) {
+		return params.map((item) => normalizeResourceLocators(item));
+	}
+
+	const result: Record<string, unknown> = {};
+	const record = params as Record<string, unknown>;
+
+	for (const [key, value] of Object.entries(record)) {
+		if (isResourceLocatorLike(value)) {
+			// Add __rl: true if missing
+			result[key] = {
+				__rl: true,
+				...(normalizeResourceLocators(value) as Record<string, unknown>),
+			};
+		} else if (typeof value === 'object' && value !== null) {
+			// Recursively process nested objects
+			result[key] = normalizeResourceLocators(value);
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
+/**
  * Internal workflow builder implementation
  */
 class WorkflowBuilderImpl implements WorkflowBuilder {
@@ -621,14 +677,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					/^\d+$/.test(mapKey.slice(instance.name.length + 1));
 				nodeName = isAutoRenamed ? mapKey : instance.name;
 			}
+			// Check if this node was loaded via fromJSON (has _originalName marker)
+			const isFromJson = '_originalName' in config;
+
+			// Serialize parameters - for SDK-created nodes, also normalize resource locators
+			// (add __rl: true if missing). For fromJSON nodes, preserve parameters as-is.
+			let serializedParams: IDataObject | undefined;
+			if (config.parameters) {
+				const parsed = JSON.parse(JSON.stringify(config.parameters));
+				serializedParams = isFromJson ? parsed : (normalizeResourceLocators(parsed) as IDataObject);
+			}
+
 			const n8nNode: NodeJSON = {
 				id: instance.id,
 				name: nodeName,
 				type: instance.type,
 				typeVersion: parseVersion(instance.version),
 				position,
-				// Serialize parameters to convert placeholder() markers to strings
-				parameters: config.parameters ? JSON.parse(JSON.stringify(config.parameters)) : undefined,
+				parameters: serializedParams,
 			};
 
 			// Add optional properties

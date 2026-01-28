@@ -1483,4 +1483,137 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Route by Amount']!.main[1]![0]!.node).toBe('Manual Approve');
 		});
 	});
+
+	describe('toJSON - resource locator normalization', () => {
+		it('should add __rl: true to resource locator values missing it', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					version: 1.2,
+					config: {
+						name: 'OpenAI Model',
+						parameters: {
+							model: { mode: 'list', value: 'gpt-4o' }, // Missing __rl: true
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const modelNode = json.nodes.find((n) => n.name === 'OpenAI Model');
+
+			expect(modelNode?.parameters?.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-4o',
+			});
+		});
+
+		it('should preserve existing __rl: true', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					version: 1.2,
+					config: {
+						name: 'OpenAI Model',
+						parameters: {
+							model: { __rl: true, mode: 'list', value: 'gpt-4o' },
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const modelNode = json.nodes.find((n) => n.name === 'OpenAI Model');
+
+			expect(modelNode?.parameters?.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-4o',
+			});
+		});
+
+		it('should normalize nested resource locator values', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						name: 'Google Sheets',
+						parameters: {
+							documentId: { mode: 'list', value: 'doc-123' },
+							sheetName: { mode: 'list', value: 'Sheet1' },
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const sheetsNode = json.nodes.find((n) => n.name === 'Google Sheets');
+
+			expect(sheetsNode?.parameters?.documentId).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'doc-123',
+			});
+			expect(sheetsNode?.parameters?.sheetName).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'Sheet1',
+			});
+		});
+
+		it('should not add __rl to objects without mode property', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						name: 'Set',
+						parameters: {
+							options: { someKey: 'someValue' }, // Not a resource locator (no mode)
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const setNode = json.nodes.find((n) => n.name === 'Set');
+
+			// Should NOT have __rl added since there's no mode property
+			expect((setNode?.parameters?.options as Record<string, unknown>)?.__rl).toBeUndefined();
+		});
+
+		it('should normalize resource locators in nested objects', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						name: 'HTTP Request',
+						parameters: {
+							options: {
+								nestedResource: { mode: 'list', value: 'nested-value' },
+							},
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const httpNode = json.nodes.find((n) => n.name === 'HTTP Request');
+			const options = httpNode?.parameters?.options as Record<string, unknown> | undefined;
+
+			expect(options?.nestedResource).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'nested-value',
+			});
+		});
+	});
 });

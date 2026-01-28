@@ -2,6 +2,7 @@ import { validateWorkflow, ValidationError } from '../validation';
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
 import { languageModel, tool } from '../subnode-builders';
+import { parseWorkflowCode } from '../parse-workflow-code';
 import type { NodeInstance } from '../types/base';
 
 describe('Validation', () => {
@@ -562,6 +563,536 @@ describe('Validation', () => {
 			expect(agentWarning).toBeDefined();
 			// The warning message should mention the model field
 			expect(agentWarning?.message).toContain('model');
+		});
+	});
+
+	describe('validateWorkflow - subnode reconstruction from AI connections', () => {
+		it('should not warn about missing subnodes when AI connections exist', () => {
+			// Workflow JSON with AI agent and connected language model subnode
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [0, 0] as [number, number],
+						parameters: { text: 'Hello' },
+					},
+					{
+						id: 'model-1',
+						name: 'OpenAI Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [0, 100] as [number, number],
+						parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o' } },
+					},
+				],
+				connections: {
+					'OpenAI Model': {
+						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+
+			// Should NOT have warning about missing subnodes
+			const subnodeWarnings = result.warnings.filter(
+				(w) => w.message.includes('subnodes') && w.message.includes('missing'),
+			);
+			expect(subnodeWarnings).toHaveLength(0);
+		});
+
+		it('should reconstruct multiple tool subnodes from AI connections', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [0, 0] as [number, number],
+						parameters: { text: 'Hello' },
+					},
+					{
+						id: 'model-1',
+						name: 'OpenAI Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [0, 100] as [number, number],
+						parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o' } },
+					},
+					{
+						id: 'tool-1',
+						name: 'Tool 1',
+						type: '@n8n/n8n-nodes-langchain.toolCode',
+						typeVersion: 1.1,
+						position: [0, 200] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'tool-2',
+						name: 'Tool 2',
+						type: '@n8n/n8n-nodes-langchain.toolCode',
+						typeVersion: 1.1,
+						position: [0, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'OpenAI Model': {
+						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Tool 1': {
+						ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+					},
+					'Tool 2': {
+						ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+
+			const subnodeWarnings = result.warnings.filter(
+				(w) => w.message.includes('subnodes') && w.message.includes('missing'),
+			);
+			expect(subnodeWarnings).toHaveLength(0);
+		});
+	});
+
+	describe('validateWorkflow - AI agent with subnodes integration', () => {
+		it('should validate AI agent workflow built with SDK without false warnings', () => {
+			// Build workflow using SDK (simulating user's code pattern)
+			const openAiModel = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: {
+					name: 'OpenAI Model',
+					parameters: {
+						model: { mode: 'list', value: 'gpt-4o' }, // Missing __rl: true - should be auto-added
+					},
+					position: [0, 0],
+				},
+			});
+
+			const codeTool = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: {
+					name: 'Code Tool',
+					parameters: {
+						description: 'A tool',
+					},
+					position: [0, 0],
+				},
+			});
+
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					name: 'AI Agent',
+					parameters: {
+						text: 'Hello',
+					},
+					subnodes: {
+						model: openAiModel,
+						tools: [codeTool],
+					},
+					position: [0, 0],
+				},
+			});
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+			const result = wf.validate();
+
+			// Filter out expected warnings (like missing trigger - not applicable with manualTrigger)
+			const unexpectedWarnings = result.warnings.filter(
+				(w) =>
+					!w.message.includes('trigger') &&
+					!w.message.includes('not connected') &&
+					!w.message.includes('manually'),
+			);
+
+			// Should have no warnings about subnodes or __rl
+			const subnodeOrRlWarnings = unexpectedWarnings.filter(
+				(w) => w.message.includes('subnodes') || w.message.includes('__rl'),
+			);
+			expect(subnodeOrRlWarnings).toHaveLength(0);
+		});
+
+		it('should auto-add __rl: true to resource locator values during toJSON', () => {
+			// Build workflow using SDK with resource locator missing __rl
+			const openAiModel = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: {
+					name: 'OpenAI Model',
+					parameters: {
+						model: { mode: 'list', value: 'gpt-4o' }, // No __rl: true
+					},
+					position: [0, 0],
+				},
+			});
+
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					name: 'AI Agent',
+					parameters: {
+						text: 'Hello',
+					},
+					subnodes: {
+						model: openAiModel,
+					},
+					position: [0, 0],
+				},
+			});
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const wf = workflow('test', 'Test').add(t).then(agent);
+
+			// Get the JSON output
+			const json = wf.toJSON();
+
+			// Find the OpenAI Model node in the JSON
+			const modelNode = json.nodes.find((n) => n.name === 'OpenAI Model');
+			expect(modelNode).toBeDefined();
+
+			// The model parameter should have __rl: true added automatically
+			const modelParam = modelNode?.parameters?.model as Record<string, unknown> | undefined;
+			expect(modelParam?.__rl).toBe(true);
+			expect(modelParam?.mode).toBe('list');
+			expect(modelParam?.value).toBe('gpt-4o');
+		});
+	});
+
+	describe('parseWorkflowCode().validate() integration', () => {
+		it('should return no warnings for YouTube Shorts automation workflow with AI agent', () => {
+			const code =
+				'// ============================================\n' +
+				'// Subnodes - Language Model\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const openAiModel = languageModel({\n' +
+				"  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',\n" +
+				'  version: 1.3,\n' +
+				'  config: {\n' +
+				"    name: 'OpenAI GPT Model',\n" +
+				'    parameters: {\n' +
+				"      model: { __rl: true, mode: 'list', value: 'gpt-4o' },\n" +
+				'      options: {\n' +
+				'        temperature: 0.8,\n' +
+				'        maxTokens: 500\n' +
+				'      }\n' +
+				'    },\n' +
+				'    credentials: {\n' +
+				"      openAiApi: newCredential('OpenAI API')\n" +
+				'    },\n' +
+				'    position: [1140, 500]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Schedule Triggers - 3 Times Daily\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const morningSchedule = trigger({\n' +
+				"  type: 'n8n-nodes-base.scheduleTrigger',\n" +
+				'  version: 1.3,\n' +
+				'  config: {\n' +
+				"    name: 'Morning Schedule (8 AM)',\n" +
+				'    parameters: {\n' +
+				'      rule: {\n' +
+				'        interval: [{\n' +
+				"          field: 'days',\n" +
+				'          daysInterval: 1,\n' +
+				'          triggerAtHour: 8,\n' +
+				'          triggerAtMinute: 0\n' +
+				'        }]\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [240, 200]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'const afternoonSchedule = trigger({\n' +
+				"  type: 'n8n-nodes-base.scheduleTrigger',\n" +
+				'  version: 1.3,\n' +
+				'  config: {\n' +
+				"    name: 'Afternoon Schedule (2 PM)',\n" +
+				'    parameters: {\n' +
+				'      rule: {\n' +
+				'        interval: [{\n' +
+				"          field: 'days',\n" +
+				'          daysInterval: 1,\n' +
+				'          triggerAtHour: 14,\n' +
+				'          triggerAtMinute: 0\n' +
+				'        }]\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [240, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'const nightSchedule = trigger({\n' +
+				"  type: 'n8n-nodes-base.scheduleTrigger',\n" +
+				'  version: 1.3,\n' +
+				'  config: {\n' +
+				"    name: 'Night Schedule (8 PM)',\n" +
+				'    parameters: {\n' +
+				'      rule: {\n' +
+				'        interval: [{\n' +
+				"          field: 'days',\n" +
+				'          daysInterval: 1,\n' +
+				'          triggerAtHour: 20,\n' +
+				'          triggerAtMinute: 0\n' +
+				'        }]\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [240, 1000]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Create Batch of 3 Videos\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const createBatch = node({\n' +
+				"  type: 'n8n-nodes-base.set',\n" +
+				'  version: 3.4,\n' +
+				'  config: {\n' +
+				"    name: 'Create Batch of 3 Videos',\n" +
+				'    parameters: {\n' +
+				"      mode: 'manual',\n" +
+				'      duplicateItem: true,\n' +
+				'      duplicateCount: 3,\n' +
+				'      assignments: {\n' +
+				'        assignments: [\n' +
+				'          {\n' +
+				"            id: 'video_number',\n" +
+				"            name: 'videoNumber',\n" +
+				"            value: '={{ $itemIndex + 1 }}',\n" +
+				"            type: 'number'\n" +
+				'          },\n' +
+				'          {\n' +
+				"            id: 'batch_id',\n" +
+				"            name: 'batchId',\n" +
+				'            value: \'={{ $now.format("YYYY-MM-DD-HH") }}\',\n' +
+				"            type: 'string'\n" +
+				'          }\n' +
+				'        ]\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [540, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Split Into Individual Videos\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const splitBatches = splitInBatches({\n' +
+				'  version: 3,\n' +
+				'  config: {\n' +
+				"    name: 'Process Each Video',\n" +
+				'    parameters: {\n' +
+				'      batchSize: 1,\n' +
+				'      options: {}\n' +
+				'    },\n' +
+				'    position: [840, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Generate Story Script with AI\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const generateStory = node({\n' +
+				"  type: '@n8n/n8n-nodes-langchain.agent',\n" +
+				'  version: 3.1,\n' +
+				'  config: {\n' +
+				"    name: 'Generate Short Story Script',\n" +
+				'    parameters: {\n' +
+				"      promptType: 'define',\n" +
+				"      text: 'Generate a unique, engaging short story script for a YouTube Short video (30-60 seconds). The story should be captivating, have a clear beginning, middle, and end. Make it suitable for visual storytelling. Include vivid descriptions of scenes and actions. Keep it under 150 words. Make each story completely different and creative.',\n" +
+				'      options: {\n' +
+				"        systemMessage: 'You are a creative storyteller specializing in short-form video content. Create unique, engaging stories perfect for YouTube Shorts.',\n" +
+				'        maxIterations: 5,\n' +
+				'        temperature: 0.9\n' +
+				'      }\n' +
+				'    },\n' +
+				'    subnodes: {\n' +
+				'      model: openAiModel\n' +
+				'    },\n' +
+				'    position: [1140, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Generate Video with OpenAI Sora\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const generateVideo = node({\n' +
+				"  type: '@n8n/n8n-nodes-langchain.openAi',\n" +
+				'  version: 2.1,\n' +
+				'  config: {\n' +
+				"    name: 'Generate Video with Sora',\n" +
+				'    parameters: {\n' +
+				"      resource: 'video',\n" +
+				"      operation: 'generate',\n" +
+				"      modelId: { __rl: true, mode: 'list', value: 'sora-2-pro' },\n" +
+				"      prompt: '={{ $json.output }}',\n" +
+				'      seconds: 30,\n' +
+				"      size: '720x1280',\n" +
+				'      options: {\n' +
+				'        waitTime: 300,\n' +
+				"        fileName: 'video'\n" +
+				'      }\n' +
+				'    },\n' +
+				'    credentials: {\n' +
+				"      openAiApi: newCredential('OpenAI API')\n" +
+				'    },\n' +
+				'    position: [1440, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Prepare YouTube Metadata\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const prepareMetadata = node({\n' +
+				"  type: 'n8n-nodes-base.set',\n" +
+				'  version: 3.4,\n' +
+				'  config: {\n' +
+				"    name: 'Prepare YouTube Metadata',\n" +
+				'    parameters: {\n' +
+				"      mode: 'manual',\n" +
+				'      assignments: {\n' +
+				'        assignments: [\n' +
+				'          {\n' +
+				"            id: 'video_title',\n" +
+				"            name: 'title',\n" +
+				'            value: \'={{ "Short Story #" + $json.videoNumber + " - " + $json.batchId }}\',\n' +
+				"            type: 'string'\n" +
+				'          },\n' +
+				'          {\n' +
+				"            id: 'video_description',\n" +
+				"            name: 'description',\n" +
+				'            value: \'={{ $json.output + "\\\\n\\\\n#Shorts #ShortStory #StoryTime #YouTubeShorts" }}\',\n' +
+				"            type: 'string'\n" +
+				'          },\n' +
+				'          {\n' +
+				"            id: 'video_tags',\n" +
+				"            name: 'tags',\n" +
+				"            value: 'shorts,short story,storytelling,youtube shorts,viral shorts,story time',\n" +
+				"            type: 'string'\n" +
+				'          },\n' +
+				'          {\n' +
+				"            id: 'privacy_status',\n" +
+				"            name: 'privacyStatus',\n" +
+				"            value: 'public',\n" +
+				"            type: 'string'\n" +
+				'          }\n' +
+				'        ]\n' +
+				'      },\n' +
+				'      options: {\n' +
+				'        includeBinary: true\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [1740, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Upload to YouTube\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const uploadToYouTube = node({\n' +
+				"  type: 'n8n-nodes-base.youTube',\n" +
+				'  version: 1,\n' +
+				'  config: {\n' +
+				"    name: 'Upload to YouTube',\n" +
+				'    parameters: {\n' +
+				"      resource: 'video',\n" +
+				"      operation: 'upload',\n" +
+				"      title: '={{ $json.title }}',\n" +
+				"      categoryId: '24',\n" +
+				"      binaryProperty: 'video',\n" +
+				'      options: {\n' +
+				"        description: '={{ $json.description }}',\n" +
+				"        tags: '={{ $json.tags }}',\n" +
+				"        privacyStatus: '={{ $json.privacyStatus }}',\n" +
+				'        selfDeclaredMadeForKids: false,\n' +
+				'        notifySubscribers: true\n' +
+				'      }\n' +
+				'    },\n' +
+				'    credentials: {\n' +
+				"      youTubeOAuth2Api: newCredential('YouTube OAuth2')\n" +
+				'    },\n' +
+				'    position: [2040, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Completion Node\n' +
+				'// ============================================\n' +
+				'\n' +
+				'const batchComplete = node({\n' +
+				"  type: 'n8n-nodes-base.set',\n" +
+				'  version: 3.4,\n' +
+				'  config: {\n' +
+				"    name: 'Batch Complete',\n" +
+				'    parameters: {\n' +
+				"      mode: 'manual',\n" +
+				'      assignments: {\n' +
+				'        assignments: [\n' +
+				'          {\n' +
+				"            id: 'status',\n" +
+				"            name: 'status',\n" +
+				"            value: 'Batch processing complete',\n" +
+				"            type: 'string'\n" +
+				'          },\n' +
+				'          {\n' +
+				"            id: 'completed_at',\n" +
+				"            name: 'completedAt',\n" +
+				"            value: '={{ $now.toISO() }}',\n" +
+				"            type: 'string'\n" +
+				'          }\n' +
+				'        ]\n' +
+				'      }\n' +
+				'    },\n' +
+				'    position: [2340, 600]\n' +
+				'  }\n' +
+				'});\n' +
+				'\n' +
+				'// ============================================\n' +
+				'// Workflow Composition\n' +
+				'// ============================================\n' +
+				'\n' +
+				"return workflow('youtube-shorts-automation', 'YouTube Shorts Daily Automation')\n" +
+				'  .add(morningSchedule.to(createBatch))\n' +
+				'  .add(afternoonSchedule.to(createBatch))\n' +
+				'  .add(nightSchedule.to(createBatch))\n' +
+				'  .add(createBatch.to(splitBatches\n' +
+				'    .onEachBatch(generateStory.to(generateVideo.to(prepareMetadata.to(uploadToYouTube.to(nextBatch(splitBatches))))))\n' +
+				'    .onDone(batchComplete)\n' +
+				'  ));';
+
+			const wf = parseWorkflowCode(code);
+			const result = validateWorkflow(wf);
+
+			// Should have no warnings (triggers are present, nodes are connected)
+			expect(result.warnings).toHaveLength(0);
 		});
 	});
 });
