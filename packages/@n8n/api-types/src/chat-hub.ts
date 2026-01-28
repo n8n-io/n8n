@@ -515,8 +515,6 @@ export interface ChatHubModuleSettings {
  * Message IDs are not included as they come via WebSocket events (chatHubStreamBegin).
  */
 export interface ChatSendMessageResponse {
-	/** Execution ID if applicable */
-	executionId: number | null;
 	/** Status indicating streaming has started */
 	status: 'streaming';
 }

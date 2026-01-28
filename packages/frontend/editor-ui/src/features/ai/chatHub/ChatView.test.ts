@@ -177,12 +177,11 @@ describe('ChatView', () => {
 		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
-		vi.mocked(chatApi.sendMessageApi).mockResolvedValue({ executionId: null, status: 'streaming' });
+		vi.mocked(chatApi.sendMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.editMessageApi).mockClear();
-		vi.mocked(chatApi.editMessageApi).mockResolvedValue({ executionId: null, status: 'streaming' });
+		vi.mocked(chatApi.editMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
 		vi.mocked(chatApi.regenerateMessageApi).mockResolvedValue({
-			executionId: null,
 			status: 'streaming',
 		});
 		vi.mocked(chatApi.stopGenerationApi).mockClear();

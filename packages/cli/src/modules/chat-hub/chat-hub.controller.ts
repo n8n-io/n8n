@@ -142,7 +142,6 @@ export class ChatHubController {
 		);
 
 		return {
-			executionId: null,
 			status: 'streaming',
 		};
 	}
@@ -168,7 +167,6 @@ export class ChatHubController {
 		);
 
 		return {
-			executionId: null,
 			status: 'streaming',
 		};
 	}
@@ -194,7 +192,6 @@ export class ChatHubController {
 		);
 
 		return {
-			executionId: null,
 			status: 'streaming',
 		};
 	}
