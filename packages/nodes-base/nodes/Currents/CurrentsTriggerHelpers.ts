@@ -142,7 +142,6 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const webhookData = this.getWorkflowStaticData('node');
 	const expectedSecret = webhookData.webhookSecret;
 
-	// Use generic verifySignature function
 	return verifySignatureGeneric({
 		getExpectedSignature: () => (typeof expectedSecret === 'string' ? expectedSecret : null),
 		skipIfNoExpectedSignature: true,
