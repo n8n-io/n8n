@@ -3,6 +3,7 @@ import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import type { PlanMode } from './assistant.types';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -98,6 +99,8 @@ interface UserSubmittedBuilderMessageTrackingPayload
 	error_node_type?: string;
 }
 
+export type BuilderMode = 'build' | 'plan';
+
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
@@ -111,6 +114,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		success: 0,
 		error: 0,
 	});
+
+	// Plan Mode state
+	const builderMode = ref<BuilderMode>('plan');
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -146,6 +152,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const {
 		processAssistantMessages,
 		createUserMessage,
+		createUserAnswersMessage,
 		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
@@ -212,6 +219,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
+		builderMode.value = 'plan';
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -406,13 +414,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Adds user message immediately for visual feedback, shows thinking indicator,
 	 * and ensures chat is open. Called before initiating API request to minimize
 	 * perceived latency.
+	 *
+	 * @param userMessage - The text message to display (or structured JSON for backend)
+	 * @param messageId - Unique message identifier
+	 * @param revertVersion - Optional version info for restore functionality
+	 * @param planAnswers - Optional answers to plan mode questions (for custom user message display)
 	 */
 	function prepareForStreaming(
 		userMessage: string,
 		messageId: string,
 		revertVersion?: { id: string; createdAt: string },
+		planAnswers?: PlanMode.QuestionResponse[],
 	) {
-		const userMsg = createUserMessage(userMessage, messageId, revertVersion);
+		// If we have plan answers, create a custom user answers message instead of text
+		const userMsg = planAnswers
+			? createUserAnswersMessage(planAnswers, messageId)
+			: createUserMessage(userMessage, messageId, revertVersion);
+
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
@@ -545,6 +563,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
+		/** Plan mode answers for custom message display (structured JSON still sent to backend) */
+		planAnswers?: PlanMode.QuestionResponse[];
 	}) {
 		if (streaming.value) {
 			return;
@@ -596,7 +616,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, revertVersion);
+		prepareForStreaming(text, userMessageId, revertVersion, options.planAnswers);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload = await createBuilderPayload(text, userMessageId, {
@@ -604,6 +624,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			mode: builderMode.value,
 		});
 
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
@@ -756,6 +777,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function setBuilderMadeEdits(value: boolean): void {
 		aiBuilderMadeEdits.value = value;
+	}
+
+	/**
+	 * Sets the builder mode (build or plan).
+	 */
+	function setBuilderMode(mode: BuilderMode): void {
+		builderMode.value = mode;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -920,6 +948,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasMessages,
 		workflowTodos,
 		lastUserMessageId,
+		builderMode,
 
 		// Methods
 		abortStreaming,
@@ -934,6 +963,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
 		setBuilderMadeEdits,
+		setBuilderMode,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
 		// Version management

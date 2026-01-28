@@ -16,6 +16,19 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
+import PlanDisplayMessage from './PlanDisplayMessage.vue';
+import AnswerSummaryMessage from './AnswerSummaryMessage.vue';
+import UserAnswersMessage from './UserAnswersMessage.vue';
+import PlanModeSelector from './PlanModeSelector.vue';
+import {
+	isPlanModeQuestionsMessage,
+	isPlanModePlanMessage,
+	isPlanModeAnswerSummaryMessage,
+	isPlanModeUserAnswersMessage,
+	type PlanMode,
+} from '../../assistant.types';
+import type { BuilderMode } from '../../builder.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -118,6 +131,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
+		builderStore.builderMode !== 'plan' &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
@@ -156,6 +170,33 @@ const disabledTooltip = computed(() => {
 	}
 	return undefined;
 });
+
+/**
+ * Check if a questions message has been answered.
+ * A questions message is considered answered if there's a user answers message
+ * that appears after it in the conversation.
+ */
+function isQuestionsAnswered(questionsMessage: { id: string }): boolean {
+	const messages = builderStore.chatMessages;
+	const questionsIndex = messages.findIndex((m) => m.id === questionsMessage.id);
+	if (questionsIndex === -1) return false;
+
+	// Check if there's a user answers message after this questions message
+	for (let i = questionsIndex + 1; i < messages.length; i++) {
+		if (isPlanModeUserAnswersMessage(messages[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Check if a message is the last message in the conversation.
+ */
+function isLastMessage(message: { id: string }): boolean {
+	const messages = builderStore.chatMessages;
+	return messages.length > 0 && messages[messages.length - 1].id === message.id;
+}
 
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
@@ -367,6 +408,52 @@ function onShowVersion(versionId: string) {
 	window.open(route.href, '_blank');
 }
 
+/**
+ * Handle Plan Mode question answers submission.
+ * Sends answers as structured JSON that the backend can parse.
+ * The chat displays a custom UserAnswersMessage component instead of raw JSON.
+ */
+async function onPlanQuestionsSubmit(answers: PlanMode.QuestionResponse[]) {
+	// Create structured payload for the backend
+	// Include question text for session persistence (so answers display correctly after reload)
+	const structuredPayload = {
+		type: 'question_answers',
+		answers: answers.map((a) => ({
+			questionId: a.questionId,
+			question: a.question,
+			selectedOptions: a.selectedOptions,
+			customValue: a.customText?.trim() || undefined,
+			skipped: a.skipped,
+		})),
+	};
+
+	await builderStore.sendChatMessage({
+		text: JSON.stringify(structuredPayload),
+		quickReplyType: 'plan-answers',
+		// Pass the original answers for the custom message display
+		planAnswers: answers,
+	});
+}
+
+/**
+ * Handle "Implement the plan" button click
+ */
+async function onImplementPlan() {
+	// Switch to build mode and implement
+	builderStore.setBuilderMode('build');
+	await builderStore.sendChatMessage({
+		text: 'Implement the plan',
+		quickReplyType: 'implement-plan',
+	});
+}
+
+/**
+ * Handle mode selector change
+ */
+function onModeChange(mode: BuilderMode) {
+	builderStore.setBuilderMode(mode);
+}
+
 // Reset on route change, but not if streaming is in progress
 watch(currentRoute, () => {
 	if (!builderStore.streaming) {
@@ -425,6 +512,46 @@ defineExpose({
 					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
 				</N8nText>
 			</template>
+			<template #before-actions>
+				<PlanModeSelector
+					:model-value="builderStore.builderMode"
+					:disabled="builderStore.streaming"
+					@update:model-value="onModeChange"
+				/>
+			</template>
+			<template #custom-message="{ message }">
+				<!-- Show questions form only if not yet answered -->
+				<PlanQuestionsMessage
+					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					:questions="message.data.questions"
+					:intro-message="message.data.introMessage"
+					:disabled="builderStore.streaming"
+					@submit="onPlanQuestionsSubmit"
+				/>
+				<!-- Show just the intro text when questions have been answered -->
+				<N8nText
+					v-else-if="isPlanModeQuestionsMessage(message) && message.data.introMessage"
+					tag="p"
+					:class="$style.introText"
+				>
+					{{ message.data.introMessage }}
+				</N8nText>
+				<PlanDisplayMessage
+					v-else-if="isPlanModePlanMessage(message)"
+					:plan="message.data.plan"
+					:disabled="builderStore.streaming"
+					:show-implement-button="isLastMessage(message)"
+					@implement="onImplementPlan"
+				/>
+				<AnswerSummaryMessage
+					v-else-if="isPlanModeAnswerSummaryMessage(message)"
+					:answers="message.data.answers"
+				/>
+				<UserAnswersMessage
+					v-else-if="isPlanModeUserAnswersMessage(message)"
+					:answers="message.data.answers"
+				/>
+			</template>
 		</N8nAskAssistantChat>
 	</div>
 </template>
@@ -449,6 +576,12 @@ defineExpose({
 
 .topText {
 	color: var(--color--text);
+}
+
+:root .introText {
+	// color: var(--color--text);
+	// line-height: var(--line-height--xl);
+	margin-bottom: var(--spacing--xs);
 }
 
 .newWorkflowButtonWrapper {

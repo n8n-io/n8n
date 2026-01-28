@@ -57,6 +57,68 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Part 1\nPart 2');
 			});
 
+			test('should handle planner_subgraph with questions event', () => {
+				const chunk = {
+					planner_subgraph: {
+						plannerPhase: 'waiting_for_answers',
+						pendingQuestions: [
+							{
+								id: 'q1',
+								question: 'What is your name?',
+								type: 'text',
+								allowCustom: true,
+							},
+						],
+						introMessage: 'Hello!',
+					},
+				};
+				const result = processStreamChunk('updates', chunk);
+				expect(result).toEqual({
+					messages: [
+						{
+							type: 'questions',
+							introMessage: 'Hello!',
+							questions: [
+								{
+									id: 'q1',
+									question: 'What is your name?',
+									type: 'text',
+									allowCustom: true,
+								},
+							],
+						},
+					],
+				});
+			});
+
+			test('should handle planner_subgraph with plan event', () => {
+				const chunk = {
+					planner_subgraph: {
+						plannerPhase: 'plan_displayed',
+						planOutput: {
+							summary: 'My Plan',
+							trigger: 'Manual',
+							steps: [],
+							additionalSpecs: [],
+						},
+					},
+				};
+				const result = processStreamChunk('updates', chunk);
+				expect(result).toEqual({
+					messages: [
+						{
+							type: 'plan',
+							plan: {
+								summary: 'My Plan',
+								trigger: 'Manual',
+								steps: [],
+								additionalSpecs: [],
+							},
+						},
+					],
+				});
+			});
+
 			it('should skip delete_messages (responder handles user message)', () => {
 				const chunk = {
 					delete_messages: {

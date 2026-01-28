@@ -187,6 +187,7 @@ export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): 
 	// Get the LAST HumanMessage (most recent user request for iteration support)
 	const humanMessages = messages.filter((m) => m instanceof HumanMessage);
 	const lastUserMessage = humanMessages[humanMessages.length - 1];
+
 	return typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : defaultValue;
 }
 

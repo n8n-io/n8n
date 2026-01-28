@@ -6,11 +6,14 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 
+import type { PlannerQuestion, PlanOutput } from '../types/planner-types';
 import type {
 	AgentMessageChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
+	QuestionsChunk,
+	PlanChunk,
 } from '../types/streaming';
 
 // ============================================================================
@@ -59,6 +62,7 @@ const SKIPPED_NODES = [
 	'auto_compact_messages',
 	'configurator_subgraph',
 	'discovery_subgraph',
+	'planner_subgraph',
 	'builder_subgraph',
 ];
 
@@ -68,6 +72,7 @@ const SKIPPED_NODES = [
  */
 const SKIPPED_SUBGRAPH_PREFIXES = [
 	'discovery_subgraph',
+	'planner_subgraph',
 	'builder_subgraph',
 	'configurator_subgraph',
 ];
@@ -168,6 +173,59 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
+/**
+ * Handle discovery_subgraph node update for plan mode - emit questions or plan.
+ * Discovery now handles both build mode and plan mode (planner merged into discovery).
+ */
+function processDiscoveryPlanModeUpdate(update: unknown): StreamOutput | null {
+	const typed = update as
+		| {
+				pendingQuestions?: PlannerQuestion[];
+				planOutput?: PlanOutput | null;
+				plannerPhase?: string;
+				introMessage?: string;
+		  }
+		| undefined;
+
+	if (!typed) return null;
+
+	// Emit questions if waiting for answers
+	if (typed.plannerPhase === 'waiting_for_answers' && typed.pendingQuestions?.length) {
+		const questionsChunk: QuestionsChunk = {
+			type: 'questions',
+			introMessage: typed.introMessage,
+			questions: typed.pendingQuestions.map((q) => ({
+				id: q.id,
+				question: q.question,
+				type: q.type,
+				options: q.options,
+				allowCustom: q.allowCustom,
+			})),
+		};
+		return { messages: [questionsChunk] };
+	}
+
+	// Emit plan if plan is displayed
+	if (typed.plannerPhase === 'plan_displayed' && typed.planOutput) {
+		const planChunk: PlanChunk = {
+			type: 'plan',
+			plan: {
+				summary: typed.planOutput.summary,
+				trigger: typed.planOutput.trigger,
+				steps: typed.planOutput.steps.map((s) => ({
+					description: s.description,
+					subSteps: s.subSteps,
+					suggestedNodes: s.suggestedNodes,
+				})),
+				additionalSpecs: typed.planOutput.additionalSpecs,
+			},
+		};
+		return { messages: [planChunk] };
+	}
+
+	return null;
+}
+
 /** Handle agent node message update */
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
@@ -210,6 +268,18 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Discovery subgraph emits questions or plan in plan mode
+	if (nodeUpdate.discovery_subgraph) {
+		const result = processDiscoveryPlanModeUpdate(nodeUpdate.discovery_subgraph);
+		if (result) return result;
+	}
+
+	// Planner subgraph emits questions or plan
+	if (nodeUpdate.planner_subgraph) {
+		const result = processDiscoveryPlanModeUpdate(nodeUpdate.planner_subgraph);
+		if (result) return result;
 	}
 
 	// Generic agent node handling
@@ -355,6 +425,62 @@ function processArrayContent(content: unknown[]): Array<Record<string, unknown>>
 
 /** Process AIMessage content and return formatted messages */
 function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
+	// Check for special plan mode messages (questions or plan)
+	const messageType = msg.additional_kwargs?.messageType;
+
+	if (messageType === 'questions' && typeof msg.content === 'string') {
+		try {
+			const data = JSON.parse(msg.content) as {
+				type: string;
+				introMessage?: string;
+				questions: Array<{
+					id: string;
+					question: string;
+					type: string;
+					options?: string[];
+					allowCustom?: boolean;
+				}>;
+			};
+			return [
+				{
+					role: 'assistant',
+					type: 'questions',
+					questions: data.questions,
+					introMessage: data.introMessage,
+				},
+			];
+		} catch {
+			// Fall through to normal processing
+		}
+	}
+
+	if (messageType === 'plan' && typeof msg.content === 'string') {
+		try {
+			const data = JSON.parse(msg.content) as {
+				type: string;
+				plan: {
+					summary: string;
+					trigger: string;
+					steps: Array<{
+						description: string;
+						subSteps?: string[];
+						suggestedNodes?: string[];
+					}>;
+					additionalSpecs?: string[];
+				};
+			};
+			return [
+				{
+					role: 'assistant',
+					type: 'plan',
+					plan: data.plan,
+				},
+			];
+		} catch {
+			// Fall through to normal processing
+		}
+	}
+
 	if (!msg.content) {
 		return [];
 	}

@@ -12,6 +12,14 @@ import type {
 	InferConnectionTypeResult,
 } from '../../types/connections';
 import { isSubNode } from '../../utils/node-helpers';
+
+/**
+ * ConnectionChangingParameter interface for extracted parameters
+ */
+export interface ConnectionChangingParameter {
+	name: string;
+	possibleValues: Array<string | boolean | number>;
+}
 /**
  * Extract connection types from an expression string
  * Looks for patterns like type: "ai_embedding", type: 'main', etc.
@@ -55,6 +63,133 @@ function extractConnectionTypesFromExpression(expression: string): NodeConnectio
 	}
 
 	return Array.from(types) as NodeConnectionType[];
+}
+
+/**
+ * Extract parameter names from input/output expressions.
+ * Looks for patterns like $parameter.mode, $parameter.hasOutputParser, etc.
+ * @param expression - The expression string to parse
+ * @returns Array of unique parameter names found
+ */
+function extractParameterNamesFromExpression(expression: string): string[] {
+	const paramNames = new Set<string>();
+
+	// Pattern to match $parameter.paramName or $parameter['paramName'] or $parameter["paramName"]
+	const patterns = [
+		/\$parameter\.(\w+)/g,
+		/\$parameter\['([^']+)'\]/g,
+		/\$parameter\["([^"]+)"\]/g,
+	];
+
+	for (const pattern of patterns) {
+		let match;
+		pattern.lastIndex = 0; // Reset regex state
+		while ((match = pattern.exec(expression)) !== null) {
+			const paramName = match[1];
+			if (paramName) {
+				paramNames.add(paramName);
+			}
+		}
+	}
+
+	return Array.from(paramNames);
+}
+
+/**
+ * Extract possible values for a parameter from node type properties.
+ * Handles options, boolean types, and other common patterns.
+ * @param properties - The node's properties array
+ * @param paramName - The parameter name to look up
+ * @returns Array of possible values, or empty array if not found
+ */
+function extractPossibleValuesForParameter(
+	properties: INodeTypeDescription['properties'],
+	paramName: string,
+): Array<string | boolean | number> {
+	// Find the property definition
+	const property = properties.find((p) => p.name === paramName);
+	if (!property) {
+		return [];
+	}
+
+	// Handle options type (select/dropdown)
+	if (property.type === 'options' && property.options) {
+		return property.options
+			.map((opt) => {
+				if (typeof opt === 'object' && 'value' in opt) {
+					return opt.value;
+				}
+				return opt;
+			})
+			.filter((v): v is string | number => typeof v === 'string' || typeof v === 'number');
+	}
+
+	// Handle boolean type
+	if (property.type === 'boolean') {
+		return [true, false];
+	}
+
+	// Handle multiOptions type
+	if (property.type === 'multiOptions' && property.options) {
+		return property.options
+			.map((opt) => {
+				if (typeof opt === 'object' && 'value' in opt) {
+					return opt.value;
+				}
+				return opt;
+			})
+			.filter((v): v is string | number => typeof v === 'string' || typeof v === 'number');
+	}
+
+	return [];
+}
+
+/**
+ * Extract connection-changing parameters from a node type.
+ * Analyzes inputs/outputs expressions for $parameter.XXX patterns and
+ * looks up the possible values from the node's properties.
+ *
+ * @param nodeType - The node type description
+ * @returns Array of connection-changing parameters with their possible values
+ */
+export function extractConnectionChangingParameters(
+	nodeType: INodeTypeDescription,
+): ConnectionChangingParameter[] {
+	const paramNames = new Set<string>();
+
+	// Extract parameter names from inputs expression
+	if (typeof nodeType.inputs === 'string') {
+		for (const name of extractParameterNamesFromExpression(nodeType.inputs)) {
+			paramNames.add(name);
+		}
+	}
+
+	// Extract parameter names from outputs expression
+	if (typeof nodeType.outputs === 'string') {
+		for (const name of extractParameterNamesFromExpression(nodeType.outputs)) {
+			paramNames.add(name);
+		}
+	}
+
+	// If no parameters found in expressions, return empty array
+	if (paramNames.size === 0) {
+		return [];
+	}
+
+	// Look up possible values for each parameter
+	const result: ConnectionChangingParameter[] = [];
+	for (const paramName of paramNames) {
+		const possibleValues = extractPossibleValuesForParameter(nodeType.properties, paramName);
+		// Only include parameters where we found possible values
+		if (possibleValues.length > 0) {
+			result.push({
+				name: paramName,
+				possibleValues,
+			});
+		}
+	}
+
+	return result;
 }
 
 /**
