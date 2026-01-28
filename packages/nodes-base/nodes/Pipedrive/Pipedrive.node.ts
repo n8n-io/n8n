@@ -2178,6 +2178,43 @@ export class Pipedrive implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getLeadCustomFields',
+										},
+										default: '',
+										description:
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Expected Close Date',
 						name: 'expected_close_date',
 						type: 'dateTime',
@@ -2327,6 +2364,43 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getLeadCustomFields',
+										},
+										default: '',
+										description:
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set',
+									},
+								],
+							},
+						],
+					},
 					{
 						displayName: 'Title',
 						name: 'title',
@@ -3983,6 +4057,22 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
+			// Get all the Lead Custom Fields to display them to user so that they can
+			// select them easily
+			async getLeadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				return sortOptionParameters(returnData);
+			},
 			// Get all the person labels to display them to user so that they can
 			// select them easily
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -4564,7 +4654,7 @@ export class Pipedrive implements INodeType {
 						};
 
 						if (Object.keys(rest).length) {
-							Object.assign(body, rest);
+							addAdditionalFields(body, rest);
 						}
 
 						if (value) {
@@ -4640,7 +4730,7 @@ export class Pipedrive implements INodeType {
 						};
 
 						if (Object.keys(rest).length) {
-							Object.assign(body, rest);
+							addAdditionalFields(body, rest);
 						}
 
 						if (value) {
