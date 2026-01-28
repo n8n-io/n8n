@@ -1038,7 +1038,7 @@ onMounted(async () => {
 															v-if="
 																file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
 																file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
-																		file.type === SOURCE_CONTROL_FILE_TYPE.datatable
+																file.type === SOURCE_CONTROL_FILE_TYPE.datatable
 															"
 														>
 															<ProjectCardBadge
