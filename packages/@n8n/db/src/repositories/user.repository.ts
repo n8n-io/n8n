@@ -330,7 +330,6 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
 		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

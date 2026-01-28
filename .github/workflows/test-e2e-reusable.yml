@@ -52,6 +52,11 @@ on:
         required: false
         default: 'LRxcNt'
         type: string
+      pre-generated-matrix:
+        description: 'Pre-generated shard matrix JSON (skips matrix job if provided)'
+        required: false
+        default: ''
+        type: string
 
     secrets:
       CURRENTS_RECORD_KEY:
@@ -87,6 +92,7 @@ env:
 
 jobs:
   matrix:
+    if: ${{ inputs.pre-generated-matrix == '' }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
@@ -107,12 +113,13 @@ jobs:
 
   test:
     needs: matrix
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+        include: ${{ fromJSON(inputs.pre-generated-matrix || needs.matrix.outputs.matrix) }}
     name: Shard ${{ matrix.shard }}
 
     steps:

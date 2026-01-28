@@ -3,6 +3,8 @@ import basePlanData from '../../../fixtures/plan-data-trial.json';
 import type { n8nPage } from '../../../pages/n8nPage';
 import type { TestRequirements } from '../../../Types';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'cloud' } } });
+
 const fiveDaysFromNow = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 const planData = { ...basePlanData, expirationDate: fiveDaysFromNow.toJSON() };
 

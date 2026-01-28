@@ -14,6 +14,7 @@ from src.constants import (
     ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     ERROR_DANGEROUS_STRING_PATTERN,
+    ERROR_MATCH_PATTERN_ATTRIBUTE,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
@@ -137,6 +138,17 @@ class SecurityValidator(ast.NodeVisitor):
 
         if isinstance(node.value, str):
             self._check_format_string(node.value, node.lineno)
+
+        self.generic_visit(node)
+
+    def visit_MatchClass(self, node: ast.MatchClass) -> None:
+        """Detect match patterns that extract blocked attributes, e.g. `case AttributeError(obj=x)`"""
+
+        for attr in node.kwd_attrs:
+            if attr in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_MATCH_PATTERN_ATTRIBUTE.format(attr=attr)
+                )
 
         self.generic_visit(node)
 
