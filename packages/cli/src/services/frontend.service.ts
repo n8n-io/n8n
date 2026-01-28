@@ -358,6 +358,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			setupPanel: {
+				enabled: this.globalConfig.setupPanel.enabled,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},

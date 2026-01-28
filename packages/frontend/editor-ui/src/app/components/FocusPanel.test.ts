@@ -12,6 +12,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { reactive } from 'vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({
@@ -48,6 +49,7 @@ describe('FocusPanel', () => {
 	let focusPanelStore: ReturnType<typeof useFocusPanelStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let setupPanelStore: ReturnType<typeof mockedStore<typeof useSetupPanelStore>>;
 
 	beforeEach(() => {
 		const pinia = setActivePinia(createTestingPinia({ stubActions: false }));
@@ -68,6 +70,9 @@ describe('FocusPanel', () => {
 		]);
 		focusPanelStore = useFocusPanelStore(pinia);
 		focusPanelStore.toggleFocusPanel();
+
+		setupPanelStore = mockedStore(useSetupPanelStore);
+		setupPanelStore.isFeatureEnabled = false;
 	});
 
 	describe('when experimental NDV is enabled', () => {
@@ -129,6 +134,73 @@ describe('FocusPanel', () => {
 			expect(rendered.getByText('N0')).toBeInTheDocument(); // title in header
 			expect(rendered.getByText('P0')).toBeInTheDocument(); // title in header
 			expect(rendered.getByDisplayValue('v0')).toBeInTheDocument(); // current value of the parameter
+		});
+	});
+
+	describe('when setup panel feature is enabled', () => {
+		beforeEach(() => {
+			experimentalNdvStore = mockedStore(useExperimentalNdvStore);
+			experimentalNdvStore.isNdvInFocusPanelEnabled = true;
+			setupPanelStore.isFeatureEnabled = true;
+		});
+
+		it('should render the setup panel tabs', async () => {
+			const rendered = renderComponent({});
+
+			expect(await rendered.findByTestId('setup-panel-tabs')).toBeInTheDocument();
+		});
+
+		it('should render the setup panel content by default', async () => {
+			const rendered = renderComponent({});
+
+			expect(await rendered.findByTestId('setup-panel-container')).toBeInTheDocument();
+		});
+
+		it('should switch to focus tab when a parameter is focused', async () => {
+			const rendered = renderComponent({});
+
+			// Initially shows setup panel
+			expect(await rendered.findByTestId('setup-panel-container')).toBeInTheDocument();
+
+			// Focus a parameter
+			focusPanelStore.openWithFocusedNodeParameter({
+				nodeId: 'n0',
+				parameter: parameter0,
+				parameterPath: 'parameters.p0',
+			});
+
+			// Should now show the focus parameter view
+			expect(await rendered.findByTestId('focus-parameter')).toBeInTheDocument();
+			expect(rendered.queryByTestId('setup-panel-container')).not.toBeInTheDocument();
+		});
+
+		it('should show parameter displayName as focus tab label when parameter is focused', async () => {
+			const rendered = renderComponent({});
+
+			focusPanelStore.openWithFocusedNodeParameter({
+				nodeId: 'n0',
+				parameter: parameter0,
+				parameterPath: 'parameters.p0',
+			});
+
+			await rendered.findByTestId('focus-parameter');
+
+			const tabs = rendered.getByTestId('setup-panel-tabs');
+			expect(tabs).toHaveTextContent('P0');
+		});
+
+		it('should show node name as focus tab label when node is selected but no parameter is focused', async () => {
+			const graphNode = createCanvasGraphNode({ id: 'n0' });
+			const vueFlow = useVueFlow('w0');
+			const rendered = renderComponent({});
+
+			vueFlow.addNodes([graphNode]);
+			vueFlow.addSelectedNodes([graphNode]);
+
+			await rendered.findByTestId('setup-panel-tabs');
+
+			const tabs = rendered.getByTestId('setup-panel-tabs');
+			expect(tabs).toHaveTextContent('N0');
 		});
 	});
 });
