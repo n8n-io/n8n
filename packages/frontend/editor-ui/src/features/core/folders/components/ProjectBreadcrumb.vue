@@ -80,6 +80,7 @@ const onProjectMouseUp = () => {
 	<div
 		:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
 		data-test-id="home-project"
+		data-droppable
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
