@@ -1,4 +1,5 @@
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
+import { validateNodeConfig } from './schema-validator';
 
 /**
  * Validation error codes
@@ -18,7 +19,8 @@ export type ValidationErrorCode =
 	| 'MERGE_SINGLE_INPUT'
 	| 'TOOL_NO_PARAMETERS'
 	| 'FROM_AI_IN_NON_TOOL'
-	| 'MISSING_EXPRESSION_PREFIX';
+	| 'MISSING_EXPRESSION_PREFIX'
+	| 'INVALID_PARAMETER';
 
 /**
  * Validation error class
@@ -79,6 +81,8 @@ export interface ValidationOptions {
 	allowDisconnectedNodes?: boolean;
 	/** Skip trigger requirement */
 	allowNoTrigger?: boolean;
+	/** Enable/disable Zod schema validation (default: true) */
+	validateSchema?: boolean;
 }
 
 /**
@@ -249,6 +253,43 @@ export function validateWorkflow(
 						new ValidationWarning(
 							'MISSING_PARAMETER',
 							`HTTP Request node '${node.name}' may be missing URL parameter`,
+							node.name,
+						),
+					);
+				}
+			}
+		}
+	}
+
+	// Schema validation (enabled by default)
+	if (options.validateSchema !== false) {
+		for (const node of json.nodes) {
+			// Get version number (handle both number and string versions)
+			const version =
+				typeof node.typeVersion === 'string'
+					? parseFloat(node.typeVersion)
+					: (node.typeVersion ?? 1);
+
+			// Build config object for validation
+			const config: { parameters?: unknown; subnodes?: unknown } = {};
+			if (node.parameters !== undefined) {
+				config.parameters = node.parameters;
+			}
+			// Include subnodes if present (for AI nodes)
+			const nodeWithSubnodes = node as typeof node & { subnodes?: unknown };
+			if (nodeWithSubnodes.subnodes !== undefined) {
+				config.subnodes = nodeWithSubnodes.subnodes;
+			}
+
+			const schemaResult = validateNodeConfig(node.type, version, config);
+
+			if (!schemaResult.valid) {
+				for (const error of schemaResult.errors) {
+					// Report as WARNING (non-blocking) to maintain backwards compatibility
+					warnings.push(
+						new ValidationWarning(
+							'INVALID_PARAMETER',
+							`Invalid parameter at ${error.path}: ${error.message}`,
 							node.name,
 						),
 					);

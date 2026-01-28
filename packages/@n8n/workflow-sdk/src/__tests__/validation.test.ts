@@ -404,4 +404,164 @@ describe('Validation', () => {
 			expect(disconnectedWarnings).toHaveLength(0);
 		});
 	});
+
+	describe('schema validation integration', () => {
+		it('should validate node parameters against schema by default', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			// keepOnlySet should be boolean, not a string
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 2,
+				config: {
+					name: 'Set',
+					parameters: { keepOnlySet: 'invalid-not-boolean' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(setNode);
+			const result = validateWorkflow(wf);
+
+			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(true);
+		});
+
+		it('should skip schema validation when validateSchema: false', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 2,
+				config: {
+					name: 'Set',
+					parameters: { keepOnlySet: 'invalid-not-boolean' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(setNode);
+			const result = validateWorkflow(wf, { validateSchema: false });
+
+			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(false);
+		});
+
+		it('should not warn for valid parameters', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 2,
+				config: {
+					name: 'Set',
+					parameters: { keepOnlySet: true },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(setNode);
+			const result = validateWorkflow(wf);
+
+			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(false);
+		});
+
+		it('should gracefully handle nodes without schemas', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			// Use a custom node type that doesn't have a schema
+			const customNode = node({
+				type: 'custom-nodes.myNode',
+				version: 1,
+				config: {
+					name: 'Custom Node',
+					parameters: { anyParam: 'any-value' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(customNode);
+			const result = validateWorkflow(wf);
+
+			// Should not throw and should not have INVALID_PARAMETER errors for unknown nodes
+			const schemaWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
+			expect(schemaWarnings).toEqual([]);
+		});
+
+		it('should accept expressions as valid parameter values', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 2,
+				config: {
+					name: 'Set',
+					parameters: { keepOnlySet: '={{ $json.flag }}' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(setNode);
+			const result = validateWorkflow(wf);
+
+			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(false);
+		});
+
+		it('should include node name in INVALID_PARAMETER warning', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 2,
+				config: {
+					name: 'My Set Node',
+					parameters: { keepOnlySet: 'invalid' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).then(setNode);
+			const result = validateWorkflow(wf);
+
+			const invalidParamWarning = result.warnings.find((w) => w.code === 'INVALID_PARAMETER');
+			expect(invalidParamWarning).toBeDefined();
+			expect(invalidParamWarning?.nodeName).toBe('My Set Node');
+		});
+
+		it('should report INVALID_PARAMETER when AI agent has empty subnodes (no model)', () => {
+			// Directly create WorkflowJSON with subnodes on the node
+			// (In standard n8n format, subnodes become separate nodes, but we test direct validation)
+			const workflowJson = {
+				id: 'test-id',
+				name: 'Agent Without Model',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {
+							text: 'Hello',
+							binaryPropertyName: 'data',
+							input: 'test',
+						},
+						// Empty subnodes object - model is required but missing!
+						subnodes: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+
+			// Should have INVALID_PARAMETER warning for missing model in subnodes
+			const invalidParamWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
+			expect(invalidParamWarnings.length).toBeGreaterThan(0);
+
+			// The warning should mention the AI Agent node
+			const agentWarning = invalidParamWarnings.find((w) => w.nodeName === 'AI Agent');
+			expect(agentWarning).toBeDefined();
+			// The warning message should mention the model field
+			expect(agentWarning?.message).toContain('model');
+		});
+	});
 });
