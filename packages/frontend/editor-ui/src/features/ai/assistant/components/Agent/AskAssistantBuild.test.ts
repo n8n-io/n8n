@@ -81,11 +81,21 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 
 			// Create a more realistic mock that includes rating buttons and slots when needed
 			return () => {
-				const lastMessage = props.messages?.[props.messages.length - 1];
-				const showRating = lastMessage?.showRating;
+				// Footer rating logic (matches showFooterRating computed in AskAssistantChat.vue)
+				const messages = props.messages || [];
+				const hasWorkflowUpdate = messages.some(
+					(msg: { type: string }) => msg.type === 'workflow-updated',
+				);
+				const lastMessage = messages[messages.length - 1];
+				const showFooterRating =
+					!props.streaming &&
+					messages.length > 0 &&
+					hasWorkflowUpdate &&
+					lastMessage?.role !== 'user' &&
+					lastMessage?.type !== 'thinking-group';
 
 				return h('div', { 'data-test-id': 'mocked-assistant-chat' }, [
-					showRating
+					showFooterRating
 						? [
 								h('button', {
 									'data-test-id': 'message-thumbs-up-button',
@@ -496,6 +506,7 @@ describe('AskAssistantBuild', () => {
 
 			beforeEach(() => {
 				// Use $patch to ensure reactivity
+				// Note: showRating is no longer set on messages - rating is shown in footer
 				builderStore.$patch({
 					lastUserMessageId: testUserMessageId,
 					chatMessages: [
@@ -512,8 +523,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Wat',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
@@ -597,7 +606,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'This is just an informational message',
 							read: true,
-							showRating: false,
 						},
 					],
 				});
@@ -608,7 +616,7 @@ describe('AskAssistantBuild', () => {
 
 				await flushPromises();
 
-				// Rating buttons should not be present
+				// Rating buttons should not be present (footer rating requires workflow-updated)
 				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
 				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
@@ -616,7 +624,9 @@ describe('AskAssistantBuild', () => {
 
 		describe('when tools are still running', () => {
 			beforeEach(() => {
+				// Note: footer rating should NOT show while streaming is true
 				builderStore.$patch({
+					streaming: true,
 					chatMessages: [
 						{
 							id: faker.string.uuid(),
@@ -640,24 +650,19 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Working on your workflow...',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
 			});
 
-			it('should show minimal rating style when tools are still running', async () => {
-				const { findByTestId } = renderComponent();
+			it('should NOT show rating buttons while streaming/tools are running', async () => {
+				const { queryAllByTestId } = renderComponent();
 
 				await flushPromises();
 
-				// Check that rating buttons exist but in minimal style
-				const thumbsUpButton = await findByTestId('message-thumbs-up-button');
-				expect(thumbsUpButton).toBeInTheDocument();
-
-				// The minimal style should have icon-only buttons (no label)
-				expect(thumbsUpButton.textContent).toBe('');
+				// Rating buttons should NOT be present while streaming
+				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
+				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
 		});
 	});
