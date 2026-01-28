@@ -175,7 +175,7 @@ describe('DataTableBreadcrumbs', () => {
 
 			// Type new name
 			const input = getByTestId('inline-edit-input');
-			await userEvent.clear(input);
+			await userEvent.tripleClick(input);
 			await userEvent.type(input, 'Renamed Table{Enter}');
 
 			// Check that updateDataTable was called
@@ -195,7 +195,7 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.click(editableArea);
 
 			const input = getByTestId('inline-edit-input');
-			await userEvent.clear(input);
+			await userEvent.tripleClick(input);
 			await userEvent.type(input, 'Failed Name{Enter}');
 
 			expect(mockToast.showError).toHaveBeenCalled();
@@ -211,7 +211,7 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.click(editableArea);
 
 			const input = getByTestId('inline-edit-input');
-			await userEvent.clear(input);
+			await userEvent.tripleClick(input);
 			await userEvent.type(input, 'Invalid Name{Enter}');
 
 			expect(mockToast.showError).toHaveBeenCalled();
@@ -224,8 +224,8 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.click(editableArea);
 
 			const input = getByTestId('inline-edit-input');
-			await userEvent.clear(input);
-			await userEvent.type(input, '{Enter}');
+			await userEvent.tripleClick(input);
+			await userEvent.keyboard('{Backspace}{Enter}');
 
 			expect(dataTableStore.updateDataTable).not.toHaveBeenCalled();
 		});
