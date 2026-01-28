@@ -9,10 +9,8 @@ import type {
 	ChatHubExecutionEnd,
 	ChatHubHumanMessageCreated,
 	ChatHubMessageEdited,
-	ChatHubAttachmentInfo,
 	ChatSessionId,
 	ChatMessageId,
-	ChatHubMessageStatus,
 } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useChatStore } from '../chat.store';
@@ -263,53 +261,4 @@ export function useChatPushHandler() {
 		getLastSequenceNumber,
 		initializeStreamState,
 	};
-}
-
-/**
- * Types for the store handlers that useChatPushHandler will call
- */
-export interface ChatWebSocketHandlers {
-	handleWebSocketExecutionBegin?: (data: { sessionId: ChatSessionId }) => void;
-	handleWebSocketExecutionEnd?: (data: {
-		sessionId: ChatSessionId;
-		status: 'success' | 'error' | 'cancelled';
-	}) => void;
-	handleWebSocketStreamBegin?: (data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		previousMessageId: ChatMessageId | null;
-		retryOfMessageId: ChatMessageId | null;
-	}) => void;
-	handleWebSocketStreamChunk?: (data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		content: string;
-		sequenceNumber: number;
-	}) => void;
-	handleWebSocketStreamEnd?: (data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		status: ChatHubMessageStatus;
-	}) => void;
-	handleWebSocketStreamError?: (data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		error: string;
-	}) => void;
-	handleRemoteHumanMessage?: (data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		previousMessageId: ChatMessageId | null;
-		content: string;
-		attachments: ChatHubAttachmentInfo[];
-		timestamp: number;
-	}) => void;
-	handleRemoteMessageEdit?: (data: {
-		sessionId: ChatSessionId;
-		originalMessageId: ChatMessageId;
-		newMessageId: ChatMessageId;
-		content: string;
-		attachments: ChatHubAttachmentInfo[];
-		timestamp: number;
-	}) => void;
 }
