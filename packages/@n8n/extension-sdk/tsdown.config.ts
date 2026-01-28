@@ -42,4 +42,19 @@ export default defineConfig([
 		tsconfig: 'tsconfig.frontend.json',
 		hash: false,
 	},
+	{
+		clean: false,
+		entry: [
+			'src/cloud/**/*.ts',
+			'!src/cloud/**/*.test.ts',
+			'!src/cloud/**/*.d.ts',
+			'!src/cloud/__tests__/**/*',
+		],
+		outDir: 'dist/cloud',
+		format: ['cjs', 'esm'],
+		dts: true,
+		sourcemap: true,
+		tsconfig: 'tsconfig.cloud.json',
+		hash: false,
+	},
 ]);
