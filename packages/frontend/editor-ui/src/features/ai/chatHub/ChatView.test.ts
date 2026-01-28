@@ -87,6 +87,15 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		pushDisconnect: vi.fn(),
+		addEventListener: vi.fn(() => vi.fn()),
+		isConnected: { value: true },
+	}),
+}));
+
 const mockRoute = reactive<{ params: Record<string, unknown>; query: Record<string, unknown> }>({
 	params: {},
 	query: {},
