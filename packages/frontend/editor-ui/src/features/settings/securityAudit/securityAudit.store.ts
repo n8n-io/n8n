@@ -38,20 +38,6 @@ export const useSecurityAuditStore = defineStore('securityAudit', () => {
 		}, 0);
 	});
 
-	const issueCountByCategory = computed<Record<RiskCategory, number>>(() => {
-		const counts: Record<RiskCategory, number> = {
-			credentials: 0,
-			database: 0,
-			nodes: 0,
-			instance: 0,
-			filesystem: 0,
-		};
-		for (const report of reports.value) {
-			counts[report.risk] = report.sections.length;
-		}
-		return counts;
-	});
-
 	const getReportByCategory = (category: RiskCategory): AuditReport | undefined => {
 		return reports.value.find((report) => report.risk === category);
 	};
@@ -85,7 +71,6 @@ export const useSecurityAuditStore = defineStore('securityAudit', () => {
 		isEmptyResult,
 		reports,
 		totalIssueCount,
-		issueCountByCategory,
 		getReportByCategory,
 		runAudit,
 		reset,

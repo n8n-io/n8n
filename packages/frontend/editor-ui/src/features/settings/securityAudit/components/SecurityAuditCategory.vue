@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { N8nIcon, N8nText, N8nBadge, N8nLink } from '@n8n/design-system';
+import { computed, ref, reactive } from 'vue';
+import { N8nIcon, N8nText, N8nBadge, N8nLink, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	AuditReport,
@@ -13,6 +13,8 @@ import type {
 	CustomNodeDetails,
 } from '../securityAudit.api';
 
+const MAX_VISIBLE_ITEMS = 50;
+
 const props = defineProps<{
 	report: AuditReport;
 	initiallyExpanded?: boolean;
@@ -20,6 +22,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const expanded = ref(props.initiallyExpanded ?? false);
+const expandedSections = reactive<Record<number, boolean>>({});
 
 const toggle = () => {
 	expanded.value = !expanded.value;
@@ -108,11 +111,34 @@ const formatSettingKey = (key: string): string => {
 	// Convert camelCase to Title Case with spaces
 	return key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 };
+
+const isSectionExpanded = (sectionIndex: number): boolean => {
+	return expandedSections[sectionIndex] ?? false;
+};
+
+const toggleSectionExpand = (sectionIndex: number) => {
+	expandedSections[sectionIndex] = !expandedSections[sectionIndex];
+};
+
+const getVisibleLocations = (section: StandardSection, sectionIndex: number) => {
+	if (isSectionExpanded(sectionIndex) || section.location.length <= MAX_VISIBLE_ITEMS) {
+		return section.location;
+	}
+	return section.location.slice(0, MAX_VISIBLE_ITEMS);
+};
+
+const getRemainingCount = (section: StandardSection, sectionIndex: number): number => {
+	if (isSectionExpanded(sectionIndex)) return 0;
+	return Math.max(0, section.location.length - MAX_VISIBLE_ITEMS);
+};
 </script>
 
 <template>
-	<div :class="[$style.category, { [$style.expanded]: expanded }]">
-		<div :class="$style.header" @click="toggle">
+	<div
+		:class="[$style.category, { [$style.expanded]: expanded }]"
+		:data-test-id="`security-audit-category-${report.risk}`"
+	>
+		<div :class="$style.header" @click="toggle" data-test-id="security-audit-category-header">
 			<div :class="$style.headerLeft">
 				<N8nIcon :icon="categoryIcon" :class="$style.categoryIcon" size="medium" />
 				<N8nText :class="$style.categoryTitle" bold size="medium">{{ categoryLabel }}</N8nText>
@@ -149,8 +175,16 @@ const formatSettingKey = (key: string): string => {
 					v-if="isStandardSection(section) && section.location.length > 0"
 					:class="$style.locations"
 				>
+					<N8nText
+						v-if="section.location.length > MAX_VISIBLE_ITEMS"
+						color="text-light"
+						size="small"
+						:class="$style.locationCount"
+					>
+						{{ section.location.length }} items
+					</N8nText>
 					<div
-						v-for="(location, locationIndex) in section.location"
+						v-for="(location, locationIndex) in getVisibleLocations(section, sectionIndex)"
 						:key="locationIndex"
 						:class="$style.locationItem"
 					>
@@ -190,6 +224,30 @@ const formatSettingKey = (key: string): string => {
 							<N8nText color="text-light" size="small"> ({{ location.filePath }})</N8nText>
 						</template>
 					</div>
+					<N8nButton
+						v-if="getRemainingCount(section, sectionIndex) > 0"
+						type="tertiary"
+						size="small"
+						:class="$style.showMoreButton"
+						@click="toggleSectionExpand(sectionIndex)"
+					>
+						{{
+							i18n.baseText('settings.securityAudit.showMore', {
+								interpolate: { count: getRemainingCount(section, sectionIndex) },
+							})
+						}}
+					</N8nButton>
+					<N8nButton
+						v-else-if="
+							section.location.length > MAX_VISIBLE_ITEMS && isSectionExpanded(sectionIndex)
+						"
+						type="tertiary"
+						size="small"
+						:class="$style.showMoreButton"
+						@click="toggleSectionExpand(sectionIndex)"
+					>
+						{{ i18n.baseText('settings.securityAudit.showLess') }}
+					</N8nButton>
 				</div>
 
 				<div v-if="hasSettings(section)" :class="$style.settings">
@@ -360,7 +418,7 @@ const formatSettingKey = (key: string): string => {
 .recommendationIcon {
 	color: var(--color--warning);
 	flex-shrink: 0;
-	margin-top: 2px;
+	margin-top: var(--spacing--5xs);
 }
 
 .settings {
@@ -393,5 +451,15 @@ const formatSettingKey = (key: string): string => {
 	display: flex;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) 0;
+}
+
+.locationCount {
+	margin-bottom: var(--spacing--2xs);
+	display: block;
+}
+
+.showMoreButton {
+	margin-top: var(--spacing--xs);
+	width: 100%;
 }
 </style>
