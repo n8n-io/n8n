@@ -493,4 +493,59 @@ describe('generateSingleVersionSchemaFile', () => {
 		// Should NOT contain @version anywhere
 		expect(code).not.toContain('@version');
 	});
+
+	it('generates static schema for multi-version node where @version is the only displayOption', () => {
+		// This tests the calTrigger scenario: multi-version node with version-conditional properties
+		// The actual calTrigger has TWO version properties - one for each @version
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.calTrigger',
+			displayName: 'Cal.com Trigger',
+			version: [1, 2], // Multi-version node - this is key!
+			properties: [
+				{
+					name: 'events',
+					displayName: 'Events',
+					type: 'multiOptions',
+					options: [{ name: 'Created', value: 'CREATED' }],
+					default: [],
+					required: true,
+				},
+				// First version property - for v1
+				{
+					name: 'version',
+					displayName: 'API Version',
+					type: 'options',
+					options: [
+						{ name: 'v1', value: 1 },
+						{ name: 'v2', value: 2 },
+					],
+					default: 1,
+					displayOptions: { show: { '@version': [1] } },
+				},
+				// Second version property - for v2 (should be filtered out for v1 schema)
+				{
+					name: 'version',
+					displayName: 'API Version',
+					type: 'options',
+					options: [
+						{ name: 'v1', value: 1 },
+						{ name: 'v2', value: 2 },
+					],
+					default: 2,
+					displayOptions: { show: { '@version': [2] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		// Should generate static schema (no factory function needed since @version is stripped)
+		expect(code).toContain('export const');
+		expect(code).not.toContain('export function get');
+		// Should NOT contain @version anywhere
+		expect(code).not.toContain('@version');
+		// Should NOT import resolveSchema
+		expect(code).not.toContain('resolveSchema');
+	});
 });
