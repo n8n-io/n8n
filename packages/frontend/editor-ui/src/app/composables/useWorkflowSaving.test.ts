@@ -9,6 +9,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useNetworkStore } from '@/app/stores/network.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -95,6 +96,7 @@ describe('useWorkflowSaving', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let networkStore: ReturnType<typeof useNetworkStore>;
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -114,6 +116,9 @@ describe('useWorkflowSaving', () => {
 				group: ['trigger'],
 			}),
 		]);
+
+		networkStore = useNetworkStore();
+		networkStore.setOnline(true);
 	});
 
 	describe('promptSaveUnsavedWorkflowChanges', () => {
@@ -740,6 +745,20 @@ describe('useWorkflowSaving', () => {
 
 			// updateWorkflow should NOT have been called since we skipped
 			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should not schedule autosave when network is offline', () => {
+			const autosaveStore = useWorkflowAutosaveStore();
+
+			networkStore.setOnline(false);
+			autosaveStore.reset();
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Try to schedule autosave while offline
+			autoSaveWorkflow();
+
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 	});
 });
