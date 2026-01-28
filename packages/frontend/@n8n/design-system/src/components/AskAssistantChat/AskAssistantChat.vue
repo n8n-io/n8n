@@ -118,13 +118,21 @@ function groupToolMessagesIntoThinking(
 			j++;
 		}
 
-		// Deduplicate tool messages by toolName, keeping the latest status for each unique tool type
-		// This matches the original behavior where multiple calls to the same tool (e.g., get_node_details)
-		// are collapsed into a single entry showing the most recent status
+		// Deduplicate tool messages by their display title, keeping the latest status
+		// Tools with the same description are merged; tools with different descriptions
+		// (e.g., "Adding webhook" vs "Connecting nodes") are shown separately
 		const uniqueToolsMap = new Map<string, ChatUI.ToolMessage>();
 		for (const tool of toolGroup) {
-			// Group by toolName so multiple calls to the same tool are collapsed
-			const key = tool.toolName;
+			// Get the display title that will be shown in the UI
+			const displayTitle =
+				tool.customDisplayTitle ||
+				tool.displayTitle ||
+				tool.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ');
+			// Use display title as key - tools with different descriptions show separately
+			const key = displayTitle;
 			// Later messages in the array have the most recent status, so they overwrite earlier ones
 			uniqueToolsMap.set(key, tool);
 		}
@@ -135,18 +143,21 @@ function groupToolMessagesIntoThinking(
 		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
 		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
 
-		// Build the items array - use toolName as id since we dedupe by toolName
-		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
-			id: `tool-${m.toolName}`,
-			displayTitle:
+		// Build the items array - use display title as id since we dedupe by display title
+		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => {
+			const displayTitle =
 				m.customDisplayTitle ||
 				m.displayTitle ||
 				m.toolName
 					.split('_')
 					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-					.join(' '),
-			status: m.status,
-		}));
+					.join(' ');
+			return {
+				id: `tool-${displayTitle}`,
+				displayTitle,
+				status: m.status,
+			};
+		});
 
 		// If this is the last group, all tools completed, and we're still streaming,
 		// add a "Thinking" item to show the AI is processing

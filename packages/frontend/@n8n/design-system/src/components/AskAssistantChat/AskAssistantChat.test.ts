@@ -397,7 +397,7 @@ describe('AskAssistantChat', () => {
 			expect(props.items[0].displayTitle).toBe('Search Results');
 		});
 
-		it('should group consecutive tool messages with same toolName into single thinking-group', () => {
+		it('should show tool messages with different display titles as separate items', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -422,13 +422,49 @@ describe('AskAssistantChat', () => {
 
 			renderWithMessages(messages);
 
-			// All tool messages with same toolName should be grouped into one thinking-group
+			// All tool messages should be grouped into one thinking-group
 			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
 			const props = getThinkingMessageProps();
-			// Should have 1 item after deduplication by toolName
+			// Each unique display title should be a separate item
+			expect(props.items).toHaveLength(3);
+			expect(props.items[0].displayTitle).toBe('Searching...');
+			expect(props.items[1].displayTitle).toBe('Custom Search Title');
+			expect(props.items[2].displayTitle).toBe('Search Complete');
+		});
+
+		it('should deduplicate tool messages with same display title', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Initializing search' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Still searching' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			const props = getThinkingMessageProps();
+			// All have same display title, should deduplicate to 1 item with latest status
 			expect(props.items).toHaveLength(1);
+			expect(props.items[0].displayTitle).toBe('Searching...');
+			expect(props.items[0].status).toBe('completed');
 		});
 
 		it('should group tool messages with same toolName even with hidden messages in between', () => {
