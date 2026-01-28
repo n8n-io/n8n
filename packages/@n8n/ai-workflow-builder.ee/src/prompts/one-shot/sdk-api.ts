@@ -284,7 +284,7 @@ export interface SwitchCaseBuilder {
  * IF node instance with branching methods.
  *
  * @example
- * const ifElseNode = ifElse({ type: 'n8n-nodes-base.if', ... });
+ * const ifElseNode = ifElse({ version: 2.2, config: { name: 'Check', parameters: {...} } });
  * ifElseNode.onTrue(trueHandler).onFalse(falseHandler)
  */
 export interface IfElseNodeInstance extends NodeInstance<'n8n-nodes-base.if', string, unknown> {

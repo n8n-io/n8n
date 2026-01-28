@@ -890,8 +890,8 @@ export function node<TNode extends NodeInput>(
  * Config for ifElse() factory function
  */
 export interface IfElseFactoryConfig {
-	/** Node version (defaults to 2.3) */
-	version?: number;
+	/** Node version (required) */
+	version: number;
 	/** Node configuration (name, parameters, etc.) */
 	config?: NodeConfig;
 }
@@ -900,23 +900,23 @@ export interface IfElseFactoryConfig {
  * Create an IF node with the specified config.
  * Convenience wrapper around node() with type preset to 'n8n-nodes-base.if'.
  *
- * @param input - Optional config with version (defaults to 2.3) and config object
+ * @param input - Config with version (required) and config object
  * @returns A configured IF node instance with .onTrue()/.onFalse() methods
  *
  * @example
  * ```typescript
- * const ifNode = ifElse({ config: { name: 'Check Value' } })
+ * const ifNode = ifElse({ version: 2.2, config: { name: 'Check Value' } })
  *   .onTrue(trueHandler)
  *   .onFalse(falseHandler);
  * ```
  */
 export function ifElse<TOutput = unknown>(
-	input?: IfElseFactoryConfig,
+	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
 	return node({
 		type: 'n8n-nodes-base.if',
-		version: input?.version ?? 2.3,
-		config: input?.config ?? {},
+		version: input.version,
+		config: input.config ?? {},
 	}) as NodeInstance<'n8n-nodes-base.if', string, TOutput>;
 }
 
@@ -927,8 +927,8 @@ export const ifNode = ifElse;
  * Config for switchCase() factory function
  */
 export interface SwitchCaseFactoryConfig {
-	/** Node version (defaults to 3.4) */
-	version?: number;
+	/** Node version (required) */
+	version: number;
 	/** Node configuration (name, parameters, etc.) */
 	config?: NodeConfig;
 }
@@ -937,24 +937,24 @@ export interface SwitchCaseFactoryConfig {
  * Create a Switch node for multi-way routing.
  * Use .onCase() fluent API to connect case targets.
  *
- * @param input - Optional config with version (defaults to 3.4) and config object
+ * @param input - Config with version (required) and config object
  * @returns A Switch NodeInstance with .onCase() fluent API
  *
  * @example
  * ```typescript
- * const routeByType = switchCase({ config: { name: 'Route by Type' } })
+ * const routeByType = switchCase({ version: 3.2, config: { name: 'Route by Type' } })
  *   .onCase(0, handleTypeA)
  *   .onCase(1, handleTypeB)
  *   .onCase(2, handleFallback);
  * ```
  */
 export function switchCase<TOutput = unknown>(
-	input?: SwitchCaseFactoryConfig,
+	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
 	return node({
 		type: 'n8n-nodes-base.switch',
-		version: input?.version ?? 3.4,
-		config: input?.config ?? {},
+		version: input.version,
+		config: input.config ?? {},
 	}) as NodeInstance<'n8n-nodes-base.switch', string, TOutput>;
 }
 
