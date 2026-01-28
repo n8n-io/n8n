@@ -44,6 +44,23 @@ describe('webhook-signature-verification', () => {
 			expect(timingSafeEqual).toHaveBeenCalled();
 		});
 
+		it('should verify signature even when timestamp is skipped', () => {
+			const expectedSignature = 'sha256=abc123';
+			const actualSignature = 'sha256=xyz789';
+
+			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+
+			const result = verifySignature({
+				getExpectedSignature: () => expectedSignature,
+				getActualSignature: () => actualSignature,
+				getTimestamp: () => null,
+				skipIfNoTimestamp: true,
+			});
+
+			expect(result).toBe(false);
+			expect(timingSafeEqual).toHaveBeenCalled();
+		});
+
 		it('should return false when signatures have different lengths', () => {
 			const expectedSignature = 'sha256=abc123';
 			const actualSignature = 'sha256=abc1234';

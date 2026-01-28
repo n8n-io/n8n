@@ -68,10 +68,8 @@ export function verifySignature(options: VerifySignatureOptions): boolean {
 		// Validate timestamp if provided (replay attack prevention)
 		if (getTimestamp) {
 			const timestamp = getTimestamp();
-			if (options.skipIfNoTimestamp && timestamp === null) {
-				return true;
-			}
-			if (!isTimestampValid(timestamp, maxTimestampAgeSeconds)) {
+			const shouldSkip = options.skipIfNoTimestamp && timestamp === null;
+			if (!shouldSkip && !isTimestampValid(timestamp, maxTimestampAgeSeconds)) {
 				return false;
 			}
 		}
