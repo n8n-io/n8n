@@ -25,7 +25,8 @@ type OnTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) =
 
 @Service()
 export class AiWorkflowBuilderService {
-	private readonly parsedNodeTypes: INodeTypeDescription[];
+	private nodeTypes: INodeTypeDescription[];
+
 	private sessionManager: SessionManagerService;
 
 	constructor(
@@ -39,8 +40,18 @@ export class AiWorkflowBuilderService {
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
-		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
-		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
+		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
+		this.sessionManager = new SessionManagerService(this.nodeTypes, logger);
+	}
+
+	/**
+	 * Update the node types available to the AI workflow builder.
+	 * Called when community packages are installed, updated, or uninstalled.
+	 * This preserves existing sessions while making new node types available.
+	 */
+	updateNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = this.filterNodeTypes(nodeTypes);
+		this.sessionManager.updateNodeTypes(this.nodeTypes);
 	}
 
 	private static async getAnthropicClaudeModel({
@@ -173,7 +184,7 @@ export class AiWorkflowBuilderService {
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
 		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes: this.parsedNodeTypes,
+			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages in production
 			stageLLMs: {
 				supervisor: anthropicClaude,

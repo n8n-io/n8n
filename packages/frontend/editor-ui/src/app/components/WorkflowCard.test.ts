@@ -7,12 +7,14 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { FrontendSettings } from '@n8n/api-types';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -97,6 +99,7 @@ describe('WorkflowCard', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
@@ -106,9 +109,16 @@ describe('WorkflowCard', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
+
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+		} as unknown as FrontendSettings;
 
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
@@ -460,8 +470,8 @@ describe('WorkflowCard', () => {
 		await userEvent.click(getByTestId('action-delete'));
 
 		expect(message.confirm).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:deleted']).toHaveLength(1);
@@ -610,6 +620,56 @@ describe('WorkflowCard', () => {
 
 		const indicator = queryByTestId('workflow-card-mcp');
 		expect(indicator).not.toBeVisible();
+	});
+
+	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		expect(indicator).toBeVisible();
+	});
+
+	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: false,
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		expect(indicator).toBeNull();
+	});
+
+	it('should show resolver missing badge when workflow has resolvable credentials but no resolver configured', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+			settings: {
+				credentialResolverId: undefined,
+			},
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const badge = getByTestId('workflow-card-resolver-missing');
+		expect(badge).toBeVisible();
+	});
+
+	it('should hide resolver missing badge when workflow has resolver configured', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+			settings: {
+				credentialResolverId: 'resolver-123',
+			},
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const badge = queryByTestId('workflow-card-resolver-missing');
+		expect(badge).toBeNull();
 	});
 
 	it('should show Archived text on archived workflows', async () => {

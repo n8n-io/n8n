@@ -7,6 +7,7 @@
  */
 
 import { prompt } from '../builder';
+import { webhook } from '../shared/node-guidance';
 
 const ROLE =
 	'You are a Builder Agent that constructs n8n workflows: adding nodes, connecting them, and configuring their parameters.';
@@ -219,6 +220,8 @@ Binary data expressions:
 
 Code node return format: Must return array with json property - return items; or return [{{{{ json: {{...}} }}}}]`;
 
+const WEBHOOK_CONFIGURATION = webhook.configuration;
+
 const CREDENTIAL_SECURITY =
 	'Leave credential fields (apiKey, token, password, secret) empty for users to configure in the n8n frontend. This ensures secure credential storage and allows users to manage their own API keys.';
 
@@ -350,6 +353,7 @@ export function buildBuilderPrompt(): string {
 			.section('tool_nodes', TOOL_NODES)
 			.section('critical_parameters', CRITICAL_PARAMETERS)
 			.section('common_settings', COMMON_SETTINGS)
+			.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 			.section('credential_security', CREDENTIAL_SECURITY)
 			.section('placeholder_usage', PLACEHOLDER_USAGE)
 			.section('resource_locator_defaults', RESOURCE_LOCATOR_DEFAULTS)

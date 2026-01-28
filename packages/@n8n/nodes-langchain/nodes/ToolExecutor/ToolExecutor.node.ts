@@ -153,8 +153,7 @@ export class ToolExecutor implements INodeType {
 										nodeName: node,
 										input: {
 											tool: toolName,
-											// stringify parameters so that they can be accessed with $fromAI method
-											toolParameters: JSON.stringify(toolInput),
+											toolParameters: toolInput.toolParameters as IDataObject,
 											...hitlInput,
 										},
 										type: 'ai_tool',
