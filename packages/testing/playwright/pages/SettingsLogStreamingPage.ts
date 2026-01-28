@@ -55,22 +55,6 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.page.getByTestId('destination-card');
 	}
 
-	getInlineEditPreview(): Locator {
-		return this.page.getByTestId('inline-edit-preview');
-	}
-
-	getInlineEditInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
-	}
-
-	getModalOverlay(): Locator {
-		return this.page.locator('.el-overlay');
-	}
-
-	getDropdownMenu(): Locator {
-		return this.page.locator('.el-dropdown-menu');
-	}
-
 	getDropdownMenuItem(index: number): Locator {
 		return this.page.locator('.el-dropdown-menu__item').nth(index);
 	}

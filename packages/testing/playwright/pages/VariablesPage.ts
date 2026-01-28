@@ -1,4 +1,4 @@
-import { expect, type Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { VariableModal } from './components/VariableModal';
@@ -12,10 +12,6 @@ export class VariablesPage extends BasePage {
 
 	getResourcesList() {
 		return this.page.getByTestId('resources-list');
-	}
-
-	getEmptyResourcesList() {
-		return this.page.getByTestId('empty-resources-list');
 	}
 
 	getEmptyResourcesListNewVariableButton() {
@@ -34,16 +30,12 @@ export class VariablesPage extends BasePage {
 		return this.page.getByTestId('variables-row');
 	}
 
+	getNoVariablesFoundMessage() {
+		return this.page.getByText('No variables found');
+	}
+
 	getVariableRow(key: string) {
 		return this.getVariablesRows().filter({ hasText: key });
-	}
-
-	getEditableRowCancelButton(row: Locator) {
-		return row.getByTestId('variable-row-cancel-button');
-	}
-
-	getEditableRowSaveButton(row: Locator) {
-		return row.getByTestId('variable-row-save-button');
 	}
 
 	/**

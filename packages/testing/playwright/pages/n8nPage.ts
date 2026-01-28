@@ -2,7 +2,6 @@ import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
 import { AIBuilderPage } from './AIBuilderPage';
-import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
@@ -14,7 +13,6 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
-import { IframePage } from './IframePage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -66,11 +64,9 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
-	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
-	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -137,11 +133,9 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
-		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
-		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);

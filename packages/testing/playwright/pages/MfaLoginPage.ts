@@ -18,18 +18,6 @@ export class MfaLoginPage extends BasePage {
 		return this.getForm().locator('input[name="mfaRecoveryCode"]');
 	}
 
-	getEnterRecoveryCodeButton(): Locator {
-		return this.page.getByTestId('mfa-enter-recovery-code-button');
-	}
-
-	getSubmitButton(): Locator {
-		return this.page.getByRole('button', { name: /^(Continue|Verify)$/ });
-	}
-
-	async goToMfaLogin(): Promise<void> {
-		await this.page.goto('/mfa');
-	}
-
 	async fillMfaCode(code: string): Promise<void> {
 		await this.getMfaCodeField().fill(code);
 	}
@@ -40,10 +28,6 @@ export class MfaLoginPage extends BasePage {
 
 	async clickEnterRecoveryCode(): Promise<void> {
 		await this.clickByTestId('mfa-enter-recovery-code-button');
-	}
-
-	async clickSubmit(): Promise<void> {
-		await this.getSubmitButton().click();
 	}
 
 	/**

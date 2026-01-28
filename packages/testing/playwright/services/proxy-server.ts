@@ -322,8 +322,4 @@ export class ProxyServer {
 			throw new Error(`Failed to record expectations: ${JSON.stringify(error)}`);
 		}
 	}
-
-	async getActiveExpectations() {
-		return await this.client.retrieveActiveExpectations({ method: 'GET' });
-	}
 }

@@ -58,7 +58,7 @@
     "prettier": "3.6.2",
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
-    "ts-morph": "^26.0.0",
+    "ts-morph": "catalog:",
     "typescript-eslint": "^8.35.0"
   },
   "devDependencies": {

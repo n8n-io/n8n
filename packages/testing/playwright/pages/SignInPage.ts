@@ -3,10 +3,6 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SignInPage extends BasePage {
-	getForm(): Locator {
-		return this.page.getByTestId('auth-form');
-	}
-
 	getEmailField(): Locator {
 		return this.page.getByTestId('emailOrLdapLoginId').locator('input');
 	}

@@ -94,8 +94,7 @@ test.describe('Import workflow', () => {
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
 
-			const connections = n8n.page.getByTestId('edge');
-			await expect(connections).toHaveCount(5);
+			await expect(n8n.canvas.nodeConnections()).toHaveCount(5);
 		});
 	});
 });

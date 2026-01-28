@@ -27,11 +27,14 @@
     "prepare-test-image": "node scripts/build-test-image.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "janitor": "playwright-janitor",
+    "janitor:fix": "playwright-janitor --fix --write"
   },
   "devDependencies": {
     "@currents/playwright": "catalog:e2e",
     "@n8n/api-types": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/db": "workspace:*",
@@ -48,6 +51,7 @@
     "nanoid": "catalog:",
     "nyc": "^17.1.0",
     "otplib": "^12.0.1",
+    "ts-morph": "catalog:",
     "tsx": "catalog:",
     "zod": "catalog:"
   }
