@@ -59,6 +59,7 @@ import {
 	isMatchedAgent,
 	createAiMessageFromStreamingState,
 	flattenModel,
+	unflattenModel,
 	createHumanMessageFromStreamingState,
 	createFakeAgent,
 } from './chat.utils';
@@ -860,12 +861,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}) {
 		const { sessionId, messageId, previousMessageId, retryOfMessageId } = data;
 
-		// Check if this is our local stream or a remote stream from another client
-		const isLocalStream = streaming.value?.sessionId === sessionId;
-
-		if (isLocalStream) {
-			// Update the streaming state with the message ID from the server
-			streaming.value!.messageId = messageId;
+		// Update streaming state with message info (for both local and remote)
+		if (streaming.value?.sessionId === sessionId) {
+			streaming.value.messageId = messageId;
+			streaming.value.promptPreviousMessageId = previousMessageId;
+			streaming.value.retryOfMessageId = retryOfMessageId;
 		}
 
 		// Skip if we already have this message (e.g., from a previous stream begin)
@@ -874,12 +874,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
-		// Create the AI message placeholder - use local streaming state if available,
-		// otherwise create with data from the event (for remote streams)
+		// Create the AI message placeholder - use streaming state if available for this session
+		const streamingStateForSession =
+			streaming.value?.sessionId === sessionId ? streaming.value : undefined;
 		const message = createAiMessageFromStreamingState(
 			sessionId,
 			messageId,
-			isLocalStream ? streaming.value : undefined,
+			streamingStateForSession,
 		);
 
 		// Always use server-provided previousMessageId and retryOfMessageId
@@ -957,16 +958,43 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 * Handle execution begin (whole streaming session starts)
 	 */
 	function handleWebSocketExecutionBegin(data: { sessionId: ChatSessionId }) {
-		// For local streams (streaming started on this browser client),
-		// streaming.value is already set by sendMessage/editMessage/regenerate.
-		// For remote streams (from other clients), we don't set streaming state since
-		// we're not the one driving the conversation.
+		const { sessionId } = data;
 
-		// Just ensure we don't have stale state for this session
-		if (streaming.value?.sessionId !== data.sessionId) {
-			// This is a remote stream - no action needed
+		// If we're already tracking this session locally, nothing to do
+		if (streaming.value?.sessionId === sessionId) {
 			return;
 		}
+
+		// This is a remote stream - set streaming state using session data
+		const session = sessions.value.byId[sessionId];
+		if (!session) {
+			// Session not loaded in this client, skip
+			return;
+		}
+
+		// Construct agent from session data
+		const model = unflattenModel(session);
+		if (!model) {
+			return;
+		}
+
+		const agent = getAgent(model, {
+			name: session.agentName,
+			icon: session.agentIcon,
+		});
+
+		// Set minimal streaming state for remote stream
+		streaming.value = {
+			promptPreviousMessageId: null, // Will be set by handleWebSocketStreamBegin
+			promptId: '', // Unknown until stream begin
+			promptText: '', // Not needed for UI
+			sessionId,
+			retryOfMessageId: null,
+			revisionOfMessageId: null,
+			tools: session.tools ?? [],
+			attachments: [],
+			agent,
+		};
 	}
 
 	/**
@@ -981,6 +1009,19 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		// Clear streaming state if this is the current session
 		if (streaming.value?.sessionId === sessionId) {
 			const currentSessionId = streaming.value.sessionId;
+
+			// Update the message status if we have a messageId
+			// This handles cases where streamEnd wasn't received (e.g., cancellation)
+			if (streaming.value.messageId) {
+				const conversation = getConversation(sessionId);
+				const message = conversation?.messages[streaming.value.messageId];
+				if (message && message.status === 'running') {
+					const messageStatus =
+						status === 'cancelled' ? 'cancelled' : status === 'error' ? 'error' : 'success';
+					updateMessage(sessionId, streaming.value.messageId, messageStatus);
+				}
+			}
+
 			streaming.value = undefined;
 
 			// Show error toast if the execution failed
