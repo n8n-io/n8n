@@ -68,7 +68,9 @@ jobs:
       - name: Push the base branch
         env:
           BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
       - name: Generate PR body
