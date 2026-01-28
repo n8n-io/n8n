@@ -2009,18 +2009,16 @@ export class ChatHubService {
 				await this.chatStreamService.endStream(sessionId, message.id, message.status);
 			},
 			onError: async (message, errorText) => {
-				await this.messageRepository.manager.transaction(async (trx) => {
-					// Always update the content to whatever was generated so far
-					// If no content was generated, use the error text
-					let contentToSave = message.content;
-					if (!contentToSave && errorText) {
-						contentToSave = errorText;
-					} else if (!contentToSave) {
-						contentToSave = executionId
-							? ((await this.waitForErrorDetails(executionId, workflowId)) ?? 'Unknown error')
-							: 'Request was not processed';
-					}
+				let contentToSave = message.content;
+				if (!contentToSave && errorText) {
+					contentToSave = errorText;
+				} else if (!contentToSave) {
+					contentToSave = executionId
+						? ((await this.waitForErrorDetails(executionId, workflowId)) ?? 'Unknown error')
+						: 'Request was not processed';
+				}
 
+				await this.messageRepository.manager.transaction(async (trx) => {
 					await this.messageRepository.updateChatMessage(
 						message.id,
 						{ content: contentToSave },
