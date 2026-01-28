@@ -312,7 +312,7 @@ N8N_DEV_RELOAD=true pnpm dev
 
 ### Run local instances in different configurations
 
-We use **Testcontainers** to easily and quickly spin up a local instance with multiple different configurations for testing.
+We use [**Testcontainers**](https://testcontainers.com/) to easily and quickly spin up a local instance with multiple different configurations for testing.
 
 **1. Get a Docker image**
 
