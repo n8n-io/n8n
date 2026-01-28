@@ -1728,7 +1728,17 @@ export function generateSharedFile(
 		}
 		if (needsAssignment) {
 			lines.push(
-				'export type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+				`/**
+ * Assignment type determines how the value is interpreted.
+ * - string: Direct string value or expression evaluating to string
+ * - number: Direct number value or expression evaluating to number
+ * - boolean: Direct boolean value or expression evaluating to boolean
+ * - array: Expression that evaluates to an array, e.g. ={{ [1, 2, 3] }} or ={{ $json.items }}
+ * - object: Expression that evaluates to an object, e.g. ={{ { key: 'value' } }} or ={{ $json.data }}
+ * - binary: Property name of binary data in the input item, or expression to access binary data from previous nodes, e.g. ={{ $('Node').item.binary.data }}
+ */
+export type AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'binary';
+export type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`,
 			);
 		}
 		lines.push('');
@@ -1885,7 +1895,17 @@ export function generateDiscriminatorFile(
 		}
 		if (needsAssignment) {
 			lines.push(
-				'type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+				`/**
+ * Assignment type determines how the value is interpreted.
+ * - string: Direct string value or expression evaluating to string
+ * - number: Direct number value or expression evaluating to number
+ * - boolean: Direct boolean value or expression evaluating to boolean
+ * - array: Expression that evaluates to an array, e.g. ={{ [1, 2, 3] }} or ={{ $json.items }}
+ * - object: Expression that evaluates to an object, e.g. ={{ { key: 'value' } }} or ={{ $json.data }}
+ * - binary: Property name of binary data in the input item, or expression to access binary data from previous nodes, e.g. ={{ $('Node').item.binary.data }}
+ */
+type AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'binary';
+type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`,
 			);
 		}
 		lines.push('');
@@ -2375,7 +2395,17 @@ export function generateSingleVersionTypeFile(
 		}
 		if (needsAssignment) {
 			lines.push(
-				'type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+				`/**
+ * Assignment type determines how the value is interpreted.
+ * - string: Direct string value or expression evaluating to string
+ * - number: Direct number value or expression evaluating to number
+ * - boolean: Direct boolean value or expression evaluating to boolean
+ * - array: Expression that evaluates to an array, e.g. ={{ [1, 2, 3] }} or ={{ $json.items }}
+ * - object: Expression that evaluates to an object, e.g. ={{ { key: 'value' } }} or ={{ $json.data }}
+ * - binary: Property name of binary data in the input item, or expression to access binary data from previous nodes, e.g. ={{ $('Node').item.binary.data }}
+ */
+type AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'binary';
+type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`,
 			);
 		}
 		lines.push('');
@@ -2706,7 +2736,17 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		}
 		if (needsAssignment) {
 			lines.push(
-				'type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+				`/**
+ * Assignment type determines how the value is interpreted.
+ * - string: Direct string value or expression evaluating to string
+ * - number: Direct number value or expression evaluating to number
+ * - boolean: Direct boolean value or expression evaluating to boolean
+ * - array: Expression that evaluates to an array, e.g. ={{ [1, 2, 3] }} or ={{ $json.items }}
+ * - object: Expression that evaluates to an object, e.g. ={{ { key: 'value' } }} or ={{ $json.data }}
+ * - binary: Property name of binary data in the input item, or expression to access binary data from previous nodes, e.g. ={{ $('Node').item.binary.data }}
+ */
+type AssignmentType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'binary';
+type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: AssignmentType }> };`,
 			);
 		}
 		lines.push('');
