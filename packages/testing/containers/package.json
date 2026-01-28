@@ -26,6 +26,7 @@
   "license": "ISC",
   "devDependencies": {
     "@testcontainers/kafka": "^11.11.0",
+    "@testcontainers/mysql": "^11.11.0",
     "@testcontainers/postgresql": "^11.0.3",
     "@testcontainers/redis": "^11.0.3",
     "get-port": "^7.1.0",

@@ -57,7 +57,7 @@ catalog:
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
   lodash: 4.17.23
-  luxon: 3.4.4
+  luxon: 3.7.2
   mime-types: 3.0.2
   mysql2: 3.15.0
   nanoid: 3.3.8

@@ -2,6 +2,7 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -77,6 +78,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectStore = useProjectsStore();
 
 const router = useRouter();
@@ -180,7 +182,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
-		const resource = workflowsStore.getWorkflowById(workflowId);
+		const resource = workflowsListStore.getWorkflowById(workflowId);
 		if (resource?.name) {
 			params.cachedResultName = getWorkflowName(workflowId);
 		}
@@ -231,7 +233,7 @@ async function refreshCachedWorkflow() {
 
 	const workflowId = props.modelValue.value;
 	try {
-		await workflowsStore.fetchWorkflow(`${workflowId}`);
+		await workflowsListStore.fetchWorkflow(`${workflowId}`);
 		onInputChange(workflowId);
 	} catch (e) {
 		// keep old cached value
@@ -283,7 +285,7 @@ const onAddResourceClicked = async () => {
 		const projectId = projectStore.currentProjectId;
 		const sampleWorkflow = props.sampleWorkflow;
 		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-		const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(
 			(w) => w.name && new RegExp(workflowName).test(w.name),
 		);
 

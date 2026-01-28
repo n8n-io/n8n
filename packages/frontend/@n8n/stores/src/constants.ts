@@ -5,6 +5,7 @@ export const STORES = {
 	UI: 'ui',
 	USERS: 'users',
 	WORKFLOWS: 'workflows',
+	WORKFLOWS_LIST: 'workflowsList',
 	WORKFLOWS_V2: 'workflowsV2',
 	WORKFLOWS_EE: 'workflowsEE',
 	EXECUTIONS: 'executions',

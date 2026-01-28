@@ -179,6 +179,7 @@ ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _Cla
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
+ERROR_MATCH_PATTERN_ATTRIBUTE = "Match pattern extracting attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_WINDOWS_NOT_SUPPORTED = (
     "Error: This task runner is not supported on Windows. "
     "Please use a Unix-like system (Linux or macOS)."

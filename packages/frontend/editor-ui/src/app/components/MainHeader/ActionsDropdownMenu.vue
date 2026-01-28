@@ -32,6 +32,7 @@ import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -61,6 +62,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const uiStore = useUIStore();
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -284,7 +286,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId) return;
 
-			const workflowDescription = workflowsStore.getWorkflowById(workflowId).description;
+			const workflowDescription = workflowsListStore.getWorkflowById(workflowId).description;
 			uiStore.openModalWithData({
 				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 				data: {
@@ -413,7 +415,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: PROJECT_MOVE_RESOURCE_MODAL,
 				data: {
-					resource: workflowsStore.workflowsById[workflowId],
+					resource: workflowsListStore.workflowsById[workflowId],
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					eventBus: changeOwnerEventBus,

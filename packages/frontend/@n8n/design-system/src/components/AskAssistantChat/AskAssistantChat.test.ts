@@ -830,6 +830,143 @@ describe('AskAssistantChat', () => {
 		});
 	});
 
+	describe('Footer Rating', () => {
+		const MessageRatingMock = {
+			name: 'MessageRating',
+			props: ['minimal', 'showFeedback'],
+			emits: ['feedback'],
+			template:
+				'<div data-test-id="footer-rating-component"><button data-test-id="rating-button" @click="$emit(\'feedback\', { rating: \'up\' })">Rate</button></div>',
+		};
+
+		const renderWithFooterRating = (messages: ChatUI.AssistantMessage[], streaming = false) => {
+			return render(AskAssistantChat, {
+				global: {
+					directives: { n8nHtml },
+					stubs: {
+						...Object.fromEntries(stubs.map((stub) => [stub, true])),
+						MessageWrapper: MessageWrapperStub,
+						MessageRating: MessageRatingMock,
+					},
+				},
+				props: {
+					user: { firstName: 'Test', lastName: 'User' },
+					messages,
+					streaming,
+				},
+			});
+		};
+
+		it('should show footer rating when workflow-updated message exists and not streaming', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created successfully',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeTruthy();
+		});
+
+		it('should NOT show footer rating when streaming', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created successfully',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, true);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when no workflow-updated message exists', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Hello, how can I help?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when last message is from user', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'user',
+					type: 'text',
+					content: 'Can you modify this?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when there are no messages', () => {
+			const wrapper = renderWithFooterRating([], false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should emit feedback event when rating is submitted', async () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			const ratingButton = wrapper.getByTestId('rating-button');
+			ratingButton.click();
+
+			expect(wrapper.emitted('feedback')).toBeTruthy();
+			expect(wrapper.emitted('feedback')?.[0]).toEqual([{ rating: 'up' }]);
+		});
+	});
+
 	describe('onSendMessage', () => {
 		it('should emit message when N8nPromptInput submits', async () => {
 			const wrapper = mount(AskAssistantChat, {

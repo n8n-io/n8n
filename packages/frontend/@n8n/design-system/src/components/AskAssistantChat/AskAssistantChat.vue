@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
+import MessageRating from './messages/MessageRating.vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -259,6 +260,23 @@ const showThinkingPlaceholder = computed(() => {
 const showBottomInput = computed(() => {
 	// Hide bottom input when showing suggestions (blank state with suggestions)
 	return !showSuggestions.value;
+});
+
+const showFooterRating = computed(() => {
+	if (props.streaming || !props.messages?.length) {
+		return false;
+	}
+
+	// Check if there's a workflow-updated message in the original messages
+	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	// and check the last visible message (from normalizedMessages)
+	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
+	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+		return false;
+	}
+
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -534,6 +552,9 @@ defineExpose({
 				</template>
 			</div>
 		</div>
+		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+			<MessageRating minimal @feedback="onRateMessage" />
+		</div>
 		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
 			<slot name="inputHeader" />
 		</div>
@@ -618,6 +639,19 @@ defineExpose({
 	code {
 		text-wrap: wrap;
 	}
+
+	// Add a gradient fade at the bottom of the messages area
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: var(--spacing--xs);
+		height: var(--spacing--md);
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
+		pointer-events: none;
+		z-index: 1;
+	}
 }
 
 .placeholder {
@@ -647,7 +681,7 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--xl); // Extra padding for fade area
+	padding-bottom: var(--spacing--l);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
@@ -710,6 +744,15 @@ defineExpose({
 	color: var(--color--text);
 }
 
+.feedbackWrapper {
+	display: flex;
+	justify-content: start;
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: var(--color--background--light-2);
+}
+
 .inputHeaderWrapper {
 	display: flex;
 	justify-content: center;
@@ -730,27 +773,10 @@ defineExpose({
 	position: relative;
 	border-left: var(--border);
 	border-right: var(--border);
-
-	// Add a gradient fade from the chat to the input
-	&::before {
-		content: '';
-		position: absolute;
-		top: calc(-1 * var(--spacing--md));
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
 }
 
 .inputWrapperWithHeader {
 	padding-top: 0;
-
-	&::before {
-		display: none;
-	}
 }
 
 .disabledInput {

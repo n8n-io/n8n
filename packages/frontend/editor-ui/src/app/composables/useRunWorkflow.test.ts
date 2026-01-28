@@ -39,6 +39,7 @@ import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
 } from '../constants';
 
 vi.mock('@/app/stores/workflows.store', () => {
@@ -68,20 +69,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 			activeVersionId: null,
 		},
 		workflowId: '123',
-		workflowsById: {
-			'123': {
-				id: '123',
-				name: 'Test Workflow',
-				active: false,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				connections: {},
-				nodes: [],
-				versionId: '',
-				activeVersionId: null,
-			},
-		},
 		isWorkflowSaved: {
 			'123': true,
 		},
@@ -107,6 +94,29 @@ vi.mock('@/app/stores/workflows.store', () => {
 
 	return {
 		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
+
+vi.mock('@/app/stores/workflowsList.store', () => {
+	const storeState = {
+		activeWorkflows: [] as string[],
+		workflowsById: {
+			'123': {
+				id: '123',
+				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: '',
+				updatedAt: '',
+				connections: {},
+				nodes: [],
+				versionId: '',
+				activeVersionId: null,
+			},
+		},
+	};
+	return {
+		useWorkflowsListStore: vi.fn().mockReturnValue(storeState),
 	};
 });
 
@@ -885,7 +895,12 @@ describe('useRunWorkflow({ router })', () => {
 				expect(toast.showMessage).not.toHaveBeenCalled();
 			});
 
-			it.each([[CHAT_NODE_TYPE], [CHAT_TOOL_NODE_TYPE], [RESPOND_TO_WEBHOOK_NODE_TYPE]])(
+			it.each([
+				[CHAT_NODE_TYPE],
+				[CHAT_TOOL_NODE_TYPE],
+				[CHAT_HITL_TOOL_NODE_TYPE],
+				[RESPOND_TO_WEBHOOK_NODE_TYPE],
+			])(
 				'should not show a warning if the there are response nodes in the workflow (%s)',
 				async (responseNodeType) => {
 					const { runWorkflow } = useRunWorkflow({ router });
@@ -1097,7 +1112,13 @@ describe('useRunWorkflow({ router })', () => {
 			const markStoppedSpy = vi.spyOn(workflowState, 'markExecutionAsStopped');
 			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
-			workflowsStore.activeWorkflows = ['test-wf-id'];
+			const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
+			const workflowsListStore = useWorkflowsListStore();
+			(workflowsListStore.activeWorkflows as string[]).splice(
+				0,
+				workflowsListStore.activeWorkflows.length,
+				'test-wf-id',
+			);
 			workflowState.setActiveExecutionId('test-exec-id');
 			workflowsStore.executionWaitingForWebhook = false;
 

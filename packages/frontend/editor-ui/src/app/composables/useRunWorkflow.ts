@@ -30,6 +30,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	IN_PROGRESS_EXECUTION_ID,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
@@ -249,6 +250,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 						!node.disabled &&
 						(node.type === CHAT_NODE_TYPE ||
 							node.type === CHAT_TOOL_NODE_TYPE ||
+							node.type === CHAT_HITL_TOOL_NODE_TYPE ||
 							node.type === RESPOND_TO_WEBHOOK_NODE_TYPE),
 				);
 				if (!responseNodes?.length) {
