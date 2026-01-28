@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.playSound",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Play sounds in your browser from workflows. Get audio alerts when important events happen, workflows complete, or errors occur. Choose from preset sounds or use a custom sound URL.",
+
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.playsound/"
+			}
+		]
+	},
+	"alias": ["sound", "audio", "beep", "alert", "tone", "chime", "bell", "notify"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
