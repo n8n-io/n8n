@@ -144,7 +144,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const npsSurveyStore = useNpsSurveyStore();
-			vi.spyOn(npsSurveyStore, 'fetchPromptsData').mockResolvedValue();
+			vi.spyOn(npsSurveyStore, 'showNpsSurveyIfPossible').mockResolvedValue();
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
@@ -171,7 +171,7 @@ describe('useWorkflowSaving', () => {
 			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
-			expect(npsSurveyStore.fetchPromptsData).toHaveBeenCalled();
+			expect(npsSurveyStore.showNpsSurveyIfPossible).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toEqual(false);
 
 			expect(confirm).toHaveBeenCalled();
