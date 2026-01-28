@@ -174,6 +174,14 @@ function hasRequiredSubnodeFields(aiInputTypes: AIInputTypeInfo[]): boolean {
 }
 
 /**
+ * Check if any properties have displayOptions.
+ * Used to determine if we need to generate a factory function instead of static schema.
+ */
+function hasDisplayOptions(properties: NodeProperty[]): boolean {
+	return properties.some((prop) => prop.displayOptions !== undefined);
+}
+
+/**
  * Get base node name without package prefix
  */
 function getNodeBaseName(nodeName: string): string {
@@ -518,6 +526,26 @@ export function generateSchemaPropertyLine(prop: NodeProperty, optional: boolean
 	return `\t${propName}: ${schema},`;
 }
 
+/**
+ * Generate a conditional schema property line using resolveSchema helper.
+ * Used for properties that have displayOptions (conditionally shown/hidden fields).
+ *
+ * @param prop - The property with displayOptions
+ * @returns Generated code line for the property using resolveSchema
+ */
+export function generateConditionalSchemaLine(prop: NodeProperty): string {
+	const zodSchema = mapPropertyToZodSchema(prop);
+	if (!zodSchema) {
+		return '';
+	}
+
+	const propName = quotePropertyName(prop.name);
+	const required = prop.required ?? false;
+	const displayOptionsStr = JSON.stringify(prop.displayOptions);
+
+	return `\t${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr} }),`;
+}
+
 // =============================================================================
 // Schema Generation Result Types
 // =============================================================================
@@ -650,6 +678,9 @@ export function generateSingleVersionSchemaFile(
 	const aiInputTypes = extractAIInputTypesFromBuilderHint(filteredNode);
 	const subnodeSchemaImports = getSubnodeSchemaImports(aiInputTypes);
 
+	// Check if we need to generate factory functions (properties with displayOptions)
+	const needsFactoryFunction = hasDisplayOptions(filteredProperties);
+
 	const lines: string[] = [];
 
 	// Header
@@ -675,6 +706,11 @@ export function generateSingleVersionSchemaFile(
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
 
+	// Add resolveSchema import if we need factory functions
+	if (needsFactoryFunction) {
+		lines.push('\tresolveSchema,');
+	}
+
 	// Add subnode schema imports if this is an AI node
 	for (const schemaImport of subnodeSchemaImports) {
 		lines.push(`\t${schemaImport},`);
@@ -690,7 +726,13 @@ export function generateSingleVersionSchemaFile(
 	lines.push('');
 
 	// Generate schemas using the same logic as type generation
-	const schemaResult = generateSchemasForNode(filteredNode, nodeName, versionSuffix, aiInputTypes);
+	const schemaResult = generateSchemasForNode(
+		filteredNode,
+		nodeName,
+		versionSuffix,
+		aiInputTypes,
+		needsFactoryFunction,
+	);
 	lines.push(schemaResult.code);
 
 	return lines.join('\n');
@@ -700,15 +742,21 @@ export function generateSingleVersionSchemaFile(
  * Generate Zod schemas for a node (handles both flat and discriminated patterns)
  *
  * Generates:
- * - ParametersSchema: validates the parameters object
+ * - ParametersSchema: validates the parameters object (static or factory)
  * - SubnodeConfigSchema: validates AI subnode configuration (if AI node)
  * - ConfigSchema: combined schema wrapping parameters + subnodes
+ *
+ * When useFactoryFunction is true, generates factory functions like:
+ *   export function getNodeNameV1ParametersSchema({ parameters, resolveSchema }) { ... }
+ *
+ * This enables dynamic schema resolution for fields with displayOptions.
  */
 function generateSchemasForNode(
 	node: NodeTypeDescription,
 	nodeName: string,
 	versionSuffix: string,
 	aiInputTypes: AIInputTypeInfo[],
+	useFactoryFunction: boolean = false,
 ): SchemaGenerationResult {
 	const combinations = extractDiscriminatorCombinations(node);
 	const lines: string[] = [];
@@ -719,59 +767,128 @@ function generateSchemasForNode(
 	if (combinations.length === 0) {
 		// No discriminators - generate simple schema
 		const parametersSchemaName = `${baseSchemaName}ParametersSchema`;
+		const parametersFactoryName = `get${baseSchemaName}ParametersSchema`;
 		const configSchemaName = `${baseSchemaName}ConfigSchema`;
+		const configFactoryName = `get${baseSchemaName}ConfigSchema`;
 		const typeName = `${baseSchemaName}Config`;
 
-		// Generate Parameters Schema
-		lines.push(`export const ${parametersSchemaName} = z.object({`);
-
-		const seenNames = new Set<string>();
-		for (const prop of node.properties) {
-			if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
-				continue;
-			}
-			if (seenNames.has(prop.name)) {
-				continue;
-			}
-			seenNames.add(prop.name);
-			const propLine = generateSchemaPropertyLine(prop, !prop.required);
-			if (propLine) {
-				lines.push(propLine);
-			}
-		}
-
-		lines.push('});');
-		lines.push('');
-
-		// Generate Subnode Config Schema (if AI node)
-		if (hasAiInputs) {
-			const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
-			if (subnodeCode) {
-				lines.push(subnodeCode);
-				lines.push('');
-			}
-		}
-
-		// Generate Combined Config Schema
-		lines.push(`// Combined config schema (parameters + subnodes)`);
-		lines.push(`export const ${configSchemaName} = z.object({`);
-		lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
-		if (hasAiInputs) {
-			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+		if (useFactoryFunction) {
+			// Generate Parameters Schema Factory Function
 			lines.push(
-				`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+				`export function ${parametersFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('../../../base.schema').resolveSchema }) {`,
 			);
+			lines.push('\treturn z.object({');
+
+			const seenNames = new Set<string>();
+			for (const prop of node.properties) {
+				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+					continue;
+				}
+				if (seenNames.has(prop.name)) {
+					continue;
+				}
+				seenNames.add(prop.name);
+
+				// Use conditional schema line for properties with displayOptions
+				if (prop.displayOptions) {
+					const propLine = generateConditionalSchemaLine(prop);
+					if (propLine) {
+						lines.push(propLine);
+					}
+				} else {
+					const propLine = generateSchemaPropertyLine(prop, !prop.required);
+					if (propLine) {
+						lines.push(propLine);
+					}
+				}
+			}
+
+			lines.push('\t});');
+			lines.push('}');
+			lines.push('');
+
+			// Generate Subnode Config Schema (if AI node)
+			if (hasAiInputs) {
+				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				if (subnodeCode) {
+					lines.push(subnodeCode);
+					lines.push('');
+				}
+			}
+
+			// Generate Combined Config Schema Factory Function
+			lines.push(`// Combined config schema factory (parameters + subnodes)`);
+			lines.push(
+				`export function ${configFactoryName}({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('../../../base.schema').resolveSchema }) {`,
+			);
+			lines.push('\treturn z.object({');
+			lines.push(
+				`\t\tparameters: ${parametersFactoryName}({ parameters, resolveSchema }).optional(),`,
+			);
+			if (hasAiInputs) {
+				const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+				lines.push(
+					`\t\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+				);
+			}
+			lines.push(`\t\t// TODO: Add other NodeConfig fields (disabled, retryOnFail, etc.)`);
+			lines.push('\t});');
+			lines.push('}');
+			lines.push('');
+			lines.push('// TODO: Add credentials schema');
+			lines.push('// TODO: Add full node schema (type, version, credentials, config)');
+		} else {
+			// Generate static Parameters Schema
+			lines.push(`export const ${parametersSchemaName} = z.object({`);
+
+			const seenNames = new Set<string>();
+			for (const prop of node.properties) {
+				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+					continue;
+				}
+				if (seenNames.has(prop.name)) {
+					continue;
+				}
+				seenNames.add(prop.name);
+				const propLine = generateSchemaPropertyLine(prop, !prop.required);
+				if (propLine) {
+					lines.push(propLine);
+				}
+			}
+
+			lines.push('});');
+			lines.push('');
+
+			// Generate Subnode Config Schema (if AI node)
+			if (hasAiInputs) {
+				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				if (subnodeCode) {
+					lines.push(subnodeCode);
+					lines.push('');
+				}
+			}
+
+			// Generate Combined Config Schema
+			lines.push(`// Combined config schema (parameters + subnodes)`);
+			lines.push(`export const ${configSchemaName} = z.object({`);
+			lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
+			if (hasAiInputs) {
+				const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+				lines.push(
+					`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+				);
+			}
+			lines.push(`\t// TODO: Add other NodeConfig fields (disabled, retryOnFail, etc.)`);
+			lines.push('});');
+			lines.push('');
+			lines.push(`export type ${typeName}Validated = z.infer<typeof ${configSchemaName}>;`);
+			lines.push('');
+			lines.push('// TODO: Add credentials schema');
+			lines.push('// TODO: Add full node schema (type, version, credentials, config)');
 		}
-		lines.push(`\t// TODO: Add other NodeConfig fields (disabled, retryOnFail, etc.)`);
-		lines.push('});');
-		lines.push('');
-		lines.push(`export type ${typeName}Validated = z.infer<typeof ${configSchemaName}>;`);
-		lines.push('');
-		lines.push('// TODO: Add credentials schema');
-		lines.push('// TODO: Add full node schema (type, version, credentials, config)');
 
 		schemaInfos.push({
-			schemaName: configSchemaName,
+			schemaName: useFactoryFunction ? configFactoryName : configSchemaName,
 			typeName,
 			discriminators: {},
 		});
@@ -1082,6 +1199,79 @@ export const textSplitterInstanceSchema = subnodeInstanceBaseSchema;
  * Reranker subnode instance (ai_reranker)
  */
 export const rerankerInstanceSchema = subnodeInstanceBaseSchema;
+
+// =============================================================================
+// Dynamic Schema Resolution (for displayOptions support)
+// =============================================================================
+
+/**
+ * Display options for conditional field visibility
+ */
+export type DisplayOptions = {
+	show?: Record<string, unknown[]>;
+	hide?: Record<string, unknown[]>;
+};
+
+/**
+ * Check if a field should be visible based on displayOptions and current parameter values
+ */
+export function matchesDisplayOptions(
+	parameters: Record<string, unknown>,
+	displayOptions: DisplayOptions,
+): boolean {
+	if (displayOptions.show) {
+		for (const [key, allowedValues] of Object.entries(displayOptions.show)) {
+			if (!allowedValues.includes(parameters[key])) {
+				return false;
+			}
+		}
+	}
+
+	if (displayOptions.hide) {
+		for (const [key, hiddenValues] of Object.entries(displayOptions.hide)) {
+			if (hiddenValues.includes(parameters[key])) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Configuration for resolveSchema function
+ */
+export type ResolveSchemaConfig = {
+	parameters: Record<string, unknown>;
+	schema: z.ZodTypeAny;
+	required: boolean;
+	displayOptions: DisplayOptions;
+};
+
+/**
+ * Resolve a schema dynamically based on displayOptions and current parameter values.
+ *
+ * When field is visible (displayOptions match):
+ *   - Returns required schema if required=true
+ *   - Returns optional schema if required=false
+ *
+ * When field is not visible (displayOptions don't match):
+ *   - Returns z.unknown().optional() to accept any value without validation
+ */
+export function resolveSchema({
+	parameters,
+	schema,
+	required,
+	displayOptions,
+}: ResolveSchemaConfig): z.ZodTypeAny {
+	const isVisible = matchesDisplayOptions(parameters, displayOptions);
+
+	if (isVisible) {
+		return required ? schema : schema.optional();
+	} else {
+		return z.unknown().optional();
+	}
+}
 `;
 }
 
