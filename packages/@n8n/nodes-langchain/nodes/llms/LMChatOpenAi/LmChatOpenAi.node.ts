@@ -199,6 +199,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
+				builderHint: '*IMPORTANT* Always use latest mini model gpt-5-mini',
 				required: true,
 				modes: [
 					{
