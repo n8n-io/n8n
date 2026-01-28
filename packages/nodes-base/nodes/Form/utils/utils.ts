@@ -518,7 +518,7 @@ export function renderForm({
 	customCss?: string;
 	authToken?: string;
 }) {
-	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+	formDescription = (formDescription || '').replace(/\\n/g, '\n');
 	const instanceId = context.getInstanceId();
 
 	const useResponseData = responseMode === 'responseNode';

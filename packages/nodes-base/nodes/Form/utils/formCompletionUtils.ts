@@ -51,9 +51,7 @@ export const renderFormCompletion = async (
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = sanitizeHtml(
 		context.getNodeParameter('completionMessage', '') as string,
-	)
-		.replace(/\\n/g, '\n')
-		.replace(/<br>/g, '\n');
+	).replace(/\\n/g, '\n');
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
