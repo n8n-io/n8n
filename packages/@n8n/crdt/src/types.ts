@@ -74,6 +74,20 @@ export const ChangeOrigin = {
 export type ChangeOrigin = (typeof ChangeOrigin)[keyof typeof ChangeOrigin];
 
 /**
+ * Batched changes from a single CRDT transaction.
+ * Contains all changes grouped by their source root map name.
+ *
+ * Use with `CRDTDoc.onTransactionBatch()` to receive all changes from
+ * multiple maps in a single callback, properly ordered within the transaction.
+ */
+export interface TransactionBatch {
+	/** Changes grouped by root-level map name (e.g., 'nodes', 'edges') */
+	changes: Map<string, DeepChange[]>;
+	/** Origin of the transaction */
+	origin: ChangeOrigin;
+}
+
+/**
  * Type guard to check if a DeepChange is a DeepChangeEvent (map change).
  */
 export function isMapChange(change: DeepChange): change is DeepChangeEvent {
@@ -206,6 +220,21 @@ export interface CRDTDoc {
 	 * @returns A new undo manager instance
 	 */
 	createUndoManager(options?: UndoManagerOptions): CRDTUndoManager;
+	/**
+	 * Subscribe to batched changes from transactions.
+	 *
+	 * Unlike individual map observers (which fire separately for each map),
+	 * this fires ONCE per transaction with all changes from the specified maps
+	 * batched together. Uses Yjs's `afterTransaction` event internally.
+	 *
+	 * Use this when you need coordinated updates across multiple data types
+	 * (e.g., nodes and edges that must be processed together).
+	 *
+	 * @param mapNames Names of root-level maps to observe (e.g., ['nodes', 'edges'])
+	 * @param handler Called once per transaction with all changes batched
+	 * @returns Unsubscribe function
+	 */
+	onTransactionBatch(mapNames: string[], handler: (batch: TransactionBatch) => void): Unsubscribe;
 	/** Clean up resources */
 	destroy(): void;
 }

@@ -74,8 +74,8 @@ export class YjsUndoManager implements CRDTUndoManager {
 
 		this.undoManager = new Y.UndoManager(scope, {
 			captureTimeout,
-			// Track changes from our local origin and null (direct mutations)
-			// Remote changes use YjsRemoteOrigin which is NOT in this set
+			// Track changes from our explicit local origin AND null origin (direct mutations).
+			// Remote changes use YjsRemoteOrigin which is NOT in this set.
 			trackedOrigins: new Set([YjsUndoManagerOrigin, null]),
 		});
 

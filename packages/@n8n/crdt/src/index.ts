@@ -9,6 +9,7 @@ export type {
 	ArrayChangeEvent,
 	DeepChangeEvent,
 	DeepChange,
+	TransactionBatch,
 	CRDTArray,
 	CRDTMap,
 	CRDTDoc,
@@ -74,7 +75,7 @@ export {
 } from './protocol';
 
 // Utilities
-export { seedValueDeep, toJSON } from './utils';
+export { seedValueDeep, toJSON, getNestedValue, setNestedValue } from './utils';
 
 /**
  * Creates a CRDT provider based on the given configuration.
