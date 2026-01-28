@@ -22,6 +22,7 @@ import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/ty
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 
 export type UseDataTableOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -115,7 +116,7 @@ export const useDataTableOperations = ({
 
 		const promptResponse = await message.confirm(
 			i18n.baseText('dataTable.deleteColumn.confirm.message', {
-				interpolate: { name: columnToDelete.headerName ?? '' },
+				interpolate: { name: escapeHtml(columnToDelete.headerName ?? '') },
 			}),
 			i18n.baseText('dataTable.deleteColumn.confirm.title'),
 			{
