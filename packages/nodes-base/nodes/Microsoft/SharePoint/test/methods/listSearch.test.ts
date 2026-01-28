@@ -25,6 +25,55 @@ describe('Microsoft SharePoint Node', () => {
 			jest.resetAllMocks();
 		});
 
+		it('should list search drives', async () => {
+			// Mock the lists response
+			const mockListsResponse = {
+				'@odata.nextLink':
+					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/lists?%24skiptoken=abc',
+				value: [
+					{
+						id: 'list1',
+						displayName: 'Documents',
+						list: { hidden: false },
+					},
+					{
+						id: 'list2',
+						displayName: 'Shared Files',
+						list: { hidden: false },
+					},
+					{
+						id: 'list3',
+						displayName: 'Hidden List',
+						list: { hidden: true },
+					},
+				],
+			};
+
+			// Mock the drive responses for each list
+			const mockDriveResponse1 = { id: 'b!abc123', name: 'Documents' };
+			const mockDriveResponse2 = { id: 'b!def456', name: 'Shared Files' };
+
+			mockRequestWithAuthentication
+				.mockResolvedValueOnce(mockListsResponse) // First call: get lists
+				.mockResolvedValueOnce(mockDriveResponse1) // Second call: get drive for list1
+				.mockResolvedValueOnce(mockDriveResponse2); // Third call: get drive for list2
+
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+
+			const listSearchResult = await node.methods.listSearch.getDrives.call(
+				loadOptionsFunctions,
+				'Doc',
+			);
+
+			// Should call: 1 for lists + 2 for non-hidden lists (hidden list is skipped)
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(3);
+			expect(listSearchResult).toEqual({
+				results: [{ name: 'Documents', value: 'b!abc123' }],
+				paginationToken:
+					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/lists?%24skiptoken=abc',
+			});
+		});
+
 		it('should list search files', async () => {
 			const mockResponse = {
 				'@odata.nextLink':
@@ -65,6 +114,7 @@ describe('Microsoft SharePoint Node', () => {
 			};
 			mockRequestWithAuthentication.mockReturnValue(mockResponse);
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('drive');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('folder');
 
 			const listSearchResult = await node.methods.listSearch.getFiles.call(
@@ -96,6 +146,7 @@ describe('Microsoft SharePoint Node', () => {
 			};
 			mockRequestWithAuthentication.mockReturnValue(mockResponse);
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('drive');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('folder');
 
 			await node.methods.listSearch.getFiles.call(loadOptionsFunctions, "fi'le'");
@@ -128,6 +179,7 @@ describe('Microsoft SharePoint Node', () => {
 			};
 			mockRequestWithAuthentication.mockReturnValue(mockResponse);
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('drive');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('folder');
 
 			const listSearchResult = await node.methods.listSearch.getFiles.call(
@@ -177,6 +229,7 @@ describe('Microsoft SharePoint Node', () => {
 			};
 			mockRequestWithAuthentication.mockReturnValue(mockResponse);
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('drive');
 
 			const listSearchResult = await node.methods.listSearch.getFolders.call(
 				loadOptionsFunctions,
@@ -221,6 +274,7 @@ describe('Microsoft SharePoint Node', () => {
 			};
 			mockRequestWithAuthentication.mockReturnValue(mockResponse);
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('drive');
 
 			const listSearchResult = await node.methods.listSearch.getFolders.call(
 				loadOptionsFunctions,
@@ -234,6 +288,10 @@ describe('Microsoft SharePoint Node', () => {
 			});
 			expect(listSearchResult).toEqual({
 				results: [
+					{
+						name: '/ (Library root)',
+						value: 'root',
+					},
 					{
 						name: 'Folder1',
 						value: '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA',

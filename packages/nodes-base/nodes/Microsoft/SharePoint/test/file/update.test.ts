@@ -12,7 +12,7 @@ describe('Microsoft SharePoint Node', () => {
 			mocks: [
 				{
 					method: 'patch',
-					path: '/sites/site1/drive/items/item1',
+					path: '/sites/site1/drives/drive1/items/item1',
 					statusCode: 200,
 					responseBody: {
 						'@odata.context':
@@ -78,7 +78,7 @@ describe('Microsoft SharePoint Node', () => {
 				},
 				{
 					method: 'put',
-					path: '/sites/site1/drive/items/item1/content',
+					path: '/sites/site1/drives/drive1/items/item1/content',
 					statusCode: 200,
 					responseBody: {
 						'@odata.context':
