@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Config, Env } from '@n8n/config';
 import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -26,8 +27,11 @@ export class StorageConfig {
 
 	private readonly instanceSettings: InstanceSettings;
 
-	constructor(instanceSettings: InstanceSettings) {
+	private readonly logger: Logger;
+
+	constructor(instanceSettings: InstanceSettings, logger: Logger) {
 		this.instanceSettings = instanceSettings;
+		this.logger = logger;
 		this.storagePath = path.join(instanceSettings.n8nFolder, 'storage');
 	}
 
@@ -47,6 +51,9 @@ export class StorageConfig {
 	 * fact that this dir contains binary data for workflows, execution data for
 	 * workflows, and chat hub attachments.
 	 *
+	 * Migration is opt-in via `N8N_MIGRATE_FS_STORAGE_PATH=true` and will become
+	 * the default in v3.
+	 *
 	 * Migration skips if...
 	 * - already migrated,
 	 * - `N8N_STORAGE_PATH` is set (user wants custom new path),
@@ -65,6 +72,16 @@ export class StorageConfig {
 		const oldPath = path.join(n8nFolder, 'binaryData');
 
 		if (!existsSync(oldPath)) return;
+
+		const shouldMigrate = process.env.N8N_MIGRATE_FS_STORAGE_PATH === 'true';
+
+		if (!shouldMigrate) {
+			this.logger.warn(
+				`Deprecation warning: The storage directory "${oldPath}" will be renamed to "${path.join(n8nFolder, 'storage')}" in n8n v3. To migrate now, set N8N_MIGRATE_FS_STORAGE_PATH=true. If you have a volume mounted at the old path, update your mount configuration after migration.`,
+			);
+			this.storagePath = oldPath;
+			return;
+		}
 
 		const newPath = path.join(n8nFolder, 'storage');
 
