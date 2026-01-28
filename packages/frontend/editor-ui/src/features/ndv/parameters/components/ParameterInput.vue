@@ -1876,7 +1876,7 @@ onUpdated(async () => {
 			<N8nSwitch2
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
 				ref="inputField"
-				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:model-value="Boolean(displayValue)"
 				:label="switchLabel"
 				:disabled="isReadOnly"
