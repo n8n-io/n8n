@@ -1,19 +1,27 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { InstanceSettings } from 'n8n-core';
-import type { IUser } from 'n8n-workflow';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type {
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeNameVersion,
+	IUser,
+	ITelemetryTrackProperties,
+} from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -36,7 +44,25 @@ export class WorkflowBuilderService {
 		private readonly push: Push,
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
-	) {}
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+	) {
+		// Register a post-processor to update node types when they change.
+		// This ensures newly installed/updated/uninstalled community packages are recognized
+		// while preserving existing sessions.
+		this.loadNodesAndCredentials.addPostProcessor(async () => this.refreshNodeTypes());
+	}
+
+	/**
+	 * Update the node types on the existing service instance.
+	 * Called automatically when postProcessLoaders() runs (e.g., after community package changes).
+	 * This preserves existing sessions while making new node types available.
+	 */
+	refreshNodeTypes() {
+		if (this.service) {
+			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+			this.service.updateNodeTypes(nodeTypeDescriptions);
+		}
+	}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
 		if (this.service) return this.service;
@@ -86,6 +112,35 @@ export class WorkflowBuilderService {
 			this.telemetry.track(event, properties);
 		};
 
+		// Factory for creating resource locator callbacks scoped to a user
+		const resourceLocatorCallbackFactory: ResourceLocatorCallbackFactory = (userId: string) => {
+			return async (
+				methodName: string,
+				path: string,
+				nodeTypeAndVersion: INodeTypeNameVersion,
+				currentNodeParameters: INodeParameters,
+				credentials?: INodeCredentials,
+				filter?: string,
+				paginationToken?: string,
+			) => {
+				const additionalData = await getBase({
+					userId,
+					currentNodeParameters,
+				});
+
+				return await this.dynamicNodeParametersService.getResourceLocatorResults(
+					methodName,
+					path,
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					credentials,
+					filter,
+					paginationToken,
+				);
+			};
+		};
+
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
 		this.loadNodesAndCredentials.releaseTypes();
@@ -99,6 +154,7 @@ export class WorkflowBuilderService {
 			N8N_VERSION,
 			onCreditsUpdated,
 			onTelemetryEvent,
+			resourceLocatorCallbackFactory,
 		);
 
 		return this.service;
@@ -113,13 +169,6 @@ export class WorkflowBuilderService {
 		const service = await this.getService();
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
-	}
-
-	async getSessionsMetadata(workflowId: string | undefined, user: IUser) {
-		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
-		const hasMessages = sessions.sessions.length > 0 && sessions.sessions[0].messages.length > 0;
-		return { hasMessages };
 	}
 
 	async getBuilderInstanceCredits(user: IUser) {

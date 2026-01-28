@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@BackendModule({ name: 'sso-oidc', licenseFlag: 'feat:oidc' })
+@BackendModule({ name: 'sso-oidc', licenseFlag: 'feat:oidc', instanceTypes: ['main'] })
 export class OidcModule implements ModuleInterface {
 	async init() {
 		await import('./oidc.controller.ee');

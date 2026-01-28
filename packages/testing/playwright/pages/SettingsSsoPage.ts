@@ -46,7 +46,7 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	async isOidcLoginEnabled(): Promise<boolean> {
-		return await this.getOidcLoginToggle().locator('input').isChecked();
+		return await this.getOidcLoginToggle().isChecked();
 	}
 
 	async enableOidcLogin(): Promise<void> {

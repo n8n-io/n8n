@@ -76,6 +76,18 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to enable TCP keep-alive on Redis connections. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE')
+	keepAlive: boolean = false;
+
+	/** TCP keep-alive initial delay in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
+	keepAliveDelay: number = 5000;
+
+	/** TCP keep-alive interval in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
+	keepAliveInterval: number = 5000;
 }
 
 @Config

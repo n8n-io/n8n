@@ -5,7 +5,12 @@
  * Uses natural language instructions to configure each node's settings.
  */
 
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
+import { webhook } from '../shared/node-guidance';
+
+const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
 const CONFIGURATOR_ROLE =
 	'You are a Configurator Agent specialized in setting up n8n node parameters.';
@@ -108,6 +113,23 @@ const CRITICAL_PARAMETERS = `- HTTP Request: URL, method, headers (if auth neede
 - AI nodes: Prompts, models, configurations
 - Tool nodes: Use $fromAI for dynamic recipient/subject/message fields`;
 
+const DATA_TABLE_CONFIGURATION = `DATA TABLE NODE CONFIGURATION:
+When configuring Data Table nodes (n8n-nodes-base.dataTable):
+
+**For Row Column Operations (${dataTableColumnOperationsList}):**
+- There MUST be a Set node (n8n-nodes-base.set) immediately before the Data Table node
+- Configure the Set node with all the fields the user wants to store
+- Use a PLACEHOLDER for dataTableId (e.g., "<__PLACEHOLDER_VALUE__data_table_name__>")
+- Use columns.mappingMode: "autoMapInputData" (this maps columns from the preceding Set node)
+- Example: "Set dataTableId to placeholder <__PLACEHOLDER_VALUE__my_table__>, set columns mapping mode to autoMapInputData"
+
+**For Row Read Operations (get, getAll, delete):**
+- No Set node is required before the Data Table node
+- Still use a PLACEHOLDER for dataTableId
+- Configure any filter or query parameters as needed
+
+WHY: Data Tables must be created manually by the user. Using a placeholder ensures users know to create and select their table. For column operations, the Set node defines what columns to create.`;
+
 const DEFAULT_VALUES_GUIDE = `PRINCIPLE: User requests ALWAYS take precedence. When user specifies a model, parameter, or value - use exactly what they requested.
 
 SAFE DEFAULTS - Trust these unless user specifies otherwise:
@@ -146,6 +168,37 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
+const WEBHOOK_CONFIGURATION = webhook.configuration;
+
+const RESOURCE_LOCATOR_CONFIGURATION = `RESOURCE LOCATOR PARAMETERS:
+Some node parameters use "resource locator" type. This allows user to select from dynamic lists (calendars, documents, boards, channels, etc.).
+These parameters have a specific structure in the node configuration:
+{{
+  "__rl": true,
+  "mode": "list",
+  "value": "<selected_id>",
+  "cachedResultName: "<display_name>"
+}}
+
+REQUIRED PROCESS for resource locator parameters:
+1. BEFORE configuring any parameter with "__rl": true, call get_resource_locator_options
+   - Provide the nodeId and parameterPath (e.g., "documentId", "calendarId", "boardId")
+   - The tool returns available options with display names and IDs
+2. If the user specifies which resource they want, match it to the options and use the correct ID
+3. USE BOTH the display name and the ID when updating the parameter:
+   - Format: "Document Name (ID: 1abc...xyz)"
+4. ONLY use values returned by get_resource_locator_options - NEVER assume available options, NEVER guess or hallucinate IDs
+
+Example:
+- User says "use the Q4 Report document"
+- Call get_resource_locator_options for the documentId parameter
+- Find "Q4 Report" in the results with ID "1mtaEwM07..."
+- Configure the parameter with the correct ID value and display name
+
+NEVER configure resource locator parameters without fetching a list of possible options using get_resource_locator_options
+
+Run get_resource_locator_options for all resource locator parameters BEFORE configuring nodes IN PARALLEL to save time`;
+
 const NODE_CONFIGURATION_EXAMPLES = `NODE CONFIGURATION EXAMPLES:
 When configuring complex nodes, use get_node_configuration_examples to see real-world examples from community templates:
 
@@ -165,10 +218,22 @@ const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 - Note which nodes were configured and key settings applied
 - Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users`;
 
+const CREDENTIAL_SECURITY = `SECURITY: Never configure credentials or authentication secrets.
+
+The AI Workflow Builder does NOT have access to credentials - they are configured separately by users in the frontend.
+
+NEVER set these parameters:
+- apiKey, token, password, secret, or any credential fields
+- Placeholder values like "YOUR_API_KEY_HERE" or "sk-..."
+- Authentication headers with actual secrets
+
+Credentials are automatically handled by n8n's credential system when users configure the workflow after generation.`;
+
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
 - Add commentary between tool calls - execute tools silently
-- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT`;
+- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT
+- Configure credentials, API keys, tokens, or authentication secrets`;
 
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `
@@ -209,13 +274,17 @@ export function buildConfiguratorPrompt(): string {
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
+		.section('resource_locator_configuration', RESOURCE_LOCATOR_CONFIGURATION)
 		.section('data_referencing', DATA_REFERENCING)
 		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
+		.section('data_table_configuration', DATA_TABLE_CONFIGURATION)
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
+		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
+		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)
 		.build();

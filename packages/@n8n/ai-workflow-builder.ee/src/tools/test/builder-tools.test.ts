@@ -60,6 +60,13 @@ jest.mock('../remove-node.tool', () => ({
 	},
 }));
 
+jest.mock('../rename-node.tool', () => ({
+	RENAME_NODE_TOOL: {
+		toolName: 'rename_node',
+		displayTitle: 'Renaming node',
+	},
+}));
+
 jest.mock('../update-node-parameters.tool', () => ({
 	UPDATING_NODE_PARAMETER_TOOL: {
 		toolName: 'update_node_parameters',
@@ -103,10 +110,10 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: true },
 			});
 
-			// 12 tools: get_documentation, workflow_examples, node_search, node_details, add_node,
-			// connect_nodes, remove_connection, remove_node, update_node_parameters,
+			// 13 tools: best_practices, workflow_examples, node_search, node_details, add_node,
+			// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
 			// get_node_parameter, validate_structure, validate_configuration
-			expect(tools).toHaveLength(12);
+			expect(tools).toHaveLength(13);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -116,7 +123,7 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: false },
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 		});
 
 		it('should exclude workflow examples tool when feature flag is not provided', () => {
@@ -124,7 +131,7 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 		});
 
 		it('should work with empty node types array', () => {
@@ -132,7 +139,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

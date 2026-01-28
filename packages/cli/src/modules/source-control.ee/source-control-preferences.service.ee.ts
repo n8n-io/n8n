@@ -186,6 +186,20 @@ export class SourceControlPreferencesService {
 	}
 
 	/**
+	 * Clears the SSH known_hosts file.
+	 * This allows reconnecting to repositories after a host key change.
+	 */
+	async resetKnownHosts(): Promise<void> {
+		const knownHostsPath = path.join(this.sshFolder, 'known_hosts');
+		try {
+			await fsRm(knownHostsPath, { force: true });
+			this.logger.debug('Cleared SSH known_hosts file');
+		} catch (error) {
+			this.logger.warn('Failed to clear known_hosts file', { error });
+		}
+	}
+
+	/**
 	 * Generate an SSH key pair and write it to the database, overwriting any existing key pair.
 	 */
 	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {

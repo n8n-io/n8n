@@ -14,6 +14,11 @@ import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee
 
 jest.mock('axios');
 
+jest.mock('../utils', () => ({
+	getBearerToken: jest.requireActual('../utils').getBearerToken,
+	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
+}));
+
 describe('DynamicCredentialsController', () => {
 	const enterpriseCredentialsService = mockInstance(EnterpriseCredentialsService);
 	const oauthService = mockInstance(OauthService);

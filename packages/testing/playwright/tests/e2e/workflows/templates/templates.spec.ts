@@ -296,8 +296,8 @@ test.describe('Workflow templates', () => {
 			await expect(n8n.page).toHaveURL(/\?categories=/);
 			await expect(n8n.page).toHaveURL(/&search=/);
 
-			const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY).locator('label');
-			await expect(salesFilterLabel).toHaveClass(/is-checked/);
+			const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY);
+			await expect(salesFilterLabel).toBeChecked();
 			await expect(n8n.templates.getSearchInput()).toHaveValue('auto');
 
 			await expect(n8n.templates.getCategoryFilters().nth(1)).toHaveText('Sales');

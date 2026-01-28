@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -17,7 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -27,8 +27,15 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
+
 import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
-import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	NodeApiError,
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -52,8 +59,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 @Service()
 export class WorkflowService {
@@ -79,6 +89,8 @@ export class WorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly webhookService: WebhookService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async getMany(
@@ -148,10 +160,35 @@ export class WorkflowService {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
+		// Add hasResolvableCredentials if dynamic credentials feature is licensed
+		if (this.licenseState.isDynamicCredentialsLicensed()) {
+			return {
+				workflows: await this.addResolvableCredentialsFlag(workflows),
+				count,
+			};
+		}
+
 		return {
 			workflows,
 			count,
 		};
+	}
+
+	private async addResolvableCredentialsFlag<
+		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
+	>(workflows: T[]): Promise<(T & { hasResolvableCredentials: boolean })[]> {
+		// Use lazy import to avoid circular dependency
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+
+		const workflowIds = workflows.map((w) => w.id);
+		const workflowIdsWithResolvable =
+			await enterpriseWorkflowService.getWorkflowIdsWithResolvableCredentials(workflowIds);
+
+		return workflows.map((workflow) => ({
+			...workflow,
+			hasResolvableCredentials: workflowIdsWithResolvable.has(workflow.id),
+		}));
 	}
 
 	private async processSharedWorkflows(
@@ -263,6 +300,10 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
 		if (!forceSave && expectedChecksum) {
@@ -497,6 +538,44 @@ export class WorkflowService {
 		}
 	}
 
+	private async _findConflictingWebhooks(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
+		const workflow = new Workflow({
+			id: workflowEntity.id,
+			nodes: versionToActivate.nodes,
+			connections: versionToActivate.connections,
+			active: !!workflowEntity.activeVersion,
+			settings: workflowEntity.settings,
+			nodeTypes: this.nodeTypes,
+		});
+		const additionalData = await getWorkflowExecutionData({
+			workflowId: workflow.id,
+		});
+
+		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+	}
+
+	private async _detectWebhookConflicts(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
+		const conflicts = await this._findConflictingWebhooks(workflowEntity, versionToActivate);
+
+		if (conflicts.length > 0) {
+			throw new ConflictError(
+				'There is a conflict with one of the webhooks.',
+				JSON.stringify(
+					conflicts.map(({ trigger, conflict }) => ({
+						trigger,
+						conflict,
+					})),
+				),
+			);
+		}
+	}
+
 	/**
 	 * Activates a workflow by setting its activeVersionId and adding it to the active workflow manager.
 	 * @param user - The user activating the workflow
@@ -533,6 +612,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot activate an archived workflow.');
+		}
+
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const wasActive = workflow.activeVersionId !== null;
 
@@ -556,6 +639,8 @@ export class WorkflowService {
 		if (options?.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
+
+		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
