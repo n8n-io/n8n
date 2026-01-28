@@ -656,8 +656,8 @@ describe('SourceControlPushModal', () => {
 			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
 
 			// All data tables should be selected by default
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 
 			// Verify the tab shows correct count
 			expect(dataTablesTab?.textContent).toContain('2 / 2 selected');
@@ -715,9 +715,9 @@ describe('SourceControlPushModal', () => {
 
 			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(dataTables).toHaveLength(1);
-			expect(within(dataTables[0]).getByText('Customer Data')).toBeInTheDocument();
+			expect(dataTables[0].parentElement).toHaveTextContent('Customer Data');
 			// Data tables should be selected by default
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
+			expect(dataTables[0]).toBeChecked();
 		});
 
 		it('should toggle data table selection', async () => {
@@ -786,18 +786,18 @@ describe('SourceControlPushModal', () => {
 			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
 
 			// Both should be checked initially
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 
 			// Uncheck first data table
-			await userEvent.click(within(dataTables[0]).getByRole('checkbox'));
-			expect(within(dataTables[0]).getByRole('checkbox')).not.toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 
 			// Check it again
-			await userEvent.click(within(dataTables[0]).getByRole('checkbox'));
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 		});
 
 		it('should toggle all data tables with select-all button', async () => {
@@ -866,18 +866,18 @@ describe('SourceControlPushModal', () => {
 			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
 
 			// Both should be checked initially
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 
 			// Unselect all
 			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
-			expect(within(dataTables[0]).getByRole('checkbox')).not.toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).not.toBeChecked();
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).not.toBeChecked();
 
 			// Select all again
 			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
-			expect(within(dataTables[0]).getByRole('checkbox')).toBeChecked();
-			expect(within(dataTables[1]).getByRole('checkbox')).toBeChecked();
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
 		});
 
 		it('should filter data tables by name', async () => {
@@ -1104,7 +1104,7 @@ describe('SourceControlPushModal', () => {
 			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
 
 			// Uncheck second data table (dt-2 is displayed first due to sorting by updatedAt desc)
-			await userEvent.click(within(dataTables[0]).getByRole('checkbox'));
+			await userEvent.click(dataTables[0]);
 
 			const submitButton = getByTestId('source-control-push-modal-submit');
 			const commitMessage = 'commit message';
