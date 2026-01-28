@@ -2,10 +2,12 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
+import { waitFor } from '@testing-library/vue';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 const mockRouter = {
 	push: vi.fn(),
@@ -74,6 +76,7 @@ const renderComponent = createComponentRenderer(DataTableBreadcrumbs, {
 });
 
 let dataTableStore: MockedStore<typeof useDataTableStore>;
+let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 
 describe('DataTableBreadcrumbs', () => {
 	beforeEach(() => {
@@ -81,6 +84,21 @@ describe('DataTableBreadcrumbs', () => {
 
 		createTestingPinia();
 		dataTableStore = mockedStore(useDataTableStore);
+		sourceControlStore = mockedStore(useSourceControlStore);
+
+		// Mock project permissions to enable renaming
+		dataTableStore.projectPermissions = {
+			dataTable: {
+				update: true,
+				delete: true,
+				create: true,
+			},
+		};
+
+		// Mock source control to not be in read-only mode
+		sourceControlStore.preferences = {
+			branchReadOnly: false,
+		};
 	});
 
 	describe('Breadcrumbs rendering', () => {
@@ -176,14 +194,17 @@ describe('DataTableBreadcrumbs', () => {
 			// Type new name
 			const input = getByTestId('inline-edit-input');
 			await userEvent.tripleClick(input);
+			await userEvent.keyboard('{Backspace}');
 			await userEvent.type(input, 'Renamed Table{Enter}');
 
 			// Check that updateDataTable was called
-			expect(dataTableStore.updateDataTable).toHaveBeenCalledWith(
-				'1',
-				'Renamed Table',
-				'project-1',
-			);
+			await waitFor(() => {
+				expect(dataTableStore.updateDataTable).toHaveBeenCalledWith(
+					'1',
+					'Renamed Table',
+					'project-1',
+				);
+			});
 		});
 
 		it('should show error toast when rename fails', async () => {
@@ -196,9 +217,12 @@ describe('DataTableBreadcrumbs', () => {
 
 			const input = getByTestId('inline-edit-input');
 			await userEvent.tripleClick(input);
+			await userEvent.keyboard('{Backspace}');
 			await userEvent.type(input, 'Failed Name{Enter}');
 
-			expect(mockToast.showError).toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalled();
+			});
 		});
 
 		it('should revert to original name when update returns null', async () => {
@@ -212,9 +236,12 @@ describe('DataTableBreadcrumbs', () => {
 
 			const input = getByTestId('inline-edit-input');
 			await userEvent.tripleClick(input);
+			await userEvent.keyboard('{Backspace}');
 			await userEvent.type(input, 'Invalid Name{Enter}');
 
-			expect(mockToast.showError).toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalled();
+			});
 		});
 
 		it('should not call updateDataTable when name is empty', async () => {

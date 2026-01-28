@@ -14,7 +14,7 @@ vi.mock('ag-grid-vue3', () => ({
 	AgGridVue: {
 		name: 'AgGridVue',
 		template:
-			'<div data-test-id="ag-grid-vue" :data-row-selection="rowSelection ? \'enabled\' : \'disabled\'" />',
+			"<div data-test-id=\"ag-grid-vue\" :data-row-selection=\"rowSelection && typeof rowSelection === 'object' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? 'enabled' : 'disabled'\" />",
 		props: ['rowData', 'columnDefs', 'domLayout', 'animateRows', 'theme', 'rowSelection'],
 		emits: ['gridReady'],
 		mounted(this: MockComponentInstance) {
