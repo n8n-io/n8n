@@ -153,7 +153,129 @@ const mockVectorStoreNode: INodeTypeDescription = {
 	],
 };
 
+// Mock nodes for builder hint tests
+const mockFormTriggerNode: INodeTypeDescription = {
+	name: 'n8n-nodes-base.formTrigger',
+	displayName: 'n8n Form Trigger',
+	description: 'Trigger workflows with an n8n Form submission',
+	group: ['trigger'],
+	version: 2,
+	defaults: { name: 'n8n Form Trigger' },
+	inputs: [],
+	outputs: ['main'],
+	properties: [],
+};
+
+const mockFormNode: INodeTypeDescription = {
+	name: 'n8n-nodes-base.form',
+	displayName: 'n8n Form',
+	description: 'Create a multi-page form for the Form Trigger',
+	group: ['input'],
+	version: 1,
+	defaults: { name: 'n8n Form' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+};
+
+const mockRespondToWebhookNode: INodeTypeDescription = {
+	name: 'n8n-nodes-base.respondToWebhook',
+	displayName: 'Respond to Webhook',
+	description: 'Send custom response to a Webhook or Form Trigger',
+	group: ['transform'],
+	version: 1,
+	defaults: { name: 'Respond to Webhook' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+};
+
+const mockWebhookNode: INodeTypeDescription = {
+	name: 'n8n-nodes-base.webhook',
+	displayName: 'Webhook',
+	description: 'Starts the workflow on a webhook call',
+	group: ['trigger'],
+	version: 2,
+	defaults: { name: 'Webhook' },
+	inputs: [],
+	outputs: ['main'],
+	properties: [],
+};
+
 describe('OneShotNodeSearchTool', () => {
+	describe('builder hints in search results', () => {
+		it('should include builder hint for Form Trigger node', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockFormTriggerNode, mockFormNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['form trigger'] });
+
+			expect(result).toContain('n8n-nodes-base.formTrigger');
+			expect(result).toContain('Builder Hint:');
+			expect(result).toContain('n8n-nodes-base.form');
+			expect(result).toContain('full form experience');
+		});
+
+		it('should automatically include related nodes in search results', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockRespondToWebhookNode, mockWebhookNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			// Search for "respond" which should only match respondToWebhook, not webhook
+			const result = await tool.invoke({ queries: ['respond'] });
+
+			// Should include Webhook node as [RELATED] since it's a related node
+			expect(result).toContain('[RELATED]');
+			expect(result).toContain('n8n-nodes-base.webhook');
+			expect(result).toContain('(+ 1 related)');
+		});
+
+		it('should include builder hint for Respond to Webhook node', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockRespondToWebhookNode, mockWebhookNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['respond webhook'] });
+
+			expect(result).toContain('n8n-nodes-base.respondToWebhook');
+			expect(result).toContain('Builder Hint:');
+			expect(result).toContain('responseMode');
+			expect(result).toContain('responseNode');
+		});
+
+		it('should include builder hint for Form node', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockFormNode, mockFormTriggerNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['form'] });
+
+			expect(result).toContain('n8n-nodes-base.form');
+			expect(result).toContain('Builder Hint:');
+			expect(result).toContain('formTrigger');
+		});
+
+		it('should NOT duplicate related nodes if already in search results', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockFormTriggerNode, mockFormNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			// Search for both nodes - form should match both
+			const result = await tool.invoke({ queries: ['form'] });
+
+			// Count occurrences of form node ID
+			const formMatches = result.match(/n8n-nodes-base\.form[^T]/g) || [];
+			// Should appear once as search result, not duplicated as related
+			expect(formMatches.length).toBeLessThanOrEqual(2); // Once in hint text, once as result
+		});
+
+		it('should NOT include builder hint for nodes without hints', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['http'] });
+
+			expect(result).toContain('n8n-nodes-base.httpRequest');
+			expect(result).not.toContain('Builder Hint:');
+		});
+	});
+
 	describe('discriminator information in search results', () => {
 		it('should include resource/operation info for nodes with that pattern', async () => {
 			const nodeTypeParser = new NodeTypeParser([
