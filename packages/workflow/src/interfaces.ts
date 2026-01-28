@@ -483,7 +483,13 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
-	ignoreHttpStatusErrors?: boolean;
+	ignoreHttpStatusErrors?:
+		| boolean
+		| {
+				ignore: true;
+				/** Ignore HTTP status errors except for the specified status codes */
+				except: number[];
+		  };
 	proxy?: {
 		host: string;
 		port: number;
