@@ -9,6 +9,7 @@ import {
 	Delete,
 	Get,
 	GlobalScope,
+	Licensed,
 	Middleware,
 	Param,
 	Patch,
@@ -41,6 +42,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:create')
 	async createConnection(
 		_req: AuthenticatedRequest,
@@ -61,6 +63,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Patch('/:providerKey')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:update')
 	async updateConnection(
 		_req: AuthenticatedRequest,
@@ -74,6 +77,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Delete('/:providerKey')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:delete')
 	async deleteConnection(
 		_req: AuthenticatedRequest,
@@ -86,6 +90,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Get('/')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:read')
 	async listConnections() {
 		this.logger.debug('Listing all connections');
@@ -94,6 +99,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Get('/:providerKey')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:read')
 	async getConnection(
 		_req: AuthenticatedRequest,
@@ -106,6 +112,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/test')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:read')
 	testConnection(
 		_req: AuthenticatedRequest,
@@ -118,6 +125,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/connect')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:update')
 	toggleConnectionStatus(
 		_req: AuthenticatedRequest,
@@ -130,6 +138,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/reload')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:sync')
 	reloadConnectionSecrets(
 		_req: AuthenticatedRequest,
@@ -141,6 +150,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/share')
+	@Licensed('feat:externalSecrets')
 	@GlobalScope('externalSecretsProvider:update')
 	shareConnection(
 		_req: AuthenticatedRequest,
