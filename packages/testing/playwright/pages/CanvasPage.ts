@@ -304,6 +304,10 @@ export class CanvasPage extends BasePage {
 		await this.getPublishButton().click();
 
 		await responsePromise;
+
+		// Wait for workflow activation to propagate in multi-main mode
+		// This ensures webhook registration is complete across all instances
+		await this.page.waitForTimeout(1500);
 	}
 
 	async cancelPublishWorkflowModal(): Promise<void> {

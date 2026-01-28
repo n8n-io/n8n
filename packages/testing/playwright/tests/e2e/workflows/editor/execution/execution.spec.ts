@@ -86,8 +86,7 @@ test.describe('Execution', () => {
 		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 	});
 
-	// Failing/flaky in multi-main
-	test.fixme('should test manual workflow stop @fixme', async ({ n8n }) => {
+	test('should test manual workflow stop', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 		await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -107,6 +106,9 @@ test.describe('Execution', () => {
 			{ nodeName: 'Manual', success: 'visible' },
 			{ nodeName: 'Wait', running: 'visible' },
 		]);
+
+		// Small delay to ensure execution has fully started in multi-main mode
+		await n8n.page.waitForTimeout(500);
 
 		await n8n.canvas.stopExecutionButton().click();
 
