@@ -555,7 +555,7 @@ defineExpose({
 		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
 			<MessageRating minimal @feedback="onRateMessage" />
 		</div>
-		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
+		<div v-if="$slots.inputHeader && (showBottomInput || showSuggestions)" :class="$style.inputHeaderWrapper">
 			<slot name="inputHeader" />
 		</div>
 		<div

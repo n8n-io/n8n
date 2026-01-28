@@ -43,7 +43,7 @@ function handleRemove(event: MouseEvent) {
 
 <template>
 	<span :class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]" @click="handleClick">
-		<span :class="$style.iconWrapper">
+		<span :class="[$style.iconWrapper, { [$style.confirmedIcon]: isConfirmed }]">
 			<N8nIcon v-if="isUnconfirmed" icon="plus" size="xsmall" :class="$style.prefixIcon" />
 			<NodeIcon v-else :node-type="nodeType" :size="12" />
 		</span>
@@ -61,11 +61,11 @@ function handleRemove(event: MouseEvent) {
 	gap: var(--spacing--4xs);
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
-	background-color: var(--color--success--tint-3);
-	border: 1px solid var(--color--success--tint-2);
+	background-color: var(--color--green-100);
+	border: 1px solid var(--color--green-100);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--color--green-800);
 	cursor: pointer;
 	transition:
 		background-color 0.15s ease,
@@ -77,13 +77,12 @@ function handleRemove(event: MouseEvent) {
 	}
 
 	&.unconfirmed {
-		opacity: 0.6;
-		background-color: var(--color--foreground--tint-2);
-		border-color: var(--color--foreground--tint-1);
+		background-color: white;
+		border: 1px dashed var(--color--foreground);
+		color: var(--color--neutral-500);
 
 		&:hover {
-			opacity: 0.8;
-			background-color: var(--color--foreground--tint-1);
+			background-color: var(--color--background--light-1);
 		}
 	}
 }
@@ -94,8 +93,16 @@ function handleRemove(event: MouseEvent) {
 	justify-content: center;
 }
 
+.confirmedIcon {
+	color: var(--color--green-800);
+
+	:global(svg) {
+		color: var(--color--green-800);
+	}
+}
+
 .prefixIcon {
-	color: var(--color--text--tint-1);
+	color: var(--color--neutral-500);
 }
 
 .label {
@@ -111,11 +118,11 @@ function handleRemove(event: MouseEvent) {
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color--text--tint-1);
+	color: var(--color--green-800);
 	transition: color 0.15s ease;
 
 	&:hover {
-		color: var(--color--text);
+		color: var(--color--green-800);
 	}
 }
 </style>

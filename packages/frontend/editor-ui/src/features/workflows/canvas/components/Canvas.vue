@@ -374,6 +374,7 @@ const keyMap = computed(() => {
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
+		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
 	return fullKeymap;
 });
@@ -414,6 +415,15 @@ watch(selectedNodeIds, (newIds) => {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
+
+watch(
+	() => chatPanelStore.isOpen,
+	(isOpen) => {
+		if (isOpen && selectedNodeIds.value.length > 0) {
+			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
+		}
+	},
+);
 
 function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
@@ -524,6 +534,16 @@ function onFocusNode(id: string) {
 			setCenter,
 		});
 	}
+}
+
+function onAddToAi(id: string) {
+	focusedNodesStore.confirmNodes([id], 'context_menu');
+	void chatPanelStore.open({ mode: 'builder' });
+}
+
+function onAddSelectedNodesToAi(nodeIds: string[]) {
+	focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
+	void chatPanelStore.open({ mode: 'builder' });
 }
 
 /**
@@ -1038,6 +1058,7 @@ defineExpose({
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
 					@focus="onFocusNode"
+					@add:ai="onAddToAi"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />

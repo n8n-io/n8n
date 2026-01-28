@@ -19,6 +19,7 @@ const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
 	focus: [id: string];
+	'add:ai': [id: string];
 }>();
 
 const props = defineProps<{
@@ -71,6 +72,8 @@ const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
+const isAddToAiVisible = computed(() => !props.readOnly);
+
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
 );
@@ -108,6 +111,12 @@ function onMouseLeave() {
 function onFocusNode() {
 	if (node.value) {
 		emit('focus', node.value.id);
+	}
+}
+
+function onAddToAi() {
+	if (node.value) {
+		emit('add:ai', node.value.id);
 	}
 }
 </script>
@@ -172,6 +181,16 @@ function onFocusNode() {
 				v-model:visible="isStickyColorSelectorOpen"
 				@update="onChangeStickyColor"
 			/>
+			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
+				<N8nIconButton
+					data-test-id="add-to-ai-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="sparkles"
+					@click.stop="onAddToAi"
+				/>
+			</N8nTooltip>
 			<N8nIconButton
 				data-test-id="overflow-node-button"
 				type="tertiary"

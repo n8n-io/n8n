@@ -52,6 +52,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 
 	// Actions
 	function confirmNodes(nodeIds: string[], source: 'context_menu' | 'mention' | 'chip_click') {
+		console.log('[FocusedNodesStore] confirmNodes called', { nodeIds, source });
 		const nodeTypes: string[] = [];
 
 		for (const nodeId of nodeIds) {
@@ -86,6 +87,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 
 	// Debounced version to avoid rapid state changes
 	const debouncedSetUnconfirmed = useDebounceFn((nodeIds: string[]) => {
+		console.log('[FocusedNodesStore] debouncedSetUnconfirmed called', { nodeIds });
 		// Get current confirmed node IDs to preserve them
 		const currentConfirmedIds = new Set(confirmedNodeIds.value);
 
@@ -121,6 +123,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	}, getDebounceTime(DEBOUNCE_TIME.INPUT.VALIDATION));
 
 	function setUnconfirmedFromCanvasSelection(nodeIds: string[]) {
+		console.log('[FocusedNodesStore] setUnconfirmedFromCanvasSelection called', { nodeIds });
 		canvasSelectedNodeIds.value = new Set(nodeIds);
 		void debouncedSetUnconfirmed(nodeIds);
 	}

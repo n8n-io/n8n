@@ -151,6 +151,16 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
+		const aiActions: Item[] = [
+			!onlyStickies && {
+				id: 'focus_ai_on_selected',
+				divided: true,
+				label: i18n.baseText('contextMenu.addToAi'),
+				shortcut: { altKey: true, keys: ['I'] },
+				disabled: isReadOnly.value,
+			},
+		].filter(Boolean) as Item[];
+
 		const layoutActions: Item[] = [
 			{
 				id: 'tidy_up',
@@ -211,13 +221,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 				...layoutActions,
 				...extractionActions,
+				...aiActions,
 				...selectionActions,
-				!onlyStickies && {
-					id: 'focus_ai_on_selected',
-					divided: true,
-					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
-					disabled: isReadOnly.value,
-				},
 				{
 					id: 'delete',
 					divided: true,
