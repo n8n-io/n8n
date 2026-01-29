@@ -1,4 +1,5 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { valid } from 'semver';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -15,7 +16,7 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
-import { valid } from 'semver';
+import { executeNpmCommand } from './npm-utils';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -169,9 +170,7 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
-			await this.communityPackagesService.executeNpmCommand(['outdated', '--json'], {
-				doNotHandleError: true,
-			});
+			await executeNpmCommand(['outdated', '--json'], { doNotHandleError: true });
 		} catch (error) {
 			// when there are updates, npm exits with code 1
 			// when there are no updates, command succeeds
@@ -190,7 +189,9 @@ export class CommunityPackagesController {
 			if (this.communityPackagesService.hasMissingPackages) {
 				hydratedPackages = this.communityPackagesService.matchMissingPackages(hydratedPackages);
 			}
-		} catch {}
+		} catch {
+			// Ignore errors when matching missing packages
+		}
 
 		return hydratedPackages;
 	}
