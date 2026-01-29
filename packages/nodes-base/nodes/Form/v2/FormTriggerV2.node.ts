@@ -44,6 +44,11 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'On form submission',
 	},
+	builderHint: {
+		message:
+			'Use with n8n-nodes-base.form to build a full form experience, with pages and final page',
+		relatedNodes: ['n8n-nodes-base.form'],
+	},
 
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],

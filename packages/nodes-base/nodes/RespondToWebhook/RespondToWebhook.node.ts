@@ -88,6 +88,11 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
+		builderHint: {
+			message:
+				'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
+			relatedNodes: ['n8n-nodes-base.webhook'],
+		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${configuredOutputs})($nodeVersion, $parameter)}}`,
 		credentials: [

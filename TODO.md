@@ -3,8 +3,11 @@
 ## workflow-sdk
 - [ ] add runtime type validation
 - [ ] Better clarify/test how output data maps to expressions in types and referenced
+- [ ] why is model and other subnodes accepting arrays?
 
 ## agent
+- [ ] test out disabling agent static prompt warning
+	- [ ] improve understanding of expressions. often hitting MISSING_EXPRESSION_PREFIX.
 - [ ] fix new code llm judge, review how it works. fix code-typecheck also. both should reference the api directly instead of hardcoding. (remove code-typecheck. rely on runtime validation)
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
@@ -26,6 +29,7 @@
 		- [ ] optional warning for code node?
 - [ ] handling of large workflows
 	- [ ] context limits with many types of nodes?
+- [ ] improve understanding of items
 
 ## iteration
 - [ ] test iteration, inserting nodes in between

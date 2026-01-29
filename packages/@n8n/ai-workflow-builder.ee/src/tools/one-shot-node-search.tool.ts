@@ -68,43 +68,80 @@ interface DiscriminatorInfo {
 }
 
 /**
- * Builder hints for specific nodes to guide the LLM to use correct node combinations
+ * Format builder hint for a node by reading from its node type definition
  */
-interface NodeBuilderHint {
-	hint: string;
-	relatedNodes?: string[];
-}
-
-const NODE_BUILDER_HINTS: Record<string, NodeBuilderHint> = {
-	'n8n-nodes-base.formTrigger': {
-		hint: 'Use with n8n-nodes-base.form to build a full form experience, with pages and final page',
-		relatedNodes: ['n8n-nodes-base.form'],
-	},
-	'n8n-nodes-base.form': {
-		hint: 'Use with n8n-nodes-base.formTrigger to build a full form experience. Form node creates additional pages/steps after the trigger',
-		relatedNodes: ['n8n-nodes-base.formTrigger'],
-	},
-	'n8n-nodes-base.respondToWebhook': {
-		hint: 'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
-		relatedNodes: ['n8n-nodes-base.webhook'],
-	},
-};
-
-/**
- * Format builder hint for a node
- */
-function formatBuilderHint(nodeId: string): string {
-	const hint = NODE_BUILDER_HINTS[nodeId];
+function formatBuilderHint(
+	nodeTypeParser: NodeTypeParser,
+	nodeId: string,
+	version: number,
+): string {
+	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	const hint = nodeType?.builderHint?.message;
 	if (!hint) return '';
-	return `  Builder Hint: ${hint.hint}`;
+	return `  Builder Hint: ${hint}`;
 }
 
 /**
- * Get related nodes for a node ID from builder hints
+ * Get direct related nodes for a node ID from its node type definition
  */
-function getRelatedNodeIds(nodeId: string): string[] {
-	const hint = NODE_BUILDER_HINTS[nodeId];
-	return hint?.relatedNodes ?? [];
+function getDirectRelatedNodeIds(
+	nodeTypeParser: NodeTypeParser,
+	nodeId: string,
+	version: number,
+): string[] {
+	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	return nodeType?.builderHint?.relatedNodes ?? [];
+}
+
+/**
+ * Recursively collect all related nodes for a set of node IDs.
+ * Uses a visited set to prevent infinite recursion from circular references.
+ */
+function collectAllRelatedNodeIds(
+	nodeTypeParser: NodeTypeParser,
+	initialNodeIds: Array<{ id: string; version: number }>,
+	excludeNodeIds: Set<string>,
+): Set<string> {
+	const allRelated = new Set<string>();
+	const visited = new Set<string>();
+
+	// Add initial nodes to visited to avoid re-processing them
+	for (const node of initialNodeIds) {
+		visited.add(node.id);
+	}
+
+	// Also mark excluded nodes as visited
+	for (const id of excludeNodeIds) {
+		visited.add(id);
+	}
+
+	// Process queue of nodes to check for related nodes
+	const queue: Array<{ id: string; version: number }> = [...initialNodeIds];
+
+	while (queue.length > 0) {
+		const current = queue.shift()!;
+		const relatedIds = getDirectRelatedNodeIds(nodeTypeParser, current.id, current.version);
+
+		for (const relatedId of relatedIds) {
+			if (visited.has(relatedId)) {
+				continue; // Already processed or excluded
+			}
+
+			visited.add(relatedId);
+			allRelated.add(relatedId);
+
+			// Get the related node's version and add to queue for recursive processing
+			const relatedNodeType = nodeTypeParser.getNodeType(relatedId);
+			if (relatedNodeType) {
+				const relatedVersion = Array.isArray(relatedNodeType.version)
+					? relatedNodeType.version[relatedNodeType.version.length - 1]
+					: relatedNodeType.version;
+				queue.push({ id: relatedId, version: relatedVersion });
+			}
+		}
+	}
+
+	return allRelated;
 }
 
 /**
@@ -302,22 +339,19 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 					// Collect IDs of nodes already in search results
 					const resultNodeIds = new Set(results.map((node) => node.id));
 
-					// Collect related nodes from builder hints that aren't already in results
-					const relatedNodeIds = new Set<string>();
-					for (const node of results) {
-						for (const relatedId of getRelatedNodeIds(node.id)) {
-							if (!resultNodeIds.has(relatedId)) {
-								relatedNodeIds.add(relatedId);
-							}
-						}
-					}
+					// Recursively collect all related nodes from builder hints
+					const relatedNodeIds = collectAllRelatedNodeIds(
+						nodeTypeParser,
+						results.map((node) => ({ id: node.id, version: node.version })),
+						resultNodeIds,
+					);
 
 					const resultLines = results.map((node) => {
 						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
 						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
 
 						// Get builder hint
-						const builderHint = formatBuilderHint(node.id);
+						const builderHint = formatBuilderHint(nodeTypeParser, node.id, node.version);
 
 						// Get discriminator info
 						const discInfo = getDiscriminatorInfo(nodeTypeParser, node.id, node.version);
@@ -347,7 +381,7 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 							const basicInfo = `- ${relatedId}${triggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
 
 							// Get builder hint for related node too
-							const builderHint = formatBuilderHint(relatedId);
+							const builderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
 
 							const parts = [basicInfo];
 							if (builderHint) parts.push(builderHint);
@@ -369,7 +403,7 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 			const response = `${allResults.join('\n\n---\n\n')}\n\nUse get_nodes to see the full TypeScript type definitions for these nodes.`;
 			debugLog('Returning response', {
 				responseLength: response.length,
-				responsePreview: response.substring(0, 500),
+				responsePreview: response,
 			});
 			debugLog('========== SEARCH_NODES TOOL COMPLETE ==========');
 

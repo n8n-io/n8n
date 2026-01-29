@@ -535,69 +535,86 @@ return workflow('ai-email', 'AI Email Sender')
  */
 const MANDATORY_WORKFLOW = `# Mandatory Workflow Process
 
-**You MUST follow these steps in order:**
+**You MUST follow these steps. Searching is part of planning, not separate from it.**
 
-## Step 1: Plan the Workflow
+## Step 1: Understand Requirements
 
-Before generating any code, work through your planning inside <planning> tags. It's OK for this section to be quite long. Include:
+Start your <planning> section by analyzing the user request:
 
-1. **Extract Requirements**: Quote or paraphrase the key requirements from the user request. What is the user trying to accomplish?
+1. **Extract Requirements**: Quote or paraphrase what the user wants to accomplish.
 
-2. **Identify Trigger**: What type of trigger is appropriate and why?
+2. **Identify External Services**: List all external services mentioned (Gmail, Slack, Notion, APIs, etc.)
+   - Do NOT assume you know the node names yet
+   - Just identify what services need to be connected
 
-3. **List All Nodes Needed**: Create a complete list of every node type you'll need, including:
-   - Trigger nodes
-   - Action nodes
-   - AI subnodes (if using AI agents/chains)
-   - For each node, note if it requires discriminators (resource/operation/mode)
+3. **Identify Workflow Concepts**: What patterns are needed?
+   - Trigger type (manual, schedule, webhook, etc.)
+   - Branching/routing (if/else, switch)
+   - Loops (batch processing)
+   - AI capabilities (agents, chains)
+   - Data transformation needs
 
-4. **Identify External Service Integrations**:
-   - List all external services you need to connect to (Gmail, Slack, Notion, APIs, etc.)
-   - Do NOT assume HTTP Request - plan to search for dedicated nodes for each service
-   - Only plan HTTP Request for custom/internal APIs with no dedicated node
+## Step 2: Discover Nodes
 
-5. **Map Node Connections**: Draw out how nodes connect:
+**MANDATORY:** Before selecting any nodes, call \`search_nodes\` to find what's available.
+
+\`\`\`
+search_nodes({{ queries: ["gmail", "slack", "schedule trigger", ...] }})
+\`\`\`
+
+Search for:
+- Each external service you identified
+- Workflow concepts (e.g., "schedule", "webhook", "if condition")
+- AI-related terms if the request involves AI
+
+**You may call search_nodes multiple times** as you refine your understanding. This is encouraged.
+
+Review the search results:
+- Note which nodes exist for each service
+- Note any [TRIGGER] tags for trigger nodes
+- Note discriminator requirements (resource/operation or mode)
+- Note [RELATED] nodes that might be useful
+
+## Step 3: Design the Workflow
+
+Continue your <planning> with design decisions based on search results:
+
+1. **Select Nodes**: Based on search results, choose specific nodes:
+   - Use dedicated integration nodes when available (from search)
+   - Only use HTTP Request if no dedicated node was found
+   - Note discriminators needed for each node
+
+2. **Map Node Connections**:
    - Is this linear, branching, parallel, or looped?
-   - Which nodes connect to which other nodes?
-   - What workflow patterns (ifElse, switchCase, merge, etc.) are needed?
-   - **CRITICAL:** If one node output goes to multiple parallel targets, use array syntax \`.to([nodeA, nodeB])\` - do NOT duplicate chains
+   - Which nodes connect to which?
+   - Use array syntax \`.to([nodeA, nodeB])\` for parallel outputs
 
-6. **Identify Placeholders and Credentials**:
-   - List any values that need user input (use placeholder() for these)
-   - List any credentials needed (use newCredential() for these)
+3. **Plan Node Positions**: Following left-to-right, top-to-bottom layout
+
+4. **Identify Placeholders and Credentials**:
+   - List values needing user input → use placeholder()
+   - List credentials needed → use newCredential()
    - Verify you're NOT using $env anywhere
 
-7. **Plan Node Positions**: Sketch out x,y coordinates for each node following the left-to-right, top-to-bottom layout rules
+5. **Prepare get_nodes Call**: Write the exact call including discriminators
 
-8. **Prepare get_nodes Call**: Write out the exact structure of the get_nodes call you'll make, including any discriminators needed
+## Step 4: Get Type Definitions
 
-## Step 2: Call get_nodes Tool
+**MANDATORY:** Call \`get_nodes\` with ALL nodes you selected.
 
-**MANDATORY:** Before writing code, call the \`get_nodes\` tool with ALL node types you identified in Step 1.
-
-Format:
 \`\`\`
-get_nodes({{ nodeIds: ["n8n-nodes-base.manualTrigger", "n8n-nodes-base.httpRequest", ...] }})
+get_nodes({{ nodeIds: ["n8n-nodes-base.manualTrigger", {{ nodeId: "n8n-nodes-base.gmail", resource: "message", operation: "send" }}, ...] }})
 \`\`\`
 
-If a node requires discriminators, include them:
-\`\`\`
-get_nodes({{ nodeIds: [{{ nodeId: "n8n-nodes-base.freshservice", resource: "ticket", operation: "get" }}] }})
-\`\`\`
+Include discriminators for nodes that require them (shown in search results).
 
-This provides exact TypeScript type definitions so you know:
-- Correct version numbers
-- Available parameters and their types
-- Required vs optional fields
-- Credential requirements
+**DO NOT skip this step!** Guessing parameter names or versions creates invalid workflows.
 
-**DO NOT skip this step!** Guessing parameter names or versions will create invalid workflows.
+## Step 5: Generate the Code
 
-## Step 3: Generate the Code
+After receiving type definitions, generate TypeScript code using exact parameter names and structures.
 
-After receiving type definitions, generate the TypeScript code using exact parameter names and structures from those definitions.
-
-**IMPORTANT:** Use unique variable names - never reuse builder function names (workflow, node, textSplitter, embeddings...) as variable names.`;
+**IMPORTANT:** Use unique variable names - never reuse builder function names as variable names.`;
 
 /**
  * Output format instructions - optimized for Sonnet 4.5

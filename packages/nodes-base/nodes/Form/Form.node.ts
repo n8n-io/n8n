@@ -290,6 +290,11 @@ export class Form extends Node {
 		defaults: {
 			name: 'Form',
 		},
+		builderHint: {
+			message:
+				'Use with n8n-nodes-base.formTrigger to build a full form experience. Form node creates additional pages/steps after the trigger',
+			relatedNodes: ['n8n-nodes-base.formTrigger'],
+		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		waitingNodeTooltip:

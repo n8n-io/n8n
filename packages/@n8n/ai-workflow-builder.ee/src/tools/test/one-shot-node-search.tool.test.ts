@@ -164,6 +164,11 @@ const mockFormTriggerNode: INodeTypeDescription = {
 	inputs: [],
 	outputs: ['main'],
 	properties: [],
+	builderHint: {
+		message:
+			'Use with n8n-nodes-base.form to build a full form experience, with pages and final page',
+		relatedNodes: ['n8n-nodes-base.form'],
+	},
 };
 
 const mockFormNode: INodeTypeDescription = {
@@ -176,6 +181,11 @@ const mockFormNode: INodeTypeDescription = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [],
+	builderHint: {
+		message:
+			'Use with n8n-nodes-base.formTrigger to build a full form experience. Form node creates additional pages/steps after the trigger',
+		relatedNodes: ['n8n-nodes-base.formTrigger'],
+	},
 };
 
 const mockRespondToWebhookNode: INodeTypeDescription = {
@@ -188,6 +198,11 @@ const mockRespondToWebhookNode: INodeTypeDescription = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [],
+	builderHint: {
+		message:
+			'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
+		relatedNodes: ['n8n-nodes-base.webhook'],
+	},
 };
 
 const mockWebhookNode: INodeTypeDescription = {
@@ -198,6 +213,68 @@ const mockWebhookNode: INodeTypeDescription = {
 	version: 2,
 	defaults: { name: 'Webhook' },
 	inputs: [],
+	outputs: ['main'],
+	properties: [],
+};
+
+// Mock AI Agent node with builderHint for structured output
+const mockAgentNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.agent',
+	displayName: 'AI Agent',
+	description: 'Generates an action plan and executes it. Can use external tools.',
+	group: ['transform'],
+	version: 3.1,
+	defaults: { name: 'AI Agent' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+	builderHint: {
+		message:
+			'Use with @n8n/n8n-nodes-langchain.outputParserStructured to get structured JSON output from the agent',
+		relatedNodes: ['@n8n/n8n-nodes-langchain.outputParserStructured'],
+	},
+};
+
+// Mock Output Parser Structured node
+const mockOutputParserStructuredNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.outputParserStructured',
+	displayName: 'Structured Output Parser',
+	description: 'Parse the output of a language model into a structured format using a JSON schema',
+	group: ['transform'],
+	version: 1.2,
+	defaults: { name: 'Structured Output Parser' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+};
+
+// Mock OpenAI node with related nodes (agent, lmOpenAi)
+const mockOpenAiNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	displayName: 'OpenAI',
+	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
+	group: ['transform'],
+	version: 2.1,
+	defaults: { name: 'OpenAI' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+	builderHint: {
+		message:
+			'For AI agent workflows, use @n8n/n8n-nodes-langchain.agent with @n8n/n8n-nodes-langchain.lmOpenAi as the language model instead',
+		relatedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmOpenAi'],
+	},
+};
+
+// Mock lmOpenAi node
+const mockLmOpenAiNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.lmOpenAi',
+	displayName: 'OpenAI Chat Model',
+	description: 'Chat Model for OpenAI',
+	group: ['transform'],
+	version: 1,
+	defaults: { name: 'OpenAI Chat Model' },
+	inputs: ['main'],
 	outputs: ['main'],
 	properties: [],
 };
@@ -250,6 +327,169 @@ describe('OneShotNodeSearchTool', () => {
 			expect(result).toContain('n8n-nodes-base.form');
 			expect(result).toContain('Builder Hint:');
 			expect(result).toContain('formTrigger');
+		});
+
+		it('should include builder hint for AI Agent node with outputParserStructured', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockAgentNode, mockOutputParserStructuredNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['agent'] });
+
+			expect(result).toContain('@n8n/n8n-nodes-langchain.agent');
+			expect(result).toContain('Builder Hint:');
+			expect(result).toContain('outputParserStructured');
+			expect(result).toContain('structured JSON output');
+		});
+
+		it('should include outputParserStructured as related node when searching for AI Agent only', async () => {
+			// Only include Agent node, so outputParserStructured will be added as [RELATED]
+			const nodeTypeParser = new NodeTypeParser([mockAgentNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['AI Agent'] });
+
+			// Agent should be found
+			expect(result).toContain('@n8n/n8n-nodes-langchain.agent');
+			expect(result).toContain('Builder Hint:');
+			// outputParserStructured is in relatedNodes but not in the nodeTypeParser,
+			// so it won't appear as [RELATED] (can't find node info for it)
+			// This tests that the hint message itself references the related node
+			expect(result).toContain('outputParserStructured');
+		});
+
+		it('should show outputParserStructured as [RELATED] when both nodes available but only agent matches search', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockAgentNode, mockOutputParserStructuredNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			// Search specifically for "AI Agent" - should only match agent node directly
+			const result = await tool.invoke({ queries: ['AI Agent'] });
+
+			// Agent should be found directly
+			expect(result).toContain('@n8n/n8n-nodes-langchain.agent');
+			expect(result).toContain('Builder Hint:');
+
+			// outputParserStructured should appear as [RELATED] since it's in relatedNodes
+			// and available in the parser, but doesn't match "AI Agent" search directly
+			expect(result).toContain('[RELATED]');
+			expect(result).toContain('@n8n/n8n-nodes-langchain.outputParserStructured');
+			expect(result).toContain('Structured Output Parser');
+			expect(result).toContain('(+ 1 related)');
+		});
+
+		it('should recursively collect related nodes (nodeA → nodeB → nodeC)', async () => {
+			// Create a chain: nodeA → nodeB → nodeC
+			// When searching for nodeA, both nodeB and nodeC should appear as related
+			const mockNodeA: INodeTypeDescription = {
+				name: 'test.chainA',
+				displayName: 'Chain Node A',
+				description: 'First node in chain',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Chain Node A' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				builderHint: {
+					message: 'Related to Chain Node B',
+					relatedNodes: ['test.chainB'],
+				},
+			};
+
+			const mockNodeB: INodeTypeDescription = {
+				name: 'test.chainB',
+				displayName: 'Chain Node B',
+				description: 'Second node in chain',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Chain Node B' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				builderHint: {
+					message: 'Related to Chain Node C',
+					relatedNodes: ['test.chainC'],
+				},
+			};
+
+			const mockNodeC: INodeTypeDescription = {
+				name: 'test.chainC',
+				displayName: 'Chain Node C',
+				description: 'Third node in chain',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Chain Node C' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+
+			const nodeTypeParser = new NodeTypeParser([mockNodeA, mockNodeB, mockNodeC]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			// Search for "Chain Node A" - should only match nodeA directly
+			const result = await tool.invoke({ queries: ['Chain Node A'] });
+
+			// Node A should be found directly
+			expect(result).toContain('test.chainA');
+
+			// Node B should appear as [RELATED] (direct relation from A)
+			expect(result).toContain('test.chainB');
+			expect(result).toContain('[RELATED]');
+
+			// Node C should also appear as [RELATED] (indirect relation via B)
+			expect(result).toContain('test.chainC');
+
+			// Should show 2 related nodes (B and C)
+			expect(result).toContain('(+ 2 related)');
+		});
+
+		it('should prevent infinite recursion with circular related nodes', async () => {
+			// Create nodes with circular references: A → B → A
+			const mockNodeA: INodeTypeDescription = {
+				name: 'test.nodeA',
+				displayName: 'Node A',
+				description: 'Test node A',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Node A' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				builderHint: {
+					message: 'Related to Node B',
+					relatedNodes: ['test.nodeB'],
+				},
+			};
+
+			const mockNodeB: INodeTypeDescription = {
+				name: 'test.nodeB',
+				displayName: 'Node B',
+				description: 'Test node B',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Node B' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				builderHint: {
+					message: 'Related to Node A',
+					relatedNodes: ['test.nodeA'],
+				},
+			};
+
+			const nodeTypeParser = new NodeTypeParser([mockNodeA, mockNodeB]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			// This should not hang or throw due to infinite recursion
+			const result = await tool.invoke({ queries: ['Node A'] });
+
+			// Node A should be found
+			expect(result).toContain('test.nodeA');
+
+			// Node B should appear as related (only once, not infinitely)
+			expect(result).toContain('test.nodeB');
+			expect(result).toContain('[RELATED]');
+			expect(result).toContain('(+ 1 related)');
 		});
 
 		it('should NOT duplicate related nodes if already in search results', async () => {
