@@ -7,7 +7,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nHeading, N8nIcon, N8nLoading, N8nNotice, N8nText } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
 
 import { useNodeGovernanceStore } from '../nodeGovernance.store';
 import PoliciesTab from '../components/PoliciesTab.vue';
@@ -24,7 +23,6 @@ const nodeGovernanceStore = useNodeGovernanceStore();
 const { loading, pendingRequestCount } = storeToRefs(nodeGovernanceStore);
 
 const activeTab = ref<'policies' | 'categories' | 'requests'>('policies');
-const isEnabled = ref(true);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('nodeGovernance.title'));
@@ -73,9 +71,13 @@ function onAddCategory() {
 		</N8nHeading>
 		<N8nText color="text-light" class="mb-l">
 			{{ i18n.baseText('nodeGovernance.description') }}
-			<a href="https://docs.n8n.io" target="_blank" :class="$style.link">{{
-				i18n.baseText('generic.learnMore')
-			}}</a>
+			<a
+				href="https://docs.n8n.io"
+				target="_blank"
+				rel="noopener noreferrer"
+				:class="$style.link"
+				>{{ i18n.baseText('generic.learnMore') }}</a
+			>
 		</N8nText>
 
 		<!-- Priority Notice -->
@@ -86,13 +88,6 @@ function onAddCategory() {
 
 		<!-- Controls Row -->
 		<div :class="$style.controlsRow">
-			<div :class="$style.leftControls">
-				<N8nText :bold="true" color="success">{{
-					i18n.baseText('nodeGovernance.enabled')
-				}}</N8nText>
-				<ElSwitch v-model="isEnabled" size="large" data-test-id="node-governance-enabled" />
-			</div>
-
 			<N8nButton
 				v-if="activeTab === 'policies'"
 				type="primary"
@@ -181,15 +176,9 @@ function onAddCategory() {
 .controlsRow {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-end;
 	gap: 16px;
 	margin: 20px 0;
-}
-
-.leftControls {
-	display: flex;
-	align-items: center;
-	gap: 10px;
 }
 
 .tabsContainer {

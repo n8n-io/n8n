@@ -353,7 +353,6 @@ function getNodeCount(policy: NodeGovernancePolicy): number {
 											i18n.baseText('nodeGovernance.policies.filters.project.placeholder')
 										"
 										:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-										@update:model-value="filterProject = ($event as ProjectSharingData)?.id ?? ''"
 									/>
 									<N8nInputLabel
 										:label="i18n.baseText('nodeGovernance.policies.filters.status')"

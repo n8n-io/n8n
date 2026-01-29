@@ -44,7 +44,7 @@ export async function createWorkflowFromTemplate(opts: {
 		template.workflow.nodes,
 		credentialOverrides,
 	);
-	let nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
+	let nodes: INodeUi[] = getNodesWithNormalizedPosition(nodesWithCreds);
 
 	// Check node governance and disable blocked nodes using local resolution
 	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
