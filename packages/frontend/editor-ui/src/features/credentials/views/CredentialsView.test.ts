@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '../credentials.store';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
@@ -381,11 +381,14 @@ describe('CredentialsView', () => {
 	});
 
 	describe('external secrets', () => {
-		it('should fetch external secrets on mount', async () => {
-			const externalSecretsStore = mockedStore(useExternalSecretsStore);
-			const projectsStore = mockedStore(useProjectsStore);
-
+		let externalSecretsStore: MockedStore<typeof useExternalSecretsStore>;
+		beforeEach(() => {
+			externalSecretsStore = mockedStore(useExternalSecretsStore);
 			externalSecretsStore.fetchGlobalSecrets.mockResolvedValue(undefined);
+			externalSecretsStore.fetchProjectSecrets.mockResolvedValue(undefined);
+		});
+		it('should fetch external secrets on mount', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
 
 			projectsStore.personalProject = createTestProject({ id: 'personal-123' });
 			projectsStore.isProjectHome = false;
@@ -399,11 +402,7 @@ describe('CredentialsView', () => {
 		});
 
 		it('should not fetch project external secrets if on personal project page', async () => {
-			const externalSecretsStore = mockedStore(useExternalSecretsStore);
 			const projectsStore = mockedStore(useProjectsStore);
-
-			externalSecretsStore.fetchGlobalSecrets.mockResolvedValue(undefined);
-			externalSecretsStore.fetchProjectSecrets.mockResolvedValue(undefined);
 
 			// Set up matching personal project ID
 			const personalProjectId = 'personal-123';
@@ -428,11 +427,7 @@ describe('CredentialsView', () => {
 		});
 
 		it('should fetch project external secrets when on team project page', async () => {
-			const externalSecretsStore = mockedStore(useExternalSecretsStore);
 			const projectsStore = mockedStore(useProjectsStore);
-
-			externalSecretsStore.fetchGlobalSecrets.mockResolvedValue(undefined);
-			externalSecretsStore.fetchProjectSecrets.mockResolvedValue(undefined);
 
 			const personalProjectId = 'personal-123';
 			const teamProjectId = 'team-456';
