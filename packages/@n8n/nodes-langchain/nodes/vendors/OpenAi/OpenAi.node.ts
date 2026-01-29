@@ -44,8 +44,8 @@ export class OpenAi extends VersionedNodeType {
 			},
 			builderHint: {
 				message:
-					'For AI agent workflows, use @n8n/n8n-nodes-langchain.agent with @n8n/n8n-nodes-langchain.lmOpenAi as the language model instead',
-				relatedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmOpenAi'],
+					'Prefer using @n8n/n8n-nodes-langchain.agent with @n8n/n8n-nodes-langchain.lmChatOpenAi for most LLM tasks. This OpenAI node is only for specialized operations like image generation (DALL-E), audio transcription (Whisper), or text-to-speech.',
+				relatedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 			},
 		};
 
