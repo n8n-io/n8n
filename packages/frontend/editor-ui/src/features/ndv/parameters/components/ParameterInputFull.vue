@@ -125,8 +125,8 @@ const isDropDisabled = computed(
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 
-// Hide label when using new Switch layout (label is integrated into Switch component)
-const hideNewSwitchLabel = computed(
+// Use inline switch layout when feature flag is enabled (label is integrated into Switch component)
+const useInlineSwitchLayout = computed(
 	() =>
 		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
 );
@@ -338,7 +338,7 @@ function removeOverride(clearField = false) {
 
 <template>
 	<div
-		v-if="hideNewSwitchLabel"
+		v-if="useInlineSwitchLayout"
 		:class="$style.inlineSwitchWrapper"
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"
@@ -370,7 +370,11 @@ function removeOverride(clearField = false) {
 					@focus="onFocus"
 					@blur="onBlur"
 					@drop="onDrop"
-				/>
+				>
+					<template v-if="showOverrideButton" #overrideButton>
+						<FromAiOverrideButton @click="applyOverride" />
+					</template>
+				</ParameterInputWrapper>
 			</template>
 		</DraggableTarget>
 		<div
