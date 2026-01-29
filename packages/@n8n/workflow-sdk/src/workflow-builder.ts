@@ -2554,6 +2554,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return undefined;
 		}
 
+		// Check if this exact instance is already in the map under any key.
+		// This is necessary because a node may have been renamed (e.g., "Format Response" -> "Format Response 1")
+		// but the same instance reference appears multiple times in chain targets.
+		for (const [key, graphNode] of nodes) {
+			if (graphNode.instance === nodeInstance) {
+				return key; // Already added, return the existing key
+			}
+		}
+
 		// Check if a node with the same name already exists
 		const existingNode = nodes.get(nodeInstance.name);
 		if (existingNode) {
