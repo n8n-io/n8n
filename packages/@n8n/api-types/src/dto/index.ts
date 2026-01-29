@@ -139,3 +139,5 @@ export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-se
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
+
+export { DynamicTemplatesRequestQuery } from './dynamic-templates/dynamic-templates-request-query.dto';

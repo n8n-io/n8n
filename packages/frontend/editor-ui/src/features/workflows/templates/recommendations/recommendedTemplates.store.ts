@@ -6,10 +6,14 @@ import templateIds from './data/recommendedTemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import sampleSize from 'lodash/sampleSize';
-import { getDynamicRecommendedTemplates } from './dynamicTemplates.api';
+import {
+	getDynamicRecommendedTemplates,
+	type DynamicTemplatesParams,
+} from './dynamicTemplates.api';
 
 export const NUMBER_OF_TEMPLATES = 6;
 
@@ -20,6 +24,7 @@ export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', 
 	const nodeTypesStore = useNodeTypesStore();
 	const posthogStore = usePostHog();
 	const rootStore = useRootStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	const isFeatureEnabled = () => {
 		return settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost;
@@ -62,30 +67,52 @@ export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', 
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 		if (isDynamicTemplatesEnabled()) {
-			try {
-				const response = await getDynamicRecommendedTemplates(rootStore.restApiContext);
-				return response.templates
-					.map((template) => template.workflow)
-					.slice(0, NUMBER_OF_TEMPLATES);
-			} catch (error) {
-				// Fallback to existing behavior on error
-				console.warn('Dynamic templates failed, falling back to static IDs', error);
-			}
+			return await loadDynamicRecommendedTemplates();
 		}
 
-		// Existing behavior (fallback or flag disabled)
+		return await loadStaticRecommendedTemplates();
+	}
+
+	async function loadStaticRecommendedTemplates(): Promise<ITemplatesWorkflowFull[]> {
 		const ids = getRandomTemplateIds();
 		const promises = ids.map(async (id) => await getTemplateData(id));
 		const results = await Promise.allSettled(promises);
-
-		const templates = results
+		return results
 			.filter(
 				(result): result is PromiseFulfilledResult<ITemplatesWorkflowFull | null> =>
 					result.status === 'fulfilled' && result.value !== null,
 			)
 			.map((result) => result.value as ITemplatesWorkflowFull);
-		return templates;
 	}
+
+	async function loadDynamicRecommendedTemplates(): Promise<ITemplatesWorkflowFull[]> {
+		try {
+			const params: DynamicTemplatesParams = {};
+
+			if (settingsStore.isCloudDeployment) {
+				// Ensure cloud data is loaded before accessing it
+				await cloudPlanStore.initialize();
+
+				const cloudUserInfo = cloudPlanStore.currentUserCloudInfo;
+
+				if (cloudUserInfo?.selectedApps?.length) {
+					params.selectedApps = cloudUserInfo.selectedApps;
+				}
+
+				if (cloudUserInfo?.information) {
+					params.cloudInformation = cloudUserInfo.information;
+				}
+			}
+
+			const response = await getDynamicRecommendedTemplates(rootStore.restApiContext, params);
+			return response.templates.map((template) => template.workflow).slice(0, NUMBER_OF_TEMPLATES);
+		} catch (error) {
+			// Fallback to existing behavior on error
+			console.warn('Dynamic templates failed, falling back to static IDs', error);
+			return await loadStaticRecommendedTemplates();
+		}
+	}
+
 	return {
 		isFeatureEnabled,
 		getRandomTemplateIds,
