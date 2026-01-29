@@ -1,21 +1,21 @@
 import { Service } from '@n8n/di';
-import { LanceDBConfig, VectorStoreConfig } from '@n8n/config';
+import { LanceDBConfig } from '@n8n/config';
 import type { VectorDocument, VectorSearchResult } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 import { Logger } from '@n8n/backend-common';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { Connection, Table } from '@lancedb/lancedb';
 import { nanoid } from 'nanoid';
 
-interface LanceDBRecord {
+interface LanceDBRecord extends Record<string, unknown> {
 	id: string;
 	vector: number[];
 	content: string;
-	metadata: Record<string, unknown>;
-	createdAt: Date;
-	updatedAt: Date;
+	metadata: string; // Store as JSON string to avoid schema inference issues
+	createdAt: string; // Store as ISO string to avoid schema inference issues
+	updatedAt: string; // Store as ISO string to avoid schema inference issues
 }
 
 /**
@@ -29,11 +29,11 @@ export class LanceDBVectorStoreService {
 
 	constructor(
 		private readonly config: LanceDBConfig,
-		private readonly vectorStoreConfig: VectorStoreConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
 		// Resolve base path relative to n8n user directory
-		const userHome = UserSettings.getUserN8nFolderPath();
+		const userHome = this.instanceSettings.n8nFolder;
 		this.basePath = path.join(userHome, this.config.path);
 	}
 
@@ -101,16 +101,22 @@ export class LanceDBVectorStoreService {
 	/**
 	 * Get or create a LanceDB table
 	 */
-	private async getTable(projectId: string, memoryKey: string): Promise<Table> {
+	private async getTable(
+		projectId: string,
+		memoryKey: string,
+		createIfMissing: boolean = false,
+	): Promise<Table | null> {
 		const connection = await this.getConnection(projectId);
 		const tableName = this.sanitizeTableName(memoryKey);
 
 		const tableNames = await connection.tableNames();
 
 		if (!tableNames.includes(tableName)) {
-			// Create table with initial empty data
-			const emptyData: LanceDBRecord[] = [];
-			return await connection.createTable(tableName, emptyData);
+			if (!createIfMissing) {
+				return null;
+			}
+			// Table will be created in addVectors when we have actual data
+			throw new OperationalError(`Table ${tableName} does not exist yet`);
 		}
 
 		return await connection.openTable(tableName);
@@ -118,6 +124,7 @@ export class LanceDBVectorStoreService {
 
 	/**
 	 * Build SQL WHERE clause from metadata filter
+	 * Note: Metadata is stored as JSON string, so we use LIKE for simple string matching
 	 */
 	private buildWhereClause(filter?: Record<string, unknown>): string | undefined {
 		if (!filter || Object.keys(filter).length === 0) {
@@ -127,21 +134,12 @@ export class LanceDBVectorStoreService {
 		const conditions: string[] = [];
 
 		for (const [key, value] of Object.entries(filter)) {
-			if (value === null) {
-				conditions.push(`metadata.${key} IS NULL`);
-			} else if (typeof value === 'string') {
-				// Escape single quotes in SQL string literals
-				const escapedValue = value.replace(/'/g, "''");
-				conditions.push(`metadata.${key} = '${escapedValue}'`);
-			} else if (typeof value === 'number') {
-				conditions.push(`metadata.${key} = ${value}`);
-			} else if (typeof value === 'boolean') {
-				conditions.push(`metadata.${key} = ${value}`);
-			} else {
-				// For complex types, convert to JSON string comparison
-				const escapedValue = JSON.stringify(value).replace(/'/g, "''");
-				conditions.push(`metadata.${key} = '${escapedValue}'`);
-			}
+			// Build a JSON pattern to search for the key-value pair
+			// This is a simple approach that works for basic filtering
+			const escapedKey = key.replace(/'/g, "''");
+
+			// Use LIKE to search for the pattern in the JSON string
+			conditions.push(`metadata LIKE '%"${escapedKey}":${JSON.stringify(value)}%'`);
 		}
 
 		return conditions.join(' AND ');
@@ -157,25 +155,45 @@ export class LanceDBVectorStoreService {
 		embeddings: number[][],
 		clearStore: boolean = false,
 	): Promise<void> {
-		const table = await this.getTable(projectId, memoryKey);
+		const connection = await this.getConnection(projectId);
+		const tableName = this.sanitizeTableName(memoryKey);
+		const tableNames = await connection.tableNames();
+		const tableExists = tableNames.includes(tableName);
 
-		if (clearStore) {
-			// Delete all records
-			await table.delete('true'); // Delete all rows (SQL WHERE clause: true)
-		}
-
+		const now = new Date().toISOString();
 		const records: LanceDBRecord[] = documents.map((doc, i) => ({
 			id: nanoid(),
 			vector: embeddings[i],
 			content: doc.content,
-			metadata: doc.metadata,
-			createdAt: new Date(),
-			updatedAt: new Date(),
+			metadata: JSON.stringify(doc.metadata), // Serialize metadata to JSON string
+			createdAt: now,
+			updatedAt: now,
 		}));
 
-		await table.add(records);
+		if (!tableExists) {
+			// Create table with the first batch of records
+			if (records.length === 0) {
+				throw new OperationalError('Cannot create table with no records');
+			}
+			await connection.createTable(tableName, records);
+			this.logger.debug(
+				`Created table ${tableName} with ${records.length} vectors in project ${projectId}`,
+			);
+		} else {
+			const table = await connection.openTable(tableName);
 
-		this.logger.debug(`Added ${records.length} vectors to ${memoryKey} in project ${projectId}`);
+			if (clearStore) {
+				// Delete all records
+				await table.delete('true'); // Delete all rows (SQL WHERE clause: true)
+			}
+
+			if (records.length > 0) {
+				await table.add(records);
+				this.logger.debug(
+					`Added ${records.length} vectors to ${memoryKey} in project ${projectId}`,
+				);
+			}
+		}
 	}
 
 	/**
@@ -190,7 +208,12 @@ export class LanceDBVectorStoreService {
 	): Promise<VectorSearchResult[]> {
 		const table = await this.getTable(projectId, memoryKey);
 
-		let query = table.search(queryEmbedding).metricType('cosine').limit(k);
+		if (!table) {
+			// Table doesn't exist yet, return empty results
+			return [];
+		}
+
+		let query = table.search(queryEmbedding).limit(k);
 
 		const whereClause = this.buildWhereClause(filter);
 		if (whereClause) {
@@ -200,8 +223,10 @@ export class LanceDBVectorStoreService {
 		const results = await query.toArray();
 
 		return results.map((row: LanceDBRecord & { _distance: number }) => ({
-			content: row.content,
-			metadata: row.metadata,
+			document: {
+				content: row.content,
+				metadata: JSON.parse(row.metadata), // Deserialize metadata from JSON string
+			},
 			score: 1 - row._distance, // Convert distance to similarity score (cosine: 0=identical, 2=opposite)
 		}));
 	}
@@ -210,27 +235,26 @@ export class LanceDBVectorStoreService {
 	 * Get count of vectors
 	 */
 	async getVectorCount(memoryKey: string, projectId: string): Promise<number> {
-		try {
-			const table = await this.getTable(projectId, memoryKey);
-			return await table.countRows();
-		} catch (error) {
+		const table = await this.getTable(projectId, memoryKey);
+		if (!table) {
 			// Table doesn't exist yet
 			return 0;
 		}
+		return await table.countRows();
 	}
 
 	/**
 	 * Clear all vectors for a memory key
 	 */
 	async clearStore(memoryKey: string, projectId: string): Promise<void> {
-		try {
-			const table = await this.getTable(projectId, memoryKey);
-			await table.delete('true'); // Delete all rows
-			this.logger.debug(`Cleared store ${memoryKey} in project ${projectId}`);
-		} catch (error) {
+		const table = await this.getTable(projectId, memoryKey);
+		if (!table) {
 			// Table doesn't exist, nothing to clear
 			this.logger.debug(`Store ${memoryKey} does not exist in project ${projectId}`);
+			return;
 		}
+		await table.delete('true'); // Delete all rows
+		this.logger.debug(`Cleared store ${memoryKey} in project ${projectId}`);
 	}
 
 	/**
@@ -263,12 +287,19 @@ export class LanceDBVectorStoreService {
 			return 0;
 		}
 
-		try {
-			const table = await this.getTable(projectId, memoryKey);
+		const table = await this.getTable(projectId, memoryKey);
+		if (!table) {
+			// Table doesn't exist, nothing to delete
+			return 0;
+		}
 
-			// Build WHERE clause for fileName IN (...)
-			const escapedFileNames = fileNames.map((name) => `'${name.replace(/'/g, "''")}'`).join(', ');
-			const whereClause = `metadata.fileName IN (${escapedFileNames})`;
+		try {
+			// Build WHERE clause for fileName using LIKE (since metadata is JSON string)
+			const conditions = fileNames.map((name) => {
+				const escapedName = name.replace(/'/g, "''");
+				return `metadata LIKE '%"fileName":"${escapedName}"%'`;
+			});
+			const whereClause = conditions.join(' OR ');
 
 			// Count before deletion
 			const countBefore = await table.countRows(whereClause);

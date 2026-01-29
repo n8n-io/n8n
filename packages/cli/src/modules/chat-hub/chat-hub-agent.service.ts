@@ -9,7 +9,6 @@ import type {
 import { chatHubLLMProviderSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
-import { VectorStoreDataRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,6 +25,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import type { ProviderAndCredentialId } from './chat-hub.types';
+import { LanceDBVectorStoreService } from '../vector-store/lancedb-vector-store.service';
 
 @Service()
 export class ChatHubAgentService {
@@ -36,7 +36,7 @@ export class ChatHubAgentService {
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly vectorStoreDataRepository: VectorStoreDataRepository,
+		private readonly lancedbVectorStoreService: LanceDBVectorStoreService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {}
 
@@ -275,7 +275,7 @@ export class ChatHubAgentService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete all embeddings for this agent from the vector store
-		await this.vectorStoreDataRepository.clearStore(memoryKey, projectId);
+		await this.lancedbVectorStoreService.clearStore(memoryKey, projectId);
 
 		this.logger.debug(
 			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey}, projectId: ${projectId})`,
@@ -295,7 +295,7 @@ export class ChatHubAgentService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete embeddings for specific files from the vector store
-		const deletedCount = await this.vectorStoreDataRepository.deleteByFileNames(
+		const deletedCount = await this.lancedbVectorStoreService.deleteByFileNames(
 			memoryKey,
 			projectId,
 			fileNames,
