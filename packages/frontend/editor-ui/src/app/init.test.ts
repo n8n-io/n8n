@@ -20,7 +20,6 @@ import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
-import { usePostHog } from './stores/posthog.store';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -48,7 +47,6 @@ describe('Init', () => {
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
-	let posthogStore: ReturnType<typeof mockedStore<typeof usePostHog>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -69,7 +67,6 @@ describe('Init', () => {
 		ssoStore = mockedStore(useSSOStore);
 		rootStore = mockedStore(useRootStore);
 		bannersStore = mockedStore(useBannersStore);
-		posthogStore = mockedStore(usePostHog);
 	});
 
 	describe('initializeCore()', () => {
@@ -308,42 +305,6 @@ describe('Init', () => {
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
 				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
-			});
-
-			it('should push TRIAL banner if trial is active and has feature flag control', async () => {
-				settingsStore.settings.deployment.type = 'cloud';
-				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
-				usersStore.currentUserId = '123';
-
-				cloudPlanStore.userIsTrialing = true;
-				cloudPlanStore.trialExpired = false;
-
-				const posthogStoreSpy = vi.spyOn(posthogStore, 'getVariant').mockReturnValueOnce('control');
-				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
-
-				await initializeAuthenticatedFeatures(false);
-
-				expect(posthogStoreSpy).toHaveBeenCalled();
-				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
-			});
-
-			it('should not push TRIAL banner if trial is active and has feature flag variant', async () => {
-				settingsStore.settings.deployment.type = 'cloud';
-				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
-				usersStore.currentUserId = '123';
-
-				cloudPlanStore.userIsTrialing = true;
-				cloudPlanStore.trialExpired = false;
-
-				const posthogStoreSpy = vi.spyOn(posthogStore, 'getVariant').mockReturnValueOnce('variant');
-				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
-
-				await initializeAuthenticatedFeatures(false);
-
-				expect(posthogStoreSpy).toHaveBeenCalled();
-				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(bannersStore.pushBannerToStack).not.toHaveBeenCalledWith('TRIAL');
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {

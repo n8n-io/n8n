@@ -205,6 +205,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				executionRepository.findSingleExecution
@@ -340,6 +341,7 @@ describe('WaitTracker', () => {
 					startedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
 				};
 
@@ -371,6 +373,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				// Setup ExecutionRepository and ActiveExecutions
@@ -455,6 +458,7 @@ describe('WaitTracker', () => {
 					stoppedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData(),
 				};
 

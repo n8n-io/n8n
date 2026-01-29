@@ -3,6 +3,8 @@ import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
 
+import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
+
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
@@ -14,43 +16,6 @@ export interface CorsOptions {
 	allowCredentials?: boolean;
 	maxAge?: number;
 }
-
-export interface RateLimiterLimits {
-	/**
-	 * The maximum number of requests to allow during the `window` before rate limiting the client.
-	 * @default 5
-	 */
-	limit?: number;
-	/**
-	 * How long we should remember the requests.
-	 * @default 300_000 (5 minutes)
-	 */
-	windowMs?: number;
-}
-
-/**
- * Configuration for extracting a key from the request body.
- * @example
- * { source: 'body', field: 'email' }
- */
-export interface BodyKeyedRateLimiterConfig extends RateLimiterLimits {
-	/** How to extract key from request */
-	source: 'body';
-	/** The field name in the request body to use as the key */
-	field: string;
-}
-
-/**
- * Configuration for extracting a key from the authenticated user.
- * @example
- * { source: 'user' }
- */
-export interface UserKeyedRateLimiterConfig extends RateLimiterLimits {
-	/** How to extract key from request */
-	source: 'user';
-}
-
-export type KeyedRateLimiterConfig = BodyKeyedRateLimiterConfig | UserKeyedRateLimiterConfig;
 
 export type HandlerName = string;
 
