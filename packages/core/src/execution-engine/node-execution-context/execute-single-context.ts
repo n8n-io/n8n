@@ -10,6 +10,7 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -112,8 +113,12 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	getNodeParameter(parameterName: string, fallbackValue?: any, options?: IGetNodeParameterOptions) {
-		return this._getNodeParameter(parameterName, this.itemIndex, fallbackValue, options);
+	getNodeParameter<T = NodeParameterValueType | object>(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	) {
+		return this._getNodeParameter<T>(parameterName, this.itemIndex, fallbackValue, options);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

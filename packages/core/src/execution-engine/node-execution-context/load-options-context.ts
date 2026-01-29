@@ -37,10 +37,10 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		return await this._getCredentials<T>(type);
 	}
 
-	getCurrentNodeParameter(
+	getCurrentNodeParameter<T = NodeParameterValueType | object | undefined>(
 		parameterPath: string,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object | undefined {
+	): T {
 		const nodeParameters = this.additionalData.currentNodeParameters;
 
 		if (parameterPath.charAt(0) === '&') {
@@ -63,7 +63,7 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 			) as NodeParameterValueType;
 		}
 
-		return returnData;
+		return returnData as T;
 	}
 
 	getCurrentNodeParameters() {
