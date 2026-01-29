@@ -10,6 +10,7 @@ import { i18n } from '@n8n/i18n';
 const CONNECTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
+	existingProviderNames?: Ref<string[]>;
 	connectionId?: string;
 	useMockApi?: boolean;
 }
@@ -18,17 +19,6 @@ interface UseConnectionModalOptions {
  * High-level composable for managing the secrets provider connection modal.
  * Handles modal state, validation, user feedback, and orchestrates API calls.
  */
-
-/**
- * Converts a camelCase or PascalCase string to kebab-case
- * e.g., "awsSecretsManager" -> "aws-secrets-manager"
- */
-function toKebabCase(str: string): string {
-	return str
-		.replace(/([a-z])([A-Z])/g, '$1-$2')
-		.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-		.toLowerCase();
-}
 
 function isValidConnectionName(name: string): boolean {
 	return CONNECTION_NAME_REGEX.test(name);
@@ -44,6 +34,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// State
 	const connectionId = ref(options.connectionId);
 	const connectionName = ref('');
+	const connectionNameBlurred = ref(false);
 	const originalConnectionName = ref('');
 	const selectedProviderType = ref<SecretProviderTypeResponse | undefined>(providerTypes.value[0]);
 	const connectionSettings = ref<Record<string, IUpdateInformation['value']>>({});
@@ -129,9 +120,18 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		);
 	});
 
+	const isNameTaken = computed(() => {
+		const name = connectionName.value.trim();
+		const existingNames = options.existingProviderNames?.value ?? [];
+		return (
+			existingNames.includes(name) && (!isEditMode.value || name !== originalConnectionName.value)
+		);
+	});
+
 	const isValidName = computed(() => {
 		const name = connectionName.value.trim();
-		return name.length > 0 && isValidConnectionName(name);
+
+		return name.length > 0 && isValidConnectionName(name) && !isNameTaken.value;
 	});
 
 	const connectionNameError = computed(() => {
@@ -145,6 +145,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			return i18n.baseText(
 				'settings.secretsProviderConnections.modal.validation.connectionName.format',
 			);
+		}
+		if (isNameTaken.value) {
+			return i18n.baseText('settings.secretsProviderConnections.modal.connectionName.unique');
 		}
 		return null;
 	});
@@ -164,7 +167,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return `{{ $secrets.${originalConnectionName.value}.secret_name }}`;
 	});
 
-	// Methods
 	function initializeSettings(providerType: SecretProviderTypeResponse) {
 		const initialSettings: Record<string, IUpdateInformation['value']> = {};
 		providerType.properties?.forEach((property) => {
@@ -182,12 +184,22 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		};
 	}
 
+	function hyphenateConnectionName(name: string): string {
+		return name
+			.trim()
+			.replace(/\s+/g, '-')
+			.replace(/([a-z])([A-Z])/g, '$1-$2')
+			.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+			.toLowerCase();
+	}
+
 	function selectProviderType(providerTypeKey: string) {
 		const provider = providerTypes.value.find((type) => type.type === providerTypeKey);
 		if (!provider) return;
 
 		selectedProviderType.value = provider;
 		initializeSettings(provider);
+		connectionName.value = hyphenateConnectionName(selectedProviderType.value.type);
 	}
 
 	async function loadConnection() {
@@ -301,12 +313,13 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// Initialize settings and default name for the default provider type (only for new connections)
 	if (selectedProviderType.value && !connectionId.value) {
 		initializeSettings(selectedProviderType.value);
-		connectionName.value = toKebabCase(selectedProviderType.value.type);
+		connectionName.value = hyphenateConnectionName(selectedProviderType.value.type);
 	}
 
 	return {
 		// State refs
 		connectionName,
+		connectionNameBlurred,
 		originalConnectionName,
 		selectedProviderType,
 		connectionSettings,
@@ -325,6 +338,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		// Methods
 		updateSettings,
 		selectProviderType,
+		hyphenateConnectionName,
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,

@@ -14,7 +14,7 @@ import ParameterInputExpanded from '@/features/ndv/parameters/components/Paramet
 import { useConnectionModal } from '@/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee';
 import {
 	N8nCallout,
-	N8nInlineTextEdit,
+	N8nInput,
 	N8nInputLabel,
 	N8nLoading,
 	N8nMenuItem,
@@ -32,6 +32,7 @@ const props = defineProps<{
 	data?: {
 		connectionId?: string;
 		providerTypes?: SecretProviderTypeResponse[];
+		existingProviderNames?: string[];
 		onClose?: () => void;
 	};
 }>();
@@ -50,9 +51,12 @@ const SECRETS_COUNT = 0;
 
 // Modal state
 const providerTypes = computed(() => props.data?.providerTypes ?? []);
+const existingProviderNames = computed(() => props.data?.existingProviderNames ?? []);
+
 const modal = useConnectionModal({
 	providerTypes,
 	connectionId: props.data?.connectionId,
+	existingProviderNames,
 });
 
 const sidebarItems = computed(() => {
@@ -70,6 +74,12 @@ const sidebarItems = computed(() => {
 // Handlers
 function handleConnectionNameUpdate(value: string) {
 	modal.connectionName.value = value;
+	modal.connectionNameBlurred.value = false;
+}
+
+function handleConnectionNameBlur() {
+	modal.connectionName.value = modal.hyphenateConnectionName(modal.connectionName.value);
+	modal.connectionNameBlurred.value = true;
 }
 
 function handleProviderTypeChange(providerType: string) {
@@ -81,6 +91,7 @@ function handleSettingChange(update: IUpdateInformation) {
 }
 
 async function handleSave() {
+	console.log('handleSave', modal.canSave.value);
 	await modal.saveConnection();
 }
 
@@ -139,29 +150,10 @@ const { width } = useElementSize(nameRef);
 					</div>
 					<div ref="nameRef" :class="$style.name">
 						<div :class="$style.nameRow">
-							<N8nInlineTextEdit
-								data-test-id="provider-name"
-								:model-value="modal.connectionName.value"
-								:max-width="width - 10"
-								:placeholder="
-									i18n.baseText('settings.secretsProviderConnections.modal.connectionName')
-								"
-								:readonly="modal.isEditMode.value"
-								aria-required="true"
-								@update:model-value="handleConnectionNameUpdate"
-							/>
+							<N8nText size="large">
+								{{ modal.selectedProviderType.value?.displayName }}
+							</N8nText>
 						</div>
-						<N8nText size="small" color="text-light">
-							{{ modal.selectedProviderType.value?.displayName }}
-						</N8nText>
-						<N8nText
-							v-if="modal.connectionNameError.value && !modal.isEditMode.value"
-							size="small"
-							color="danger"
-							:class="$style.headerHint"
-						>
-							{{ modal.connectionNameError.value }}
-						</N8nText>
 					</div>
 				</div>
 				<div :class="$style.actions">
@@ -186,6 +178,7 @@ const { width } = useElementSize(nameRef);
 						:key="item.id"
 						:item="item"
 						:active="ACTIVE_TAB === item.id"
+						:data-test-id="`sidebar-item-${item.id}`"
 						@click="ACTIVE_TAB = item.id"
 					/>
 				</nav>
@@ -203,6 +196,7 @@ const { width } = useElementSize(nameRef);
 									v-if="modal.connection.connectionState.value === 'connected'"
 									theme="success"
 									class="mb-l"
+									data-test-id="connection-success-callout"
 								>
 									<div>
 										<p>
@@ -235,6 +229,7 @@ const { width } = useElementSize(nameRef);
 									v-else-if="modal.connection.connectionState.value === 'error'"
 									theme="danger"
 									class="mb-l"
+									data-test-id="connection-error-callout"
 								>
 									{{
 										i18n.baseText(
@@ -254,6 +249,7 @@ const { width } = useElementSize(nameRef);
 										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerType')"
 									/>
 									<N8nSelect
+										data-test-id="provider-type-select"
 										:model-value="modal.selectedProviderType.value?.type"
 										:disabled="modal.isEditMode.value"
 										@update:model-value="handleProviderTypeChange"
@@ -265,6 +261,45 @@ const { width } = useElementSize(nameRef);
 											:value="option.value"
 										/>
 									</N8nSelect>
+								</div>
+
+								<!-- Provider Name Input -->
+								<div class="mb-l">
+									<N8nInputLabel
+										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerKey')"
+									/>
+									<N8nInput
+										data-test-id="provider-name"
+										:model-value="modal.connectionName.value"
+										:max-width="width - 10"
+										:readonly="modal.isEditMode.value"
+										:disabled="modal.isEditMode.value"
+										aria-required="true"
+										@update:model-value="handleConnectionNameUpdate"
+										@blur="handleConnectionNameBlur"
+									/>
+									<N8nText
+										v-if="
+											modal.connectionNameError.value &&
+											modal.connectionNameBlurred.value &&
+											!modal.isEditMode.value
+										"
+										size="small"
+										color="danger"
+										:class="$style.headerHint"
+									>
+										{{ modal.connectionNameError.value }}
+									</N8nText>
+									<N8nText
+										v-else-if="!modal.isEditMode.value"
+										size="small"
+										color="text-light"
+										:class="$style.headerHint"
+									>
+										{{
+											i18n.baseText('settings.secretsProviderConnections.modal.connectionName.hint')
+										}}
+									</N8nText>
 								</div>
 
 								<!-- Dynamic Fields -->
@@ -299,7 +334,7 @@ const { width } = useElementSize(nameRef);
 .secretsProviderConnectionModal {
 	--dialog--max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
-	--dialog--max-height: 750px;
+	--dialog--max-height: 600px;
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;
@@ -315,7 +350,6 @@ const { width } = useElementSize(nameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding-bottom: 100px;
 }
 
 .icon {

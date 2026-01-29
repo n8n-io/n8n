@@ -34,11 +34,14 @@ function getProviderTypeInfo(providerType: string) {
 }
 
 function openConnectionModal(connectionId?: string) {
+	const existingNames = secretsProviders.activeProviders.value.map((provider) => provider.name);
+
 	uiStore.openModalWithData({
 		name: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 		data: {
 			connectionId,
 			providerTypes: secretsProviders.providerTypes.value,
+			existingProviderNames: existingNames,
 			onClose: async () => {
 				await secretsProviders.fetchActiveConnections();
 			},
