@@ -1,9 +1,8 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
-import { Not } from '@n8n/typeorm';
 
 const INDEX_VERSION_ID = 1;
 
