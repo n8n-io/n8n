@@ -314,7 +314,9 @@ async function main() {
 
 		console.log('');
 		log.info('Containers are running in the background');
-		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
+		log.info(
+			'Cleanup with: pnpm --filter n8n-containers stack:clean:all (stops containers and removes networks)',
+		);
 		console.log('');
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
