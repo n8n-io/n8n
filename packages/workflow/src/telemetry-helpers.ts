@@ -308,7 +308,6 @@ export function generateNodesGraph(
 			const { url } = node.parameters as { url: string };
 
 			nodeItem.domain_base = getDomainBase(url);
-			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
 		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
