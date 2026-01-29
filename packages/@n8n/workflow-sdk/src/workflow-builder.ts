@@ -1368,6 +1368,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				issues.push(...this.findMissingExpressionPrefixes(item, `${path}[${index}]`));
 			});
 		} else if (value && typeof value === 'object') {
+			// Skip PlaceholderValue objects - their hint property is documentation, not actual expressions
+			if (
+				'__placeholder' in value &&
+				(value as { __placeholder: boolean }).__placeholder === true
+			) {
+				return issues;
+			}
 			for (const [key, val] of Object.entries(value)) {
 				const newPath = path ? `${path}.${key}` : key;
 				issues.push(...this.findMissingExpressionPrefixes(val, newPath));
