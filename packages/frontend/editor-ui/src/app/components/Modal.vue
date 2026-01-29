@@ -139,7 +139,7 @@ function getCustomClass() {
 
 <template>
 	<ElDialog
-		:model-value="uiStore.modalsById[name]?.open"
+		:model-value="uiStore.modalsById[name]?.open ?? false"
 		:before-close="onCloseDialog"
 		:class="{
 			'dialog-wrapper': true,

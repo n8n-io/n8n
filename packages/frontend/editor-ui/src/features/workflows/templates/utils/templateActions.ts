@@ -18,6 +18,9 @@ import type { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { assert } from '@n8n/utils/assert';
 import { doesNodeHaveCredentialsToFill } from '@/app/utils/nodes/nodeTransforms';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { useToast } from '@/app/composables/useToast';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
 
 type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
@@ -32,6 +35,8 @@ export async function createWorkflowFromTemplate(opts: {
 	nodeTypeProvider: NodeTypeProvider;
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
+	const { showWarning } = useToast();
+	const projectsStore = useProjectsStore();
 
 	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
 	const nodesWithCreds = replaceAllTemplateNodeCredentials(
@@ -39,7 +44,46 @@ export async function createWorkflowFromTemplate(opts: {
 		template.workflow.nodes,
 		credentialOverrides,
 	);
-	const nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
+	let nodes: INodeUi[] = getNodesWithNormalizedPosition(nodesWithCreds);
+
+	// Check node governance and disable blocked nodes using local resolution
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
+	if (projectId && nodes.length > 0) {
+		try {
+			const nodeGovernanceStore = useNodeGovernanceStore();
+
+			// Ensure governance data is loaded for this project
+			if (
+				!nodeGovernanceStore.governanceDataLoaded ||
+				nodeGovernanceStore.currentProjectId !== projectId
+			) {
+				await nodeGovernanceStore.fetchGovernanceData(projectId);
+			}
+
+			const blockedNodes: string[] = [];
+			nodes = nodes.map((node) => {
+				const governance = nodeGovernanceStore.resolveGovernanceForNode(node.type, projectId);
+				if (governance?.status === 'blocked') {
+					blockedNodes.push(node.name || node.type);
+					return {
+						...node,
+						disabled: true,
+					};
+				}
+				return node;
+			});
+
+			if (blockedNodes.length > 0) {
+				showWarning(
+					`Template imported with ${blockedNodes.length} blocked node(s): ${blockedNodes.join(', ')}. These nodes have been disabled.`,
+				);
+			}
+		} catch (error) {
+			// Silently fail - governance check is optional, don't block template import
+			console.warn('Failed to check node governance for template import:', error);
+		}
+	}
+
 	const connections = template.workflow.connections;
 
 	const workflowToCreate: WorkflowData = {

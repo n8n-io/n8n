@@ -13,6 +13,16 @@ import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { NodeAccessRequest, type RequestStatus } from './node-access-request';
+import { NodeCategory } from './node-category';
+import { NodeCategoryAssignment } from './node-category-assignment';
+import {
+	NodeGovernancePolicy,
+	type PolicyType,
+	type PolicyScope,
+	type TargetType,
+} from './node-governance-policy';
+import { PolicyProjectAssignment } from './policy-project-assignment';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
@@ -76,6 +86,16 @@ export {
 	ExecutionEntity,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
+	// Node Governance entities
+	NodeGovernancePolicy,
+	type PolicyType,
+	type PolicyScope,
+	type TargetType,
+	PolicyProjectAssignment,
+	NodeCategory,
+	NodeCategoryAssignment,
+	NodeAccessRequest,
+	type RequestStatus,
 };
 
 export const entities = {
@@ -115,4 +135,10 @@ export const entities = {
 	Role,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
+	// Node Governance entities
+	NodeGovernancePolicy,
+	PolicyProjectAssignment,
+	NodeCategory,
+	NodeCategoryAssignment,
+	NodeAccessRequest,
 };
