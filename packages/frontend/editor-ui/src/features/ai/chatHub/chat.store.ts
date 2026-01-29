@@ -66,7 +66,6 @@ import {
 	createAiMessageFromStreamingState,
 	flattenModel,
 	unflattenModel,
-	createHumanMessageFromStreamingState,
 	createFakeAgent,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
