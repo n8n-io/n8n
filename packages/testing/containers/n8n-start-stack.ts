@@ -1,7 +1,6 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
-import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { CloudflaredResult } from './services/cloudflared';
@@ -14,6 +13,7 @@ import type { VictoriaLogsResult } from './services/victoria-logs';
 import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // ANSI colors for terminal output
 const colors = {
@@ -70,7 +70,7 @@ ${Object.entries(BASE_PERFORMANCE_PLANS)
 	.join('\n')}
 
 ${colors.yellow}Environment Variables:${colors.reset}
-  • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
+  • TEST_IMAGE_N8N=<image>  Use a custom Docker image (default: n8nio/n8n:local)
 
 ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Simple SQLite instance${colors.reset}
@@ -314,7 +314,9 @@ async function main() {
 
 		console.log('');
 		log.info('Containers are running in the background');
-		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
+		log.info(
+			'Cleanup with: pnpm --filter n8n-containers stack:clean:all (stops containers and removes networks)',
+		);
 		console.log('');
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
@@ -323,7 +325,7 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = getDockerImageFromEnv();
+	const dockerImage = TEST_CONTAINER_IMAGES.n8n;
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;

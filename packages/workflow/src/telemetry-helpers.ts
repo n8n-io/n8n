@@ -16,6 +16,8 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
@@ -452,6 +454,8 @@ export function generateNodesGraph(
 			// For 1.3+ node version by default it is true and isn't stored in parameters
 			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
 				enabledDefault) as boolean;
+		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
+			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
