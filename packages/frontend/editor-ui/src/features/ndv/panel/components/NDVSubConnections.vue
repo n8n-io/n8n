@@ -64,6 +64,8 @@ const nodeType = computed(() =>
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
 
+// Type assertion needed: workflowObjectsById uses computed property keys causing
+// TypeScript to infer an anonymous type instead of Workflow
 const workflowObject = computed(
 	() =>
 		workflowDocumentsStore.workflowObjectsById[

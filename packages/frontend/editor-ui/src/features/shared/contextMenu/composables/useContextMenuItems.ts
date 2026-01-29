@@ -50,6 +50,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const collaborationStore = useCollaborationStore();
 	const i18n = useI18n();
 
+	// Type assertion needed: workflowObjectsById uses computed property keys causing
+	// TypeScript to infer an anonymous type instead of Workflow
 	const workflowObject = computed(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[

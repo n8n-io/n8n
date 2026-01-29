@@ -76,6 +76,8 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
 
+	// Type assertion needed: workflowObjectsById uses computed property keys causing
+	// TypeScript to infer an anonymous type instead of Workflow
 	const workflowObject = computed(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[

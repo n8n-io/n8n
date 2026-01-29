@@ -53,6 +53,8 @@ export function usePinnedData(
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
+	// Type assertion needed: workflowObjectsById uses computed property keys causing
+	// TypeScript to infer an anonymous type instead of Workflow
 	const workflowObject = computed(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[

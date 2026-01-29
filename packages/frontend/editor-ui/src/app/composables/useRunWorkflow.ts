@@ -84,6 +84,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
 
+	// Type assertion needed: workflowObjectsById uses computed property keys causing
+	// TypeScript to infer an anonymous type instead of Workflow
 	const workflowObject = computed(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[
