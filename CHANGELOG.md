@@ -1,3 +1,12 @@
+## [2.4.7-exp.0](https://github.com/n8n-io/n8n/compare/n8n@2.4.7...n8n@2.4.7-exp.0) (2026-01-29)
+
+
+### Bug Fixes
+
+* **core:** Use fsRealpath instead of resolve to get the real path ([#24185](https://github.com/n8n-io/n8n/issues/24185)) ([72e08b9](https://github.com/n8n-io/n8n/commit/72e08b9acf88b903e868e844076c6e9a0a973b28))
+
+
+
 ## [2.4.7](https://github.com/n8n-io/n8n/compare/n8n@2.4.6...n8n@2.4.7) (2026-01-28)
 
 
