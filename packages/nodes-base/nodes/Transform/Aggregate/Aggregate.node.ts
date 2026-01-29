@@ -30,6 +30,11 @@ export class Aggregate implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			message:
+				'Combines items from one branch into a single item. Use n8n-nodes-base.merge to combine multiple branches',
+			relatedNodes: ['n8n-nodes-base.merge'],
+		},
 		properties: [
 			{
 				displayName: 'Aggregate',
