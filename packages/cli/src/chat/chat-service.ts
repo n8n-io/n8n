@@ -20,6 +20,7 @@ import {
 	type ChatRequest,
 	Session,
 } from './chat-service.types';
+import { ChatTokenService } from './chat-token.service';
 import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
@@ -61,6 +62,7 @@ export class ChatService {
 
 	constructor(
 		private readonly executionManager: ChatExecutionManager,
+		private readonly chatTokenService: ChatTokenService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -73,7 +75,7 @@ export class ChatService {
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
-			query: { sessionId, executionId, isPublic },
+			query: { sessionId, executionId, token, isPublic },
 		} = req;
 
 		if (!ws) {
@@ -81,6 +83,17 @@ export class ChatService {
 		}
 
 		if (!sessionId || !executionId) {
+			ws.close(1008);
+			return;
+		}
+
+		// Validate the token to prevent session hijacking
+		// For public chats, a valid token is required
+		// For integrated chats (isPublic=false), we also require a token as the execution
+		// flow generates one when the workflow starts
+		if (!token || !this.chatTokenService.validateToken(executionId, token)) {
+			this.logger.warn(`Invalid or missing chat token for execution ${executionId}`);
+			ws.send('Invalid or missing token');
 			ws.close(1008);
 			return;
 		}
