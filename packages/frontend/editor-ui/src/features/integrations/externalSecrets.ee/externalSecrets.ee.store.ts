@@ -85,19 +85,19 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const projectSecretsAsObject = computed(() =>
 		transformSecretsToNestedObject(projectSecrets.value),
 	);
+	const globalSecretsAsObject = computed(() => transformSecretsToNestedObject(secrets.value));
 	const secretsAsObject = computed(() => {
-		const globalSecretsAsObject = transformSecretsToNestedObject(secrets.value);
 		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
 			/**
 			 * This combines secrets from both global and project scopes.
 			 * Note: The backend enforces that provider names are unique across scopes, preventing conflicts.
 			 */
 			return {
-				...globalSecretsAsObject,
+				...globalSecretsAsObject.value,
 				...projectSecretsAsObject.value,
 			};
 		}
-		return globalSecretsAsObject;
+		return globalSecretsAsObject.value;
 	});
 
 	async function fetchGlobalSecrets() {
@@ -205,6 +205,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		secrets,
 		connectionState,
 		secretsAsObject,
+		globalSecretsAsObject,
 		projectSecretsAsObject,
 		isEnterpriseExternalSecretsEnabled,
 		fetchGlobalSecrets,

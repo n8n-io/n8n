@@ -1298,8 +1298,8 @@ export const secretProvidersOptions = () => {
 		);
 	}
 
-	const globalSecretProviders = Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		externalSecretProviderToOption(provider, 'global'),
+	const globalSecretProviders = Object.keys(externalSecretsStore.globalSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'global'),
 	);
 	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
 		(provider) => externalSecretProviderToOption(provider, 'project'),
