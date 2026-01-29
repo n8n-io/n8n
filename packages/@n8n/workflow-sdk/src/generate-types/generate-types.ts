@@ -1762,17 +1762,11 @@ export function generateSharedFile(
 	lines.push('');
 
 	// Helper types
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'export type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'export type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -1913,7 +1907,6 @@ export function generateDiscriminatorFile(
 	lines.push('');
 
 	// Check what helper types we need
-	const needsResourceLocator = props.some((p) => p.type === 'resourceLocator');
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
 	const needsIDataObject = props.some((p) => p.type === 'json');
@@ -1933,13 +1926,8 @@ export function generateDiscriminatorFile(
 	lines.push('');
 
 	// Inline helper types (only the ones needed)
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -2429,17 +2417,11 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 
 	// Helper types (if needed) based on filtered properties
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -2770,17 +2752,11 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	lines.push('');
 
 	// Helper types (if needed) - only add if they'll actually be used in output
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',

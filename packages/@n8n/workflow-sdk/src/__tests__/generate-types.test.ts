@@ -2546,22 +2546,22 @@ describe('generate-types', () => {
 			});
 
 			it('should include helper types when needed', () => {
-				// Create a node with resourceLocator
-				const nodeWithLocator: NodeTypeDescription = {
+				// Create a node with filter type (resourceLocator no longer uses helper types)
+				const nodeWithFilter: NodeTypeDescription = {
 					...mockFreshserviceNode,
 					properties: [
 						...mockFreshserviceNode.properties,
 						{
-							displayName: 'Channel',
-							name: 'channel',
-							type: 'resourceLocator',
+							displayName: 'Filter',
+							name: 'filter',
+							type: 'filter',
 							default: {},
 						},
 					],
 				};
 
-				const content = generateTypes.generateSharedFile(nodeWithLocator, 1);
-				expect(content).toContain('ResourceLocatorValue');
+				const content = generateTypes.generateSharedFile(nodeWithFilter, 1);
+				expect(content).toContain('FilterValue');
 			});
 		});
 
