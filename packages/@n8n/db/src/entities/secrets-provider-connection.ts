@@ -32,7 +32,7 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 * If empty, the provider is global and accessible to all projects.
 	 * If populated, the provider is project-scoped and only accessible to the specified projects.
 	 */
-	@OneToMany('ProjectSecretsProviderAccess', 'secretsProviderConnection')
+	@OneToMany('ProjectSecretsProviderAccess', 'secretsProviderConnection', { eager: true })
 	projectAccess: ProjectSecretsProviderAccess[];
 
 	/**
