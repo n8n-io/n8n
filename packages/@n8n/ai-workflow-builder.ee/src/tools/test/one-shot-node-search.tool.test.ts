@@ -248,37 +248,6 @@ const mockOutputParserStructuredNode: INodeTypeDescription = {
 	properties: [],
 };
 
-// Mock OpenAI node with related nodes (agent, lmOpenAi)
-const mockOpenAiNode: INodeTypeDescription = {
-	name: '@n8n/n8n-nodes-langchain.openAi',
-	displayName: 'OpenAI',
-	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
-	group: ['transform'],
-	version: 2.1,
-	defaults: { name: 'OpenAI' },
-	inputs: ['main'],
-	outputs: ['main'],
-	properties: [],
-	builderHint: {
-		message:
-			'For AI agent workflows, use @n8n/n8n-nodes-langchain.agent with @n8n/n8n-nodes-langchain.lmOpenAi as the language model instead',
-		relatedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmOpenAi'],
-	},
-};
-
-// Mock lmOpenAi node
-const mockLmOpenAiNode: INodeTypeDescription = {
-	name: '@n8n/n8n-nodes-langchain.lmOpenAi',
-	displayName: 'OpenAI Chat Model',
-	description: 'Chat Model for OpenAI',
-	group: ['transform'],
-	version: 1,
-	defaults: { name: 'OpenAI Chat Model' },
-	inputs: ['main'],
-	outputs: ['main'],
-	properties: [],
-};
-
 describe('OneShotNodeSearchTool', () => {
 	describe('builder hints in search results', () => {
 		it('should include builder hint for Form Trigger node', async () => {

@@ -336,17 +336,14 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 				if (results.length === 0) {
 					allResults.push(`## "${query}"\nNo nodes found. Try a different search term.`);
 				} else {
-					// Collect IDs of nodes already in search results
-					const resultNodeIds = new Set(results.map((node) => node.id));
+					// Track which node IDs have been shown to avoid duplicates
+					const shownNodeIds = new Set(results.map((node) => node.id));
 
-					// Recursively collect all related nodes from builder hints
-					const relatedNodeIds = collectAllRelatedNodeIds(
-						nodeTypeParser,
-						results.map((node) => ({ id: node.id, version: node.version })),
-						resultNodeIds,
-					);
+					const allNodeLines: string[] = [];
+					let totalRelatedCount = 0;
 
-					const resultLines = results.map((node) => {
+					for (const node of results) {
+						// Format the search result node
 						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
 						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
 
@@ -361,38 +358,46 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 						if (builderHint) parts.push(builderHint);
 						if (discStr) parts.push(discStr);
 
-						return parts.join('\n');
-					});
+						allNodeLines.push(parts.join('\n'));
 
-					// Add related nodes with [RELATED] tag
-					const relatedLines: string[] = [];
-					for (const relatedId of relatedNodeIds) {
-						const nodeType = nodeTypeParser.getNodeType(relatedId);
-						if (nodeType) {
-							const isTrigger =
-								relatedId.toLowerCase().includes('trigger') ||
-								relatedId.toLowerCase().includes('webhook') ||
-								relatedId.toLowerCase().includes('schedule') ||
-								relatedId.toLowerCase().includes('poll');
-							const version = Array.isArray(nodeType.version)
-								? nodeType.version[nodeType.version.length - 1]
-								: nodeType.version;
-							const triggerTag = isTrigger ? ' [TRIGGER]' : '';
-							const basicInfo = `- ${relatedId}${triggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
+						// Get related nodes for THIS specific search result
+						const relatedNodeIds = collectAllRelatedNodeIds(
+							nodeTypeParser,
+							[{ id: node.id, version: node.version }],
+							shownNodeIds,
+						);
 
-							// Get builder hint for related node too
-							const builderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
+						// Add related nodes immediately after their parent search result
+						for (const relatedId of relatedNodeIds) {
+							const nodeType = nodeTypeParser.getNodeType(relatedId);
+							if (nodeType) {
+								const isTrigger =
+									relatedId.toLowerCase().includes('trigger') ||
+									relatedId.toLowerCase().includes('webhook') ||
+									relatedId.toLowerCase().includes('schedule') ||
+									relatedId.toLowerCase().includes('poll');
+								const version = Array.isArray(nodeType.version)
+									? nodeType.version[nodeType.version.length - 1]
+									: nodeType.version;
+								const relatedTriggerTag = isTrigger ? ' [TRIGGER]' : '';
+								const relatedBasicInfo = `- ${relatedId}${relatedTriggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
 
-							const parts = [basicInfo];
-							if (builderHint) parts.push(builderHint);
+								// Get builder hint for related node too
+								const relatedBuilderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
 
-							relatedLines.push(parts.join('\n'));
+								const relatedParts = [relatedBasicInfo];
+								if (relatedBuilderHint) relatedParts.push(relatedBuilderHint);
+
+								allNodeLines.push(relatedParts.join('\n'));
+
+								// Mark as shown to prevent duplicates
+								shownNodeIds.add(relatedId);
+								totalRelatedCount++;
+							}
 						}
 					}
 
-					const allNodeLines = [...resultLines, ...relatedLines];
-					const relatedCount = relatedNodeIds.size;
-					const countSuffix = relatedCount > 0 ? ` (+ ${relatedCount} related)` : '';
+					const countSuffix = totalRelatedCount > 0 ? ` (+ ${totalRelatedCount} related)` : '';
 
 					allResults.push(
 						`## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`,
