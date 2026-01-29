@@ -40,6 +40,28 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
 }
 
 /**
+ * Trigger node types that don't have "trigger" in their name
+ * but still function as workflow entry points
+ */
+const TRIGGER_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.cron', // Legacy schedule trigger
+	'n8n-nodes-base.emailReadImap', // Email polling trigger
+	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
+	'n8n-nodes-base.start', // Legacy trigger
+]);
+
+/**
+ * Check if a node type is a trigger
+ */
+function isTriggerNodeType(type: string): boolean {
+	if (TRIGGER_NODE_TYPES.has(type)) {
+		return true;
+	}
+	return type.toLowerCase().includes('trigger');
+}
+
+/**
  * Simplified operation info for discriminator display
  */
 interface DiscriminatorOperationInfo {
@@ -371,15 +393,10 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 						for (const relatedId of relatedNodeIds) {
 							const nodeType = nodeTypeParser.getNodeType(relatedId);
 							if (nodeType) {
-								const isTrigger =
-									relatedId.toLowerCase().includes('trigger') ||
-									relatedId.toLowerCase().includes('webhook') ||
-									relatedId.toLowerCase().includes('schedule') ||
-									relatedId.toLowerCase().includes('poll');
 								const version = Array.isArray(nodeType.version)
 									? nodeType.version[nodeType.version.length - 1]
 									: nodeType.version;
-								const relatedTriggerTag = isTrigger ? ' [TRIGGER]' : '';
+								const relatedTriggerTag = isTriggerNodeType(relatedId) ? ' [TRIGGER]' : '';
 								const relatedBasicInfo = `- ${relatedId}${relatedTriggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
 
 								// Get builder hint for related node too

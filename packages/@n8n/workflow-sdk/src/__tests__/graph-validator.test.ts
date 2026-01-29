@@ -987,6 +987,122 @@ describe('graph validation', () => {
 		});
 	});
 
+	describe('warnings for auto-renamed nodes', () => {
+		test('warning includes both renamed and original name for disconnected node', () => {
+			// Create two nodes with same name - second gets renamed to "Process 1"
+			const process1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Process' },
+			});
+			const process2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Process' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(process1)
+				.add(process2); // Added but not connected - should warn
+
+			const result = wf.validate();
+
+			// Find the disconnected node warning for the renamed node
+			const warning = result.warnings.find(
+				(w) => w.code === 'DISCONNECTED_NODE' && w.nodeName === 'Process 1',
+			);
+
+			expect(warning).toBeDefined();
+			expect(warning?.message).toContain("'Process 1'");
+			expect(warning?.message).toContain("originally 'Process'");
+			expect(warning?.originalName).toBe('Process');
+		});
+
+		test('warning does not include original name when node was not renamed', () => {
+			const processNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Process' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.add(processNode); // Added but not connected
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find(
+				(w) => w.code === 'DISCONNECTED_NODE' && w.nodeName === 'Process',
+			);
+
+			expect(warning).toBeDefined();
+			expect(warning?.message).toContain("'Process'");
+			expect(warning?.message).not.toContain('originally');
+			expect(warning?.originalName).toBeUndefined();
+		});
+
+		test('node-specific warnings include original name for renamed nodes', () => {
+			// Create two Set nodes with credential-like field names
+			// Using .add() for second node to trigger auto-rename (set2 becomes "Store Data 1")
+			const set1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: {
+					name: 'Store Data',
+					parameters: {
+						assignments: { assignments: [{ name: 'api_key', value: 'secret123' }] },
+					},
+				},
+			});
+			const set2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: {
+					name: 'Store Data',
+					parameters: {
+						assignments: { assignments: [{ name: 'password', value: 'secret456' }] },
+					},
+				},
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(set1)
+				.add(set2); // Use .add() (not .then()) to add as separate node with auto-rename
+
+			const result = wf.validate();
+
+			// The second node warning should reference both names
+			const warning = result.warnings.find(
+				(w) => w.code === 'SET_CREDENTIAL_FIELD' && w.nodeName === 'Store Data 1',
+			);
+
+			expect(warning).toBeDefined();
+			expect(warning?.message).toContain("'Store Data 1'");
+			expect(warning?.message).toContain("originally 'Store Data'");
+			expect(warning?.originalName).toBe('Store Data');
+		});
+	});
+
 	describe('checkToolNode', () => {
 		test('returns warning when tool node has no parameters', () => {
 			const wf = workflow('test-id', 'Tool Workflow')

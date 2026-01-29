@@ -826,8 +826,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Check: Disconnected nodes (non-trigger nodes without incoming connections)
 		if (!options.allowDisconnectedNodes) {
 			const nodesWithIncoming = this.findNodesWithIncomingConnections();
-			for (const [_name, graphNode] of this._nodes) {
-				const nodeName = graphNode.instance.name;
+			for (const [mapKey, graphNode] of this._nodes) {
+				const originalName = graphNode.instance.name;
 				// Skip trigger nodes - they don't need incoming connections
 				if (this.isTriggerNode(graphNode.instance.type)) {
 					continue;
@@ -840,13 +840,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (this.isConnectedSubnode(graphNode)) {
 					continue;
 				}
-				// Check if this node has any incoming connection
-				if (!nodesWithIncoming.has(nodeName)) {
+				// Check if this node has any incoming connection (use mapKey, not originalName)
+				if (!nodesWithIncoming.has(mapKey)) {
+					const isRenamed = this.isAutoRenamed(mapKey, originalName);
+					const displayName = isRenamed ? mapKey : originalName;
+					const origForWarning = isRenamed ? originalName : undefined;
 					warnings.push(
 						new ValidationWarning(
 							'DISCONNECTED_NODE',
-							`Node '${nodeName}' is not connected to any input. It will not receive data.`,
-							nodeName,
+							`Node ${this.formatNodeRef(displayName, origForWarning)} is not connected to any input. It will not receive data.`,
+							displayName,
+							origForWarning,
 						),
 					);
 				}
@@ -854,50 +858,50 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		}
 
 		// Node-specific checks
-		for (const [_name, graphNode] of this._nodes) {
+		for (const [mapKey, graphNode] of this._nodes) {
 			const nodeType = graphNode.instance.type;
 
 			// Agent node checks
 			if (nodeType === '@n8n/n8n-nodes-langchain.agent') {
-				this.checkAgentNode(graphNode.instance, warnings);
+				this.checkAgentNode(graphNode.instance, warnings, mapKey);
 			}
 
 			// ChainLlm node checks - only for versions >= 1.4 (when promptType was introduced)
 			if (nodeType === '@n8n/n8n-nodes-langchain.chainLlm') {
 				const version = parseVersion(graphNode.instance.version);
 				if (version >= 1.4) {
-					this.checkChainLlmNode(graphNode.instance, warnings);
+					this.checkChainLlmNode(graphNode.instance, warnings, mapKey);
 				}
 			}
 
 			// HTTP Request node checks
 			if (nodeType === 'n8n-nodes-base.httpRequest') {
-				this.checkHttpRequestNode(graphNode.instance, warnings);
+				this.checkHttpRequestNode(graphNode.instance, warnings, mapKey);
 			}
 
 			// Set node checks
 			if (nodeType === 'n8n-nodes-base.set') {
-				this.checkSetNode(graphNode.instance, warnings);
+				this.checkSetNode(graphNode.instance, warnings, mapKey);
 			}
 
 			// Merge node checks
 			if (nodeType === 'n8n-nodes-base.merge') {
-				this.checkMergeNode(graphNode, warnings);
+				this.checkMergeNode(graphNode, warnings, mapKey);
 			}
 
 			// Tool node checks
 			if (this.isToolNode(nodeType)) {
-				this.checkToolNode(graphNode.instance, warnings);
+				this.checkToolNode(graphNode.instance, warnings, mapKey);
 			}
 
 			// Check $fromAI in non-tool nodes
 			if (!this.isToolNode(nodeType)) {
-				this.checkFromAiInNonToolNode(graphNode.instance, warnings);
+				this.checkFromAiInNonToolNode(graphNode.instance, warnings, mapKey);
 			}
 
 			// Check for {{ $... }} without = prefix (skip sticky notes - they're just documentation)
 			if (graphNode.instance.type !== 'n8n-nodes-base.stickyNote') {
-				this.checkMissingExpressionPrefix(graphNode.instance, warnings);
+				this.checkMissingExpressionPrefix(graphNode.instance, warnings, mapKey);
 			}
 		}
 
@@ -909,15 +913,41 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Check if a node was auto-renamed (pattern: "Name" -> "Name 1", "Name 2", etc.)
+	 */
+	private isAutoRenamed(mapKey: string, originalName: string): boolean {
+		if (mapKey === originalName) return false;
+		if (!mapKey.startsWith(originalName + ' ')) return false;
+		const suffix = mapKey.slice(originalName.length + 1);
+		return /^\d+$/.test(suffix);
+	}
+
+	/**
+	 * Format a node reference for warning messages, including original name if renamed
+	 */
+	private formatNodeRef(displayName: string, originalName?: string): string {
+		if (originalName && originalName !== displayName) {
+			return `'${displayName}' (originally '${originalName}')`;
+		}
+		return `'${displayName}'`;
+	}
+
+	/**
 	 * Check Agent node for common issues
 	 */
 	private checkAgentNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters as Record<string, unknown> | undefined;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		const promptType = params.promptType as string | undefined;
 
@@ -937,8 +967,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					` Is input data required for Agent node "${instance.name}"? If so, add an expression to the prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } to add dynamic data like input data.`,
-					instance.name,
+					` Is input data required for Agent node ${this.formatNodeRef(displayName, origForWarning)}? If so, add an expression to the prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } to add dynamic data like input data.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -953,8 +984,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_NO_SYSTEM_MESSAGE',
-					`Agent node "${instance.name}" has no system message. System-level instructions should be in the system message field.`,
-					instance.name,
+					`Agent node ${this.formatNodeRef(displayName, origForWarning)} has no system message. System-level instructions should be in the system message field.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -966,10 +998,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkChainLlmNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters as Record<string, unknown> | undefined;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		const promptType = params.promptType as string | undefined;
 
@@ -989,8 +1027,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`ChainLlm node "${instance.name}" has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
-					instance.name,
+					`ChainLlm node ${this.formatNodeRef(displayName, origForWarning)} has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -1022,10 +1061,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkHttpRequestNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters as Record<string, unknown> | undefined;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		// Check header parameters for sensitive headers
 		const headerParams = params.headerParameters as
@@ -1042,8 +1087,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					warnings.push(
 						new ValidationWarning(
 							'HARDCODED_CREDENTIALS',
-							`HTTP Request node "${instance.name}" has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead.`,
-							instance.name,
+							`HTTP Request node ${this.formatNodeRef(displayName, origForWarning)} has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead.`,
+							displayName,
+							origForWarning,
 						),
 					);
 				}
@@ -1065,8 +1111,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					warnings.push(
 						new ValidationWarning(
 							'HARDCODED_CREDENTIALS',
-							`HTTP Request node "${instance.name}" has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead.`,
-							instance.name,
+							`HTTP Request node ${this.formatNodeRef(displayName, origForWarning)} has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead.`,
+							displayName,
+							origForWarning,
 						),
 					);
 				}
@@ -1116,10 +1163,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkSetNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters as Record<string, unknown> | undefined;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		const assignments = params.assignments as
 			| { assignments?: Array<{ name?: string; value?: unknown; type?: string }> }
@@ -1131,8 +1184,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				warnings.push(
 					new ValidationWarning(
 						'SET_CREDENTIAL_FIELD',
-						`Set node "${instance.name}" has a field named "${assignment.name}" which appears to be storing credentials. Use n8n's credential system instead.`,
-						instance.name,
+						`Set node ${this.formatNodeRef(displayName, origForWarning)} has a field named "${assignment.name}" which appears to be storing credentials. Use n8n's credential system instead.`,
+						displayName,
+						origForWarning,
 					),
 				);
 			}
@@ -1145,10 +1199,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkMergeNode(
 		graphNode: GraphNode,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const instance = graphNode.instance;
-		const mergeNodeName = instance.name;
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		// Track which distinct input indices have connections
 		const connectedInputIndices = new Set<number>();
@@ -1160,7 +1218,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (mainConns) {
 				for (const [_outputIndex, targets] of mainConns) {
 					for (const target of targets) {
-						if (target.node === mergeNodeName) {
+						// Compare against mapKey (the actual key in the workflow, potentially renamed)
+						if (target.node === mapKey) {
 							connectedInputIndices.add(target.index);
 						}
 					}
@@ -1175,7 +1234,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					const targetNode = isInputTarget(conn.target) ? conn.target.node : conn.target;
 					const targetNodeName =
 						typeof targetNode === 'object' && 'name' in targetNode ? targetNode.name : undefined;
-					if (targetNode === instance || targetNodeName === mergeNodeName) {
+					if (targetNode === instance || targetNodeName === originalName) {
 						// For InputTarget, use the specified index; for regular connections use targetInputIndex; default to 0
 						const targetIndex = isInputTarget(conn.target)
 							? conn.target.inputIndex
@@ -1191,8 +1250,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'MERGE_SINGLE_INPUT',
-					`Merge node "${instance.name}" has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
-					instance.name,
+					`Merge node ${this.formatNodeRef(displayName, origForWarning)} has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -1223,6 +1283,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkToolNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 
@@ -1231,13 +1292,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return;
 		}
 
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
+
 		const params = instance.config?.parameters;
 		if (!params || Object.keys(params).length === 0) {
 			warnings.push(
 				new ValidationWarning(
 					'TOOL_NO_PARAMETERS',
-					`Tool node "${instance.name}" has no parameters set.`,
-					instance.name,
+					`Tool node ${this.formatNodeRef(displayName, origForWarning)} has no parameters set.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -1249,18 +1316,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkFromAiInNonToolNode(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		// Recursively search for $fromAI in all parameter values
 		if (this.containsFromAI(params)) {
 			warnings.push(
 				new ValidationWarning(
 					'FROM_AI_IN_NON_TOOL',
-					`Node "${instance.name}" uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
-					instance.name,
+					`Node ${this.formatNodeRef(displayName, origForWarning)} uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
+					displayName,
+					origForWarning,
 				),
 			);
 		}
@@ -1301,10 +1375,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private checkMissingExpressionPrefix(
 		instance: NodeInstance<string, string, unknown>,
 		warnings: import('./validation/index').ValidationWarning[],
+		mapKey: string,
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const params = instance.config?.parameters;
 		if (!params) return;
+
+		const originalName = instance.name;
+		const isRenamed = this.isAutoRenamed(mapKey, originalName);
+		const displayName = isRenamed ? mapKey : originalName;
+		const origForWarning = isRenamed ? originalName : undefined;
 
 		const issues = this.findMissingExpressionPrefixes(params);
 
@@ -1312,9 +1392,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'MISSING_EXPRESSION_PREFIX',
-					`Node "${instance.name}" has parameter "${path}" containing {{ $... }} without '=' prefix. ` +
+					`Node ${this.formatNodeRef(displayName, origForWarning)} has parameter "${path}" containing {{ $... }} without '=' prefix. ` +
 						`n8n expressions must start with '=' like '={{ $json.field }}'.`,
-					instance.name,
+					displayName,
+					origForWarning,
 				),
 			);
 		}

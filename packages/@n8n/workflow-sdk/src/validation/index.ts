@@ -51,11 +51,18 @@ export class ValidationWarning {
 	readonly code: ValidationErrorCode;
 	readonly message: string;
 	readonly nodeName?: string;
+	readonly originalName?: string;
 
-	constructor(code: ValidationErrorCode, message: string, nodeName?: string) {
+	constructor(
+		code: ValidationErrorCode,
+		message: string,
+		nodeName?: string,
+		originalName?: string,
+	) {
 		this.code = code;
 		this.message = message;
 		this.nodeName = nodeName;
+		this.originalName = originalName;
 	}
 }
 
