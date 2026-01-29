@@ -495,9 +495,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		};
 
 		try {
-			// Add human message to the conversation immediately
-			addMessage(sessionId, createHumanMessageFromStreamingState(streaming.value));
-
 			// Create session entry if new
 			if (!sessions.value.byId[sessionId]) {
 				sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
@@ -509,6 +506,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			// Note: Actual streaming content comes via Push events using pushConnection store.
 			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
+			// Human message will be created by handleHumanMessageCreated event when it has been accepted by the server
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
 		} catch (error) {
 			await handleApiError(error);
@@ -1058,9 +1056,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	/**
-	 * Handle a human message received from another client (cross-client sync)
+	 * Handle a human message created event
 	 */
-	function handleRemoteHumanMessage(data: {
+	function handleHumanMessageCreated(data: {
 		sessionId: ChatSessionId;
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
@@ -1109,9 +1107,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	/**
-	 * Handle a message edit from another client (cross-client sync)
+	 * Handle a message edited event
 	 */
-	function handleRemoteMessageEdit(data: {
+	function handleMessageEdited(data: {
 		sessionId: ChatSessionId;
 		revisionOfMessageId: ChatMessageId;
 		messageId: ChatMessageId;
@@ -1231,10 +1229,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		handleWebSocketStreamError,
 
 		/**
-		 * Cross-client sync handlers
+		 * Stream message actions
 		 */
-		handleRemoteHumanMessage,
-		handleRemoteMessageEdit,
+		handleHumanMessageCreated,
+		handleMessageEdited,
 
 		/**
 		 * Stream reconnection

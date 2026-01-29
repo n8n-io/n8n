@@ -143,17 +143,17 @@ export function useChatPushHandler() {
 	}
 
 	/**
-	 * Handle a human message created event (for cross-client sync)
+	 * Handle a human message created event
 	 */
 	function handleHumanMessageCreated(event: ChatHubHumanMessageCreated): void {
-		chatStore.handleRemoteHumanMessage?.(event.data);
+		chatStore.handleHumanMessageCreated?.(event.data);
 	}
 
 	/**
-	 * Handle a message edited event (for cross-client sync)
+	 * Handle a message edited event
 	 */
 	function handleMessageEdited(event: ChatHubMessageEdited): void {
-		chatStore.handleRemoteMessageEdit?.(event.data);
+		chatStore.handleMessageEdited?.(event.data);
 	}
 
 	/**
