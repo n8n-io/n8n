@@ -753,8 +753,10 @@ export class RoutingNode {
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
 		) {
+			console.log('Resolving parameter value:', parameterValue);
+			console.log('With additional keys:', additionalKeys);
 			const { node, workflow, mode, connectionInputData, runExecutionData } = this.context;
-			return workflow.expression.getParameterValue(
+			const val = workflow.expression.getParameterValue(
 				parameterValue,
 				runExecutionData ?? null,
 				runIndex,
@@ -766,6 +768,8 @@ export class RoutingNode {
 				executeData,
 				returnObjectAsString,
 			);
+			console.log('Resolved to:', val);
+			return val;
 		}
 
 		return parameterValue;
@@ -823,7 +827,24 @@ export class RoutingNode {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
 			if (nodeProperties.routing.request) {
+				console.log('Processing routing request for parameter:', nodeProperties.name);
+				// Build evaluated parameters object so expressions in routing URLs
+				// can access evaluated parameter values (not raw expression strings)
+				const evaluatedParameters: Record<string, unknown> = {};
+				for (const paramName of Object.keys(node.parameters)) {
+					try {
+						evaluatedParameters[paramName] = executeSingleFunctions.getNodeParameter(
+							paramName,
+							undefined,
+						);
+					} catch {
+						// If parameter evaluation fails, use raw value
+						evaluatedParameters[paramName] = node.parameters[paramName];
+					}
+				}
+
 				for (const key of Object.keys(nodeProperties.routing.request)) {
+					console.log('Processing routing request property:', key);
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
@@ -832,7 +853,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ ...additionalKeys, $value: parameterValue },
+						{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 						false,
 					) as string;
 
@@ -842,6 +863,7 @@ export class RoutingNode {
 			}
 
 			if (nodeProperties.routing.send) {
+				console.log('here for some reason');
 				let propertyName = nodeProperties.routing.send.property;
 				if (propertyName !== undefined) {
 					// If the propertyName is an expression resolve it
@@ -1069,6 +1091,7 @@ export class RoutingNode {
 				}
 			}
 		}
+		console.log('Returning request options:', returnData);
 		return returnData;
 	}
 
