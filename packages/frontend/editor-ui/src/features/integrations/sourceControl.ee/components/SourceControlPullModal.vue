@@ -475,7 +475,7 @@ onMounted(() => {
 			</div>
 			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
 				<div>{{ dataTableWarningMessage }}</div>
-				<ul>
+				<ul :class="$style.dataTableList">
 					<li v-for="table in conflictedDataTables" :key="table.id">{{ table.name }}</li>
 				</ul>
 			</N8nCallout>
@@ -584,6 +584,19 @@ onMounted(() => {
 	flex-direction: row;
 	justify-content: flex-end;
 	margin-top: 8px;
+}
+
+.dataTableList {
+	margin: var(--spacing--2xs) 0 0 0;
+	padding-left: var(--spacing--md);
+
+	li {
+		margin-bottom: var(--spacing--3xs);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
 }
 
 .table {
