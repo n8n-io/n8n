@@ -27,7 +27,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
@@ -114,7 +113,6 @@ import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeMod
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
@@ -410,12 +408,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
 			<template #default="{ modalName, data }">
 				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY">
-			<template #default="{ modalName, data }">
-				<NodeRecommendationModalTDQ :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

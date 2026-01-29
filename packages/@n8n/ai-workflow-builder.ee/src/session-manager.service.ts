@@ -12,11 +12,22 @@ import { formatMessages } from '@/utils/stream-processor';
 export class SessionManagerService {
 	private checkpointer: MemorySaver;
 
+	private nodeTypes: INodeTypeDescription[];
+
 	constructor(
-		private readonly parsedNodeTypes: INodeTypeDescription[],
+		parsedNodeTypes: INodeTypeDescription[],
 		private readonly logger?: Logger,
 	) {
+		this.nodeTypes = parsedNodeTypes;
 		this.checkpointer = new MemorySaver();
+	}
+
+	/**
+	 * Update the node types used for formatting messages.
+	 * Called when community packages are installed, updated, or uninstalled.
+	 */
+	updateNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = nodeTypes;
 	}
 
 	/**
@@ -68,7 +79,7 @@ export class SessionManagerService {
 					const formattedMessages = formatMessages(
 						messages,
 						getBuilderToolsForDisplay({
-							nodeTypes: this.parsedNodeTypes,
+							nodeTypes: this.nodeTypes,
 						}),
 					);
 

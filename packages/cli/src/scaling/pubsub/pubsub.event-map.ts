@@ -50,7 +50,9 @@ export type PubSubCommandMap = {
 
 	'get-worker-id': never;
 
-	'get-worker-status': never;
+	'get-worker-status': {
+		requestingUserId: string;
+	};
 
 	// #endregion
 
@@ -94,7 +96,9 @@ export type PubSubCommandMap = {
 };
 
 export type PubSubWorkerResponseMap = {
-	'response-to-get-worker-status': WorkerStatus;
+	'response-to-get-worker-status': WorkerStatus & {
+		requestingUserId: string;
+	};
 };
 
 export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;

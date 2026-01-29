@@ -3,9 +3,18 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
+import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRM,
+	VIEWS,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	getDebounceTime,
+} from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
@@ -40,6 +49,7 @@ export function useWorkflowSaving({
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
@@ -162,7 +172,9 @@ export function useWorkflowSaving({
 		}
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
-		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		const existingWorkflow = currentWorkflow
+			? workflowsListStore.getWorkflowById(currentWorkflow)
+			: null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
 			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
@@ -402,7 +414,7 @@ export function useWorkflowSaving({
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
-			workflowsStore.addWorkflow(workflowData);
+			workflowsListStore.addWorkflow(workflowData);
 
 			focusPanelStore.onNewWorkflowSave(workflowData.id);
 
@@ -516,8 +528,8 @@ export function useWorkflowSaving({
 
 			autosaveStore.setPendingAutoSave(savePromise);
 		},
-		1500,
-		{ maxWait: 5000 },
+		getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
+		{ maxWait: getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) },
 	);
 
 	const scheduleAutoSave = () => {

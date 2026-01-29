@@ -9,6 +9,7 @@ import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -40,6 +41,7 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -50,7 +52,6 @@ const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 };
 
 const props = defineProps<{
-	readOnly?: boolean;
 	id: IWorkflowDb['id'];
 	tags: IWorkflowDb['tags'];
 	name: IWorkflowDb['name'];
@@ -67,8 +68,10 @@ const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
+const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
 const i18n = useI18n();
 
@@ -104,10 +107,14 @@ const isNewWorkflow = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
+const readOnly = computed(
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+);
+
 // For workflow name and tags editing: needs update permission and not archived
 const readOnlyActions = computed(() => {
-	if (isNewWorkflow.value) return props.readOnly;
-	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+	if (isNewWorkflow.value) return readOnly.value;
+	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
 
 const workflowTagIds = computed(() => {
@@ -272,7 +279,7 @@ async function handleArchiveWorkflow() {
 	});
 
 	// Navigate to the appropriate project's workflow list
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	if (workflow?.homeProject?.type === ProjectTypes.Team) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -315,11 +322,11 @@ async function handleDeleteWorkflow() {
 	}
 
 	// Get workflow before deletion to know which project to navigate to
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
 
 	try {
-		await workflowsStore.deleteWorkflow(props.id);
+		await workflowsListStore.deleteWorkflow(props.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -534,7 +541,6 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"

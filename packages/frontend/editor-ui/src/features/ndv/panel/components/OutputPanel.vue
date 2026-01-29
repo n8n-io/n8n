@@ -217,7 +217,7 @@ const allToolsWereUnusedNotice = computed(() => {
 	const toolsUsedInLatestRun = toolsAvailable.filter(
 		(tool) => !!workflowRunData.value?.[tool]?.[props.runIndex],
 	);
-	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
+	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0 && !workflowRunning.value) {
 		return i18n.baseText('ndv.output.noToolUsedInfo');
 	} else {
 		return undefined;

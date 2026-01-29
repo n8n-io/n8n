@@ -7,7 +7,12 @@ import N8nMenuItem from './MenuItem.vue';
 
 configure({ testIdAttribute: 'data-test-id' });
 
-const stubs = ['RouterLink', 'N8nTooltip'];
+const stubs = {
+	RouterLink: true,
+	N8nTooltip: {
+		template: '<div><slot /></div>',
+	},
+};
 
 const createMenuItem = (overrides: Partial<IMenuItem> = {}): IMenuItem => ({
 	id: 'test-item',
@@ -56,7 +61,7 @@ describe('N8nMenuItem', () => {
 				props: {
 					item: createMenuItem({ icon: 'house' }),
 				},
-				global: { stubs: [...stubs, 'N8nIcon'] },
+				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
 			expect(html()).toContain('icon="house"');
 		});
@@ -68,7 +73,7 @@ describe('N8nMenuItem', () => {
 						icon: { type: 'icon', value: 'house', color: 'primary' },
 					}),
 				},
-				global: { stubs: [...stubs, 'N8nIcon'] },
+				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
 			expect(html()).toContain('icon="house"');
 			expect(html()).toContain('color="primary"');
@@ -145,7 +150,7 @@ describe('N8nMenuItem', () => {
 					item: createMenuItem({ beta: true }),
 					compact: true,
 				},
-				global: { stubs: [...stubs, 'BetaTag'] },
+				global: { stubs: { ...stubs, BetaTag: true } },
 			});
 			expect(html()).not.toContain('beta-tag');
 		});
@@ -207,7 +212,7 @@ describe('N8nMenuItem', () => {
 				props: {
 					item: createMenuItem({ beta: true }),
 				},
-				global: { stubs: [...stubs, 'BetaTag'] },
+				global: { stubs: { ...stubs, BetaTag: true } },
 			});
 			expect(html()).toContain('beta-tag-stub');
 		});
@@ -217,7 +222,7 @@ describe('N8nMenuItem', () => {
 				props: {
 					item: createMenuItem({ beta: false }),
 				},
-				global: { stubs: [...stubs, 'BetaTag'] },
+				global: { stubs: { ...stubs, BetaTag: true } },
 			});
 			expect(html()).not.toContain('beta-tag-stub');
 		});
@@ -231,7 +236,7 @@ describe('N8nMenuItem', () => {
 						children: [{ id: 'child', label: 'Child Item' }],
 					}),
 				},
-				global: { stubs: [...stubs, 'N8nIcon'] },
+				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
 			expect(html()).toContain('icon="chevron-right"');
 		});
@@ -244,7 +249,7 @@ describe('N8nMenuItem', () => {
 					}),
 					compact: true,
 				},
-				global: { stubs: [...stubs, 'N8nIcon'] },
+				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
 			// When compact, the chevron should not be rendered
 			expect(html()).not.toContain('chevron-right');
@@ -260,7 +265,7 @@ describe('N8nMenuItem', () => {
 						notification: true,
 					}),
 				},
-				global: { stubs: [...stubs, 'N8nIcon'] },
+				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
 			const iconWrapper = container.querySelector('[class*="notification"]');
 			expect(iconWrapper).toBeTruthy();

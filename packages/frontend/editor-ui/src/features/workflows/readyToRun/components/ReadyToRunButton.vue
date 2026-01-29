@@ -60,7 +60,7 @@ const handleClick = async () => {
 		v-if="showButton"
 		data-test-id="ready-to-run-button"
 		type="secondary"
-		icon="sparkles"
+		icon="zap"
 		:loading="readyToRunStore.claimingCredits"
 		:disabled="sourceControlStore.preferences.branchReadOnly || readyToRunStore.claimingCredits"
 		@click="handleClick"
