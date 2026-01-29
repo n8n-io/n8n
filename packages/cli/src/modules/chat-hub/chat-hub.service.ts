@@ -1252,7 +1252,7 @@ export class ChatHubService {
 				message,
 				sessionId,
 				user,
-				previousMessage.id,
+				messageId,
 				model,
 				workflow.responseMode,
 			);
