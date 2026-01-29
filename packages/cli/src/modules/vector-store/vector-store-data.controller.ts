@@ -1,20 +1,20 @@
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope } from '@n8n/decorators';
-import { VectorStoreDataRepository } from '@n8n/db';
 import { VectorStoreConfig } from '@n8n/config';
 import type { VectorStoreUsageDto } from '@n8n/api-types';
+import { LanceDBVectorStoreService } from './lancedb-vector-store.service';
 
 @RestController('/vector-store')
 export class VectorStoreDataController {
 	constructor(
-		private readonly vectorStoreRepository: VectorStoreDataRepository,
+		private readonly lancedbService: LanceDBVectorStoreService,
 		private readonly vectorStoreConfig: VectorStoreConfig,
 	) {}
 
 	@Get('/usage')
 	@GlobalScope('chatHub:manage') // TODO
 	async getUsage(_req: AuthenticatedRequest, _res: Response): Promise<VectorStoreUsageDto> {
-		const currentSize = await this.vectorStoreRepository.getTotalSize();
+		const currentSize = await this.lancedbService.getTotalSize();
 		const maxSize = this.vectorStoreConfig.maxSize;
 
 		return {

@@ -34,6 +34,7 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VectorStoreConfig } from './configs/vector-store.config';
+import { LanceDBConfig } from './configs/lancedb.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
@@ -60,6 +61,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { VectorStoreConfig } from './configs/vector-store.config';
+export { LanceDBConfig } from './configs/lancedb.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -228,4 +230,7 @@ export class GlobalConfig {
 
 	@Nested
 	vectorStore: VectorStoreConfig;
+
+	@Nested
+	lancedb: LanceDBConfig;
 }

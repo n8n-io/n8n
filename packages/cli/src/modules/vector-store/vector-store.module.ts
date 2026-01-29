@@ -20,9 +20,8 @@ export class VectorStoreModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { VectorStoreData } = await import('@n8n/db');
-
-		return [VectorStoreData];
+		// No database entities needed - LanceDB uses file-based storage
+		return [];
 	}
 
 	async context() {

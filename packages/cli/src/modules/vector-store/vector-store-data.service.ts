@@ -1,13 +1,14 @@
 import { Service } from '@n8n/di';
-import { VectorStoreDataRepository, SharedWorkflowRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { VectorStoreConfig } from '@n8n/config';
 import type { IVectorStoreDataService, VectorDocument, VectorSearchResult } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
+import { LanceDBVectorStoreService } from './lancedb-vector-store.service';
 
 @Service()
 export class VectorStoreDataService implements IVectorStoreDataService {
 	constructor(
-		private readonly repository: VectorStoreDataRepository,
+		private readonly lancedbService: LanceDBVectorStoreService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly config: VectorStoreConfig,
 	) {}
@@ -66,7 +67,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 		const newVectorSize = this.calculateVectorSize(documents, embeddings);
 
 		// Get current total size (unless we're clearing the store)
-		const currentSize = clearStore ? 0 : await this.repository.getTotalSize();
+		const currentSize = clearStore ? 0 : await this.lancedbService.getTotalSize();
 
 		// Check if adding new vectors would exceed the limit
 		const totalSizeAfterAdd = currentSize + newVectorSize;
@@ -80,7 +81,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 			);
 		}
 
-		await this.repository.addVectors(memoryKey, projectId, documents, embeddings, clearStore);
+		await this.lancedbService.addVectors(memoryKey, projectId, documents, embeddings, clearStore);
 	}
 
 	/**
@@ -94,7 +95,13 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
 		const projectId = await this.resolveProjectId(workflowId);
-		return await this.repository.similaritySearch(memoryKey, projectId, queryEmbedding, k, filter);
+		return await this.lancedbService.similaritySearch(
+			memoryKey,
+			projectId,
+			queryEmbedding,
+			k,
+			filter,
+		);
 	}
 
 	/**
@@ -102,7 +109,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	 */
 	async getVectorCount(memoryKey: string, workflowId: string): Promise<number> {
 		const projectId = await this.resolveProjectId(workflowId);
-		return await this.repository.getVectorCount(memoryKey, projectId);
+		return await this.lancedbService.getVectorCount(memoryKey, projectId);
 	}
 
 	/**
@@ -110,7 +117,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	 */
 	async clearStore(memoryKey: string, workflowId: string): Promise<void> {
 		const projectId = await this.resolveProjectId(workflowId);
-		await this.repository.clearStore(memoryKey, projectId);
+		await this.lancedbService.clearStore(memoryKey, projectId);
 	}
 
 	/**
@@ -118,7 +125,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	 */
 	async deleteStore(memoryKey: string, workflowId: string): Promise<void> {
 		const projectId = await this.resolveProjectId(workflowId);
-		await this.repository.deleteStore(memoryKey, projectId);
+		await this.lancedbService.deleteStore(memoryKey, projectId);
 	}
 
 	/**
@@ -126,21 +133,21 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	 */
 	async listStores(workflowId: string, filter?: string): Promise<string[]> {
 		const projectId = await this.resolveProjectId(workflowId);
-		return await this.repository.listStores(projectId, filter);
+		return await this.lancedbService.listStores(projectId, filter);
 	}
 
 	/**
-	 * Initialize the repository (e.g., upgrade to pgvector if extension is available).
+	 * Initialize LanceDB storage.
 	 * Called during module initialization.
 	 */
 	async init(): Promise<void> {
-		await this.repository.init?.();
+		await this.lancedbService.init();
 	}
 
 	/**
 	 * Cleanup resources on shutdown.
 	 */
 	async shutdown(): Promise<void> {
-		await this.repository.shutdown?.();
+		await this.lancedbService.shutdown();
 	}
 }
