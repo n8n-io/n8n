@@ -109,13 +109,22 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		return [url.protocol, url.hostname].join('//');
+		// Extract registered domain (last 2 parts of hostname) to remove subdomains
+		const hostnameParts = url.hostname.split('.');
+		const registeredDomain = hostnameParts.slice(-2).join('.');
+
+		return registeredDomain;
 	} catch {
 		const match = urlParts.exec(raw);
 
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		return match.groups.protocolPlusDomain;
+		// Extract registered domain from the matched string
+		const hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
+		const hostnameParts = hostname.split('.');
+		const registeredDomain = hostnameParts.slice(-2).join('.');
+
+		return registeredDomain;
 	}
 }
 

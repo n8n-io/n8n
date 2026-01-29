@@ -2265,42 +2265,42 @@ function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
@@ -2320,7 +2320,7 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'htp://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
