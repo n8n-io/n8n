@@ -5,17 +5,6 @@ import { Config, Env, Nested } from '../decorators';
 const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
 type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
-class MySqlMariaDbNotSupportedError extends Error {
-	// Workaround to not get this reported to Sentry
-	readonly cause: { level: 'warning' } = {
-		level: 'warning',
-	};
-
-	constructor() {
-		super('MySQL and MariaDB have been removed. Please migrate to PostgreSQL.');
-	}
-}
-
 @Config
 class LoggingConfig {
 	/** Whether database logging is enabled. */
@@ -107,33 +96,6 @@ class PostgresConfig {
 	ssl: PostgresSSLConfig;
 }
 
-@Config
-class MysqlConfig {
-	/** @deprecated MySQL database name */
-	@Env('DB_MYSQLDB_DATABASE')
-	database: string = 'n8n';
-
-	/** MySQL database host */
-	@Env('DB_MYSQLDB_HOST')
-	host: string = 'localhost';
-
-	/** MySQL database password */
-	@Env('DB_MYSQLDB_PASSWORD')
-	password: string = '';
-
-	/** MySQL database port */
-	@Env('DB_MYSQLDB_PORT')
-	port: number = 3306;
-
-	/** MySQL database user */
-	@Env('DB_MYSQLDB_USER')
-	user: string = 'root';
-
-	/** MySQL connection pool size */
-	@Env('DB_MYSQLDB_POOL_SIZE')
-	poolSize: number = 10;
-}
-
 const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
 
 @Config
@@ -155,7 +117,7 @@ export class SqliteConfig {
 	executeVacuumOnStartup: boolean = false;
 }
 
-const dbTypeSchema = z.enum(['sqlite', 'mariadb', 'mysqldb', 'postgresdb']);
+const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
 @Config
@@ -181,14 +143,5 @@ export class DatabaseConfig {
 	postgresdb: PostgresConfig;
 
 	@Nested
-	mysqldb: MysqlConfig;
-
-	@Nested
 	sqlite: SqliteConfig;
-
-	sanitize() {
-		if (this.type === 'mariadb' || this.type === 'mysqldb') {
-			throw new MySqlMariaDbNotSupportedError();
-		}
-	}
 }

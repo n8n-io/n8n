@@ -173,7 +173,7 @@ These only run if specific files changed:
 | Files Changed                                                          | Workflow                    | Branch     |
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
-| `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db-postgres-mysql.yml`| any        |
+| `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
@@ -367,7 +367,7 @@ Push to master/1.x
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
-| Daily 00:00               | `test-db-postgres-mysql.yml`      | Database compatibility   |
+| Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
 | Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |

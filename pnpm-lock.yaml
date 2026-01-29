@@ -1843,9 +1843,6 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
-      mysql2:
-        specifier: 'catalog:'
-        version: 3.15.0
       n8n-core:
         specifier: workspace:*
         version: link:../core

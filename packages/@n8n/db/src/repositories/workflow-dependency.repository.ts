@@ -149,7 +149,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
 			return await tx.existsBy(WorkflowDependency, whereConditions);
 		}
-		// For Postgres and MySQL we lock on the workflow row, and only then check the dependency table.
+		// For Postgres we lock on the workflow row, and only then check the dependency table.
 		// This prevents a race between two concurrent updates.
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
 		const tableName = this.getTableName('workflow_entity');

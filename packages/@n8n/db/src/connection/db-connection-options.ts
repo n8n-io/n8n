@@ -2,7 +2,6 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
-import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { UserError } from 'n8n-workflow';
@@ -10,7 +9,6 @@ import type { TlsOptions } from 'node:tls';
 import path from 'path';
 
 import { entities } from '../entities';
-import { mysqlMigrations } from '../migrations/mysqldb';
 import { postgresMigrations } from '../migrations/postgresdb';
 import { sqliteMigrations } from '../migrations/sqlite';
 import { subscribers } from '../subscribers';
@@ -23,14 +21,13 @@ export class DbConnectionOptions {
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
-		const dbConfig = this.config[dbType];
+	getPostgresOverrides() {
 		return {
-			database: dbConfig.database,
-			host: dbConfig.host,
-			port: dbConfig.port,
-			username: dbConfig.user,
-			password: dbConfig.password,
+			database: this.config.postgresdb.database,
+			host: this.config.postgresdb.host,
+			port: this.config.postgresdb.port,
+			username: this.config.postgresdb.user,
+			password: this.config.postgresdb.password,
 		};
 	}
 
@@ -41,9 +38,6 @@ export class DbConnectionOptions {
 				return this.getSqliteConnectionOptions();
 			case 'postgresdb':
 				return this.getPostgresConnectionOptions();
-			case 'mariadb':
-			case 'mysqldb':
-				return this.getMysqlConnectionOptions(dbType);
 			default:
 				throw new UserError('Database type currently not supported', { extra: { dbType } });
 		}
@@ -111,7 +105,7 @@ export class DbConnectionOptions {
 		return {
 			type: 'postgres',
 			...this.getCommonOptions(),
-			...this.getOverrides('postgresdb'),
+			...this.getPostgresOverrides(),
 			schema: postgresConfig.schema,
 			poolSize: postgresConfig.poolSize,
 			migrations: postgresMigrations,
@@ -121,18 +115,6 @@ export class DbConnectionOptions {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
 				...(statementTimeoutMs > 0 && { options: `-c statement_timeout=${statementTimeoutMs}` }),
 			},
-		};
-	}
-
-	private getMysqlConnectionOptions(dbType: 'mariadb' | 'mysqldb'): MysqlConnectionOptions {
-		const { mysqldb: mysqlConfig } = this.config;
-		return {
-			type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
-			...this.getCommonOptions(),
-			...this.getOverrides('mysqldb'),
-			poolSize: mysqlConfig.poolSize,
-			migrations: mysqlMigrations,
-			timezone: 'Z', // set UTC as default
 		};
 	}
 }

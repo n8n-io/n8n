@@ -1,8 +1,8 @@
-name: 'Test: DB Postgres MySQL'
+name: "Test: DB Postgres"
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
   pull_request:
     paths:
@@ -14,7 +14,7 @@ on:
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
       - packages/cli/**/__tests__/**
-      - .github/workflows/test-db-postgres-mysql.yml
+      - .github/workflows/test-db.yml
       - .github/docker-compose.yml
 
 concurrency:
@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=3072'
+  NODE_OPTIONS: "--max-old-space-size=3072"
 
 jobs:
   build:
@@ -52,65 +52,6 @@ jobs:
       - name: Test SQLite Pooled
         working-directory: packages/cli
         run: pnpm test:sqlite
-
-  mariadb:
-    name: MariaDB
-    needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 30
-    if: false
-    env:
-      DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 1
-      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
-      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
-      DB_MYSQLDB_TIMEOUT: 120000
-      NODE_OPTIONS: '--max-old-space-size=7168'
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Start MariaDB
-        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
-        with:
-          compose-file: ./.github/docker-compose.yml
-          services: |
-            mariadb
-
-      - name: Test MariaDB
-        working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 120000
-
-  mysql:
-    name: MySQL 8.4
-    needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    timeout-minutes: 20
-    if: false
-    env:
-      DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 1
-      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
-      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
-      DB_MYSQLDB_TIMEOUT: 120000
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Start MySQL
-        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
-        with:
-          compose-file: ./.github/docker-compose.yml
-          services: mysql-8.4
-
-      - name: Test MySQL
-        working-directory: packages/cli
-        # We sleep here due to flakiness with DB tests if we connect to the database too soon
-        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres
@@ -142,6 +83,6 @@ jobs:
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
-          channel: '#alerts-build'
+          channel: "#alerts-build"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Postgres, MariaDB or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: Postgres or SQLite tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
