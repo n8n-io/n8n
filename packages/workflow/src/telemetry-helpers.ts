@@ -1,3 +1,6 @@
+import { ApplicationError } from '@n8n/errors';
+import { get as pslGet } from 'psl';
+
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -26,8 +29,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -47,7 +50,6 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
-import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -109,22 +111,16 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		// Extract registered domain (last 2 parts of hostname) to remove subdomains
-		const hostnameParts = url.hostname.split('.');
-		const registeredDomain = hostnameParts.slice(-2).join('.');
-
-		return registeredDomain;
+		// Extract registered domain using psl to properly handle multi-level TLDs
+		return pslGet(url.hostname) ?? url.hostname;
 	} catch {
 		const match = urlParts.exec(raw);
 
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		// Extract registered domain from the matched string
+		// Extract hostname and get registered domain
 		const hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
-		const hostnameParts = hostname.split('.');
-		const registeredDomain = hostnameParts.slice(-2).join('.');
-
-		return registeredDomain;
+		return pslGet(hostname) ?? hostname;
 	}
 }
 

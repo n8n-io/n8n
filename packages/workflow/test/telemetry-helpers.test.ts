@@ -50,6 +50,28 @@ describe('getDomainBase should return protocol plus domain', () => {
 			expect(getDomainBase(full)).toBe(protocolPlusDomain);
 		}
 	});
+
+	test('should handle multi-level TLDs correctly', () => {
+		// Test cases for multi-level TLDs (country codes, special services)
+		const testCases = [
+			{ input: 'https://api.example.co.uk/path', expected: 'example.co.uk' },
+			{ input: 'https://user.service.com.au/api', expected: 'service.com.au' },
+			{ input: 'https://api.example.co.jp/test', expected: 'example.co.jp' },
+			{ input: 'https://test.example.gov.uk/data', expected: 'example.gov.uk' },
+			{ input: 'https://sub.domain.org.nz/path', expected: 'domain.org.nz' },
+			{ input: 'api.example.co.uk/path', expected: 'example.co.uk' },
+		];
+
+		testCases.forEach(({ input, expected }) => {
+			expect(getDomainBase(input)).toBe(expected);
+		});
+	});
+
+	test('should handle edge cases', () => {
+		// Single word domains, localhost, etc.
+		expect(getDomainBase('https://localhost/path')).toBe('localhost');
+		expect(getDomainBase('https://example/path')).toBe('example');
+	});
 });
 
 describe('getDomainPath should return pathname, excluding query string', () => {
