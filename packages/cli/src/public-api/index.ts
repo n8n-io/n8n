@@ -53,12 +53,76 @@ function createLazySwaggerMiddleware(
 	};
 }
 
-async function createApiRouter(
+function createLazyValidatorMiddleware(
+	openApiSpecPath: string,
+	handlersDirectory: string,
+	version: string,
+): RequestHandler {
+	let cachedRouter: Router | undefined;
+	let initPromise: Promise<Router> | undefined;
+
+	return async (req, res, next) => {
+		if (!cachedRouter) {
+			initPromise ??= (async () => {
+				const { middleware: openApiValidatorMiddleware } = await import(
+					'express-openapi-validator'
+				);
+				const router = express.Router();
+				router.use(
+					openApiValidatorMiddleware({
+						apiSpec: openApiSpecPath,
+						operationHandlers: handlersDirectory,
+						validateRequests: true,
+						validateApiSpec: true,
+						formats: {
+							email: {
+								type: 'string',
+								validate: (email: string) => validator.isEmail(email),
+							},
+							identifier: {
+								type: 'string',
+								validate: (identifier: string) =>
+									validator.isUUID(identifier) || validator.isEmail(identifier),
+							},
+							jsonString: {
+								validate: (data: string) => {
+									try {
+										JSON.parse(data);
+										return true;
+									} catch (e) {
+										return false;
+									}
+								},
+							},
+							nanoid: {
+								type: 'string',
+								validate: (id: string) => {
+									return /^[A-Za-z0-9]{16}$/.test(id);
+								},
+							},
+						},
+						validateSecurity: {
+							handlers: {
+								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
+							},
+						},
+					}),
+				);
+				return router;
+			})();
+			cachedRouter = await initPromise;
+		}
+
+		void cachedRouter(req, res, next);
+	};
+}
+
+function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	handlersDirectory: string,
 	publicApiEndpoint: string,
-): Promise<Router> {
+): Router {
 	const globalConfig = Container.get(GlobalConfig);
 	const apiController = express.Router();
 
@@ -72,8 +136,6 @@ async function createApiRouter(
 	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
 		res.sendFile(openApiSpecPath);
 	});
-
-	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
 
 	// Error handler specifically for JSON parsing - must come immediately after express.json()
 	const jsonParseErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
@@ -90,45 +152,7 @@ async function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
 		jsonParseErrorHandler,
-		openApiValidatorMiddleware({
-			apiSpec: openApiSpecPath,
-			operationHandlers: handlersDirectory,
-			validateRequests: true,
-			validateApiSpec: true,
-			formats: {
-				email: {
-					type: 'string',
-					validate: (email: string) => validator.isEmail(email),
-				},
-				identifier: {
-					type: 'string',
-					validate: (identifier: string) =>
-						validator.isUUID(identifier) || validator.isEmail(identifier),
-				},
-				jsonString: {
-					validate: (data: string) => {
-						try {
-							JSON.parse(data);
-							return true;
-						} catch (e) {
-							return false;
-						}
-					},
-				},
-				nanoid: {
-					type: 'string',
-					validate: (id: string) => {
-						// Nanoids in n8n are 16 characters long and use alphanumeric characters
-						return /^[A-Za-z0-9]{16}$/.test(id);
-					},
-				},
-			},
-			validateSecurity: {
-				handlers: {
-					ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
-				},
-			},
-		}),
+		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
 	apiController.use(
@@ -153,12 +177,10 @@ export const loadPublicApiVersions = async (
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
-	const apiRouters = await Promise.all(
-		versions.map(async (version) => {
-			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return await createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
-		}),
-	);
+	const apiRouters = versions.map((version) => {
+		const openApiPath = path.join(__dirname, version, 'openapi.yml');
+		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+	});
 
 	const version = versions.pop()?.charAt(1);
 
