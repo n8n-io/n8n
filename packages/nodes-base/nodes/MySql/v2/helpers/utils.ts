@@ -544,7 +544,7 @@ export function addWhereClauses(
 		}${valueReplacement}${operator}`;
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [`${query}${whereQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function addSortRules(
@@ -563,7 +563,7 @@ export function addSortRules(
 		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${direction}${endWith}`;
 	});
 
-	return [`${query}${orderByQuery}`, replacements.concat(...values)];
+	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function replaceEmptyStringsByNulls(
