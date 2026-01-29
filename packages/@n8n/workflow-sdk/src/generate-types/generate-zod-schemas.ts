@@ -274,6 +274,56 @@ function quotePropertyName(name: string): string {
 	return name;
 }
 
+/**
+ * Extract default values for properties referenced in displayOptions.
+ * This is used to generate the `defaults` parameter for resolveSchema calls,
+ * ensuring that validation uses default values when properties aren't explicitly set.
+ *
+ * @param displayOptions - The displayOptions containing show/hide conditions
+ * @param allProperties - All properties available at this level (to look up defaults)
+ * @returns Record of property names to their default values
+ */
+export function extractDefaultsForDisplayOptions(
+	displayOptions: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> },
+	allProperties: NodeProperty[],
+): Record<string, unknown> {
+	const defaults: Record<string, unknown> = {};
+	const referencedProps = new Set<string>();
+
+	// Collect property names referenced in show conditions
+	if (displayOptions.show) {
+		for (const key of Object.keys(displayOptions.show)) {
+			// Skip meta-properties like @version and root paths
+			if (!key.startsWith('@') && !key.startsWith('/')) {
+				// Handle nested paths like "options.format" - only use the first part
+				const baseProp = key.split('.')[0];
+				referencedProps.add(baseProp);
+			}
+		}
+	}
+
+	// Collect property names referenced in hide conditions
+	if (displayOptions.hide) {
+		for (const key of Object.keys(displayOptions.hide)) {
+			// Skip meta-properties like @version and root paths
+			if (!key.startsWith('@') && !key.startsWith('/')) {
+				const baseProp = key.split('.')[0];
+				referencedProps.add(baseProp);
+			}
+		}
+	}
+
+	// Find defaults for referenced properties
+	for (const propName of referencedProps) {
+		const prop = allProperties.find((p) => p.name === propName);
+		if (prop && prop.default !== undefined) {
+			defaults[propName] = prop.default;
+		}
+	}
+
+	return defaults;
+}
+
 // =============================================================================
 // Property to Zod Schema Mapping
 // =============================================================================
@@ -668,9 +718,13 @@ export function mergeDisplayOptions(
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
  *
  * @param prop - The property with displayOptions
+ * @param allProperties - All properties at this level (used to extract defaults for displayOptions)
  * @returns Generated code line for the property using resolveSchema
  */
-export function generateConditionalSchemaLine(prop: NodeProperty): string {
+export function generateConditionalSchemaLine(
+	prop: NodeProperty,
+	allProperties: NodeProperty[] = [],
+): string {
 	const zodSchema = mapPropertyToZodSchema(prop);
 	if (!zodSchema) {
 		return '';
@@ -680,7 +734,14 @@ export function generateConditionalSchemaLine(prop: NodeProperty): string {
 	const required = prop.required ?? false;
 	const displayOptionsStr = JSON.stringify(prop.displayOptions);
 
-	return `\t${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr} }),`;
+	// Extract defaults for properties referenced in displayOptions
+	const defaults = prop.displayOptions
+		? extractDefaultsForDisplayOptions(prop.displayOptions, allProperties)
+		: {};
+	const defaultsStr =
+		Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
+
+	return `\t${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`;
 }
 
 // =============================================================================
@@ -969,7 +1030,9 @@ function generateSchemasForNode(
 			}
 
 			// Generate schema for each merged property
-			for (const prop of propsByName.values()) {
+			// Convert propsByName to array for extractDefaultsForDisplayOptions
+			const allPropsArray = Array.from(propsByName.values());
+			for (const prop of allPropsArray) {
 				// Use conditional schema line for properties with displayOptions
 				// Strip @version since it's implicit in the file path
 				if (prop.displayOptions) {
@@ -982,7 +1045,7 @@ function generateSchemasForNode(
 							...prop,
 							displayOptions: strippedDisplayOptions,
 						};
-						const propLine = generateConditionalSchemaLine(propWithStripped);
+						const propLine = generateConditionalSchemaLine(propWithStripped, allPropsArray);
 						if (propLine) {
 							lines.push(propLine);
 						}
@@ -1499,6 +1562,8 @@ export type DisplayOptionsContext = {
 	nodeVersion?: number;
 	/** Root parameter values for / prefix paths */
 	rootParameters?: Record<string, unknown>;
+	/** Default values for properties (used when property is not set in parameters) */
+	defaults?: Record<string, unknown>;
 };
 
 /**
@@ -1581,7 +1646,7 @@ export function checkConditions(conditions: unknown[], actualValues: unknown[]):
 
 /**
  * Get property values from context for a given property name.
- * Handles root paths (/ prefix), @version meta-property, and resource locator unwrapping.
+ * Handles root paths (/ prefix), @version meta-property, resource locator unwrapping, and defaults.
  */
 export function getPropertyValue(context: DisplayOptionsContext, propertyName: string): unknown[] {
 	let value: unknown;
@@ -1589,10 +1654,18 @@ export function getPropertyValue(context: DisplayOptionsContext, propertyName: s
 	if (propertyName.charAt(0) === '/') {
 		const rootParams = context.rootParameters ?? context.parameters;
 		value = get(rootParams, propertyName.slice(1));
+		// Fall back to defaults for root paths as well
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName.slice(1));
+		}
 	} else if (propertyName === '@version') {
 		value = context.nodeVersion ?? 0;
 	} else {
 		value = get(context.parameters, propertyName);
+		// Fall back to default value if property is not set
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName);
+		}
 	}
 
 	if (value && typeof value === 'object' && '__rl' in value && (value as { __rl: boolean }).__rl) {
@@ -1649,6 +1722,8 @@ export type ResolveSchemaConfig = {
 	displayOptions: DisplayOptions;
 	nodeVersion?: number;
 	rootParameters?: Record<string, unknown>;
+	/** Default values for properties referenced in displayOptions (used when property is not set) */
+	defaults?: Record<string, unknown>;
 };
 
 /**
@@ -1668,8 +1743,9 @@ export function resolveSchema({
 	displayOptions,
 	nodeVersion,
 	rootParameters,
+	defaults = {},
 }: ResolveSchemaConfig): z.ZodTypeAny {
-	const context: DisplayOptionsContext = { parameters, nodeVersion, rootParameters };
+	const context: DisplayOptionsContext = { parameters, nodeVersion, rootParameters, defaults };
 	const isVisible = matchesDisplayOptions(context, displayOptions);
 
 	if (isVisible) {
@@ -1857,7 +1933,9 @@ export function generateDiscriminatorSchemaFile(
 	}
 
 	// Generate schema for each merged property
-	for (const prop of propsByName.values()) {
+	// Convert propsByName to array for extractDefaultsForDisplayOptions
+	const allPropsArray = Array.from(propsByName.values());
+	for (const prop of allPropsArray) {
 		if (prop.displayOptions) {
 			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
 				prop.displayOptions,
@@ -1868,7 +1946,7 @@ export function generateDiscriminatorSchemaFile(
 					...prop,
 					displayOptions: strippedDisplayOptions,
 				};
-				const propLine = generateConditionalSchemaLine(propWithStrippedOptions);
+				const propLine = generateConditionalSchemaLine(propWithStrippedOptions, allPropsArray);
 				if (propLine) {
 					lines.push('\t\t' + propLine);
 				}

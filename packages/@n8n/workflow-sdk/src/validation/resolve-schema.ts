@@ -14,6 +14,8 @@ export type ResolveSchemaConfig = {
 	schema: z.ZodTypeAny;
 	required: boolean;
 	displayOptions: DisplayOptions;
+	/** Default values for properties referenced in displayOptions (used when property is not set) */
+	defaults?: Record<string, unknown>;
 };
 
 export type ResolveSchemaFn = (config: ResolveSchemaConfig) => z.ZodTypeAny;
@@ -42,8 +44,10 @@ export function resolveSchema({
 	schema,
 	required,
 	displayOptions,
+	defaults = {},
 }: ResolveSchemaConfig): z.ZodTypeAny {
-	const isVisible = matchesDisplayOptions(parameters, displayOptions);
+	const context: DisplayOptionsContext = { parameters, defaults };
+	const isVisible = matchesDisplayOptionsCore(context, displayOptions);
 
 	if (isVisible) {
 		return required ? schema : schema.optional();

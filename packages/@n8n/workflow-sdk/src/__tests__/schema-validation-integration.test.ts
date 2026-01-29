@@ -127,12 +127,14 @@ describe('Schema Validation Integration', () => {
 
 	describe('Webhook v1 (Factory with show/hide)', () => {
 		// Schema: ~/.n8n/generated-types/nodes/n8n-nodes-base/webhook/v1.schema.ts
+		// responseData: optional, show: { responseMode: ['lastNode'] } - only visible when responseMode is 'lastNode'
 		// responseCode: optional, show: { @version: [1, 1.1] }, hide: { responseMode: ['responseNode'] }
 		// responseBinaryPropertyName: required, show: { responseData: ['firstEntryBinary'] }
 
 		it('returns warning when required responseBinaryPropertyName is missing but show condition is met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'firstEntryBinary',
 					// responseBinaryPropertyName is required when responseData is 'firstEntryBinary'
 					// but it's missing
@@ -145,6 +147,7 @@ describe('Schema Validation Integration', () => {
 		it('does not require responseBinaryPropertyName when show condition is not met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'allEntries', // Not 'firstEntryBinary'
 					// responseBinaryPropertyName is not required (field hidden)
 				},
@@ -156,6 +159,7 @@ describe('Schema Validation Integration', () => {
 		it('accepts responseBinaryPropertyName when condition is met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'firstEntryBinary',
 					responseBinaryPropertyName: 'data',
 				},

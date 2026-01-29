@@ -87,14 +87,14 @@ describe('schema-validator', () => {
 		});
 
 		it('validates AI node with valid subnode config', () => {
-			// The schema requires text, binaryPropertyName, and input - all string fields
-			// These are conditionally shown based on agent type, but the Zod schema doesn't
-			// model conditional visibility, so we provide all required fields
+			// The schema now models conditional visibility with displayOptions.
+			// For 'conversationalAgent' (default), only certain fields are visible.
+			// We provide only the fields that are visible for this agent type.
 			const result = validateNodeConfig('@n8n/n8n-nodes-langchain.agent', 1, {
 				parameters: {
-					text: 'Hello',
-					binaryPropertyName: 'data',
-					input: 'test',
+					agent: 'conversationalAgent',
+					// Note: text, binaryPropertyName, input are conditionally shown based on agent type
+					// and are not visible for 'conversationalAgent'
 				},
 				subnodes: {
 					model: { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1 },
@@ -104,11 +104,10 @@ describe('schema-validator', () => {
 		});
 
 		it('validates AI node subnode config with array of tools', () => {
+			// Use 'conversationalAgent' which only needs the model subnode
 			const result = validateNodeConfig('@n8n/n8n-nodes-langchain.agent', 1, {
 				parameters: {
-					text: 'Hello',
-					binaryPropertyName: 'data',
-					input: 'test',
+					agent: 'conversationalAgent',
 				},
 				subnodes: {
 					model: { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1 },

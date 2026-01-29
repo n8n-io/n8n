@@ -63,6 +63,8 @@ export type DisplayOptionsContext = {
 	nodeVersion?: number;
 	/** Root parameter values for / prefix paths */
 	rootParameters?: Record<string, unknown>;
+	/** Default values for properties (used when property is not set in parameters) */
+	defaults?: Record<string, unknown>;
 };
 
 // =============================================================================
@@ -159,6 +161,7 @@ export function checkConditions(conditions: unknown[], actualValues: unknown[]):
  * - Root paths (/ prefix): Gets value from rootParameters
  * - @version: Returns node version
  * - Resource locator (__rl): Unwraps to the inner value
+ * - Defaults: Uses default value when property is not set in parameters
  *
  * @param context - The display options context
  * @param propertyName - The property name to get (may include path or special prefix)
@@ -171,11 +174,19 @@ export function getPropertyValue(context: DisplayOptionsContext, propertyName: s
 		// Get the value from root parameters
 		const rootParams = context.rootParameters ?? context.parameters;
 		value = get(rootParams, propertyName.slice(1));
+		// Fall back to defaults for root paths as well
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName.slice(1));
+		}
 	} else if (propertyName === '@version') {
 		value = context.nodeVersion ?? 0;
 	} else {
 		// Get the value from current level parameters
 		value = get(context.parameters, propertyName);
+		// Fall back to default value if property is not set
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName);
+		}
 	}
 
 	// Unwrap resource locator values

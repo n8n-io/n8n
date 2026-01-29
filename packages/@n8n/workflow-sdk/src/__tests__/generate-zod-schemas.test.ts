@@ -5,6 +5,7 @@ import {
 	generateDiscriminatorSchemaFile,
 	mapPropertyToZodSchema,
 	mergeDisplayOptions,
+	extractDefaultsForDisplayOptions,
 } from '../generate-types/generate-zod-schemas';
 import type { NodeProperty, NodeTypeDescription } from '../generate-types/generate-types';
 
@@ -132,6 +133,229 @@ describe('generateConditionalSchemaLine', () => {
 		expect(line).toContain('displayOptions:');
 		expect(line).toContain('hide');
 		expect(line).toContain('none');
+	});
+
+	it('includes defaults for properties referenced in displayOptions', () => {
+		const prop: NodeProperty = {
+			name: 'httpMethod',
+			displayName: 'HTTP Method',
+			type: 'options',
+			default: 'GET',
+			options: [{ name: 'GET', value: 'GET' }],
+			displayOptions: { show: { multipleMethods: [false, true] } },
+		};
+
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'multipleMethods',
+				displayName: 'Multiple Methods',
+				type: 'boolean',
+				default: false, // This default should be extracted
+			},
+			prop,
+		];
+
+		const line = generateConditionalSchemaLine(prop, allProperties);
+
+		expect(line).toContain('defaults:');
+		expect(line).toContain('"multipleMethods":false');
+	});
+
+	it('does not include defaults when no referenced properties have defaults', () => {
+		const prop: NodeProperty = {
+			name: 'conditionalField',
+			displayName: 'Conditional Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { someProperty: ['value'] } },
+		};
+
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'someProperty',
+				displayName: 'Some Property',
+				type: 'string',
+				// No default value
+			},
+			prop,
+		];
+
+		const line = generateConditionalSchemaLine(prop, allProperties);
+
+		expect(line).not.toContain('defaults:');
+	});
+});
+
+describe('extractDefaultsForDisplayOptions', () => {
+	it('extracts defaults for properties referenced in show conditions', () => {
+		const displayOptions = { show: { multipleMethods: [false, true] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'multipleMethods',
+				displayName: 'Multiple Methods',
+				type: 'boolean',
+				default: false,
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ multipleMethods: false });
+	});
+
+	it('extracts defaults for properties referenced in hide conditions', () => {
+		const displayOptions = { hide: { mode: ['simple'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'mode',
+				displayName: 'Mode',
+				type: 'options',
+				default: 'advanced',
+				options: [
+					{ name: 'Simple', value: 'simple' },
+					{ name: 'Advanced', value: 'advanced' },
+				],
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ mode: 'advanced' });
+	});
+
+	it('extracts defaults for multiple referenced properties', () => {
+		const displayOptions = {
+			show: { multipleMethods: [true], authentication: ['predefined'] },
+		};
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'multipleMethods',
+				displayName: 'Multiple Methods',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				name: 'authentication',
+				displayName: 'Authentication',
+				type: 'options',
+				default: 'none',
+				options: [
+					{ name: 'None', value: 'none' },
+					{ name: 'Predefined', value: 'predefined' },
+				],
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ multipleMethods: false, authentication: 'none' });
+	});
+
+	it('skips properties without defaults', () => {
+		const displayOptions = { show: { propWithDefault: [true], propWithoutDefault: ['value'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'propWithDefault',
+				displayName: 'With Default',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				name: 'propWithoutDefault',
+				displayName: 'Without Default',
+				type: 'string',
+				// No default
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ propWithDefault: true });
+		expect(defaults).not.toHaveProperty('propWithoutDefault');
+	});
+
+	it('skips @version meta-property', () => {
+		const displayOptions = { show: { '@version': [1, 2], mode: ['advanced'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'mode',
+				displayName: 'Mode',
+				type: 'string',
+				default: 'simple',
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ mode: 'simple' });
+		expect(defaults).not.toHaveProperty('@version');
+	});
+
+	it('skips root path references (/ prefix)', () => {
+		const displayOptions = { show: { '/globalSetting': ['enabled'], mode: ['advanced'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'mode',
+				displayName: 'Mode',
+				type: 'string',
+				default: 'simple',
+			},
+			{
+				name: 'globalSetting',
+				displayName: 'Global Setting',
+				type: 'string',
+				default: 'enabled',
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		// Should only include mode, not globalSetting (since it was referenced with /)
+		expect(defaults).toEqual({ mode: 'simple' });
+	});
+
+	it('handles nested property paths by extracting base property', () => {
+		const displayOptions = { show: { 'options.format': ['json'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: { format: 'text' },
+				options: [],
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({ options: { format: 'text' } });
+	});
+
+	it('returns empty object when no properties have defaults', () => {
+		const displayOptions = { show: { propA: ['value'], propB: ['value'] } };
+		const allProperties: NodeProperty[] = [
+			{
+				name: 'propA',
+				displayName: 'Property A',
+				type: 'string',
+				// No default
+			},
+			{
+				name: 'propB',
+				displayName: 'Property B',
+				type: 'string',
+				// No default
+			},
+		];
+
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+
+		expect(defaults).toEqual({});
+	});
+
+	it('returns empty object for empty displayOptions', () => {
+		const defaults = extractDefaultsForDisplayOptions({}, []);
+		expect(defaults).toEqual({});
 	});
 });
 
@@ -277,7 +501,9 @@ describe('mergeDisplayOptions', () => {
 
 	it('handles three-way merge for Agent text field scenario', () => {
 		// Simulates the real-world scenario: Agent node has 3 text fields
-		let merged = { show: { promptType: ['guardrails'] } };
+		let merged: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> } = {
+			show: { promptType: ['guardrails'] },
+		};
 		merged = mergeDisplayOptions(merged, { show: { promptType: ['auto'] } });
 		merged = mergeDisplayOptions(merged, { show: { promptType: ['define'] } });
 
