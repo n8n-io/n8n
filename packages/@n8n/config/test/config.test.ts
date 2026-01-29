@@ -84,6 +84,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,7 +94,6 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -514,6 +515,24 @@ describe('GlobalConfig', () => {
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
+	});
+
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
 	});
 
 	it('should handle invalid numbers', () => {

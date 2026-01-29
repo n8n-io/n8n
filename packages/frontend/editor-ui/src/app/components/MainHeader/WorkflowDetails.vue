@@ -16,7 +16,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/app/event-bus';
-import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
@@ -42,7 +41,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { getWorkflowId } from '@/app/components/MainHeader/utils';
+
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -119,13 +118,6 @@ const readOnlyActions = computed(() => {
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
-});
-
-const currentProjectName = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return locale.baseText('projects.menu.personal');
-	}
-	return projectsStore.currentProject?.name;
 });
 
 const currentFolderForBreadcrumbs = computed(() => {
@@ -226,14 +218,9 @@ async function onNameSubmit(name: string) {
 	}
 
 	uiStore.addActiveAction('workflowSaving');
-	const id = getWorkflowId(props.id, route.params.name);
-
-	// Capture the "new" state before saving, as the route will be replaced during save
-	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -352,66 +339,6 @@ async function handleDeleteWorkflow() {
 	}
 }
 
-function getPersonalProjectToastContent() {
-	const title = locale.baseText('workflows.create.personal.toast.title');
-	if (!props.currentFolder) {
-		return { title };
-	}
-
-	const toastMessage = locale.baseText('workflows.create.folder.toast.title', {
-		interpolate: {
-			projectName: 'Personal',
-			folderName: props.currentFolder.name,
-		},
-	});
-
-	return { title, toastMessage };
-}
-
-function getToastContent() {
-	const currentProject = projectsStore.currentProject;
-	const isPersonalProject =
-		!projectsStore.currentProject || currentProject?.id === projectsStore.personalProject?.id;
-	const projectName = currentProjectName.value ?? '';
-
-	if (isPersonalProject) {
-		return getPersonalProjectToastContent();
-	}
-
-	const titleKey = props.currentFolder
-		? 'workflows.create.folder.toast.title'
-		: 'workflows.create.project.toast.title';
-
-	const interpolateData: Record<string, string> = props.currentFolder
-		? { projectName, folderName: props.currentFolder.name ?? '' }
-		: { projectName };
-
-	const title = locale.baseText(titleKey, { interpolate: interpolateData });
-
-	const toastMessage = locale.baseText('workflows.create.project.toast.text', {
-		interpolate: { projectName },
-	});
-
-	return { title, toastMessage };
-}
-
-function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
-	if (!id) return;
-
-	// Only show toast if this is a newly created workflow
-	const shouldShowToast = wasNewWorkflow ?? false;
-
-	if (!shouldShowToast) return;
-
-	const { title, toastMessage } = getToastContent();
-
-	toast.showMessage({
-		title,
-		message: toastMessage,
-		type: 'success',
-	});
-}
-
 const onBreadcrumbsItemSelected = (item: PathItem) => {
 	if (item.href) {
 		void router.push(item.href).catch((error) => {
@@ -426,12 +353,6 @@ const handleImportWorkflowFromFile = () => {
 	}
 };
 
-const handleWorkflowSaved = (data: { isFirstSave: boolean }) => {
-	if (data.isFirstSave) {
-		showCreateWorkflowSuccessToast(props.id, true);
-	}
-};
-
 onMounted(() => {
 	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
 	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
@@ -439,7 +360,6 @@ onMounted(() => {
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 	nodeViewEventBus.on('addTag', onTagsEditEnable);
-	canvasEventBus.on('saved:workflow', handleWorkflowSaved);
 });
 
 onBeforeUnmount(() => {
@@ -449,7 +369,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 	nodeViewEventBus.off('addTag', onTagsEditEnable);
-	canvasEventBus.off('saved:workflow', handleWorkflowSaved);
 });
 </script>
 
