@@ -1,27 +1,25 @@
-import { ChatVertexAI } from '@langchain/google-vertexai';
+import { DynamicRetrievalMode } from '@google/generative-ai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { makeN8nLlmFailedAttemptHandler } from '../../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../../N8nLlmTracing';
-import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
+import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
 
-jest.mock('@langchain/google-vertexai');
+jest.mock('@langchain/google-genai');
 jest.mock('../../N8nLlmTracing');
 jest.mock('../../n8nLlmFailedAttemptHandler');
-jest.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: jest.fn().mockImplementation((key: string) => key),
-}));
 
-const MockedChatVertexAI = jest.mocked(ChatVertexAI);
+const MockedChatGoogleGenerativeAI = jest.mocked(ChatGoogleGenerativeAI);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
 
 const mockNode: INode = {
 	id: '1',
-	name: 'Google Vertex Chat Model',
+	name: 'Google Gemini Chat Model',
 	typeVersion: 1,
-	type: 'n8n-nodes-langchain.lmChatGoogleVertex',
+	type: 'n8n-nodes-langchain.lmChatGoogleGemini',
 	position: [0, 0],
 	parameters: {},
 };
@@ -33,9 +31,8 @@ const setupMockContext = (): jest.Mocked<ISupplyDataFunctions> => {
 	) as jest.Mocked<ISupplyDataFunctions>;
 
 	mockContext.getCredentials = jest.fn().mockResolvedValue({
-		privateKey: 'test-private-key',
-		email: 'test@n8n.io',
-		region: 'us-central1',
+		apiKey: 'test-api-key',
+		host: 'https://generativelanguage.googleapis.com',
 	});
 	mockContext.getNode = jest.fn().mockReturnValue(mockNode);
 	mockContext.getNodeParameter = jest.fn();
@@ -46,112 +43,11 @@ const setupMockContext = (): jest.Mocked<ISupplyDataFunctions> => {
 	return mockContext;
 };
 
-describe('LmChatGoogleVertex - Thinking Budget', () => {
-	let lmChatGoogleVertex: LmChatGoogleVertex;
+describe('LmChatGoogleGemini - Google Search Grounding', () => {
+	let lmChatGoogleGemini: LmChatGoogleGemini;
 
 	beforeEach(() => {
-		lmChatGoogleVertex = new LmChatGoogleVertex();
-		jest.clearAllMocks();
-	});
-
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
-
-	describe('supplyData - thinking budget parameter passing', () => {
-		it('should not include thinkingBudget in model config when not specified', async () => {
-			const mockContext = setupMockContext();
-
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-2.5-flash';
-				if (paramName === 'projectId') return 'test-project';
-				if (paramName === 'options') {
-					// Return options without thinkingBudget
-					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
-						topK: 40,
-						topP: 0.9,
-					};
-				}
-				if (paramName === 'options.safetySettings.values') return null;
-				return undefined;
-			});
-
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
-			expect(MockedChatVertexAI).toHaveBeenCalledTimes(1);
-			const callArgs = MockedChatVertexAI.mock.calls[0][0];
-			expect(callArgs).not.toHaveProperty('thinkingBudget');
-			expect(callArgs).toMatchObject({
-				authOptions: {
-					projectId: 'test-project',
-					credentials: {
-						client_email: 'test@n8n.io',
-						private_key: 'test-private-key',
-					},
-				},
-				location: 'us-central1',
-				model: 'gemini-2.5-flash',
-				topK: 40,
-				topP: 0.9,
-				temperature: 0.4,
-				maxOutputTokens: 2048,
-			});
-		});
-
-		it('should include thinkingBudget in model config when specified', async () => {
-			const mockContext = setupMockContext();
-			const expectedThinkingBudget = 1024;
-
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-2.5-flash';
-				if (paramName === 'projectId') return 'test-project';
-				if (paramName === 'options') {
-					// Return options with thinkingBudget
-					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
-						topK: 40,
-						topP: 0.9,
-						thinkingBudget: expectedThinkingBudget,
-					};
-				}
-				if (paramName === 'options.safetySettings.values') return null;
-				return undefined;
-			});
-
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
-			expect(MockedChatVertexAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					authOptions: {
-						projectId: 'test-project',
-						credentials: {
-							client_email: 'test@n8n.io',
-							private_key: 'test-private-key',
-						},
-					},
-					location: 'us-central1',
-					model: 'gemini-2.5-flash',
-					topK: 40,
-					topP: 0.9,
-					temperature: 0.4,
-					maxOutputTokens: 2048,
-					thinkingBudget: expectedThinkingBudget,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					callbacks: expect.arrayContaining([expect.any(Object)]),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					onFailedAttempt: expect.any(Function),
-				}),
-			);
-		});
-	});
-});
-
-describe('LmChatGoogleVertex - Google Search Grounding', () => {
-	let lmChatGoogleVertex: LmChatGoogleVertex;
-
-	beforeEach(() => {
-		lmChatGoogleVertex = new LmChatGoogleVertex();
+		lmChatGoogleGemini = new LmChatGoogleGemini();
 		jest.clearAllMocks();
 	});
 
@@ -164,12 +60,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-2.5-flash';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-2.5-flash';
 				if (paramName === 'options') {
 					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
+						maxOutputTokens: 1024,
+						temperature: 0.7,
 						topK: 40,
 						topP: 0.9,
 						useGoogleSearchGrounding: false,
@@ -184,9 +79,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: mockBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			// bindTools should not have been modified (still the original mock)
 			expect(mockModel.bindTools).toBe(mockBindTools);
@@ -196,12 +93,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-2.5-flash';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-2.5-flash';
 				if (paramName === 'options') {
 					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
+						maxOutputTokens: 1024,
+						temperature: 0.7,
 						topK: 40,
 						topP: 0.9,
 						useGoogleSearchGrounding: true,
@@ -216,9 +112,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: originalBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			// bindTools should have been overridden
 			expect(mockModel.bindTools).not.toBe(originalBindTools);
@@ -235,12 +133,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-1.5-pro';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-1.5-pro';
 				if (paramName === 'options') {
 					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
+						maxOutputTokens: 1024,
+						temperature: 0.7,
 						topK: 40,
 						topP: 0.9,
 						useGoogleSearchGrounding: true,
@@ -256,9 +153,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: originalBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			// Call the new bindTools
 			const testTools = [{ name: 'tool1' }];
@@ -270,7 +169,7 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 					{
 						googleSearchRetrieval: {
 							dynamicRetrievalConfig: {
-								mode: 'MODE_DYNAMIC',
+								mode: DynamicRetrievalMode.MODE_DYNAMIC,
 								dynamicThreshold: 0.5,
 							},
 						},
@@ -285,12 +184,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-1.0-pro';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-1.0-pro';
 				if (paramName === 'options') {
 					return {
-						maxOutputTokens: 2048,
-						temperature: 0.4,
+						maxOutputTokens: 1024,
+						temperature: 0.7,
 						topK: 40,
 						topP: 0.9,
 						useGoogleSearchGrounding: true,
@@ -305,9 +203,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: originalBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			// Call the new bindTools
 			mockModel.bindTools([], {});
@@ -318,7 +218,7 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 					{
 						googleSearchRetrieval: {
 							dynamicRetrievalConfig: {
-								mode: 'MODE_DYNAMIC',
+								mode: DynamicRetrievalMode.MODE_DYNAMIC,
 								dynamicThreshold: 0.3,
 							},
 						},
@@ -332,8 +232,7 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-1.5-flash';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-1.5-flash';
 				if (paramName === 'options') {
 					return {
 						useGoogleSearchGrounding: true,
@@ -347,9 +246,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: originalBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			mockModel.bindTools([], {});
 
@@ -368,8 +269,7 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-3-pro-preview';
-				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'modelName') return 'models/gemini-3-pro-preview';
 				if (paramName === 'options') {
 					return {
 						useGoogleSearchGrounding: true,
@@ -383,9 +283,11 @@ describe('LmChatGoogleVertex - Google Search Grounding', () => {
 			const mockModel = {
 				bindTools: originalBindTools,
 			};
-			MockedChatVertexAI.mockImplementation(() => mockModel as unknown as ChatVertexAI);
+			MockedChatGoogleGenerativeAI.mockImplementation(
+				() => mockModel as unknown as ChatGoogleGenerativeAI,
+			);
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			await lmChatGoogleGemini.supplyData.call(mockContext, 0);
 
 			mockModel.bindTools([], {});
 
