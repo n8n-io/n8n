@@ -595,14 +595,6 @@ describe('ExternalSecretsManager', () => {
 		});
 	});
 
-	describe('updateSecrets', () => {
-		it('should delegate to secrets cache', async () => {
-			await manager.updateSecrets();
-
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
-		});
-	});
-
 	describe('integration scenarios', () => {
 		it('should handle provider connection retry on failure', async () => {
 			const failedProvider = new FailedProvider();
@@ -636,9 +628,6 @@ describe('ExternalSecretsManager', () => {
 			await manager.init();
 
 			expect(manager.initialized).toBe(true);
-
-			await manager.updateSecrets();
-
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 
 			manager.shutdown();
