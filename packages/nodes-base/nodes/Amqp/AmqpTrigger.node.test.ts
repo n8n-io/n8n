@@ -129,13 +129,13 @@ describe('AMQP Trigger Node', () => {
 		expect(emit).toHaveBeenCalledWith([[{ json: { body: '{"foo":"bar"}', message_id: 2 } }]]);
 	});
 
-	it('should call emitExecutionError when handleMessage throws an error in trigger mode', async () => {
+	it('should call saveFailedExecution when handleMessage throws an error in trigger mode', async () => {
 		const trigger = new AmqpTrigger();
 		const emit = jest.fn();
-		const emitExecutionError = jest.fn();
+		const saveFailedExecution = jest.fn();
 
 		const triggerFunctions = mockDeep<ITriggerFunctions>();
-		Object.assign(triggerFunctions, { emit, emitExecutionError });
+		Object.assign(triggerFunctions, { emit, saveFailedExecution });
 		triggerFunctions.getNode.mockReturnValue({
 			id: 'test',
 			name: 'Test Node',
@@ -166,7 +166,7 @@ describe('AMQP Trigger Node', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 
-		expect(emitExecutionError).toHaveBeenCalledWith(expect.any(NodeOperationError));
+		expect(saveFailedExecution).toHaveBeenCalledWith(expect.any(NodeOperationError));
 	});
 
 	it('should handle errors in manual mode and reject the promise', async () => {
