@@ -402,6 +402,9 @@ export class KafkaTrigger implements INodeType {
 		const registry = setSchemaRegistry(this);
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
+		if (options.keepBinaryData && nodeVersion < 1.2) {
+			options.keepBinaryData = undefined;
+		}
 
 		const consumerConfig = createConsumerConfig(this, options, nodeVersion);
 		const consumer = kafka.consumer(consumerConfig);
