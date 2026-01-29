@@ -131,11 +131,12 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: true },
 			});
 
-			// 16 tools: best_practices, workflow_examples, node_search, node_details, add_node,
+			// 19 tools: best_practices, workflow_examples, node_search, node_details, add_node,
 			// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
 			// get_node_parameter, validate_structure, validate_configuration,
-			// get_execution_schema, get_execution_logs, get_expression_data_mapping
-			expect(tools).toHaveLength(16);
+			// get_execution_schema, get_execution_logs, get_expression_data_mapping,
+			// get_workflow_overview, get_node_context, get_workflow_json
+			expect(tools).toHaveLength(19);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -145,7 +146,7 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: false },
 			});
 
-			expect(tools).toHaveLength(15);
+			expect(tools).toHaveLength(18);
 		});
 
 		it('should exclude workflow examples tool when feature flag is not provided', () => {
@@ -153,7 +154,7 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(15);
+			expect(tools).toHaveLength(18);
 		});
 
 		it('should work with empty node types array', () => {
@@ -161,7 +162,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(15);
+			expect(tools).toHaveLength(18);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

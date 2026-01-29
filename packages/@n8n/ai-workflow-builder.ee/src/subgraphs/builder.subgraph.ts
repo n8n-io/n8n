@@ -19,7 +19,10 @@ import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
 import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
 import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
+import { createGetWorkflowJsonTool } from '../tools/get-workflow-json.tool';
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
@@ -33,7 +36,7 @@ import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
 	buildDiscoveryContextBlock,
-	buildWorkflowJsonBlock,
+	buildWorkflowIndicator,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -128,6 +131,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createGetExecutionSchemaTool(config.logger),
 			createGetExecutionLogsTool(config.logger),
 			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
+			createGetWorkflowJsonTool(config.logger),
 		];
 
 		// Conditionally add node connection examples tool if feature flag is enabled
@@ -214,13 +221,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
-		// 3. Current workflow JSON (to add nodes to)
+		// 3. Current workflow indicator (lightweight summary pointing to tools for details)
 		contextParts.push('=== CURRENT WORKFLOW ===');
-		if (parentState.workflowJSON.nodes.length > 0) {
-			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-		} else {
-			contextParts.push('Empty workflow - ready to build');
-		}
+		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
 		// Note: Execution data (schema, logs, expressions) is available via tools:
 		// - get_execution_schema: Node output types

@@ -16,7 +16,7 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isAIMessage } from '../types/langchain';
 import type { SimpleWorkflow } from '../types/workflow';
-import { buildSimplifiedExecutionContext } from '../utils/context-builders';
+import { buildSimplifiedExecutionContext, buildWorkflowIndicator } from '../utils/context-builders';
 import {
 	getErrorEntry,
 	getBuilderOutput,
@@ -138,7 +138,8 @@ export class ResponderAgent {
 		if (builderOutput) {
 			contextParts.push(`**Builder:** ${builderOutput}`);
 		} else if (context.workflowJSON.nodes.length) {
-			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
+			// Provide workflow summary using the indicator
+			contextParts.push(`**Workflow:**\n${buildWorkflowIndicator(context.workflowJSON)}`);
 		}
 
 		// Configurator output

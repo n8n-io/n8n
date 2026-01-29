@@ -1,11 +1,11 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 
+import { trimWorkflowJSON } from './trim-workflow-context';
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { ChatPayload } from '../workflow-builder-agent';
-import { trimWorkflowJSON } from './trim-workflow-context';
 
 // ============================================================================
 // WORKFLOW CONTEXT BUILDERS
@@ -35,6 +35,48 @@ export function buildWorkflowJsonBlock(workflow: SimpleWorkflow): string {
 		'</current_workflow_json>',
 		'<note>Large property values may be trimmed. Use get_node_parameter tool for full details.</note>',
 	].join('\n');
+}
+
+/**
+ * Build a lightweight workflow indicator for context injection.
+ * Points to tools for detailed information instead of including full JSON.
+ * This significantly reduces token usage for workflows with many nodes.
+ */
+export function buildWorkflowIndicator(workflow: SimpleWorkflow): string {
+	if (workflow.nodes.length === 0) {
+		return 'Empty workflow - ready to build';
+	}
+
+	// Get node names (limit to first 5 for indicator)
+	const nodeNames = workflow.nodes.map((n) => n.name);
+	const displayNames = nodeNames.slice(0, 5);
+	const hasMore = nodeNames.length > 5 ? ` (and ${nodeNames.length - 5} more)` : '';
+
+	// Find trigger node
+	const trigger = workflow.nodes.find(
+		(n) =>
+			n.type.toLowerCase().includes('trigger') ||
+			n.type.toLowerCase().includes('webhook') ||
+			n.type === 'n8n-nodes-base.manualTrigger',
+	);
+
+	const parts = [
+		`Workflow has ${workflow.nodes.length} nodes: ${displayNames.join(', ')}${hasMore}`,
+	];
+
+	if (trigger) {
+		parts.push(`Trigger: ${trigger.name} (${trigger.type})`);
+	} else {
+		parts.push('No trigger node detected');
+	}
+
+	parts.push('');
+	parts.push('Use workflow context tools for details:');
+	parts.push('- get_workflow_overview: Visual Mermaid diagram with node IDs (recommended)');
+	parts.push('- get_node_context: Full details for a specific node including ID');
+	parts.push('- get_workflow_json: Raw JSON with node IDs (optionally filtered by node)');
+
+	return parts.join('\n');
 }
 
 // ============================================================================

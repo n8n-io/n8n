@@ -9,8 +9,11 @@ import { GET_DOCUMENTATION_TOOL } from './get-documentation.tool';
 import { GET_EXECUTION_LOGS_TOOL } from './get-execution-logs.tool';
 import { GET_EXECUTION_SCHEMA_TOOL } from './get-execution-schema.tool';
 import { GET_EXPRESSION_DATA_MAPPING_TOOL } from './get-expression-data-mapping.tool';
+import { GET_NODE_CONTEXT_TOOL } from './get-node-context.tool';
 import { GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { GET_WORKFLOW_EXAMPLES_TOOL } from './get-workflow-examples.tool';
+import { GET_WORKFLOW_JSON_TOOL } from './get-workflow-json.tool';
+import { GET_WORKFLOW_OVERVIEW_TOOL } from './get-workflow-overview.tool';
 import { NODE_DETAILS_TOOL } from './node-details.tool';
 import { NODE_SEARCH_TOOL } from './node-search.tool';
 import { REMOVE_CONNECTION_TOOL } from './remove-connection.tool';
@@ -56,6 +59,10 @@ export function getBuilderToolsForDisplay({
 		GET_EXECUTION_SCHEMA_TOOL,
 		GET_EXECUTION_LOGS_TOOL,
 		GET_EXPRESSION_DATA_MAPPING_TOOL,
+		// Workflow context tools
+		GET_WORKFLOW_OVERVIEW_TOOL,
+		GET_NODE_CONTEXT_TOOL,
+		GET_WORKFLOW_JSON_TOOL,
 	);
 
 	return tools;

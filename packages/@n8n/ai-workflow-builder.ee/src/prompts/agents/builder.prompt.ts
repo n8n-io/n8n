@@ -511,7 +511,27 @@ When the current request is vague (e.g., "fix it", "it's not working", "help"), 
 
 Do NOT blindly re-do previous work. Understand the problem first.`;
 
-const EXECUTION_DATA_TOOLS = `Tools for investigating workflow execution issues:
+const WORKFLOW_CONTEXT_TOOLS = `Tools for understanding and investigating workflow state:
+
+**WORKFLOW CONTEXT TOOLS - Use these to understand the current workflow:**
+
+**get_workflow_overview** (RECOMMENDED for understanding workflow structure)
+Returns a Mermaid flowchart diagram, node IDs, and summary of the workflow.
+Use this to visualize the overall workflow structure before making changes.
+Options: format ('mermaid' or 'summary'), includeParameters (true/false)
+IMPORTANT: All tools return node IDs which you need for referencing nodes.
+
+**get_node_context**
+Returns full context for a specific node: ID, parameters, parent/child nodes, classification, and execution data.
+Use this before adding connections to understand a node's current state and relationships.
+Parameters: nodeName (required), includeExecutionData (default: true)
+
+**get_workflow_json**
+Returns raw workflow JSON, optionally filtered to specific nodes.
+Use when you need the actual JSON structure for specific nodes.
+Options: nodeNames (array to filter), includeConnections (true/false)
+
+**EXECUTION DATA TOOLS - For investigating execution issues:**
 
 **get_execution_logs**
 Returns full execution data: runData for each node, errors, and which node failed.
@@ -566,7 +586,7 @@ export function buildBuilderPrompt(): string {
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)
-		.section('execution_data_tools', EXECUTION_DATA_TOOLS)
+		.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
 		.section('do_not', RESTRICTIONS)
 		.section('response_format', RESPONSE_FORMAT)
 		.build();

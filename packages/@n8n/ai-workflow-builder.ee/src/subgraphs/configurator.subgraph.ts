@@ -21,9 +21,12 @@ import type { ParentGraphState } from '../parent-graph-state';
 import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
 import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
 import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
+import { createGetWorkflowJsonTool } from '../tools/get-workflow-json.tool';
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -35,7 +38,7 @@ import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
-	buildWorkflowJsonBlock,
+	buildWorkflowIndicator,
 	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
@@ -167,6 +170,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			createGetExecutionSchemaTool(config.logger),
 			createGetExecutionLogsTool(config.logger),
 			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
+			createGetWorkflowJsonTool(config.logger),
 			// Conditionally add resource locator tool if callback is provided
 			...(config.resourceLocatorCallback
 				? [
@@ -340,11 +347,11 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
 
-		// 4. Full workflow JSON (nodes to configure)
+		// 4. Workflow indicator (lightweight summary pointing to tools for details)
 		// Note: resource/operation are already set by Builder via initialParameters
 		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
-		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
+		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
 		// Note: Execution data (schema, logs, expressions) is available via tools:
 		// - get_execution_schema: Node output types

@@ -14,7 +14,15 @@ const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automati
 You have access to context about what has been built, including:
 - Discovery results (nodes found)
 - Builder output (workflow structure)
-- Configuration summary (setup instructions)`;
+- Configuration summary (setup instructions)
+- Workflow indicator showing current nodes and their connections
+
+The other agents (Builder and Configurator) have access to workflow context tools:
+- get_workflow_overview: Visual Mermaid diagram and summary
+- get_node_context: Full details for a specific node
+- get_workflow_json: Raw JSON filtered by node
+
+When explaining the workflow to users, use the information provided in your context.`;
 
 const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a clean user-facing response:
 1. Summarize what was built in a friendly way

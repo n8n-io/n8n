@@ -241,7 +241,27 @@ When the current request is vague (e.g., "fix it", "it's not working", "help"), 
 
 Do NOT blindly re-configure all nodes. Understand the problem first.`;
 
-const EXECUTION_DATA_TOOLS = `Tools for investigating workflow execution and configuring expressions:
+const WORKFLOW_CONTEXT_TOOLS = `Tools for understanding workflow state and configuring expressions:
+
+**WORKFLOW CONTEXT TOOLS - Use these to understand the workflow:**
+
+**get_workflow_overview** (RECOMMENDED for understanding workflow structure)
+Returns a Mermaid flowchart diagram, node IDs, and summary of the workflow.
+Use this to visualize the overall workflow structure.
+Options: format ('mermaid' or 'summary'), includeParameters (true/false)
+IMPORTANT: All tools return node IDs which you need for referencing nodes.
+
+**get_node_context**
+Returns full context for a specific node: ID, parameters, parent/child nodes, classification, and execution data.
+Use this BEFORE configuring a node to understand its connections and current state.
+Parameters: nodeName (required), includeExecutionData (default: true)
+
+**get_workflow_json**
+Returns raw workflow JSON, optionally filtered to specific nodes.
+Use when you need the actual JSON structure for specific nodes.
+Options: nodeNames (array to filter), includeConnections (true/false)
+
+**EXECUTION DATA TOOLS - For configuring based on real execution data:**
 
 **get_execution_schema**
 Returns data structure/types from each node's output (field names and types).
@@ -313,7 +333,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
-		.section('execution_data_tools', EXECUTION_DATA_TOOLS)
+		.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)

@@ -6,7 +6,8 @@ import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 describe('markdown-workflow.utils', () => {
 	describe('mermaidStringify', () => {
 		it('should convert a workflow with AI agent and tools to mermaid diagram', () => {
-			const result = mermaidStringify(aiAssistantWorkflow);
+			// includeNodeId: false maintains backwards compatibility with existing expected output
+			const result = mermaidStringify(aiAssistantWorkflow, { includeNodeId: false });
 			const expected = `\`\`\`mermaid
 flowchart TD
 %% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
@@ -71,7 +72,10 @@ n6 --> n14
 		});
 
 		it('should convert a workflow with AI agent and tools to mermaid diagram without node parameters', () => {
-			const result = mermaidStringify(aiAssistantWorkflow, { includeNodeParameters: false });
+			const result = mermaidStringify(aiAssistantWorkflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -156,7 +160,7 @@ n6 --> n14
 				},
 			};
 
-			const result = mermaidStringify(workflow);
+			const result = mermaidStringify(workflow, { includeNodeId: false });
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -235,7 +239,7 @@ n1["Trigger"]
 				},
 			};
 
-			const result = mermaidStringify(workflow);
+			const result = mermaidStringify(workflow, { includeNodeId: false });
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -334,7 +338,10 @@ n3 --> n5["Send Failure Email"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -408,7 +415,10 @@ n4 --> n5["End"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -445,7 +455,7 @@ n4["HTTP Request"]
 				},
 			};
 
-			const result = mermaidStringify(workflow);
+			const result = mermaidStringify(workflow, { includeNodeId: false });
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -484,7 +494,10 @@ n1["Empty Node"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -537,7 +550,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -615,7 +631,10 @@ n1 --> n2["End"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -661,7 +680,10 @@ n2 --> n3{"Filter"}
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			const expected = `\`\`\`mermaid
 flowchart TD
@@ -717,7 +739,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			// Should contain dotted arrow with connection type for AI connections
 			expect(result).toContain('-.ai_languageModel.->');
@@ -758,7 +783,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			// Chat Model should appear in output
 			expect(result).toContain('Chat Model');
@@ -795,6 +823,7 @@ n1["Start"]
 			const result = mermaidStringify(workflow, {
 				includeNodeType: false,
 				includeNodeParameters: true,
+				includeNodeId: false,
 			});
 
 			// Should NOT contain node type comment
@@ -857,7 +886,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			// Should complete without hanging
 			expect(result).toContain('```mermaid');
@@ -899,7 +931,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			// Agent should still be rendered
 			expect(result).toContain('Lonely Agent');
@@ -985,7 +1020,10 @@ n1["Start"]
 				},
 			};
 
-			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+			const result = mermaidStringify(workflow, {
+				includeNodeParameters: false,
+				includeNodeId: false,
+			});
 
 			// Should have two subgraphs
 			expect(result).toContain('subgraph sg1["## Input Section"]');
