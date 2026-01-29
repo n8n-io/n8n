@@ -424,11 +424,11 @@ describe('KafkaTrigger Node', () => {
 		expect(emit).toHaveBeenCalledWith([[{ json: { message: 'test', topic: 'test-topic' } }]]);
 	});
 
-	it('should use immediate emit in manual mode even when resolveOffset is onCompletion (v1.2)', async () => {
+	it('should use immediate emit in manual mode even when resolveOffset is onCompletion (v1.3)', async () => {
 		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
 			mode: 'manual',
 			node: {
-				typeVersion: 1.2,
+				typeVersion: 1.3,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -1008,11 +1008,58 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	describe('version 1.2', () => {
+		it('should keep binary data in batch processing when keepBinaryData is enabled in v1.2', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						options: {
+							batchSize: 2,
+							keepBinaryData: true,
+							parallelProcessing: true,
+						},
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishBatch = (global as any).publishBatch;
+			await publishBatch([
+				{ value: Buffer.from('binary-data-1') },
+				{ value: Buffer.from('binary-data-2') },
+			]);
+
+			expect(emit).toHaveBeenCalled();
+			const emittedData = emit.mock.calls[0][0][0];
+
+			// Both messages should have binary data
+			expect(emittedData[0]).toHaveProperty('json');
+			expect(emittedData[0]).toHaveProperty('binary');
+			expect(emittedData[0].json.message).toBe('binary-data-1');
+			expect(emittedData[0].binary).toHaveProperty('data');
+
+			expect(emittedData[1]).toHaveProperty('json');
+			expect(emittedData[1]).toHaveProperty('binary');
+			expect(emittedData[1].json.message).toBe('binary-data-2');
+			expect(emittedData[1].binary).toHaveProperty('data');
+		});
+	});
+
+	describe('version 1.3', () => {
 		it('should calculate sessionTimeout and heartbeatInterval from executionTimeout', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1041,7 +1088,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1069,7 +1116,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1100,7 +1147,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1131,7 +1178,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1164,7 +1211,7 @@ describe('KafkaTrigger Node', () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1197,7 +1244,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1230,7 +1277,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1265,7 +1312,7 @@ describe('KafkaTrigger Node', () => {
 				testTriggerNode(KafkaTrigger, {
 					mode: 'trigger',
 					node: {
-						typeVersion: 1.2,
+						typeVersion: 1.3,
 						parameters: {
 							topic: 'test-topic',
 							groupId: 'test-group',
@@ -1295,7 +1342,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1387,7 +1434,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1472,7 +1519,7 @@ describe('KafkaTrigger Node', () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1501,7 +1548,7 @@ describe('KafkaTrigger Node', () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1530,7 +1577,7 @@ describe('KafkaTrigger Node', () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',
@@ -1565,7 +1612,7 @@ describe('KafkaTrigger Node', () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
-					typeVersion: 1.2,
+					typeVersion: 1.3,
 					parameters: {
 						topic: 'test-topic',
 						groupId: 'test-group',

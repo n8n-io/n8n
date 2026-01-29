@@ -8,7 +8,14 @@ import type {
 } from 'kafkajs';
 import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { Logger, ITriggerFunctions, IDataObject, IRun } from 'n8n-workflow';
+import type {
+	Logger,
+	ITriggerFunctions,
+	IDataObject,
+	IRun,
+	IBinaryKeyData,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
@@ -27,6 +34,7 @@ export interface KafkaTriggerOptions {
 	maxInFlightRequests?: number;
 	fromBeginning?: boolean;
 	jsonParseMessage?: boolean;
+	keepBinaryData?: boolean;
 	parallelProcessing?: boolean;
 	partitionsConsumedConcurrently?: number;
 	onlyMessage?: boolean;
@@ -91,7 +99,7 @@ export function createConsumerConfig(
 
 	let sessionTimeout: number;
 	let heartbeatInterval: number;
-	if (nodeVersion < 1.2) {
+	if (nodeVersion < 1.3) {
 		sessionTimeout = options.sessionTimeout ?? 30000;
 		heartbeatInterval = options.heartbeatInterval ?? 3000;
 	} else {
@@ -130,10 +138,12 @@ export function configureMessageParser(
 	options: KafkaTriggerOptions,
 	logger: Logger,
 	registry: SchemaRegistry | undefined,
+	prepareBinaryData: ITriggerFunctions['helpers']['prepareBinaryData'],
 ) {
-	return async (message: KafkaMessage, messageTopic: string): Promise<IDataObject> => {
+	return async (message: KafkaMessage, messageTopic: string): Promise<INodeExecutionData> => {
 		let data: IDataObject = {};
 		let value = message.value?.toString() as string;
+		const binary: IBinaryKeyData = {};
 
 		if (options.jsonParseMessage) {
 			try {
@@ -153,6 +163,16 @@ export function configureMessageParser(
 			}
 		}
 
+		// Preserve raw binary data for downstream processing (only in v1.2+)
+		if (options.keepBinaryData && message.value) {
+			const binaryData = await prepareBinaryData(
+				message.value as Buffer,
+				'message',
+				'application/octet-stream',
+			);
+			binary.data = binaryData;
+		}
+
 		if (options.returnHeaders && message.headers) {
 			data.headers = Object.fromEntries(
 				Object.entries(message.headers).map(([headerKey, headerValue]) => [
@@ -169,7 +189,11 @@ export function configureMessageParser(
 			data = value as unknown as IDataObject;
 		}
 
-		return data;
+		if (options.keepBinaryData && Object.keys(binary).length) {
+			return { json: data, binary };
+		}
+
+		return { json: data };
 	};
 }
 
@@ -264,8 +288,8 @@ export function configureDataEmitter(
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
-		return async (dataArray: IDataObject[]) => {
-			ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
+		return async (dataArray: INodeExecutionData[]) => {
+			ctx.emit([dataArray]);
 			return { success: true };
 		};
 	}
@@ -286,11 +310,11 @@ export function configureDataEmitter(
 		}
 	}
 
-	return async (dataArray: IDataObject[]) => {
+	return async (dataArray: INodeExecutionData[]) => {
 		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
-			ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
+			ctx.emit([dataArray], undefined, responsePromise);
 
 			const timeoutPromise = new Promise<IRun>((_, reject) => {
 				timeoutId = setTimeout(() => {
@@ -332,7 +356,7 @@ export function getAutoCommitSettings(
 ) {
 	let shouldAutoCommit = true;
 
-	if (nodeVersion >= 1.2 && ctx.getMode() !== 'manual') {
+	if (nodeVersion >= 1.3 && ctx.getMode() !== 'manual') {
 		const resolveOffset = ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
 		if (resolveOffset !== 'immediately') {
 			const disableAutoResolveOffset = ctx.getNodeParameter(

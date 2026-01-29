@@ -13,7 +13,7 @@ describe('Kafka Utils', () => {
 			return ctx;
 		};
 
-		it('should return autoCommit true for version < 1.2', () => {
+		it('should return autoCommit true for version < 1.3', () => {
 			const ctx = createMockContext();
 			const options: KafkaTriggerOptions = {};
 			const result = getAutoCommitSettings(ctx, options, 1);
@@ -39,10 +39,10 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit true for version 1.2 when resolveOffset is immediately', () => {
+		it('should return autoCommit true for version 1.3 when resolveOffset is immediately', () => {
 			const ctx = createMockContext({ resolveOffset: 'immediately' });
 			const options: KafkaTriggerOptions = {};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: true,
@@ -52,12 +52,12 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit true for version 1.2 when resolveOffset is immediately and autoCommitInterval is provided', () => {
+		it('should return autoCommit true for version 1.3 when resolveOffset is immediately and autoCommitInterval is provided', () => {
 			const ctx = createMockContext({ resolveOffset: 'immediately' });
 			const options: KafkaTriggerOptions = {
 				autoCommitInterval: 5000,
 			};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: true,
@@ -67,12 +67,12 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit true for version 1.2 when resolveOffset is immediately and autoCommitThreshold is provided', () => {
+		it('should return autoCommit true for version 1.3 when resolveOffset is immediately and autoCommitThreshold is provided', () => {
 			const ctx = createMockContext({ resolveOffset: 'immediately' });
 			const options: KafkaTriggerOptions = {
 				autoCommitThreshold: 100,
 			};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: true,
@@ -82,13 +82,13 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit true for version 1.2 when resolveOffset is immediately and both autoCommit options are provided', () => {
+		it('should return autoCommit true for version 1.3 when resolveOffset is immediately and both autoCommit options are provided', () => {
 			const ctx = createMockContext({ resolveOffset: 'immediately' });
 			const options: KafkaTriggerOptions = {
 				autoCommitInterval: 5000,
 				autoCommitThreshold: 100,
 			};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: true,
@@ -98,13 +98,13 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit true for version 1.2 when resolveOffset is onCompletion and disableAutoResolveOffset is false', () => {
+		it('should return autoCommit true for version 1.3 when resolveOffset is onCompletion and disableAutoResolveOffset is false', () => {
 			const ctx = createMockContext({
 				resolveOffset: 'onCompletion',
 				disableAutoResolveOffset: false,
 			});
 			const options: KafkaTriggerOptions = {};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: true,
@@ -114,13 +114,13 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit false for version 1.2 when resolveOffset is onCompletion and disableAutoResolveOffset is true', () => {
+		it('should return autoCommit false for version 1.3 when resolveOffset is onCompletion and disableAutoResolveOffset is true', () => {
 			const ctx = createMockContext({
 				resolveOffset: 'onCompletion',
 				disableAutoResolveOffset: true,
 			});
 			const options: KafkaTriggerOptions = {};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: false,
@@ -130,13 +130,13 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit false for version 1.2 when resolveOffset is onSuccess and disableAutoResolveOffset is true', () => {
+		it('should return autoCommit false for version 1.3 when resolveOffset is onSuccess and disableAutoResolveOffset is true', () => {
 			const ctx = createMockContext({
 				resolveOffset: 'onSuccess',
 				disableAutoResolveOffset: true,
 			});
 			const options: KafkaTriggerOptions = {};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: false,
@@ -146,13 +146,13 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should return autoCommit false for version 1.2 when resolveOffset is onStatus and disableAutoResolveOffset is true', () => {
+		it('should return autoCommit false for version 1.3 when resolveOffset is onStatus and disableAutoResolveOffset is true', () => {
 			const ctx = createMockContext({
 				resolveOffset: 'onStatus',
 				disableAutoResolveOffset: true,
 			});
 			const options: KafkaTriggerOptions = {};
-			const result = getAutoCommitSettings(ctx, options, 1.2);
+			const result = getAutoCommitSettings(ctx, options, 1.3);
 
 			expect(result).toEqual({
 				autoCommit: false,
@@ -162,7 +162,7 @@ describe('Kafka Utils', () => {
 			});
 		});
 
-		it('should pass through autoCommit options for version < 1.2', () => {
+		it('should pass through autoCommit options for version < 1.3', () => {
 			const ctx = createMockContext();
 			const options: KafkaTriggerOptions = {
 				autoCommitInterval: 5000,

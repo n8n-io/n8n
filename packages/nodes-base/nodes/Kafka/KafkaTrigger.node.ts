@@ -31,7 +31,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -53,7 +53,7 @@ export class KafkaTrigger implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
 			},
@@ -107,7 +107,7 @@ export class KafkaTrigger implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
 			},
@@ -152,7 +152,7 @@ export class KafkaTrigger implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 						resolveOffset: ['onStatus'],
 					},
 				},
@@ -166,7 +166,7 @@ export class KafkaTrigger implements INodeType {
 					'Whether to disable automatic offset commits by the Kafka consumer. Enable this to rely on manual offset resolution based on execution status and offset resolution setting.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { gte: 1.3 } }],
 						resolveOffset: ['onCompletion', 'onSuccess', 'onStatus'],
 					},
 					hide: {
@@ -207,7 +207,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non existing topic',
+						description: 'Whether to allow sending message to a previously non-existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',
@@ -269,7 +269,7 @@ export class KafkaTrigger implements INodeType {
 						hint: 'The value must be set lower than Session Timeout',
 						displayOptions: {
 							hide: {
-								'@version': [{ _cnd: { gte: 1.2 } }],
+								'@version': [{ _cnd: { gte: 1.3 } }],
 							},
 						},
 					},
@@ -294,6 +294,19 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try to parse the message to an object',
+					},
+					{
+						displayName: 'Keep Message as Binary Data',
+						name: 'keepBinaryData',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.2 } }],
+							},
+						},
+						description:
+							'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
 					},
 					{
 						displayName: 'Parallel Processing',
@@ -356,7 +369,7 @@ export class KafkaTrigger implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								'@version': [{ _cnd: { gte: 1.2 } }],
+								'@version': [{ _cnd: { gte: 1.3 } }],
 							},
 							hide: {
 								'/resolveOffset': ['immediately'],
@@ -372,7 +385,7 @@ export class KafkaTrigger implements INodeType {
 						hint: 'Value in milliseconds',
 						displayOptions: {
 							hide: {
-								'@version': [{ _cnd: { gte: 1.2 } }],
+								'@version': [{ _cnd: { gte: 1.3 } }],
 							},
 						},
 					},
@@ -393,7 +406,12 @@ export class KafkaTrigger implements INodeType {
 		const consumerConfig = createConsumerConfig(this, options, nodeVersion);
 		const consumer = kafka.consumer(consumerConfig);
 
-		const processMessage = configureMessageParser(options, this.logger, registry);
+		const processMessage = configureMessageParser(
+			options,
+			this.logger,
+			registry,
+			this.helpers.prepareBinaryData,
+		);
 
 		const topic = this.getNodeParameter('topic') as string;
 		const batchSize = options.batchSize ?? 1;
