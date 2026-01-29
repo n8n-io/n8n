@@ -42,6 +42,7 @@ export class SecretsCacheRefresh {
 		this.initializingPromise ??= (async () => {
 			try {
 				if (this.config.externalSecretsForProjects) {
+					this.logger.debug('Initializing external secrets with project-based providers');
 					const connections = await this.secretsProviderConnectionRepository.findAll();
 
 					for (const connection of connections) {
@@ -49,6 +50,7 @@ export class SecretsCacheRefresh {
 						await this.setupProviderConnection(connection);
 					}
 				} else {
+					this.logger.debug('Initializing external secrets with legacy settings');
 					const newSettings = await this.settingsStore.reload();
 
 					// Reload/add providers from legacy settings
@@ -99,6 +101,7 @@ export class SecretsCacheRefresh {
 		if (this.refreshInterval) {
 			clearInterval(this.refreshInterval);
 			this.refreshInterval = undefined;
+			this.logger.debug('Stopped secrets refresh interval');
 		}
 	}
 
@@ -106,6 +109,7 @@ export class SecretsCacheRefresh {
 		this.retryManager.cancelRetry(providerKey);
 		const existingProvider = this.providerRegistry.get(providerKey);
 		if (existingProvider) {
+			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
 			await this.providerLifecycle.disconnect(existingProvider);
 			this.providerRegistry.remove(providerKey);
 		}
@@ -148,6 +152,7 @@ export class SecretsCacheRefresh {
 		}
 
 		this.providerRegistry.add(providerKey, result.provider);
+		this.logger.debug(`Provider registered: ${providerKey}`);
 
 		if (settings.connected) {
 			await this.retryManager.runWithRetry(
@@ -163,6 +168,7 @@ export class SecretsCacheRefresh {
 		try {
 			return jsonParse<SecretsProviderSettings['settings']>(decryptedData);
 		} catch (e) {
+			this.logger.error('Failed to decrypt external secrets settings', { error: e });
 			throw new UnexpectedError(
 				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 			);
