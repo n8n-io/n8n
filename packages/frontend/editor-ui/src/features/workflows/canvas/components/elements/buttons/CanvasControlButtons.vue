@@ -63,7 +63,7 @@ function onTidyUp() {
 			:shortcut="{ keys: ['1'] }"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="maximize"
 				data-test-id="zoom-to-fit"
@@ -72,7 +72,7 @@ function onTidyUp() {
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="zoom-in"
 				data-test-id="zoom-in-button"
@@ -81,7 +81,7 @@ function onTidyUp() {
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="zoom-out"
 				data-test-id="zoom-out-button"
@@ -96,8 +96,8 @@ function onTidyUp() {
 			:shortcut="{ keys: ['Z'] }"
 		>
 			<N8nIconButton
-				square
-				type="tertiary"
+				variant="subtle"
+				iconOnly
 				size="large"
 				:class="$style.iconButton"
 				:icon="isExperimentalNdvActive ? 'undo-2' : 'crosshair'"
@@ -110,7 +110,7 @@ function onTidyUp() {
 			:shortcut="{ keys: ['0'] }"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="undo-2"
 				data-test-id="reset-zoom-button"
@@ -139,7 +139,7 @@ function onTidyUp() {
 			:content="i18n.baseText('nodeView.expandAllNodes')"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="maximize-2"
 				@click="experimentalNdvStore.expandAllNodes"
@@ -151,7 +151,7 @@ function onTidyUp() {
 			:content="i18n.baseText('nodeView.collapseAllNodes')"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="minimize-2"
 				@click="experimentalNdvStore.collapseAllNodes"

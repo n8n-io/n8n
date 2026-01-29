@@ -29,19 +29,10 @@ const meta = {
 			control: 'text',
 			description: 'If provided, renders as a link',
 		},
-		// Hide legacy props from the table
+		// Hide internal props from the table
 		icon: { table: { disable: true } },
 		iconSize: { table: { disable: true } },
-		float: { table: { disable: true } },
-		text: { table: { disable: true } },
-		outline: { table: { disable: true } },
-		nativeType: { table: { disable: true } },
-		active: { table: { disable: true } },
-		block: { table: { disable: true } },
-		square: { table: { disable: true } },
 		label: { table: { disable: true } },
-		element: { table: { disable: true } },
-		type: { table: { disable: true } },
 	},
 	parameters: {
 		docs: {

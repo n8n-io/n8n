@@ -240,15 +240,15 @@ onMounted(async () => {
 					</template>
 				</ElDropdown>
 				<N8nIconButton
+					variant="subtle"
 					icon="chevron-left"
-					type="secondary"
 					:class="$style.navigationButton"
 					style="--button--radius: 0; margin: 0 -1px"
 					@click="previousNodeChange"
 				/>
 				<N8nIconButton
+					variant="subtle"
 					icon="chevron-right"
-					type="secondary"
 					:class="$style.navigationButton"
 					style="--button--radius: 0 4px 4px 0"
 					@click="nextNodeChange"

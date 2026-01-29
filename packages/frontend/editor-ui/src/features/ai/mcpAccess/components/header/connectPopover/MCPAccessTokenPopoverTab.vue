@@ -171,9 +171,9 @@ onMounted(async () => {
 				>
 					<N8nButton
 						v-if="isSupported && !loadingApiKey && !keyRotating"
-						type="tertiary"
+						variant="subtle"
+						iconOnly
 						:icon="copied ? 'check' : 'copy'"
-						:square="true"
 						:class="$style['copy-json-button']"
 						data-test-id="mcp-json-copy-button"
 						@click="handleConnectionStringCopy"

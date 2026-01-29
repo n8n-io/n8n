@@ -734,8 +734,8 @@ onMounted(async () => {
 					>
 						<template #trigger>
 							<N8nButton
+								variant="subtle"
 								icon="funnel"
-								type="tertiary"
 								style="height: 100%"
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
@@ -947,9 +947,9 @@ onMounted(async () => {
 																placement="top"
 															>
 																<N8nIconButton
+																	variant="subtle"
 																	data-test-id="source-control-workflow-diff-button"
 																	icon="file-diff"
-																	type="secondary"
 																	@click="openDiffModal(file.id, file.status)"
 																/>
 															</N8nTooltip>
@@ -997,8 +997,8 @@ onMounted(async () => {
 					@keydown.enter.stop="onCommitKeyDownEnter"
 				/>
 				<N8nButton
+					variant="solid"
 					data-test-id="source-control-push-modal-submit"
-					type="primary"
 					:disabled="isSubmitDisabled"
 					size="large"
 					@click="commitAndPush"

@@ -5,12 +5,6 @@ import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
-import {
-	computeEffectiveVariant,
-	computeEffectiveSize,
-	isCurrentVariant,
-	logLegacyPropWarnings,
-} from './Button.legacy';
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -21,83 +15,61 @@ defineOptions({
 });
 
 const props = withDefaults(defineProps<ButtonProps>(), {
+	variant: 'solid',
+	size: 'medium',
 	loading: false,
 	disabled: false,
-	outline: false,
-	text: false,
-	block: false,
-	active: false,
-	square: false,
 });
 
-if (import.meta.env.DEV) {
-	watchEffect(() => {
-		logLegacyPropWarnings(props, attrs as Record<string, unknown>);
-	});
-}
-
-const effectiveVariant = computed(() => computeEffectiveVariant(props));
-const effectiveSize = computed(() => computeEffectiveSize(props.size));
-const isIconOnly = computed(() => props.iconOnly || props.square);
-const iconToRender = computed(() => props.icon);
-const hasIcon = computed(() => Boolean(iconToRender.value));
+// Map legacy size values to current ones
+const effectiveSize = computed(() => {
+	if (props.size === 'mini' || props.size === 'xmini') return 'xsmall';
+	return props.size ?? 'medium';
+});
 
 const computedIconSize = computed((): IconSize | undefined => {
 	if (props.iconSize) return props.iconSize;
-	if (props.size === 'xmini' || props.size === 'mini' || effectiveSize.value === 'xsmall') {
-		return 'xsmall';
-	}
+	if (effectiveSize.value === 'xsmall') return 'xsmall';
 	return effectiveSize.value as IconSize;
 });
 
 const componentTag = computed(() => {
 	if (props.href) return 'a';
-	return props.element ?? 'button';
+	return 'button';
 });
 
 const buttonType = computed(() => {
 	if (componentTag.value === 'a') return undefined;
-	return props.nativeType ?? (attrs.type as string | undefined) ?? 'button';
+	return (attrs.type as string | undefined) ?? 'button';
 });
 
 const isDisabled = computed(() => props.disabled || props.loading);
 
-const classes = computed(() => {
-	const isCurrent = isCurrentVariant(effectiveVariant.value);
-
-	if (isCurrent) {
-		return cn(
-			'button',
-			$style.button,
-			$style[effectiveVariant.value],
-			$style[effectiveSize.value ?? 'medium'],
-			props.loading && $style.loading,
-			isIconOnly.value && $style.iconOnly,
-			props.disabled && $style.disabled,
-			props.block && $style.block,
-			props.active && $style.active,
-			props.float && $style[`float-${props.float}`],
-			hasIcon.value && $style.withIcon,
-		);
-	}
-
-	return cn(
+const classes = computed(() =>
+	cn(
 		'button',
 		$style.button,
-		$style.legacyCompat,
-		$style[effectiveVariant.value],
-		$style[effectiveSize.value ?? 'medium'],
-		props.outline && $style.outline,
-		props.text && $style.text,
+		$style[props.variant ?? 'solid'],
+		$style[effectiveSize.value],
 		props.loading && $style.loading,
-		isIconOnly.value && $style.square,
+		props.iconOnly && $style.iconOnly,
 		props.disabled && $style.disabled,
-		props.block && $style.block,
-		props.active && $style.active,
-		props.float && $style[`float-${props.float}`],
-		hasIcon.value && $style.withIcon,
-	);
-});
+		props.icon && $style.withIcon,
+		props.class, // Include custom class from props
+	),
+);
+
+// Accessibility warning for icon-only buttons without accessible labels
+if (import.meta.env.DEV) {
+	watchEffect(() => {
+		if (props.iconOnly && !attrs['aria-label'] && !attrs.title) {
+			console.warn(
+				'[N8nButton] Icon-only buttons should have an accessible label. ' +
+					'Add aria-label or title attribute.',
+			);
+		}
+	});
+}
 
 const handleClick = (event: MouseEvent) => {
 	if (props.href && isDisabled.value) {
@@ -117,8 +89,8 @@ const handleClick = (event: MouseEvent) => {
 		:aria-busy="loading || undefined"
 		:class="classes"
 		aria-live="polite"
-		v-bind="attrs"
 		@click="handleClick"
+		v-bind="attrs"
 	>
 		<Transition name="n8n-button-fade">
 			<div v-if="loading" :class="$style['loading-container']">
@@ -130,7 +102,7 @@ const handleClick = (event: MouseEvent) => {
 
 		<div :class="$style['button-inner']">
 			<slot name="icon">
-				<N8nIcon v-if="iconToRender && !loading" :icon="iconToRender" :size="computedIconSize" />
+				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
 			<span v-if="label">{{ label }}</span>
@@ -140,16 +112,12 @@ const handleClick = (event: MouseEvent) => {
 </template>
 
 <style lang="scss">
-@use './Button.legacy' as Legacy;
-
-// Element Plus button compatibility (legacy)
-.el-button {
-	@include Legacy.el-button-compat;
-}
+// Import legacy override classes (n8n-button--success, n8n-button--warning, etc.)
+// These are global classes added by the migration codemod for legacy button types
+@use './Button.legacy';
 </style>
 
 <style lang="scss" module>
-@use './Button.legacy' as Legacy;
 @use '../../css/mixins/focus';
 
 .button {
@@ -225,8 +193,7 @@ const handleClick = (event: MouseEvent) => {
 		--button--font-size: var(--font-size--sm);
 	}
 
-	&.large,
-	&.xlarge {
+	&.large {
 		--button--height: 2.625rem;
 		--button--padding: 0 var(--spacing--sm);
 		--button--radius: var(--radius--xs);
@@ -346,8 +313,6 @@ const handleClick = (event: MouseEvent) => {
 		width: var(--button--height);
 		padding: 0;
 	}
-
-	@include Legacy.legacy-compat-styles;
 }
 
 .loading-container {
@@ -412,21 +377,6 @@ const handleClick = (event: MouseEvent) => {
 	to {
 		transform: rotate(360deg);
 	}
-}
-
-.block {
-	width: 100%;
-}
-
-.active {
-}
-
-.float-left {
-	float: left;
-}
-
-.float-right {
-	float: right;
 }
 
 .withIcon {

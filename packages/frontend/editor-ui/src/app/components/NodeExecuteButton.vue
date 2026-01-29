@@ -30,7 +30,7 @@ import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { ButtonType } from '@n8n/design-system';
+import type { ButtonVariant } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
@@ -45,7 +45,7 @@ const props = withDefaults(
 		telemetrySource: string;
 		disabled?: boolean;
 		label?: string;
-		type?: ButtonType;
+		variant?: ButtonVariant;
 		size?: ButtonSize;
 		icon?: IconName;
 		square?: boolean;
@@ -413,7 +413,7 @@ async function onClick() {
 			:loading="isLoading && showLoadingSpinner"
 			:disabled="disabled || !!disabledHint || (isLoading && !showLoadingSpinner)"
 			:label="buttonLabel"
-			:type="type"
+			:variant="variant"
 			:size="size"
 			:icon="buttonIcon"
 			:square="square"

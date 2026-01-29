@@ -153,7 +153,7 @@ function isActiveRange(presetValue: number) {
 				v-for="preset in presets"
 				:key="preset.value"
 				:class="$style.PresetButton"
-				:type="isActiveRange(preset.value) ? 'primary' : 'secondary'"
+				:variant="isActiveRange(preset.value) ? 'solid' : 'outline'"
 				size="small"
 				@click="preset.disabled ? showUpgradeModal() : setPresetRange(preset.value)"
 			>

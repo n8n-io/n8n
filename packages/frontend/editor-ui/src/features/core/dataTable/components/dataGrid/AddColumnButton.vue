@@ -148,10 +148,9 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 					</template>
 					<template v-else>
 						<N8nIconButton
+							variant="ghost"
 							data-test-id="data-table-add-column-trigger-button"
-							text
 							icon="plus"
-							type="tertiary"
 						/>
 					</template>
 				</template>
@@ -218,8 +217,8 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
+								variant="solid"
 								data-test-id="data-table-add-column-submit-button"
-								type="primary"
 								class="mt-m"
 								size="large"
 								:disabled="!columnName || !columnType || !!error"

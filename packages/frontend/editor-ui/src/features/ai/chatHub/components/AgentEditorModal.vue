@@ -386,10 +386,10 @@ function onSelectTools() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+				<N8nButton variant="subtle" @click="modalBus.emit('close')">{{
 					i18n.baseText('chatHub.tools.editor.cancel')
 				}}</N8nButton>
-				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
 					{{ saveButtonLabel }}
 				</N8nButton>
 			</div>

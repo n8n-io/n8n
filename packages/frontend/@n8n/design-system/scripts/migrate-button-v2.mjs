@@ -111,16 +111,16 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	let addClass = null;
 	let addStyle = null;
 
-	// Parse current attributes
+	// Parse current attributes (handles both static and v-bind shorthand :prop)
 	const hasType = /\btype=["']([^"']+)["']/.exec(tagContent);
 	const hasVariant = /\bvariant=["']/.test(tagContent);
-	const hasOutline = /\boutline(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
-	const hasText = /\btext(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
-	const hasSize = /\bsize=["']([^"']+)["']/.exec(tagContent);
-	const hasSquare = /\bsquare(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
-	const hasNativeType = /\bnativeType=["']([^"']+)["']/.exec(tagContent);
-	const hasBlock = /\bblock(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
-	const hasElement = /\belement=["']([^"']+)["']/.exec(tagContent);
+	const hasOutline = /\b:?outline(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
+	const hasText = /\b:?text(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
+	const hasSize = /\b:?size=["']([^"']+)["']/.exec(tagContent);
+	const hasSquare = /\b:?square(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
+	const hasNativeType = /\b:?nativeType=["']([^"']+)["']/.exec(tagContent);
+	const hasBlock = /\b:?block(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
+	const hasElement = /\b:?element=["']([^"']+)["']/.exec(tagContent);
 	const hasClass = /\bclass=["']([^"']+)["']/.exec(tagContent);
 	const hasStyle = /\bstyle=["']([^"']+)["']/.exec(tagContent);
 
@@ -132,7 +132,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	// 1. Handle outline prop → variant="outline"
 	if (hasOutline && !hasText) {
 		newVariant = 'outline';
-		tagContent = tagContent.replace(/\s*\boutline(?:=["']true["'])?(?=\s|\/?>)/, '');
+		tagContent = tagContent.replace(/\s*\b:?outline(?:=["']true["'])?(?=\s|\/?>)/, '');
 		// Also remove type if present since outline takes precedence
 		if (hasType) {
 			tagContent = tagContent.replace(/\s*\btype=["'][^"']+["']/, '');
@@ -144,13 +144,13 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	// 2. Handle text prop → variant="ghost"
 	else if (hasText) {
 		newVariant = 'ghost';
-		tagContent = tagContent.replace(/\s*\btext(?:=["']true["'])?(?=\s|\/?>)/, '');
+		tagContent = tagContent.replace(/\s*\b:?text(?:=["']true["'])?(?=\s|\/?>)/, '');
 		// Also remove type and outline if present
 		if (hasType) {
 			tagContent = tagContent.replace(/\s*\btype=["'][^"']+["']/, '');
 		}
 		if (hasOutline) {
-			tagContent = tagContent.replace(/\s*\boutline(?:=["']true["'])?(?=\s|\/?>)/, '');
+			tagContent = tagContent.replace(/\s*\b:?outline(?:=["']true["'])?(?=\s|\/?>)/, '');
 		}
 		changes.push('text → variant="ghost"');
 		stats.transformations.textToVariant++;
@@ -183,7 +183,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	if (hasSize && SIZE_MAP[hasSize[1]]) {
 		const oldSize = hasSize[1];
 		const newSize = SIZE_MAP[oldSize];
-		tagContent = tagContent.replace(/\bsize=["'][^"']+["']/, `size="${newSize}"`);
+		tagContent = tagContent.replace(/\b:?size=["'][^"']+["']/, `size="${newSize}"`);
 		changes.push(`size="${oldSize}" → size="${newSize}"`);
 		stats.transformations.sizeNormalized++;
 		modified = true;
@@ -191,9 +191,12 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 
 	// 5. Handle square → iconOnly
 	if (hasSquare) {
-		tagContent = tagContent.replace(/\s*\bsquare(?:=["']true["'])?(?=\s|\/?>)/, '');
+		tagContent = tagContent.replace(/\s*\b:?square(?:=["']true["'])?(?=\s|\/?>)/, '');
 		// Add iconOnly attribute
-		tagContent = tagContent.replace(/(N8nButton|n8n-button)/, '$1 iconOnly');
+		tagContent = tagContent.replace(
+			/(N8nButton|n8n-button|N8nIconButton|n8n-icon-button|IconButton)/,
+			'$1 iconOnly',
+		);
 		changes.push('square → iconOnly');
 		stats.transformations.squareToIconOnly++;
 		modified = true;
@@ -202,8 +205,11 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	// 6. Handle nativeType → type
 	if (hasNativeType) {
 		const nativeTypeValue = hasNativeType[1];
-		tagContent = tagContent.replace(/\s*\bnativeType=["'][^"']+["']/, '');
-		tagContent = tagContent.replace(/(N8nButton|n8n-button)/, `$1 type="${nativeTypeValue}"`);
+		tagContent = tagContent.replace(/\s*\b:?nativeType=["'][^"']+["']/, '');
+		tagContent = tagContent.replace(
+			/(N8nButton|n8n-button|N8nIconButton|n8n-icon-button|IconButton)/,
+			`$1 type="${nativeTypeValue}"`,
+		);
 		changes.push(`nativeType="${nativeTypeValue}" → type="${nativeTypeValue}"`);
 		stats.transformations.nativeTypeToType++;
 		modified = true;
@@ -211,7 +217,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 
 	// 7. Handle block → style="width: 100%"
 	if (hasBlock) {
-		tagContent = tagContent.replace(/\s*\bblock(?:=["']true["'])?(?=\s|\/?>)/, '');
+		tagContent = tagContent.replace(/\s*\b:?block(?:=["']true["'])?(?=\s|\/?>)/, '');
 		addStyle = 'width: 100%';
 		changes.push('block → style="width: 100%"');
 		stats.transformations.blockToStyle++;
@@ -220,7 +226,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 
 	// 8. Handle element="a" → remove (href determines element)
 	if (hasElement) {
-		tagContent = tagContent.replace(/\s*\belement=["'][^"']+["']/, '');
+		tagContent = tagContent.replace(/\s*\b:?element=["'][^"']+["']/, '');
 		changes.push('element removed (href determines element)');
 		stats.transformations.elementRemoved++;
 		modified = true;
@@ -231,10 +237,11 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	}
 
 	// Now apply the collected changes
+	const BUTTON_TAG_PATTERN = /(N8nButton|n8n-button|N8nIconButton|n8n-icon-button|IconButton)/;
 
 	// Add variant attribute
 	if (newVariant) {
-		tagContent = tagContent.replace(/(N8nButton|n8n-button)/, `$1 variant="${newVariant}"`);
+		tagContent = tagContent.replace(BUTTON_TAG_PATTERN, `$1 variant="${newVariant}"`);
 	}
 
 	// Merge class attribute
@@ -244,7 +251,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 			tagContent = tagContent.replace(/\bclass=["']([^"']+)["']/, `class="$1 ${addClass}"`);
 		} else {
 			// Add new class attribute
-			tagContent = tagContent.replace(/(N8nButton|n8n-button)/, `$1 class="${addClass}"`);
+			tagContent = tagContent.replace(BUTTON_TAG_PATTERN, `$1 class="${addClass}"`);
 		}
 	}
 
@@ -260,7 +267,7 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 			);
 		} else {
 			// Add new style attribute
-			tagContent = tagContent.replace(/(N8nButton|n8n-button)/, `$1 style="${addStyle}"`);
+			tagContent = tagContent.replace(BUTTON_TAG_PATTERN, `$1 style="${addStyle}"`);
 		}
 	}
 
@@ -285,8 +292,9 @@ function transformFile(filePath) {
 	const content = readFileSync(filePath, 'utf-8');
 	stats.filesScanned++;
 
-	// Find template section
-	const templateMatch = /<template[^>]*>([\s\S]*?)<\/template>/i.exec(content);
+	// Find template section - use greedy match ([\s\S]*) to get the outermost </template>
+	// Vue SFC files may have nested <template> tags for slots, so we need the last closing tag
+	const templateMatch = /<template[^>]*>([\s\S]*)<\/template>/i.exec(content);
 	if (!templateMatch) {
 		return { modified: false };
 	}
@@ -294,29 +302,35 @@ function transformFile(filePath) {
 	const templateStart = templateMatch.index;
 	const templateContent = templateMatch[1];
 
-	// Match N8nButton and n8n-button tags (both self-closing and with content)
-	// This regex handles:
-	// 1. Self-closing: <N8nButton ... />
-	// 2. With content: <N8nButton ...>content</N8nButton>
-	const buttonRegex = /<(N8nButton|n8n-button)\s([^>]*?)\s*\/>/gi;
-	const buttonWithContentRegex = /<(N8nButton|n8n-button)\s([^>]*?)>([\s\S]*?)<\/\1>/gi;
+	// Match button components (both self-closing and with content)
+	// Includes: N8nButton, n8n-button, N8nIconButton, n8n-icon-button, IconButton
+	const BUTTON_TAGS = 'N8nButton|n8n-button|N8nIconButton|n8n-icon-button|IconButton';
 
 	let newTemplateContent = templateContent;
 	let hasChanges = false;
 
 	// Process self-closing buttons first
+	// Pattern matches: <TAG + attributes (no unquoted >) + />
+	// This avoids matching non-self-closing tags like <N8nButton ...>content</N8nButton>
 	newTemplateContent = newTemplateContent.replace(
-		/<(N8nButton|n8n-button)\s+([^>]*?)\s*\/>/gi,
+		new RegExp(`<(${BUTTON_TAGS})((?:[^>"]|"[^"]*")*)\\s*\\/>`, 'gi'),
 		(match, tagName, attrs) => {
-			const result = transformButtonTag(match, `${tagName} ${attrs}`, true, null, null);
+			// Skip if no attributes
+			if (!attrs || !attrs.trim()) return match;
+			const result = transformButtonTag(match, `${tagName} ${attrs.trim()}`, true, null, null);
 			if (result !== match) hasChanges = true;
 			return result;
 		},
 	);
 
-	// Process buttons with content
+	// Process buttons with content (non-self-closing)
+	// Pattern matches: <TAG + attrs (not ending with /) + > + content + </TAG>
+	// The attrs pattern uses negative lookahead to ensure / is not followed by >
 	newTemplateContent = newTemplateContent.replace(
-		/<(N8nButton|n8n-button)(\s[^>]*)?>([\s\S]*?)<\/(N8nButton|n8n-button)>/gi,
+		new RegExp(
+			`<(${BUTTON_TAGS})((?:[^>"/]|"[^"]*"|/(?!>))*)>([\\s\\S]*?)<\\/(${BUTTON_TAGS})>`,
+			'gi',
+		),
 		(match, tagName, attrs, content, closeTag) => {
 			const result = transformButtonTag(
 				match,

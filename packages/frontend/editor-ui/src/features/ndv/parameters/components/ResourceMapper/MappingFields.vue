@@ -324,10 +324,9 @@ defineExpose({
 						<N8nIcon icon="triangle-alert" size="small" color="warning" />
 					</N8nTooltip>
 					<N8nIconButton
+						variant="ghost"
 						icon="refresh-cw"
-						type="tertiary"
 						size="small"
-						:text="true"
 						:title="locale.baseText('generic.refresh')"
 						:disabled="props.refreshInProgress"
 						@click="onParameterActionSelected('refreshFieldList')"
@@ -384,8 +383,7 @@ defineExpose({
 				:class="['delete-option', 'mt-5xs']"
 			>
 				<N8nIconButton
-					type="tertiary"
-					text
+					variant="ghost"
 					size="small"
 					icon="trash-2"
 					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"

@@ -11,7 +11,12 @@ describe('N8nSendStopButton', () => {
 		it('should render send button by default', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 
@@ -28,7 +33,12 @@ describe('N8nSendStopButton', () => {
 					streaming: true,
 				},
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 
@@ -230,7 +240,12 @@ describe('N8nSendStopButton', () => {
 		it('should default to not streaming', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 

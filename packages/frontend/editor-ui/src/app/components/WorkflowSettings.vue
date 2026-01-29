@@ -853,9 +853,8 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 							<N8nIconButton
 								v-if="workflowSettings.credentialResolverId"
+								variant="ghost"
 								icon="pen"
-								type="tertiary"
-								:text="true"
 								size="small"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:title="i18n.baseText('workflowSettings.credentialResolver.edit')"

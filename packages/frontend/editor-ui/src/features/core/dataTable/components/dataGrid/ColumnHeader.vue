@@ -232,11 +232,10 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
+			variant="ghost"
 			v-show="isFilterButtonVisible"
 			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
-			type="tertiary"
-			text
 			:class="{ 'filter-highlighted': hasActiveFilter }"
 			@click="onShowFilter"
 		/>

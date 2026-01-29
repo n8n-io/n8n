@@ -317,10 +317,8 @@ onBeforeMount(() => {
 				<div :class="$style.editFooter">
 					<N8nIconButton
 						v-if="message.type === 'human'"
-						native-type="button"
-						type="secondary"
+						variant="ghost"
 						icon="paperclip"
-						text
 						@click.stop="handleAttachClick"
 					/>
 					<div :class="$style.editActions">

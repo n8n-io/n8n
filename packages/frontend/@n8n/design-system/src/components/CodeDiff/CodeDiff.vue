@@ -128,8 +128,8 @@ const diffs = computed(() => {
 			</div>
 			<N8nButton
 				v-else
-				:type="replacing ? 'secondary' : 'primary'"
-				size="mini"
+				:variant="replacing ? 'subtle' : 'solid'"
+				size="xsmall"
 				icon="refresh-cw"
 				data-test-id="replace-code-button"
 				:disabled="!content || streaming"

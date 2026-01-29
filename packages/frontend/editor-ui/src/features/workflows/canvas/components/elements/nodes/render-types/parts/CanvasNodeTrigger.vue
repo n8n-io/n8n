@@ -91,8 +91,8 @@ async function handleClickExecute() {
 					</KeyboardShortcutTooltip>
 				</template>
 				<N8nButton
+					variant="solid"
 					v-else
-					type="primary"
 					icon="flask-conical"
 					size="large"
 					:disabled="isExecuting"

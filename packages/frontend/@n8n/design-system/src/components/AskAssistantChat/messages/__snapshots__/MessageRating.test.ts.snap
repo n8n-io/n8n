@@ -3,8 +3,8 @@
 exports[`MessageRating > should render correctly with default props 1`] = `
 "<div class="rating">
   <div class="buttons">
-    <n8n-button-stub variant="subtle" size="small" label="assistantChat.builder.thumbsUp" icon="thumbs-up" block="false" square="false" active="false" disabled="false" loading="false" outline="false" text="false" icononly="false" data-test-id="message-thumbs-up-button"></n8n-button-stub>
-    <n8n-button-stub variant="subtle" size="small" label="assistantChat.builder.thumbsDown" icon="thumbs-down" block="false" square="false" active="false" disabled="false" loading="false" outline="false" text="false" icononly="false" data-test-id="message-thumbs-down-button"></n8n-button-stub>
+    <n8n-button-stub label="assistantChat.builder.thumbsUp" icon="thumbs-up" variant="subtle" size="small" loading="false" icononly="false" disabled="false" class="" data-test-id="message-thumbs-up-button"></n8n-button-stub>
+    <n8n-button-stub label="assistantChat.builder.thumbsDown" icon="thumbs-down" variant="subtle" size="small" loading="false" icononly="false" disabled="false" class="" data-test-id="message-thumbs-down-button"></n8n-button-stub>
   </div>
   <!--v-if-->
   <!--v-if-->

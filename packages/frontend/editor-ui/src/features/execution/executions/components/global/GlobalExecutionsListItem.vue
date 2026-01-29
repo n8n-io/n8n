@@ -272,9 +272,9 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<N8nButton
+				variant="ghost"
 				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
-				type="secondary"
 				:loading="isStopping"
 				:disabled="isStopping"
 				@click.stop="onStopExecution"
@@ -284,7 +284,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton text type="tertiary" icon="ellipsis-vertical" />
+				<N8nIconButton variant="subtle" icon="ellipsis-vertical" />
 				<template #dropdown>
 					<ElDropdownMenu
 						:class="{

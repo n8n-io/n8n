@@ -230,9 +230,9 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
+							variant="subtle"
 							v-if="evaluationStore.evaluationSetMetricsNodeExist && !evaluationsQuotaExceeded"
 							size="medium"
-							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
 								(!evaluationStore.evaluationSetOutputsNodeExist &&
@@ -243,9 +243,9 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>
 						<N8nButton
+							variant="subtle"
 							v-else
 							size="medium"
-							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
 								(!evaluationStore.evaluationSetOutputsNodeExist &&

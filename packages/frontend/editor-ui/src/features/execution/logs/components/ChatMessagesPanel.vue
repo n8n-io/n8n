@@ -184,9 +184,9 @@ async function copySessionId() {
 						{{ locale.baseText('chat.window.session.id.copy') }}
 					</template>
 					<N8nButton
+						variant="outline"
 						data-test-id="chat-session-id"
-						type="secondary"
-						size="mini"
+						size="xsmall"
 						:class="$style.newHeaderButton"
 						@click.stop="copySessionId"
 						>{{ sessionIdText }}</N8nButton
@@ -197,10 +197,9 @@ async function copySessionId() {
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
+						variant="subtle"
 						:class="$style.newHeaderButton"
 						data-test-id="refresh-session-button"
-						outline
-						type="secondary"
 						size="small"
 						icon-size="medium"
 						icon="undo-2"
@@ -257,20 +256,18 @@ async function copySessionId() {
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
 						<N8nButton
+							variant="ghost"
 							title="Navigate to previous message"
 							icon="chevron-up"
-							type="tertiary"
-							text
-							size="mini"
+							size="xsmall"
 							:disabled="previousMessageIndex === 0"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
 						<N8nButton
+							variant="ghost"
 							title="Navigate to next message"
 							icon="chevron-down"
-							type="tertiary"
-							text
-							size="mini"
+							size="xsmall"
 							:disabled="previousMessageIndex === -1"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
 						/>

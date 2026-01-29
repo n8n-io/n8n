@@ -188,15 +188,15 @@ const onConfirmProvisioningSetting = () => {
 
 		<template #footer>
 			<N8nButton
-				type="tertiary"
-				native-type="button"
+				variant="ghost"
+				type="button"
 				data-test-id="provisioning-cancel-button"
 				@click="emit('cancel')"
 				>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
 			>
 			<N8nButton
-				type="primary"
-				native-type="button"
+				variant="solid"
+				type="button"
 				:disabled="
 					loading ||
 					!confirmationChecked ||

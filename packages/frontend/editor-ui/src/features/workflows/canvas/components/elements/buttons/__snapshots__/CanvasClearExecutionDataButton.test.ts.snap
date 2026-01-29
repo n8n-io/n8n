@@ -1,3 +1,3 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CanvasClearExecutionDataButton > should render correctly 1`] = `"<n8n-icon-button-stub icon="trash-2" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary" title="Deletes the current execution data" data-test-id="clear-execution-data-button"></n8n-icon-button-stub>"`;
+exports[`CanvasClearExecutionDataButton > should render correctly 1`] = `"<n8n-icon-button-stub icon="trash-2" size="large" loading="false" icononly="false" disabled="false" class="" title="Deletes the current execution data" data-test-id="clear-execution-data-button"></n8n-icon-button-stub>"`;

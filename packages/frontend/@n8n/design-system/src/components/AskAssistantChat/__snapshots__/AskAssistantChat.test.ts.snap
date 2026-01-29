@@ -284,34 +284,24 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                         data-test-id="quick-replies"
                       >
                         <n8n-button-stub
-                          active="false"
-                          block="false"
+                          class=""
                           disabled="false"
-                          element="button"
-                          label=""
+                          icononly="false"
                           loading="false"
-                          outline="false"
-                          size="mini"
-                          square="false"
-                          text="false"
-                          type="secondary"
+                          size="xsmall"
+                          variant="subtle"
                         />
                       </div>
                       <div
                         data-test-id="quick-replies"
                       >
                         <n8n-button-stub
-                          active="false"
-                          block="false"
+                          class=""
                           disabled="false"
-                          element="button"
-                          label=""
+                          icononly="false"
                           loading="false"
-                          outline="false"
-                          size="mini"
-                          square="false"
-                          text="false"
-                          type="secondary"
+                          size="xsmall"
+                          variant="subtle"
                         />
                       </div>
                       

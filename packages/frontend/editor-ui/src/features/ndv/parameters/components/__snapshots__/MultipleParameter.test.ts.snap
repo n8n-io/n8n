@@ -18,8 +18,13 @@ exports[`MultipleParameter > should render correctly 1`] = `
     </div>
   </div>
   <div data-v-e2d23dd5="" class="add-item-wrapper">
-    <div data-v-e2d23dd5="" class="no-items-exist"><span data-v-e2d23dd5="" class="n8n-text size-small regular">Currently no items exist</span></div><button data-v-e2d23dd5="" class="button button tertiary medium block" aria-live="polite">
-      <!--v-if--><span>Add item</span>
+    <div data-v-e2d23dd5="" class="no-items-exist"><span data-v-e2d23dd5="" class="n8n-text size-small regular">Currently no items exist</span></div><button data-v-e2d23dd5="" type="button" class="button button subtle medium" aria-live="polite" style="width: 100%;">
+      <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+        <!--v-if-->
+      </transition-stub>
+      <div class="button-inner">
+        <!--v-if--><span>Add item</span>
+      </div>
     </button>
   </div>
 </div>"

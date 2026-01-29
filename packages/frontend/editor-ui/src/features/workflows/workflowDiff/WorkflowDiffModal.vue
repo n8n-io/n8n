@@ -277,8 +277,8 @@ function setSelectedDetailId(
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
+						variant="subtle"
 						icon="arrow-left"
-						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
 						@click="handleBeforeClose"
@@ -435,15 +435,15 @@ function setSelectedDetailId(
 						</template>
 					</ElDropdown>
 					<N8nIconButton
+						variant="subtle"
 						icon="chevron-left"
-						type="secondary"
 						:class="$style.navigationButton"
 						style="--button--radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
 					/>
 					<N8nIconButton
+						variant="subtle"
 						icon="chevron-right"
-						type="secondary"
 						:class="$style.navigationButton"
 						style="--button--radius: 0 4px 4px 0"
 						@click="nextNodeChange"
