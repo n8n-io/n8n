@@ -1247,6 +1247,11 @@ export class ChatHubService {
 				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
 			);
 
+			// Mark the waiting AI message as successful before resuming
+			await this.messageRepository.updateChatMessage(previousMessage.id, {
+				status: 'success',
+			});
+
 			void this.resumeChatExecution(
 				execution,
 				message,
@@ -1771,11 +1776,6 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		responseMode: 'responseNodes',
 	) {
-		// Mark the waiting message as successful
-		await this.messageRepository.updateChatMessage(previousMessageId, {
-			status: 'success',
-		});
-
 		let currentExecution = execution;
 		let currentMessage = message;
 		let currentPreviousMessageId = previousMessageId;
