@@ -175,9 +175,7 @@ test.describe('Workflow templates', () => {
 			await setupRequirements(createTemplateHostRequirements());
 			await n8n.navigate.toTemplates();
 
-			await expect(n8n.page.getByRole('heading', { name: /workflow.*templates/i })).toBeVisible({
-				timeout: 10000,
-			});
+			await expect(n8n.templates.getPageHeading()).toBeVisible({ timeout: 10000 });
 		});
 	});
 

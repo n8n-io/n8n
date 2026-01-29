@@ -19,10 +19,6 @@ export class ConvertToSubworkflowModal extends BasePage {
 		super(root.page());
 	}
 
-	getModal(): Locator {
-		return this.root;
-	}
-
 	getSubmitButton(): Locator {
 		return this.root.getByTestId('submit-button');
 	}

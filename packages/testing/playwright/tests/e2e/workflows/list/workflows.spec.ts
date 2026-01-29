@@ -59,7 +59,7 @@ test.describe('Workflows', () => {
 		await n8n.workflows.clearSearch();
 		await n8n.workflows.search('NonExistentWorkflow123');
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
-		await expect(n8n.page.getByText('No workflows found')).toBeVisible();
+		await expect(n8n.workflows.getNoWorkflowsFoundMessage()).toBeVisible();
 	});
 
 	test('should archive and unarchive a workflow', async ({ n8n }) => {
