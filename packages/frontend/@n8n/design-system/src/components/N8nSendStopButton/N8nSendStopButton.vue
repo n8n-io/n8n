@@ -32,21 +32,21 @@ function handleStop() {
 <template>
 	<N8nButton
 		v-if="streaming"
+		variant="solid"
+		iconOnly
 		:class="$style.stopButton"
-		type="primary"
 		:size="size"
 		icon="filled-square"
 		icon-size="small"
-		square
 		@click="handleStop"
 	/>
 	<N8nButton
 		v-else
+		variant="solid"
 		:class="$style.sendButton"
-		type="primary"
 		:size="size"
 		icon-size="large"
-		:square="!label"
+		:iconOnly="!label"
 		:icon="label ? undefined : 'arrow-up'"
 		:disabled="disabled"
 		@click="handleSend"

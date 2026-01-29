@@ -223,7 +223,7 @@ function addRole() {
 				</N8nHeading>
 				<N8nTag :clickable="false" text="Beta" />
 			</div>
-			<N8nButton v-if="settingsStore.isCustomRolesFeatureEnabled" type="secondary" @click="addRole">
+			<N8nButton variant="subtle" v-if="settingsStore.isCustomRolesFeatureEnabled" @click="addRole">
 				{{ i18n.baseText('projectRoles.addRole') }}
 			</N8nButton>
 		</div>

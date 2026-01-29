@@ -15,5 +15,5 @@ withDefaults(defineProps<IconButtonProps>(), {
 </script>
 
 <template>
-	<N8nButton square v-bind="{ ...$attrs, ...$props }" />
+	<N8nButton iconOnly v-bind="{ ...$attrs, ...$props }" />
 </template>

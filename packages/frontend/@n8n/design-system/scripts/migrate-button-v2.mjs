@@ -21,8 +21,6 @@
  * - nativeType → type attribute
  * - block → style="width: 100%"
  * - element="a" → (removed, href determines element)
- * - label="X" → slot content
- *
  * Usage:
  *   node migrate-button-v2.mjs [--dry-run]
  */
@@ -75,7 +73,6 @@ const stats = {
 		nativeTypeToType: 0,
 		blockToStyle: 0,
 		elementRemoved: 0,
-		labelToSlot: 0,
 	},
 };
 
@@ -103,25 +100,6 @@ function findVueFiles(dir, files = []) {
 }
 
 /**
- * Parse attributes from a tag string
- * Returns an object with attribute names and values
- */
-function parseAttributes(tagContent) {
-	const attrs = {};
-	// Match attributes: name="value", name='value', :name="value", @name="value", name (boolean)
-	const attrRegex = /(?::|@)?([a-zA-Z_][\w-]*)(?:=(?:"([^"]*)"|'([^']*)'))?/g;
-	let match;
-
-	while ((match = attrRegex.exec(tagContent)) !== null) {
-		const name = match[1];
-		const value = match[2] ?? match[3] ?? true; // Boolean attribute if no value
-		attrs[name] = value;
-	}
-
-	return attrs;
-}
-
-/**
  * Transform a single N8nButton tag
  */
 function transformButtonTag(fullMatch, tagContent, selfClosing, content, closingTag) {
@@ -132,7 +110,6 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	let newVariant = null;
 	let addClass = null;
 	let addStyle = null;
-	let slotContent = null;
 
 	// Parse current attributes
 	const hasType = /\btype=["']([^"']+)["']/.exec(tagContent);
@@ -144,7 +121,6 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	const hasNativeType = /\bnativeType=["']([^"']+)["']/.exec(tagContent);
 	const hasBlock = /\bblock(?:=["']true["'])?(?=\s|\/?>|\s)/.test(tagContent);
 	const hasElement = /\belement=["']([^"']+)["']/.exec(tagContent);
-	const hasLabel = /\blabel=["']([^"']+)["']/.exec(tagContent);
 	const hasClass = /\bclass=["']([^"']+)["']/.exec(tagContent);
 	const hasStyle = /\bstyle=["']([^"']+)["']/.exec(tagContent);
 
@@ -250,16 +226,6 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 		modified = true;
 	}
 
-	// 9. Handle label → slot content
-	if (hasLabel) {
-		const labelValue = hasLabel[1];
-		tagContent = tagContent.replace(/\s*\blabel=["'][^"']+["']/, '');
-		slotContent = labelValue;
-		changes.push(`label="${labelValue}" → slot content`);
-		stats.transformations.labelToSlot++;
-		modified = true;
-	}
-
 	if (!modified) {
 		return fullMatch;
 	}
@@ -301,24 +267,9 @@ function transformButtonTag(fullMatch, tagContent, selfClosing, content, closing
 	// Build the new tag
 	let result;
 	if (selfClosing) {
-		// Self-closing tag
-		if (slotContent) {
-			// Convert to non-self-closing with content
-			result = `<${tagContent.trim()}>${slotContent}</N8nButton>`;
-		} else {
-			result = `<${tagContent.trim()} />`;
-		}
+		result = `<${tagContent.trim()} />`;
 	} else {
-		// Non-self-closing tag
-		if (slotContent && (!content || content.trim() === '')) {
-			// Replace empty content with label
-			result = `<${tagContent.trim()}>${slotContent}${closingTag}`;
-		} else if (slotContent && content) {
-			// Prepend label to existing content
-			result = `<${tagContent.trim()}>${slotContent}${content}${closingTag}`;
-		} else {
-			result = `<${tagContent.trim()}>${content || ''}${closingTag}`;
-		}
+		result = `<${tagContent.trim()}>${content || ''}${closingTag}`;
 	}
 
 	// Log the transformation
@@ -443,7 +394,6 @@ async function main() {
 	console.log(`  nativeType → type: ${stats.transformations.nativeTypeToType}`);
 	console.log(`  block → style: ${stats.transformations.blockToStyle}`);
 	console.log(`  element removed: ${stats.transformations.elementRemoved}`);
-	console.log(`  label → slot: ${stats.transformations.labelToSlot}`);
 
 	if (DRY_RUN) {
 		console.log('\nDry run complete. No files were modified.');

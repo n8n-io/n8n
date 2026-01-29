@@ -113,8 +113,8 @@ const diffs = computed(() => {
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
-					type="secondary"
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="undo-2"
 					data-test-id="undo-replace-button"
 					@click="() => emit('undo')"

@@ -125,7 +125,7 @@ function handleUpgradeClick() {
 
 			<div :class="$style.buttonGroup">
 				<N8nButton
-					type="primary"
+					variant="solid"
 					size="medium"
 					icon="plus"
 					data-test-id="welcome-start-new-chat"

@@ -128,9 +128,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			>
 				<header v-if="isClipboardSupported">
 					<N8nButton
-						type="tertiary"
-						:text="true"
-						size="mini"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>

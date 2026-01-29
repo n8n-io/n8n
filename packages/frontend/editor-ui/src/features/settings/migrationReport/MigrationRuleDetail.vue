@@ -189,9 +189,8 @@ const sortedWorkflows = computed(() => {
 <template>
 	<div>
 		<N8nButton
+			variant="ghost"
 			:class="$style.backButton"
-			type="secondary"
-			text
 			icon="arrow-left"
 			:label="i18n.baseText('generic.back')"
 			class="mb-xs"

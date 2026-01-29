@@ -280,8 +280,8 @@ function onSelectTools() {
 			<div :class="$style.header">
 				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 				<N8nButton
+					variant="subtle"
 					v-if="isEditMode"
-					type="secondary"
 					icon="trash-2"
 					:disabled="isDeleting"
 					:loading="isDeleting"

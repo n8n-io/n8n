@@ -147,9 +147,9 @@ onMounted(async () => {
 						:show-after="MCP_TOOLTIP_DELAY"
 					>
 						<N8nButton
-							type="tertiary"
+							variant="subtle"
+							iconOnly
 							icon="refresh-cw"
-							:square="true"
 							:disabled="keyRotating"
 							@click="rotateKey"
 						/>

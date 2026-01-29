@@ -473,8 +473,8 @@ async function onAskAssistantClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
+					variant="subtle"
 					icon="arrow-right"
-					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"

@@ -123,8 +123,8 @@ function onTidyUp() {
 			:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 		>
 			<N8nButton
-				square
-				type="tertiary"
+				variant="subtle"
+				iconOnly
 				size="large"
 				data-test-id="tidy-up-button"
 				:class="$style.iconButton"

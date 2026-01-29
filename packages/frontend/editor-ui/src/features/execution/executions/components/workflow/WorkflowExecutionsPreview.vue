@@ -149,7 +149,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		<N8nText :class="$style.newMessage" color="text-light">
 			{{ locale.baseText('executionDetails.newMessage') }}
 		</N8nText>
-		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+		<N8nButton variant="subtle" class="mt-l" @click="handleStopClick">
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
@@ -161,9 +161,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
 		<N8nButton
+			variant="subtle"
 			data-test-id="stop-execution"
 			class="mt-l"
-			type="tertiary"
 			:disabled="!workflowPermissions.execute"
 			@click="handleStopClick"
 		>

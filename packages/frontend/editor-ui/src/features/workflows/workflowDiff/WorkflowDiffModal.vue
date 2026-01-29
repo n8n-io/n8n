@@ -307,7 +307,7 @@ function setSelectedDetailId(
 						:popper-class="$style.popper"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary" style="--button--radius: 4px 0 0 4px">
+						<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>

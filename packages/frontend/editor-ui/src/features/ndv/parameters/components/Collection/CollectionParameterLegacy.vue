@@ -221,17 +221,17 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 			<div v-if="!isReadOnly" :class="$style.paramOptions">
 				<N8nButton
+					style="width: 100%"
+					variant="subtle"
 					v-if="parameterOptions.length === 1"
-					type="tertiary"
-					block
 					:label="getPlaceholderText"
 					data-test-id="collection-parameter-add"
 					@click="optionSelected(parameterOptions[0].name)"
 				/>
 				<N8nButton
+					style="width: 100%"
+					variant="subtle"
 					v-else-if="(parameter.options ?? []).length === 1"
-					type="tertiary"
-					block
 					:label="getPlaceholderText"
 					:disabled="true"
 					data-test-id="collection-parameter-add"

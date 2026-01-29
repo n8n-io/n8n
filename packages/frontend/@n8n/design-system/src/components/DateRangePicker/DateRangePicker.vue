@@ -18,7 +18,7 @@ import {
 	useForwardPropsEmits,
 } from 'reka-ui';
 
-import Button from '../N8nButton/Button.vue';
+import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
@@ -110,9 +110,13 @@ const forwarded = useForwardPropsEmits(props, emit);
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
 						<div :class="$style.DateFieldError">Outside of allowed range</div>
 
-						<Button type="secondary" block class="mt-2xs" @click="emit('update:open', false)">
-							Apply
-						</Button>
+						<N8nButton
+							variant="subtle"
+							label="Apply"
+							class="mt-2xs"
+							style="width: 100%"
+							@click="emit('update:open', false)"
+						/>
 					</div>
 				</div>
 			</DateRangePickerCalendar>

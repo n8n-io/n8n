@@ -142,7 +142,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 			>
 				<template #trigger>
 					<template v-if="props.useTextTrigger">
-						<N8nButton data-test-id="data-table-add-column-trigger-button" type="tertiary">
+						<N8nButton variant="subtle" data-test-id="data-table-add-column-trigger-button">
 							{{ i18n.baseText('dataTable.addColumn.label') }}
 						</N8nButton>
 					</template>

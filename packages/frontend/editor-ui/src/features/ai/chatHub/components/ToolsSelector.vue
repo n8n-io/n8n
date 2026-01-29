@@ -48,7 +48,7 @@ onMounted(async () => {
 <template>
 	<N8nTooltip :content="disabledTooltip" :disabled="!disabledTooltip" placement="top">
 		<N8nButton
-			type="secondary"
+			variant="subtle"
 			native-type="button"
 			:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 			:disabled="disabled"
