@@ -21,14 +21,14 @@ const uiStore = useUIStore();
 </script>
 
 <template>
-	<div v-if="uiStore.modalsById[name].open || keepAlive">
+	<div v-if="(uiStore.modalsById[name]?.open ?? false) || keepAlive">
 		<slot
 			:modal-name="name"
-			:active="uiStore.isModalActiveById[name]"
-			:open="uiStore.modalsById[name].open"
-			:active-id="uiStore.modalsById[name].activeId"
-			:mode="uiStore.modalsById[name].mode"
-			:data="uiStore.modalsById[name].data"
+			:active="uiStore.isModalActiveById[name] ?? false"
+			:open="uiStore.modalsById[name]?.open ?? false"
+			:active-id="uiStore.modalsById[name]?.activeId ?? ''"
+			:mode="uiStore.modalsById[name]?.mode ?? ''"
+			:data="uiStore.modalsById[name]?.data ?? {}"
 		></slot>
 	</div>
 </template>
