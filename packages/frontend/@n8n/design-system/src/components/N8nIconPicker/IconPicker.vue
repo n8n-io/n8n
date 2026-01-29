@@ -104,7 +104,7 @@ const togglePopup = () => {
 					:class="$style['icon-button']"
 					:icon="model.value"
 					:size="buttonSize"
-					iconOnly
+					icon-only
 					:disabled="isReadOnly"
 					variant="subtle"
 					data-test-id="icon-picker-button"
@@ -114,7 +114,7 @@ const togglePopup = () => {
 					v-else-if="model.type === 'emoji'"
 					:class="$style['emoji-button']"
 					:size="buttonSize"
-					iconOnly
+					icon-only
 					variant="subtle"
 					data-test-id="icon-picker-button"
 					:disabled="isReadOnly"

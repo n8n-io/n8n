@@ -1,5 +1,4 @@
 import { type ClassValue } from 'clsx';
-import { type ButtonHTMLAttributes } from 'vue';
 
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
@@ -11,7 +10,7 @@ export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
-export interface ButtonProps extends /* @vue-ignore */ ButtonHTMLAttributes {
+export interface ButtonProps {
 	/** Determines the visual style of the button */
 	variant?: ButtonVariant;
 	/** Determines the size of the button */

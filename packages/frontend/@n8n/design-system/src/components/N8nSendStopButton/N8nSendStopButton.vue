@@ -33,7 +33,7 @@ function handleStop() {
 	<N8nButton
 		v-if="streaming"
 		variant="solid"
-		iconOnly
+		icon-only
 		:class="$style.stopButton"
 		:size="size"
 		icon="filled-square"
@@ -46,7 +46,7 @@ function handleStop() {
 		:class="$style.sendButton"
 		:size="size"
 		icon-size="large"
-		:iconOnly="!label"
+		:icon-only="!label"
 		:icon="label ? undefined : 'arrow-up'"
 		:disabled="disabled"
 		@click="handleSend"
