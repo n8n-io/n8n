@@ -294,11 +294,11 @@ describe('WorkflowRepository', () => {
 			const workflowRepository = Container.get(WorkflowRepository);
 			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
-			// Workflow 1: No dependencies
-			const workflow1 = await createWorkflow({ versionCounter: 5 });
+			// Workflow 1: No dependencies (empty nodes so no auto-added dependencies)
+			const workflow1 = await createWorkflow({ versionCounter: 5, nodes: [] });
 
 			// Workflow 2: Has dependencies but with outdated version
-			const workflow2 = await createWorkflow({ versionCounter: 10 });
+			const workflow2 = await createWorkflow({ versionCounter: 10, nodes: [] });
 			const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
 			dependencies2.add({
 				dependencyType: 'credentialId',
@@ -308,7 +308,7 @@ describe('WorkflowRepository', () => {
 			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
 			// Workflow 3: Has up-to-date dependencies
-			const workflow3 = await createWorkflow({ versionCounter: 15 });
+			const workflow3 = await createWorkflow({ versionCounter: 15, nodes: [] });
 			const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
 			dependencies3.add({
 				dependencyType: 'nodeType',
@@ -338,9 +338,9 @@ describe('WorkflowRepository', () => {
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
 
-			// Create 5 workflows with no dependencies
+			// Create 5 workflows with no dependencies (empty nodes so no auto-added dependencies)
 			for (let i = 0; i < 5; i++) {
-				await createWorkflow({ versionCounter: 1 });
+				await createWorkflow({ versionCounter: 1, nodes: [] });
 			}
 
 			//
