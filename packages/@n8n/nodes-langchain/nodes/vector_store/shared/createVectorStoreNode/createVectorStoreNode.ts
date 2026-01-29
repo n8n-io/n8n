@@ -124,7 +124,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						displayOptions: { show: { mode: ['insert'] } },
 					},
 					ai_reranker: {
-						required: false,
+						required: true,
 						displayOptions: {
 							show: { mode: ['load', 'retrieve', 'retrieve-as-tool'], useReranker: [true] },
 						},

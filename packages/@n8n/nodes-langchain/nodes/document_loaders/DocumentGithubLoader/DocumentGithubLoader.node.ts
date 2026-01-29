@@ -71,7 +71,7 @@ export class DocumentGithubLoader implements INodeType {
 		builderHint: {
 			inputs: {
 				ai_textSplitter: {
-					required: false,
+					required: true,
 					displayOptions: { show: { textSplittingMode: ['custom'] } },
 				},
 			},

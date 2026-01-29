@@ -447,6 +447,48 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map resourceLocator type with loadOptionsDependsOn', () => {
+			const prop: NodeProperty = {
+				name: 'sheetName',
+				displayName: 'Sheet',
+				type: 'resourceLocator',
+				default: {},
+				typeOptions: {
+					loadOptionsDependsOn: ['documentId.value'],
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('ResourceLocatorValue');
+		});
+
+		it('should map filter type with loadOptionsDependsOn', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'filter',
+				default: {},
+				typeOptions: {
+					loadOptionsDependsOn: ['resource'],
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('FilterValue');
+		});
+
+		it('should map assignmentCollection type with loadOptionsDependsOn', () => {
+			const prop: NodeProperty = {
+				name: 'assignments',
+				displayName: 'Values to Set',
+				type: 'assignmentCollection',
+				default: {},
+				typeOptions: {
+					loadOptionsDependsOn: ['table'],
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('AssignmentCollectionValue');
+		});
+
 		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
