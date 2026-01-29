@@ -15,6 +15,8 @@ export interface MermaidOptions {
 	includeNodeParameters?: boolean;
 	/** Include node name in node definition (default: true) */
 	includeNodeName?: boolean;
+	/** Include node UUID in comments for Builder/Configurator reference (default: true) */
+	includeNodeId?: boolean;
 	/** Collect node configurations while processing (default: false) */
 	collectNodeConfigurations?: boolean;
 }
@@ -31,6 +33,7 @@ const DEFAULT_MERMAID_OPTIONS: Required<MermaidOptions> = {
 	includeNodeType: true,
 	includeNodeParameters: true,
 	includeNodeName: true,
+	includeNodeId: true,
 	collectNodeConfigurations: false,
 };
 
@@ -367,14 +370,15 @@ class MermaidBuilder {
 		}
 
 		if (this.options.includeNodeType || this.options.includeNodeParameters) {
+			const idPart = this.options.includeNodeId && node.id ? `[${node.id}] ` : '';
 			const typePart = this.options.includeNodeType ? this.buildNodeTypePart(node) : '';
 			const paramsPart =
 				this.options.includeNodeParameters && Object.keys(node.parameters).length > 0
 					? ` | ${JSON.stringify(node.parameters)}`
 					: '';
 
-			if (typePart || paramsPart) {
-				lines.push(`%% ${typePart}${paramsPart}`);
+			if (idPart || typePart || paramsPart) {
+				lines.push(`%% ${idPart}${typePart}${paramsPart}`);
 			}
 		}
 

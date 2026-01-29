@@ -19,12 +19,21 @@ import type { ParentGraphState } from '../parent-graph-state';
 // Tools (alphabetically ordered)
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+// Execution data tools
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+// Node context and examples tools
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import {
 	createGetNodeConnectionExamplesTool,
 	createGetNodeConfigurationExamplesTool,
 } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
+// Workflow context tools
+import { createGetWorkflowJsonTool } from '../tools/get-workflow-json.tool';
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
@@ -40,10 +49,11 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
+	buildConversationContext,
 	buildDiscoveryContextBlock,
-	buildWorkflowJsonBlock,
 	buildExecutionSchemaBlock,
 	buildExecutionContextBlock,
+	buildWorkflowIndicator,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -184,6 +194,14 @@ export class BuilderSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Execution data tools
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
+			createGetWorkflowJsonTool(config.logger),
 			// Conditionally add resource locator tool if callback is provided
 			...(config.resourceLocatorCallback
 				? [
@@ -333,10 +351,15 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build context parts
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		if (userRequest) {
-			contextParts.push('=== USER REQUEST ===');
-			contextParts.push(userRequest);
+		// 1. Conversation context (history, original request, previous actions)
+		const conversationContext = buildConversationContext(
+			parentState.messages,
+			parentState.coordinationLog,
+			parentState.previousSummary,
+		);
+		if (conversationContext) {
+			contextParts.push('=== CONVERSATION CONTEXT ===');
+			contextParts.push(conversationContext);
 		}
 
 		// 2. Discovery context (what nodes to use)
@@ -368,13 +391,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
 
-		// 4. Current workflow JSON (to add nodes to / configure)
+		// 4. Current workflow (lightweight summary pointing to tools for details)
 		contextParts.push('=== CURRENT WORKFLOW ===');
-		if (parentState.workflowJSON.nodes.length > 0) {
-			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-		} else {
-			contextParts.push('Empty workflow - ready to build');
-		}
+		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
 		// 5. Execution schema (data types available for parameter values)
 		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
@@ -382,6 +401,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
 			contextParts.push(schemaBlock);
 		}
+
+		// Note: Additional execution data is available via tools:
+		// - get_execution_logs: Full execution data (runData, errors)
+		// - get_expression_data_mapping: Resolved expression values
 
 		// 6. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
