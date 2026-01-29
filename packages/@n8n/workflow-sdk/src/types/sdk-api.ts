@@ -524,11 +524,14 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Configuration for splitInBatches()
+ * Configuration for splitInBatches() factory function.
+ * Uses { version, config } pattern matching ifElse/merge/switchCase.
  */
-export interface SplitInBatchesConfig extends NodeConfig {
-	/** Node version (defaults to 3) */
-	version?: number | string;
+export interface SplitInBatchesFactoryConfig {
+	/** Node version (required) */
+	version: number | string;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
@@ -789,16 +792,16 @@ export type SwitchCaseFn = (
 ) => NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
 /**
- * splitInBatches(config?) - Creates batch processing with loop
+ * splitInBatches(config) - Creates batch processing with loop
  *
  * Returns a SplitInBatchesBuilder with .onDone()/.onEachBatch() fluent methods.
  * Use nextBatch() to make loop-back connections explicit.
  *
  * @example
- * const sibNode = splitInBatches({
- *   name: 'Loop',
- *   parameters: { batchSize: 10 },
- *   position: [840, 300]
+ * // Using { version, config } pattern (recommended for direct creation):
+ * const sib = splitInBatches({
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 }, position: [840, 300] }
  * });
  *
  * // Fluent API with nextBatch() for explicit loop-back
@@ -806,12 +809,22 @@ export type SwitchCaseFn = (
  *   .add(startTrigger)
  *   .to(fetchRecords)
  *   .to(
- *     sibNode
- *       .onDone(finalizeNode)                            // When all batches done
- *       .onEachBatch(processNode.to(nextBatch(sibNode))) // Loop back with nextBatch()
+ *     sib
+ *       .onDone(finalizeNode)                               // When all batches done
+ *       .onEachBatch(processNode.to(nextBatch(sib)))        // Loop back with nextBatch()
  *   );
+ *
+ * // Or wrap a pre-declared node:
+ * const sibNode = node({
+ *   type: 'n8n-nodes-base.splitInBatches',
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * });
+ * splitInBatches(sibNode).onDone(finalizeNode).onEachBatch(processNode.to(sibNode));
  */
-export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;
+export type SplitInBatchesFn = (
+	configOrNode: SplitInBatchesFactoryConfig | NodeInstance<'n8n-nodes-base.splitInBatches'>,
+) => SplitInBatchesBuilder;
 
 /**
  * nextBatch(sibNode) - Semantic helper for loop-back connections
@@ -824,17 +837,20 @@ export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatches
  * @returns The SIB node instance for use with .to()
  *
  * @example
- * const sibNode = splitInBatches({ name: 'Loop', parameters: { batchSize: 10 } });
+ * const sib = splitInBatches({
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * });
  *
  * // Using nextBatch() for explicit loop-back (recommended)
- * sibNode
+ * sib
  *   .onDone(finalizeNode)
- *   .onEachBatch(processNode.to(nextBatch(sibNode)));
+ *   .onEachBatch(processNode.to(nextBatch(sib)));
  *
  * // Equivalent but less clear intent
- * sibNode
+ * sib
  *   .onDone(finalizeNode)
- *   .onEachBatch(processNode.to(sibNode.sibNode));
+ *   .onEachBatch(processNode.to(sib.sibNode));
  */
 export type NextBatchFn = (
 	sib: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> | SplitInBatchesBuilder,

@@ -3,7 +3,7 @@ import type {
 	NodeInstance,
 	NodeConfig,
 	SplitInBatchesBuilder,
-	SplitInBatchesConfig,
+	SplitInBatchesFactoryConfig,
 	DeclaredConnection,
 	NodeChain,
 	InputTarget,
@@ -25,9 +25,10 @@ class SplitInBatchesNodeInstance
 	readonly id: string;
 	readonly name: string;
 
-	constructor(config: SplitInBatchesConfig = {}) {
-		this.version = config.version != null ? String(config.version) : '3';
-		this.id = config.id ?? uuid();
+	constructor(input: SplitInBatchesFactoryConfig) {
+		const config = input.config ?? {};
+		this.version = String(input.version);
+		this.id = uuid();
 		this.name = config.name ?? 'Split In Batches';
 		this.config = {
 			...config,
@@ -39,10 +40,12 @@ class SplitInBatchesNodeInstance
 		config: Partial<NodeConfig>,
 	): NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> {
 		return new SplitInBatchesNodeInstance({
-			...this.config,
-			...config,
 			version: this.version,
-		} as SplitInBatchesConfig);
+			config: {
+				...this.config,
+				...config,
+			},
+		});
 	}
 
 	input(_index: number): InputTarget {
@@ -141,8 +144,8 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
 	_doneTarget?: BranchTarget;
 	_eachTarget?: BranchTarget;
 
-	constructor(config: SplitInBatchesConfig = {}) {
-		this.sibNode = new SplitInBatchesNodeInstance(config);
+	constructor(input: SplitInBatchesFactoryConfig) {
+		this.sibNode = new SplitInBatchesNodeInstance(input);
 	}
 
 	/**
@@ -310,7 +313,7 @@ class SplitInBatchesBuilderWithExistingNode implements SplitInBatchesBuilder<unk
  * - Output 0 (onDone): Executes when all batches are processed
  * - Output 1 (onEachBatch): Executes for each batch, loop back by chaining to sibNode
  *
- * @param configOrNode - Node configuration or a pre-declared SplitInBatches node instance
+ * @param configOrNode - Node configuration { version, config } or a pre-declared SplitInBatches node instance
  * @param branches - Optional named object syntax for branches: { done: ..., each: ... }
  * @returns A split in batches builder for configuring the loop
  *
@@ -331,6 +334,15 @@ class SplitInBatchesBuilderWithExistingNode implements SplitInBatchesBuilder<unk
  *       .onEachBatch(processNode.then(sibNode))
  *   );
  *
+ * // Or use splitInBatches() directly with { version, config } pattern:
+ * const sib = splitInBatches({
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * });
+ * workflow('id', 'Test')
+ *   .add(trigger(...))
+ *   .then(sib.onDone(finalizeNode).onEachBatch(processNode.then(sib.sibNode)));
+ *
  * // Named object syntax:
  * splitInBatches(sibNode, {
  *   done: finalizeNode,
@@ -342,18 +354,12 @@ class SplitInBatchesBuilderWithExistingNode implements SplitInBatchesBuilder<unk
  *   done: null,                       // no done connection
  *   each: sibNode                     // self-loop
  * })
- *
- * // With fanOut for multiple targets:
- * splitInBatches(sibNode, {
- *   done: fanOut(nodeA, nodeB),       // done -> both nodeA and nodeB
- *   each: processNode
- * })
  * ```
  */
 export function splitInBatches(
 	configOrNode:
-		| SplitInBatchesConfig
-		| NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> = {},
+		| SplitInBatchesFactoryConfig
+		| NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
 	branches?: SplitInBatchesBranches,
 ): SplitInBatchesBuilder<unknown> {
 	// Named object syntax: splitInBatches(node, { done, each })
@@ -375,8 +381,8 @@ export function splitInBatches(
 			configOrNode as NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
 		);
 	}
-	// Otherwise, treat it as a SplitInBatchesConfig
-	return new SplitInBatchesBuilderImpl(configOrNode as SplitInBatchesConfig);
+	// Otherwise, treat it as a SplitInBatchesFactoryConfig (new { version, config } pattern)
+	return new SplitInBatchesBuilderImpl(configOrNode as SplitInBatchesFactoryConfig);
 }
 
 /**

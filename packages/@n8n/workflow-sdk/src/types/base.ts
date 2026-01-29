@@ -744,7 +744,18 @@ export interface SwitchCaseBuilder<TOutput = unknown> {
 // =============================================================================
 
 /**
- * Configuration for Split in Batches
+ * Configuration for splitInBatches() factory function.
+ * Uses { version, config } pattern matching ifElse/merge/switchCase.
+ */
+export interface SplitInBatchesFactoryConfig {
+	/** Node version (required) */
+	version: number | string;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
+}
+
+/**
+ * @deprecated Use SplitInBatchesFactoryConfig instead (the { version, config } pattern)
  */
 export interface SplitInBatchesConfig extends NodeConfig {
 	version?: number | string;
@@ -945,7 +956,11 @@ export type SwitchCaseFn = (
 	config?: SwitchCaseConfig,
 ) => NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
-export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder<unknown>;
+export type SplitInBatchesFn = (
+	configOrNode:
+		| SplitInBatchesFactoryConfig
+		| NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
+) => SplitInBatchesBuilder<unknown>;
 
 // =============================================================================
 // Code helper types

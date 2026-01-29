@@ -12,7 +12,8 @@ describe('Split In Batches', () => {
 	describe('splitInBatches()', () => {
 		it('should create a split in batches builder', () => {
 			const sib = splitInBatches({
-				parameters: { batchSize: 10 },
+				version: 3,
+				config: { parameters: { batchSize: 10 } },
 			});
 			expect(sib).toBeDefined();
 		});
@@ -20,14 +21,15 @@ describe('Split In Batches', () => {
 		it('should support explicit version', () => {
 			const sib = splitInBatches({
 				version: 2,
-				parameters: { batchSize: 5 },
+				config: { parameters: { batchSize: 5 } },
 			});
 			expect(sib.sibNode.version).toBe('2');
 		});
 
-		it('should default to version 3', () => {
+		it('should use specified version', () => {
 			const sib = splitInBatches({
-				parameters: { batchSize: 10 },
+				version: 3,
+				config: { parameters: { batchSize: 10 } },
 			});
 			expect(sib.sibNode.version).toBe('3');
 		});
@@ -888,12 +890,15 @@ const allVideosComplete = node({
 });
 
 const splitVideos = splitInBatches({
-  name: 'Process Each Video',
-  parameters: {
-    batchSize: 1,
-    options: {}
-  },
-  position: [840, 300]
+  version: 3,
+  config: {
+    name: 'Process Each Video',
+    parameters: {
+      batchSize: 1,
+      options: {}
+    },
+    position: [840, 300]
+  }
 });
 
 // Compose workflow with loop
