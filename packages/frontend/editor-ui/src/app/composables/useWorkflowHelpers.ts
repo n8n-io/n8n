@@ -94,8 +94,6 @@ export async function resolveParameter<T = IDataObject>(
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentsStore = useWorkflowDocumentsStore();
 
-	// Type assertion needed: workflowObjectsById uses computed property keys causing
-	// TypeScript to infer an anonymous type instead of Workflow
 	return await resolveParameterImpl(
 		parameter,
 		workflowDocumentsStore.workflowObjectsById[

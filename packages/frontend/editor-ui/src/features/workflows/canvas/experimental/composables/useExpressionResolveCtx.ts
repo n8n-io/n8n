@@ -10,8 +10,6 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentsStore = useWorkflowDocumentsStore();
-	// Type assertion needed: workflowObjectsById uses computed property keys causing
-	// TypeScript to infer an anonymous type instead of Workflow
 	const workflowObject = computed(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[
