@@ -274,12 +274,63 @@ function quotePropertyName(name: string): string {
 	return name;
 }
 
+/**
+ * Extract default values for properties referenced in displayOptions.
+ * This is used to generate the `defaults` parameter for resolveSchema calls,
+ * ensuring that validation uses default values when properties aren't explicitly set.
+ *
+ * @param displayOptions - The displayOptions containing show/hide conditions
+ * @param allProperties - All properties available at this level (to look up defaults)
+ * @returns Record of property names to their default values
+ */
+export function extractDefaultsForDisplayOptions(
+	displayOptions: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> },
+	allProperties: NodeProperty[],
+): Record<string, unknown> {
+	const defaults: Record<string, unknown> = {};
+	const referencedProps = new Set<string>();
+
+	// Collect property names referenced in show conditions
+	if (displayOptions.show) {
+		for (const key of Object.keys(displayOptions.show)) {
+			// Skip meta-properties like @version and root paths
+			if (!key.startsWith('@') && !key.startsWith('/')) {
+				// Handle nested paths like "options.format" - only use the first part
+				const baseProp = key.split('.')[0];
+				referencedProps.add(baseProp);
+			}
+		}
+	}
+
+	// Collect property names referenced in hide conditions
+	if (displayOptions.hide) {
+		for (const key of Object.keys(displayOptions.hide)) {
+			// Skip meta-properties like @version and root paths
+			if (!key.startsWith('@') && !key.startsWith('/')) {
+				const baseProp = key.split('.')[0];
+				referencedProps.add(baseProp);
+			}
+		}
+	}
+
+	// Find defaults for referenced properties
+	for (const propName of referencedProps) {
+		const prop = allProperties.find((p) => p.name === propName);
+		if (prop && prop.default !== undefined) {
+			defaults[propName] = prop.default;
+		}
+	}
+
+	return defaults;
+}
+
 // =============================================================================
 // Property to Zod Schema Mapping
 // =============================================================================
 
 /**
  * Generate inline Zod schema for resourceLocator based on available modes
+ * Accepts either the object format { __rl: true, mode, value } OR an expression string
  */
 function generateResourceLocatorZodSchema(prop: NodeProperty): string {
 	if (prop.modes && prop.modes.length > 0) {
@@ -287,8 +338,11 @@ function generateResourceLocatorZodSchema(prop: NodeProperty): string {
 			prop.modes.length === 1
 				? `z.literal('${prop.modes[0].name}')`
 				: `z.union([${prop.modes.map((m) => `z.literal('${m.name}')`).join(', ')}])`;
-		return `z.object({ __rl: z.literal(true), mode: ${modeSchema}, value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() })`;
+		const objectSchema = `z.object({ __rl: z.literal(true), mode: ${modeSchema}, value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() })`;
+		// Allow either the object format or an expression string
+		return `z.union([${objectSchema}, expressionSchema])`;
 	}
+	// Default case: use the general resourceLocatorValueSchema which already accepts expressions
 	return 'resourceLocatorValueSchema';
 }
 
@@ -301,7 +355,17 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 		return '';
 	}
 
-	// Handle dynamic options
+	// Handle resourceLocator first - it has its own structure regardless of dynamic options
+	if (prop.type === 'resourceLocator') {
+		return generateResourceLocatorZodSchema(prop);
+	}
+
+	// Handle resourceMapper - it has its own structure with mappingMode and value
+	if (prop.type === 'resourceMapper') {
+		return 'resourceMapperValueSchema';
+	}
+
+	// Handle dynamic options (but not for types with specific structure)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		if (prop.type === 'multiOptions') {
 			return 'z.array(z.string())';
@@ -346,9 +410,6 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
-
-		case 'resourceLocator':
-			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
@@ -460,7 +521,17 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 		return `z.union([${literals.join(', ')}, expressionSchema])`;
 	}
 
-	// Handle dynamic options (loadOptionsMethod)
+	// Handle resourceLocator first - it has its own structure regardless of dynamic options
+	if (prop.type === 'resourceLocator') {
+		return generateResourceLocatorZodSchema(prop);
+	}
+
+	// Handle resourceMapper - it has its own structure with mappingMode and value
+	if (prop.type === 'resourceMapper') {
+		return 'resourceMapperValueSchema';
+	}
+
+	// Handle dynamic options (loadOptionsMethod) - but not for types with specific structure
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		switch (prop.type) {
 			case 'options':
@@ -506,9 +577,6 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
-
-		case 'resourceLocator':
-			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
@@ -602,13 +670,79 @@ export function stripDiscriminatorKeysFromDisplayOptions(
 }
 
 /**
+ * Display options type for merging (matches DisplayOptions defined later in this file)
+ */
+type MergeableDisplayOptions = {
+	show?: Record<string, unknown[]>;
+	hide?: Record<string, unknown[]>;
+};
+
+/**
+ * Merge two displayOptions objects by combining their show/hide conditions.
+ * Used when multiple properties share the same name but have different visibility conditions.
+ *
+ * @param existing - The existing displayOptions to merge into
+ * @param incoming - The incoming displayOptions to merge from
+ * @returns Merged displayOptions with combined show/hide conditions
+ */
+export function mergeDisplayOptions(
+	existing: MergeableDisplayOptions,
+	incoming: MergeableDisplayOptions,
+): MergeableDisplayOptions {
+	const merged: MergeableDisplayOptions = { ...existing };
+
+	// Merge 'show' conditions
+	if (incoming.show) {
+		merged.show = merged.show ?? {};
+		for (const [key, values] of Object.entries(incoming.show)) {
+			const existingValues = merged.show[key] ?? [];
+			// Combine arrays, avoiding duplicates using JSON comparison for objects
+			const combined = [...existingValues];
+			for (const val of values) {
+				const isDuplicate = combined.some(
+					(existingVal) => JSON.stringify(existingVal) === JSON.stringify(val),
+				);
+				if (!isDuplicate) {
+					combined.push(val);
+				}
+			}
+			merged.show[key] = combined;
+		}
+	}
+
+	// Merge 'hide' conditions (same logic)
+	if (incoming.hide) {
+		merged.hide = merged.hide ?? {};
+		for (const [key, values] of Object.entries(incoming.hide)) {
+			const existingValues = merged.hide[key] ?? [];
+			const combined = [...existingValues];
+			for (const val of values) {
+				const isDuplicate = combined.some(
+					(existingVal) => JSON.stringify(existingVal) === JSON.stringify(val),
+				);
+				if (!isDuplicate) {
+					combined.push(val);
+				}
+			}
+			merged.hide[key] = combined;
+		}
+	}
+
+	return merged;
+}
+
+/**
  * Generate a conditional schema property line using resolveSchema helper.
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
  *
  * @param prop - The property with displayOptions
+ * @param allProperties - All properties at this level (used to extract defaults for displayOptions)
  * @returns Generated code line for the property using resolveSchema
  */
-export function generateConditionalSchemaLine(prop: NodeProperty): string {
+export function generateConditionalSchemaLine(
+	prop: NodeProperty,
+	allProperties: NodeProperty[] = [],
+): string {
 	const zodSchema = mapPropertyToZodSchema(prop);
 	if (!zodSchema) {
 		return '';
@@ -618,7 +752,14 @@ export function generateConditionalSchemaLine(prop: NodeProperty): string {
 	const required = prop.required ?? false;
 	const displayOptionsStr = JSON.stringify(prop.displayOptions);
 
-	return `\t${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr} }),`;
+	// Extract defaults for properties referenced in displayOptions
+	const defaults = prop.displayOptions
+		? extractDefaultsForDisplayOptions(prop.displayOptions, allProperties)
+		: {};
+	const defaultsStr =
+		Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
+
+	return `\t${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`;
 }
 
 // =============================================================================
@@ -663,6 +804,7 @@ export interface SchemaInfo {
 export function generateSubnodeConfigSchemaCode(
 	aiInputTypes: AIInputTypeInfo[],
 	schemaName: string,
+	allProperties?: NodeProperty[],
 ): string | null {
 	if (aiInputTypes.length === 0) {
 		return null;
@@ -704,8 +846,16 @@ export function generateSubnodeConfigSchemaCode(
 			// Use resolveSchema for conditional fields
 			const displayOptionsStr = JSON.stringify(aiInput.displayOptions);
 			const indent = hasConditional ? '\t\t' : '\t';
+			// Extract defaults for properties referenced in displayOptions
+			let defaultsStr = '';
+			if (allProperties) {
+				const defaults = extractDefaultsForDisplayOptions(aiInput.displayOptions, allProperties);
+				if (Object.keys(defaults).length > 0) {
+					defaultsStr = `, defaults: ${JSON.stringify(defaults)}`;
+				}
+			}
 			lines.push(
-				`${indent}${fieldInfo.fieldName}: resolveSchema({ parameters, schema: ${schemaStr}, required: ${aiInput.required}, displayOptions: ${displayOptionsStr} }),`,
+				`${indent}${fieldInfo.fieldName}: resolveSchema({ parameters, schema: ${schemaStr}, required: ${aiInput.required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`,
 			);
 		} else if (!aiInput.required) {
 			const indent = hasConditional ? '\t\t' : '\t';
@@ -804,6 +954,7 @@ export function generateSingleVersionSchemaFile(
 	lines.push('\tnumberOrExpression,');
 	lines.push('\tbooleanOrExpression,');
 	lines.push('\tresourceLocatorValueSchema,');
+	lines.push('\tresourceMapperValueSchema,');
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
@@ -881,16 +1032,35 @@ function generateSchemasForNode(
 			);
 			lines.push('\treturn z.object({');
 
-			const seenNames = new Set<string>();
+			// Group properties by name, merging displayOptions for duplicates
+			const propsByName = new Map<string, NodeProperty>();
 			for (const prop of node.properties) {
 				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 					continue;
 				}
-				if (seenNames.has(prop.name)) {
-					continue;
-				}
-				seenNames.add(prop.name);
 
+				const existing = propsByName.get(prop.name);
+				if (existing) {
+					// Merge displayOptions from duplicate property
+					if (prop.displayOptions && existing.displayOptions) {
+						existing.displayOptions = mergeDisplayOptions(
+							existing.displayOptions,
+							prop.displayOptions,
+						);
+					} else if (prop.displayOptions && !existing.displayOptions) {
+						// If only the new one has displayOptions, the existing one has no condition
+						// which means it's always visible - keep existing as-is (no condition)
+					}
+					// Keep the first property's other attributes (type, required, etc.)
+				} else {
+					propsByName.set(prop.name, { ...prop });
+				}
+			}
+
+			// Generate schema for each merged property
+			// Convert propsByName to array for extractDefaultsForDisplayOptions
+			const allPropsArray = Array.from(propsByName.values());
+			for (const prop of allPropsArray) {
 				// Use conditional schema line for properties with displayOptions
 				// Strip @version since it's implicit in the file path
 				if (prop.displayOptions) {
@@ -903,7 +1073,7 @@ function generateSchemasForNode(
 							...prop,
 							displayOptions: strippedDisplayOptions,
 						};
-						const propLine = generateConditionalSchemaLine(propWithStripped);
+						const propLine = generateConditionalSchemaLine(propWithStripped, allPropsArray);
 						if (propLine) {
 							lines.push(propLine);
 						}
@@ -928,7 +1098,11 @@ function generateSchemasForNode(
 
 			// Generate Subnode Config Schema (if AI node)
 			if (hasAiInputs) {
-				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				const subnodeCode = generateSubnodeConfigSchemaCode(
+					aiInputTypes,
+					baseSchemaName,
+					node.properties,
+				);
 				if (subnodeCode) {
 					lines.push(subnodeCode);
 					lines.push('');
@@ -968,15 +1142,28 @@ function generateSchemasForNode(
 			// Generate static Parameters Schema
 			lines.push(`export const ${parametersSchemaName} = z.object({`);
 
-			const seenNames = new Set<string>();
+			// Group properties by name, merging displayOptions for duplicates
+			const propsByName = new Map<string, NodeProperty>();
 			for (const prop of node.properties) {
 				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 					continue;
 				}
-				if (seenNames.has(prop.name)) {
-					continue;
+
+				const existing = propsByName.get(prop.name);
+				if (existing) {
+					// Merge displayOptions from duplicate property
+					if (prop.displayOptions && existing.displayOptions) {
+						existing.displayOptions = mergeDisplayOptions(
+							existing.displayOptions,
+							prop.displayOptions,
+						);
+					}
+				} else {
+					propsByName.set(prop.name, { ...prop });
 				}
-				seenNames.add(prop.name);
+			}
+
+			for (const prop of propsByName.values()) {
 				const propLine = generateSchemaPropertyLine(prop, !prop.required);
 				if (propLine) {
 					lines.push(propLine);
@@ -988,7 +1175,11 @@ function generateSchemasForNode(
 
 			// Generate Subnode Config Schema (if AI node)
 			if (hasAiInputs) {
-				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				const subnodeCode = generateSubnodeConfigSchemaCode(
+					aiInputTypes,
+					baseSchemaName,
+					node.properties,
+				);
 				if (subnodeCode) {
 					lines.push(subnodeCode);
 					lines.push('');
@@ -1093,13 +1284,24 @@ function generateSchemasForNode(
 			}
 		}
 
-		// Add other properties
-		const seenNames = new Set<string>();
+		// Group properties by name, merging displayOptions for duplicates
+		const propsByName = new Map<string, NodeProperty>();
 		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue;
+			const existing = propsByName.get(prop.name);
+			if (existing) {
+				// Merge displayOptions from duplicate property
+				if (prop.displayOptions && existing.displayOptions) {
+					existing.displayOptions = mergeDisplayOptions(
+						existing.displayOptions,
+						prop.displayOptions,
+					);
+				}
+			} else {
+				propsByName.set(prop.name, { ...prop });
 			}
-			seenNames.add(prop.name);
+		}
+
+		for (const prop of propsByName.values()) {
 			const propLine = generateSchemaPropertyLine(prop, !prop.required);
 			if (propLine) {
 				lines.push(propLine);
@@ -1145,7 +1347,11 @@ function generateSchemasForNode(
 
 	// Generate Subnode Config Schema (shared across combinations if AI node)
 	if (hasAiInputs) {
-		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+		const subnodeCode = generateSubnodeConfigSchemaCode(
+			aiInputTypes,
+			baseSchemaName,
+			node.properties,
+		);
 		if (subnodeCode) {
 			// Insert subnode schema before the combination schemas
 			const subnodeLines = [subnodeCode, ''];
@@ -1248,15 +1454,36 @@ export const booleanOrExpression = z.union([
 // =============================================================================
 
 /**
- * Resource Locator Value schema
+ * Resource Locator Value schema (object format)
  */
-export const resourceLocatorValueSchema = z.object({
+const resourceLocatorObjectSchema = z.object({
 	__rl: z.literal(true),
 	mode: z.string(),
 	value: z.union([z.string(), z.number()]),
 	cachedResultName: z.string().optional(),
 	cachedResultUrl: z.string().optional(),
 });
+
+/**
+ * Resource Locator Value schema - accepts object format OR expression
+ */
+export const resourceLocatorValueSchema = z.union([resourceLocatorObjectSchema, expressionSchema]);
+
+/**
+ * Resource Mapper Value schema (object format)
+ * Used for mapping input data to columns/fields
+ */
+const resourceMapperObjectSchema = z.object({
+	mappingMode: z.string(),
+	value: z.unknown().optional(),
+	schema: z.array(z.unknown()).optional(),
+	cachedResultName: z.string().optional(),
+}).passthrough();
+
+/**
+ * Resource Mapper Value schema - accepts object format OR expression
+ */
+export const resourceMapperValueSchema = z.union([resourceMapperObjectSchema, expressionSchema]);
 
 /**
  * Filter condition operator schema
@@ -1396,6 +1623,8 @@ export type DisplayOptionsContext = {
 	nodeVersion?: number;
 	/** Root parameter values for / prefix paths */
 	rootParameters?: Record<string, unknown>;
+	/** Default values for properties (used when property is not set in parameters) */
+	defaults?: Record<string, unknown>;
 };
 
 /**
@@ -1478,7 +1707,7 @@ export function checkConditions(conditions: unknown[], actualValues: unknown[]):
 
 /**
  * Get property values from context for a given property name.
- * Handles root paths (/ prefix), @version meta-property, and resource locator unwrapping.
+ * Handles root paths (/ prefix), @version meta-property, resource locator unwrapping, and defaults.
  */
 export function getPropertyValue(context: DisplayOptionsContext, propertyName: string): unknown[] {
 	let value: unknown;
@@ -1486,10 +1715,18 @@ export function getPropertyValue(context: DisplayOptionsContext, propertyName: s
 	if (propertyName.charAt(0) === '/') {
 		const rootParams = context.rootParameters ?? context.parameters;
 		value = get(rootParams, propertyName.slice(1));
+		// Fall back to defaults for root paths as well
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName.slice(1));
+		}
 	} else if (propertyName === '@version') {
 		value = context.nodeVersion ?? 0;
 	} else {
 		value = get(context.parameters, propertyName);
+		// Fall back to default value if property is not set
+		if (value === undefined && context.defaults) {
+			value = get(context.defaults, propertyName);
+		}
 	}
 
 	if (value && typeof value === 'object' && '__rl' in value && (value as { __rl: boolean }).__rl) {
@@ -1546,6 +1783,8 @@ export type ResolveSchemaConfig = {
 	displayOptions: DisplayOptions;
 	nodeVersion?: number;
 	rootParameters?: Record<string, unknown>;
+	/** Default values for properties referenced in displayOptions (used when property is not set) */
+	defaults?: Record<string, unknown>;
 };
 
 /**
@@ -1556,7 +1795,7 @@ export type ResolveSchemaConfig = {
  *   - Returns optional schema if required=false
  *
  * When field is not visible (displayOptions don't match):
- *   - Returns z.unknown().optional() to accept any value without validation
+ *   - Returns z.undefined() to reject any non-undefined value
  */
 export function resolveSchema({
 	parameters,
@@ -1565,14 +1804,15 @@ export function resolveSchema({
 	displayOptions,
 	nodeVersion,
 	rootParameters,
+	defaults = {},
 }: ResolveSchemaConfig): z.ZodTypeAny {
-	const context: DisplayOptionsContext = { parameters, nodeVersion, rootParameters };
+	const context: DisplayOptionsContext = { parameters, nodeVersion, rootParameters, defaults };
 	const isVisible = matchesDisplayOptions(context, displayOptions);
 
 	if (isVisible) {
 		return required ? schema : schema.optional();
 	} else {
-		return z.unknown().optional();
+		return z.undefined();
 	}
 }
 `;
@@ -1686,6 +1926,7 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\tnumberOrExpression,');
 	lines.push('\tbooleanOrExpression,');
 	lines.push('\tresourceLocatorValueSchema,');
+	lines.push('\tresourceMapperValueSchema,');
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
@@ -1710,7 +1951,7 @@ export function generateDiscriminatorSchemaFile(
 		lines.push('// Subnode Configuration Schema');
 		lines.push('// ' + '='.repeat(75));
 		lines.push('');
-		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, comboSchemaName);
+		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, comboSchemaName, props);
 		if (subnodeCode) {
 			lines.push(subnodeCode);
 			lines.push('');
@@ -1729,21 +1970,44 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\treturn z.object({');
 	lines.push('\t\tparameters: z.object({');
 
-	// Add discriminator fields as literals
+	// Add discriminator fields as literals (with defaults if they have matching defaults)
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
-			lines.push(`\t\t\t${key}: z.literal('${value}'),`);
+			// Check if this discriminator has a matching default value in node properties
+			const discProp = node.properties?.find((p) => p.name === key);
+			const hasMatchingDefault = discProp?.default === value;
+
+			if (hasMatchingDefault) {
+				// Accept undefined and default to the expected value
+				lines.push(`\t\t\t${key}: z.literal('${value}').default('${value}'),`);
+			} else {
+				// Require the literal value (no matching default)
+				lines.push(`\t\t\t${key}: z.literal('${value}'),`);
+			}
 		}
 	}
 
-	// Add other properties
-	const seenNames = new Set<string>();
+	// Group properties by name, merging displayOptions for duplicates
+	const propsByName = new Map<string, NodeProperty>();
 	for (const prop of props) {
-		if (seenNames.has(prop.name)) {
-			continue;
+		const existing = propsByName.get(prop.name);
+		if (existing) {
+			// Merge displayOptions from duplicate property
+			if (prop.displayOptions && existing.displayOptions) {
+				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
+			} else if (prop.displayOptions && !existing.displayOptions) {
+				// If only the new one has displayOptions, the existing one has no condition
+				// which means it's always visible - keep existing as-is (no condition)
+			}
+		} else {
+			propsByName.set(prop.name, { ...prop });
 		}
-		seenNames.add(prop.name);
+	}
 
+	// Generate schema for each merged property
+	// Convert propsByName to array for extractDefaultsForDisplayOptions
+	const allPropsArray = Array.from(propsByName.values());
+	for (const prop of allPropsArray) {
 		if (prop.displayOptions) {
 			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
 				prop.displayOptions,
@@ -1754,7 +2018,7 @@ export function generateDiscriminatorSchemaFile(
 					...prop,
 					displayOptions: strippedDisplayOptions,
 				};
-				const propLine = generateConditionalSchemaLine(propWithStrippedOptions);
+				const propLine = generateConditionalSchemaLine(propWithStrippedOptions, allPropsArray);
 				if (propLine) {
 					lines.push('\t\t' + propLine);
 				}
@@ -1829,19 +2093,37 @@ export function generateResourceIndexSchemaFile(
 	}
 	lines.push('');
 
+	// Find default for 'operation' discriminator
+	const operationProp = node.properties.find((p) => p.name === 'operation');
+	const operationDefault = operationProp?.default;
+
 	// Export factory function
 	lines.push(
 		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
 
+	// Apply operation default if operation is missing from parameters
+	if (operationDefault !== undefined) {
+		const defaultValueStr =
+			typeof operationDefault === 'string'
+				? `'${operationDefault}'`
+				: JSON.stringify(operationDefault);
+		lines.push(`\t// Apply operation default if not set`);
+		lines.push(
+			`\tconst effectiveParams = parameters.operation === undefined ? { ...parameters, operation: ${defaultValueStr} } : parameters;`,
+		);
+	}
+
+	const paramsVar = operationDefault !== undefined ? 'effectiveParams' : 'parameters';
+
 	if (operations.length === 1) {
 		const importName = `get${toPascalCase(operations[0])}Schema`;
-		lines.push(`\treturn ${importName}({ parameters, resolveSchema });`);
+		lines.push(`\treturn ${importName}({ parameters: ${paramsVar}, resolveSchema });`);
 	} else {
 		lines.push('\treturn z.union([');
 		for (const op of operations.sort()) {
 			const importName = `get${toPascalCase(op)}Schema`;
-			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
+			lines.push(`\t\t${importName}({ parameters: ${paramsVar}, resolveSchema }),`);
 		}
 		lines.push('\t]);');
 	}
@@ -1878,12 +2160,19 @@ export function generateSplitVersionIndexSchemaFile(
 
 	// Import default exports from child schemas
 	const importNames: string[] = [];
+	let discriminatorDefault: { name: string; value: unknown } | undefined;
+
 	if (tree.type === 'resource_operation' && tree.resources) {
 		for (const [resource] of tree.resources) {
 			const resourceDir = `resource_${toSnakeCase(resource)}`;
 			const importName = `get${toPascalCase(resource)}Schema`;
 			importNames.push(importName);
 			lines.push(`import ${importName} from './${resourceDir}/index.schema';`);
+		}
+		// Find default for 'resource' discriminator
+		const resourceProp = node.properties.find((p) => p.name === 'resource');
+		if (resourceProp?.default !== undefined) {
+			discriminatorDefault = { name: 'resource', value: resourceProp.default };
 		}
 	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
 		const discName = tree.discriminatorName;
@@ -1893,6 +2182,11 @@ export function generateSplitVersionIndexSchemaFile(
 			importNames.push(importName);
 			lines.push(`import ${importName} from './${fileName}';`);
 		}
+		// Find default for this discriminator
+		const discProp = node.properties.find((p) => p.name === discName);
+		if (discProp?.default !== undefined) {
+			discriminatorDefault = { name: discName, value: discProp.default };
+		}
 	}
 	lines.push('');
 
@@ -1901,12 +2195,26 @@ export function generateSplitVersionIndexSchemaFile(
 		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
 
+	// Apply discriminator default if discriminator is missing from parameters
+	if (discriminatorDefault) {
+		const defaultValueStr =
+			typeof discriminatorDefault.value === 'string'
+				? `'${discriminatorDefault.value}'`
+				: JSON.stringify(discriminatorDefault.value);
+		lines.push(`\t// Apply discriminator default if not set`);
+		lines.push(
+			`\tconst effectiveParams = parameters.${discriminatorDefault.name} === undefined ? { ...parameters, ${discriminatorDefault.name}: ${defaultValueStr} } : parameters;`,
+		);
+	}
+
+	const paramsVar = discriminatorDefault ? 'effectiveParams' : 'parameters';
+
 	if (importNames.length === 1) {
-		lines.push(`\treturn ${importNames[0]}({ parameters, resolveSchema });`);
+		lines.push(`\treturn ${importNames[0]}({ parameters: ${paramsVar}, resolveSchema });`);
 	} else if (importNames.length > 1) {
 		lines.push('\treturn z.union([');
 		for (const importName of importNames) {
-			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
+			lines.push(`\t\t${importName}({ parameters: ${paramsVar}, resolveSchema }),`);
 		}
 		lines.push('\t]);');
 	} else {

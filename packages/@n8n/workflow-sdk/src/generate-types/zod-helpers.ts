@@ -54,16 +54,21 @@ export const booleanOrExpression = z.union([z.boolean(), expressionSchema]);
 // =============================================================================
 
 /**
- * Resource Locator Value schema
+ * Resource Locator Value schema (object format)
  * Used for nodes that look up resources by ID or URL
  */
-export const resourceLocatorValueSchema = z.object({
+const resourceLocatorObjectSchema = z.object({
 	__rl: z.literal(true),
 	mode: z.string(),
 	value: z.union([z.string(), z.number()]),
 	cachedResultName: z.string().optional(),
 	cachedResultUrl: z.string().optional(),
 });
+
+/**
+ * Resource Locator Value schema - accepts object format OR expression
+ */
+export const resourceLocatorValueSchema = z.union([resourceLocatorObjectSchema, expressionSchema]);
 
 /**
  * Filter condition operator schema

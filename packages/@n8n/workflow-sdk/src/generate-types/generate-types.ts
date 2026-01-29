@@ -819,11 +819,13 @@ function generateNestedPropertyJSDoc(
 		}
 	}
 
-	// Default value
+	// Default value - skip multi-line strings to avoid breaking JSDoc comments
 	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {
 		const defaultStr =
 			typeof prop.default === 'object' ? JSON.stringify(prop.default) : String(prop.default);
-		lines.push(`${indent} * @default ${defaultStr}`);
+		if (!defaultStr.includes('\n')) {
+			lines.push(`${indent} * @default ${defaultStr}`);
+		}
 	}
 
 	lines.push(`${indent} */`);
@@ -1319,7 +1321,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const configName = `${nodeName}${versionSuffix}Config`;
+		const configName = `${nodeName}${versionSuffix}Params`;
 		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
@@ -1350,7 +1352,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		const comboValues = Object.entries(combo)
 			.filter(([_, v]) => v !== undefined)
 			.map(([_, v]) => toPascalCase(v!));
-		const configName = `${nodeName}${comboValues.join('')}Config`;
+		const configName = `${nodeName}${comboValues.join('')}Params`;
 		configTypeNames.push(configName);
 
 		// Get properties for this combination
@@ -1494,11 +1496,13 @@ export function generatePropertyJSDoc(
 		}
 	}
 
-	// Default value
+	// Default value - skip multi-line strings to avoid breaking JSDoc comments
 	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {
 		const defaultStr =
 			typeof prop.default === 'object' ? JSON.stringify(prop.default) : String(prop.default);
-		lines.push(` * @default ${defaultStr}`);
+		if (!defaultStr.includes('\n')) {
+			lines.push(` * @default ${defaultStr}`);
+		}
 	}
 
 	lines.push(' */');
@@ -1948,7 +1952,7 @@ export function generateDiscriminatorFile(
 		.filter(([_, v]) => v !== undefined)
 		.map(([_, v]) => toPascalCase(v!));
 	const comboSuffix = comboValues.join('');
-	const configName = `${nodeName}${versionSuffix}${comboSuffix}Config`;
+	const configName = `${nodeName}${versionSuffix}${comboSuffix}Params`;
 	const outputTypeName = `${nodeName}${versionSuffix}${comboSuffix}Output`;
 	const nodeTypeName = `${nodeName}${versionSuffix}${comboSuffix}Node`;
 
@@ -2480,9 +2484,9 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 				: undefined;
 
 		if (matchingSchema) {
-			// Generate output type name by replacing 'Config' with 'Output'
-			let outputTypeName = configInfo.typeName.replace(/Config$/, 'Output');
-			// Handle case where type name doesn't end with Config (simple interface)
+			// Generate output type name by replacing 'Params' with 'Output'
+			let outputTypeName = configInfo.typeName.replace(/Params$/, 'Output');
+			// Handle case where type name doesn't end with Params (simple interface)
 			if (outputTypeName === configInfo.typeName) {
 				outputTypeName = `${configInfo.typeName}Output`;
 			}
@@ -2868,7 +2872,7 @@ function generateDiscriminatedUnionForEntry(
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const configName = `${nodeName}${versionSuffix}Config`;
+		const configName = `${nodeName}${versionSuffix}Params`;
 		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
@@ -2910,7 +2914,7 @@ function generateDiscriminatedUnionForEntry(
 		const comboValues = Object.entries(combo)
 			.filter(([_, v]) => v !== undefined)
 			.map(([_, v]) => toPascalCase(v!));
-		const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Config`;
+		const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Params`;
 		configTypeNames.push(configName);
 
 		// Track config info for linking with output types

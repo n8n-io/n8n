@@ -86,15 +86,44 @@ describe('schema-validator', () => {
 			expect(result.errors[0].path).toContain('keepOnlySet');
 		});
 
+		it('accepts missing discriminator when default matches a valid branch', () => {
+			// Set v3 mode defaults to 'manual', so missing mode is valid
+			// The schema applies the default and validates against the manual branch
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					// mode is missing but defaults to 'manual'
+					fields: { values: [] },
+				},
+			});
+			expect(result.valid).toBe(true);
+			expect(result.errors).toEqual([]);
+		});
+
+		it('returns clear error when discriminator has wrong value', () => {
+			// Set v3 mode must be 'manual' or 'raw'
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					mode: 'invalid-mode',
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors.length).toBeGreaterThan(0);
+			// Error message should mention the wrong value and expected values
+			const errorMsg = result.errors[0].message;
+			expect(errorMsg).toMatch(/mode/i);
+			expect(errorMsg).toMatch(/invalid-mode/i);
+		});
+
 		it('validates AI node with valid subnode config', () => {
-			// The schema requires text, binaryPropertyName, and input - all string fields
-			// These are conditionally shown based on agent type, but the Zod schema doesn't
-			// model conditional visibility, so we provide all required fields
+			// The schema now models conditional visibility with displayOptions.
+			// For 'conversationalAgent' (default), only certain fields are visible.
+			// We provide only the fields that are visible for this agent type.
 			const result = validateNodeConfig('@n8n/n8n-nodes-langchain.agent', 1, {
 				parameters: {
-					text: 'Hello',
-					binaryPropertyName: 'data',
-					input: 'test',
+					agent: 'conversationalAgent',
+					// Note: text, binaryPropertyName, input are conditionally shown based on agent type
+					// and are not visible for 'conversationalAgent'
 				},
 				subnodes: {
 					model: { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1 },
@@ -104,11 +133,10 @@ describe('schema-validator', () => {
 		});
 
 		it('validates AI node subnode config with array of tools', () => {
+			// Use 'conversationalAgent' which only needs the model subnode
 			const result = validateNodeConfig('@n8n/n8n-nodes-langchain.agent', 1, {
 				parameters: {
-					text: 'Hello',
-					binaryPropertyName: 'data',
-					input: 'test',
+					agent: 'conversationalAgent',
 				},
 				subnodes: {
 					model: { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1 },

@@ -579,6 +579,8 @@ describe('Validation', () => {
 		it('should report INVALID_PARAMETER when AI agent has empty subnodes (no model)', () => {
 			// Directly create WorkflowJSON with subnodes on the node
 			// (In standard n8n format, subnodes become separate nodes, but we test direct validation)
+			// Note: Parameters like text, binaryPropertyName, input are conditionally shown based on
+			// agent type. For 'conversationalAgent' (default), these are hidden, so we don't pass them.
 			const workflowJson = {
 				id: 'test-id',
 				name: 'Agent Without Model',
@@ -598,9 +600,7 @@ describe('Validation', () => {
 						typeVersion: 1,
 						position: [200, 0] as [number, number],
 						parameters: {
-							text: 'Hello',
-							binaryPropertyName: 'data',
-							input: 'test',
+							agent: 'conversationalAgent',
 						},
 						// Empty subnodes object - model is required but missing!
 						subnodes: {},

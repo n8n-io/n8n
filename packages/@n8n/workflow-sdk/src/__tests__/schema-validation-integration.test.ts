@@ -13,7 +13,7 @@ import { parseWorkflowCode } from '../parse-workflow-code';
 describe('Schema Validation Integration', () => {
 	describe('Resource/Operation Discriminated (MS Teams v2 - task/create)', () => {
 		// Schema: ~/.n8n/generated-types/nodes/n8n-nodes-base/microsoftTeams/v2/resource_task/operation_create.schema.ts
-		// Required fields: groupId, planId, bucketId, title (no displayOptions)
+		// Required fields: groupId, planId, bucketId (resourceLocator type), title (no displayOptions)
 		// Optional field: options (no displayOptions)
 
 		it('returns no warning when all required fields are provided', () => {
@@ -21,9 +21,10 @@ describe('Schema Validation Integration', () => {
 				parameters: {
 					resource: 'task',
 					operation: 'create',
-					groupId: 'group-123',
-					planId: 'plan-456',
-					bucketId: 'bucket-789',
+					// resourceLocator fields require object format with __rl, mode, value
+					groupId: { __rl: true, mode: 'id', value: 'group-123' },
+					planId: { __rl: true, mode: 'id', value: 'plan-456' },
+					bucketId: { __rl: true, mode: 'id', value: 'bucket-789' },
 					title: 'My Task',
 				},
 			});
@@ -36,9 +37,9 @@ describe('Schema Validation Integration', () => {
 				parameters: {
 					resource: 'task',
 					operation: 'create',
-					groupId: 'group-123',
-					planId: 'plan-456',
-					bucketId: 'bucket-789',
+					groupId: { __rl: true, mode: 'id', value: 'group-123' },
+					planId: { __rl: true, mode: 'id', value: 'plan-456' },
+					bucketId: { __rl: true, mode: 'id', value: 'bucket-789' },
 					// title is missing
 				},
 			});
@@ -54,8 +55,8 @@ describe('Schema Validation Integration', () => {
 					resource: 'task',
 					operation: 'create',
 					groupId: '={{ $json.groupId }}',
-					planId: 'plan-456',
-					bucketId: 'bucket-789',
+					planId: { __rl: true, mode: 'id', value: 'plan-456' },
+					bucketId: { __rl: true, mode: 'id', value: 'bucket-789' },
 					title: 'My Task',
 				},
 			});
@@ -68,12 +69,13 @@ describe('Schema Validation Integration', () => {
 				parameters: {
 					resource: 'task',
 					operation: 'create',
-					groupId: 'group-123',
-					planId: 'plan-456',
-					bucketId: 'bucket-789',
+					groupId: { __rl: true, mode: 'id', value: 'group-123' },
+					planId: { __rl: true, mode: 'id', value: 'plan-456' },
+					bucketId: { __rl: true, mode: 'id', value: 'bucket-789' },
 					title: 'My Task',
 					options: {
-						assignedTo: 'user@example.com',
+						// assignedTo is a resourceLocator field, use proper format
+						assignedTo: { __rl: true, mode: 'id', value: 'user@example.com' },
 						percentComplete: 50,
 					},
 				},
@@ -127,12 +129,14 @@ describe('Schema Validation Integration', () => {
 
 	describe('Webhook v1 (Factory with show/hide)', () => {
 		// Schema: ~/.n8n/generated-types/nodes/n8n-nodes-base/webhook/v1.schema.ts
+		// responseData: optional, show: { responseMode: ['lastNode'] } - only visible when responseMode is 'lastNode'
 		// responseCode: optional, show: { @version: [1, 1.1] }, hide: { responseMode: ['responseNode'] }
 		// responseBinaryPropertyName: required, show: { responseData: ['firstEntryBinary'] }
 
 		it('returns warning when required responseBinaryPropertyName is missing but show condition is met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'firstEntryBinary',
 					// responseBinaryPropertyName is required when responseData is 'firstEntryBinary'
 					// but it's missing
@@ -145,6 +149,7 @@ describe('Schema Validation Integration', () => {
 		it('does not require responseBinaryPropertyName when show condition is not met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'allEntries', // Not 'firstEntryBinary'
 					// responseBinaryPropertyName is not required (field hidden)
 				},
@@ -156,6 +161,7 @@ describe('Schema Validation Integration', () => {
 		it('accepts responseBinaryPropertyName when condition is met', () => {
 			const result = validateNodeConfig('n8n-nodes-base.webhook', 1, {
 				parameters: {
+					responseMode: 'lastNode', // Required to make responseData visible
 					responseData: 'firstEntryBinary',
 					responseBinaryPropertyName: 'data',
 				},
@@ -275,7 +281,8 @@ describe('Schema Validation Integration', () => {
 	});
 
 	describe('Expression Validation', () => {
-		it('accepts expression in any string field', () => {
+		it('accepts expression in resourceLocator fields', () => {
+			// resourceLocator fields accept either expressions OR proper object format
 			const result = validateNodeConfig('n8n-nodes-base.microsoftTeams', 2, {
 				parameters: {
 					resource: 'task',
@@ -453,15 +460,15 @@ return workflow('test-id', 'Test Workflow')
 			expect(result.errors).toEqual([]);
 		});
 
-		it('handles empty parameters object (returns validation error for discriminated schema)', () => {
-			// For Set v3, the mode discriminator is required
-			// Empty parameters means the mode is missing, which fails discriminator matching
+		it('handles empty parameters object (uses discriminator defaults)', () => {
+			// For Set v3, mode defaults to 'manual'
+			// Empty parameters means mode defaults to 'manual', which is valid
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
 				parameters: {},
 			});
-			// Empty parameters fail because mode discriminator is required
-			expect(result.valid).toBe(false);
-			expect(result.errors.length).toBeGreaterThan(0);
+			// Empty parameters are valid because mode defaults to 'manual'
+			expect(result.valid).toBe(true);
+			expect(result.errors).toEqual([]);
 		});
 
 		it('handles unknown node type gracefully (no schema)', () => {

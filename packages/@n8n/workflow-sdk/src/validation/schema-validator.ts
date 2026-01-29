@@ -148,26 +148,10 @@ function tryLoadSchemaModule(schemaPath: string): Record<string, unknown> | null
 }
 
 /**
- * Load and cache schema for a node type/version
- *
- * Supports both:
- * - Static schemas: ConfigSchema exports (ZodSchema)
- * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
- * - Flat structure: {version}.schema.ts
- * - Split structure: {version}/index.schema.ts (for discriminated nodes)
- *
- * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
- * @param version - Node version (e.g., 2, 4.2, 1.7)
- * @returns ZodSchema or factory function if found, null otherwise
+ * Try to load a schema for a specific node type and version
+ * @returns SchemaOrFactory if found, null otherwise
  */
-export function loadSchema(nodeType: string, version: number): SchemaOrFactory | null {
-	const cacheKey = `${nodeType}@${version}`;
-
-	// Check cache first
-	if (schemaCache.has(cacheKey)) {
-		return schemaCache.get(cacheKey) ?? null;
-	}
-
+function tryLoadSchemaForNodeType(nodeType: string, version: number): SchemaOrFactory | null {
 	const { pkg, nodeName } = nodeTypeToPathComponents(nodeType);
 	const versionStr = versionToString(version);
 	const isLangchain = pkg === 'n8n-nodes-langchain';
@@ -188,7 +172,6 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	const schemaModule = tryLoadSchemaModule(flatSchemaPath) ?? tryLoadSchemaModule(splitSchemaPath);
 
 	if (!schemaModule) {
-		schemaCache.set(cacheKey, null);
 		return null;
 	}
 
@@ -198,23 +181,17 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 
 	// Try default export first (for split structure factory functions)
 	if (typeof schemaModule.default === 'function') {
-		const factory = schemaModule.default as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule.default as SchemaOrFactory;
 	}
 
 	// Try exact match for static schema
 	if (schemaModule[expectedSchemaName]) {
-		const schema = schemaModule[expectedSchemaName] as ZodSchema;
-		schemaCache.set(cacheKey, schema);
-		return schema;
+		return schemaModule[expectedSchemaName] as ZodSchema;
 	}
 
 	// Try exact match for factory function
 	if (typeof schemaModule[expectedFactoryName] === 'function') {
-		const factory = schemaModule[expectedFactoryName] as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule[expectedFactoryName] as SchemaOrFactory;
 	}
 
 	// Fallback: find any export ending with ConfigSchema but NOT SubnodeConfigSchema
@@ -223,9 +200,7 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	);
 
 	if (schemaName && schemaModule[schemaName]) {
-		const schema = schemaModule[schemaName] as ZodSchema;
-		schemaCache.set(cacheKey, schema);
-		return schema;
+		return schemaModule[schemaName] as ZodSchema;
 	}
 
 	// Fallback: find any factory function (starts with 'get', ends with 'ConfigSchema')
@@ -238,13 +213,258 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	);
 
 	if (factoryName && schemaModule[factoryName]) {
-		const factory = schemaModule[factoryName] as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule[factoryName] as SchemaOrFactory;
 	}
 
 	// No ConfigSchema found
-	schemaCache.set(cacheKey, null);
+	return null;
+}
+
+/**
+ * Load and cache schema for a node type/version
+ *
+ * Supports both:
+ * - Static schemas: ConfigSchema exports (ZodSchema)
+ * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
+ * - Flat structure: {version}.schema.ts
+ * - Split structure: {version}/index.schema.ts (for discriminated nodes)
+ *
+ * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
+ * (e.g., "googleCalendar") since tool variants don't have separate schemas.
+ *
+ * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
+ * @param version - Node version (e.g., 2, 4.2, 1.7)
+ * @returns ZodSchema or factory function if found, null otherwise
+ */
+export function loadSchema(nodeType: string, version: number): SchemaOrFactory | null {
+	const cacheKey = `${nodeType}@${version}`;
+
+	// Check cache first
+	if (schemaCache.has(cacheKey)) {
+		return schemaCache.get(cacheKey) ?? null;
+	}
+
+	// Try loading schema for the exact node type first
+	let schema = tryLoadSchemaForNodeType(nodeType, version);
+
+	// If not found and node name ends with 'Tool', try base node as fallback
+	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
+	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
+	// have their own schemas, so this fallback only triggers when no schema is found
+	if (!schema && nodeType.endsWith('Tool')) {
+		const baseNodeType = nodeType.slice(0, -4);
+		schema = tryLoadSchemaForNodeType(baseNodeType, version);
+	}
+
+	schemaCache.set(cacheKey, schema);
+	return schema;
+}
+
+/**
+ * Score a union variant by how well it matches - lower score = better match.
+ * Returns the number of discriminator mismatches.
+ */
+function scoreUnionVariant(issues: ZodIssue[]): number {
+	const discriminatorFields = ['mode', 'resource', 'operation'];
+	let discriminatorMismatches = 0;
+
+	for (const iss of issues) {
+		if (iss.code === 'invalid_literal') {
+			const lastPart = iss.path[iss.path.length - 1];
+			if (typeof lastPart === 'string' && discriminatorFields.includes(lastPart)) {
+				discriminatorMismatches++;
+			}
+		} else if (
+			iss.code === 'invalid_union' &&
+			'unionErrors' in iss &&
+			Array.isArray(iss.unionErrors)
+		) {
+			// For nested unions, find the best scoring nested variant
+			const nestedScores = (iss.unionErrors as Array<{ issues: ZodIssue[] }>).map((ue) =>
+				scoreUnionVariant(ue.issues),
+			);
+			discriminatorMismatches += Math.min(...nestedScores);
+		}
+	}
+
+	return discriminatorMismatches;
+}
+
+/**
+ * Find the best matching union variant (one with fewest discriminator mismatches).
+ */
+function findBestMatchingVariant(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+): { issues: ZodIssue[] } | null {
+	if (unionErrors.length === 0) return null;
+
+	let bestVariant = unionErrors[0];
+	let bestScore = scoreUnionVariant(bestVariant.issues);
+
+	for (let i = 1; i < unionErrors.length; i++) {
+		const score = scoreUnionVariant(unionErrors[i].issues);
+		if (score < bestScore) {
+			bestScore = score;
+			bestVariant = unionErrors[i];
+		}
+	}
+
+	return bestVariant;
+}
+
+/**
+ * Recursively collect issues from the best matching path through nested unions.
+ */
+function collectIssuesFromBestPath(unionErrors: Array<{ issues: ZodIssue[] }>): ZodIssue[] {
+	const bestVariant = findBestMatchingVariant(unionErrors);
+	if (!bestVariant) return [];
+
+	const result: ZodIssue[] = [];
+
+	for (const iss of bestVariant.issues) {
+		if (iss.code === 'invalid_union' && 'unionErrors' in iss && Array.isArray(iss.unionErrors)) {
+			// Recursively follow the best path for nested unions
+			result.push(...collectIssuesFromBestPath(iss.unionErrors as Array<{ issues: ZodIssue[] }>));
+		} else {
+			result.push(iss);
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Recursively collect ALL discriminator values from all union variants.
+ * Used when a discriminator is missing to show all valid options.
+ */
+function collectAllDiscriminatorValues(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+	discriminatorPath: string,
+): unknown[] {
+	const values: unknown[] = [];
+
+	for (const unionError of unionErrors) {
+		for (const iss of unionError.issues) {
+			if (iss.code === 'invalid_literal' && iss.path.join('.') === discriminatorPath) {
+				values.push((iss as { expected?: unknown }).expected);
+			} else if (
+				iss.code === 'invalid_union' &&
+				'unionErrors' in iss &&
+				Array.isArray(iss.unionErrors)
+			) {
+				values.push(
+					...collectAllDiscriminatorValues(
+						iss.unionErrors as Array<{ issues: ZodIssue[] }>,
+						discriminatorPath,
+					),
+				);
+			}
+		}
+	}
+
+	return [...new Set(values)];
+}
+
+/**
+ * Extract the most useful error information from union validation failures.
+ * Returns a clear, actionable error message summarizing what went wrong.
+ */
+function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): string | null {
+	// Find the best matching variant and collect its issues (handles nested unions)
+	const bestPathIssues = collectIssuesFromBestPath(unionErrors);
+
+	if (bestPathIssues.length === 0) {
+		return null;
+	}
+
+	// Group issues by path
+	const issuesByPath = new Map<string, ZodIssue[]>();
+	for (const iss of bestPathIssues) {
+		const path = iss.path.join('.');
+		if (!issuesByPath.has(path)) {
+			issuesByPath.set(path, []);
+		}
+		issuesByPath.get(path)!.push(iss);
+	}
+
+	// Check for discriminator issues first (invalid_literal on resource/operation/mode)
+	const discriminatorFields = ['mode', 'resource', 'operation'];
+	for (const field of discriminatorFields) {
+		for (const [path, issues] of issuesByPath) {
+			if (path.endsWith(field)) {
+				const literalIssues = issues.filter((i) => i.code === 'invalid_literal');
+				if (literalIssues.length > 0) {
+					const receivedValue = (literalIssues[0] as { received?: unknown }).received;
+
+					// For missing discriminators, collect ALL valid values from ALL variants
+					const expectedValues =
+						receivedValue === undefined
+							? collectAllDiscriminatorValues(unionErrors, path)
+							: [...new Set(literalIssues.map((i) => (i as { expected?: unknown }).expected))];
+
+					const expectedStr = expectedValues.map((v) => `"${v}"`).join(', ');
+					if (receivedValue === undefined) {
+						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. Make sure "${field}" is inside "parameters".`;
+					}
+					return `Invalid value for "${path}": got "${receivedValue}", expected one of: ${expectedStr}.`;
+				}
+			}
+		}
+	}
+
+	// Check for type mismatches
+	const typeMismatches: Array<{ path: string; expected: string; received: string }> = [];
+	for (const [path, issues] of issuesByPath) {
+		for (const iss of issues) {
+			if (iss.code === 'invalid_type') {
+				typeMismatches.push({
+					path,
+					expected: (iss as { expected?: string }).expected ?? 'unknown',
+					received: (iss as { received?: string }).received ?? 'unknown',
+				});
+			}
+		}
+	}
+
+	if (typeMismatches.length > 0) {
+		// Find unique type mismatches
+		const uniqueMismatches = new Map<string, { expected: string; received: string }>();
+		for (const m of typeMismatches) {
+			if (!uniqueMismatches.has(m.path)) {
+				uniqueMismatches.set(m.path, { expected: m.expected, received: m.received });
+			}
+		}
+
+		if (uniqueMismatches.size === 1) {
+			const [path, { expected, received }] = [...uniqueMismatches.entries()][0];
+			return `Field "${path}" has wrong type: expected ${expected}, got ${received}.`;
+		}
+
+		// Multiple type mismatches - summarize
+		const paths = [...uniqueMismatches.keys()].slice(0, 3);
+		const summaries = paths.map((p) => {
+			const { expected, received } = uniqueMismatches.get(p)!;
+			return `"${p}" (expected ${expected}, got ${received})`;
+		});
+		const more = uniqueMismatches.size > 3 ? ` and ${uniqueMismatches.size - 3} more` : '';
+		return `Type mismatches: ${summaries.join(', ')}${more}.`;
+	}
+
+	// Fallback: show the first few specific issues
+	const specificIssues = bestPathIssues
+		.filter((i: ZodIssue) => i.code !== 'invalid_union')
+		.slice(0, 3);
+	if (specificIssues.length > 0) {
+		const summaries = specificIssues.map((iss: ZodIssue) => {
+			const path = iss.path.join('.') || 'config';
+			if (iss.code === 'invalid_literal') {
+				return `"${path}" must be "${(iss as { expected?: unknown }).expected}"`;
+			}
+			return `"${path}": ${iss.message}`;
+		});
+		return `Validation failed: ${summaries.join('; ')}.`;
+	}
+
 	return null;
 }
 
@@ -273,6 +493,12 @@ function formatZodIssue(issue: ZodIssue): string {
 				);
 				if (allMissing) {
 					return `Required field "${path}" is missing.`;
+				}
+
+				// Extract the most useful error summary from the union
+				const errorSummary = extractUnionErrorSummary(issue.unionErrors);
+				if (errorSummary) {
+					return errorSummary;
 				}
 			}
 			return `Field "${path}" has invalid value. None of the expected types matched.`;

@@ -197,6 +197,54 @@ describe('getPropertyValue', () => {
 		const result = getPropertyValue(context, 'nonexistent');
 		expect(result).toEqual([undefined]);
 	});
+
+	describe('defaults handling', () => {
+		it('uses default value when property is not set in parameters', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { multipleMethods: false },
+			};
+			const result = getPropertyValue(context, 'multipleMethods');
+			expect(result).toEqual([false]);
+		});
+
+		it('prefers parameter value over default', () => {
+			const context: DisplayOptionsContext = {
+				parameters: { multipleMethods: true },
+				defaults: { multipleMethods: false },
+			};
+			const result = getPropertyValue(context, 'multipleMethods');
+			expect(result).toEqual([true]);
+		});
+
+		it('uses default for nested path when property is not set', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { options: { format: 'json' } },
+			};
+			const result = getPropertyValue(context, 'options.format');
+			expect(result).toEqual(['json']);
+		});
+
+		it('uses default for root path when property is not set', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				rootParameters: {},
+				defaults: { globalSetting: 'enabled' },
+			};
+			const result = getPropertyValue(context, '/globalSetting');
+			expect(result).toEqual(['enabled']);
+		});
+
+		it('returns undefined when neither parameter nor default is set', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { other: 'value' },
+			};
+			const result = getPropertyValue(context, 'nonexistent');
+			expect(result).toEqual([undefined]);
+		});
+	});
 });
 
 describe('matchesDisplayOptions', () => {
@@ -321,5 +369,88 @@ describe('matchesDisplayOptions', () => {
 			},
 		});
 		expect(result).toBe(true);
+	});
+
+	describe('defaults handling', () => {
+		it('uses default value for show condition when property is not set', () => {
+			// This is the Webhook httpMethod use case:
+			// displayOptions: {"show":{"multipleMethods":[false, true]}}
+			// multipleMethods defaults to false, so condition should match
+			const context: DisplayOptionsContext = {
+				parameters: {}, // multipleMethods not explicitly set
+				defaults: { multipleMethods: false },
+			};
+			const result = matchesDisplayOptions(context, {
+				show: { multipleMethods: [false, true] },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('returns false when default does not match show condition', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { mode: 'simple' },
+			};
+			const result = matchesDisplayOptions(context, {
+				show: { mode: ['advanced'] },
+			});
+			expect(result).toBe(false);
+		});
+
+		it('prefers explicit parameter value over default for show condition', () => {
+			const context: DisplayOptionsContext = {
+				parameters: { mode: 'advanced' },
+				defaults: { mode: 'simple' },
+			};
+			const result = matchesDisplayOptions(context, {
+				show: { mode: ['advanced'] },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('uses default value for hide condition when property is not set', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { mode: 'simple' },
+			};
+			const result = matchesDisplayOptions(context, {
+				hide: { mode: ['simple'] },
+			});
+			expect(result).toBe(false);
+		});
+
+		it('does not hide when default does not match hide condition', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { mode: 'advanced' },
+			};
+			const result = matchesDisplayOptions(context, {
+				hide: { mode: ['simple'] },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('handles boolean default values correctly', () => {
+			// Common case: property defaults to false, show when [false, true]
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { enabled: false },
+			};
+			const result = matchesDisplayOptions(context, {
+				show: { enabled: [false, true] },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('handles boolean default values correctly - should not match when default is not in list', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+				defaults: { enabled: false },
+			};
+			const result = matchesDisplayOptions(context, {
+				show: { enabled: [true] },
+			});
+			expect(result).toBe(false);
+		});
 	});
 });

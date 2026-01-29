@@ -23,7 +23,8 @@ export type ValidationErrorCode =
 	| 'FROM_AI_IN_NON_TOOL'
 	| 'MISSING_EXPRESSION_PREFIX'
 	| 'INVALID_PARAMETER'
-	| 'INVALID_INPUT_INDEX';
+	| 'INVALID_INPUT_INDEX'
+	| 'SUBNODE_NOT_CONNECTED';
 
 /**
  * Validation error class
@@ -140,7 +141,7 @@ const AI_CONNECTION_TO_SUBNODE_FIELD: Record<string, string> = {
 	ai_embedding: 'embedding',
 	ai_vectorStore: 'vectorStore',
 	ai_retriever: 'retriever',
-	ai_document: 'document',
+	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
 	ai_reranker: 'reranker',
 };

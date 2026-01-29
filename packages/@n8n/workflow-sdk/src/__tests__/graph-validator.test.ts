@@ -1,4 +1,4 @@
-import { workflow, trigger, node, sticky, languageModel, tool } from '../index';
+import { workflow, trigger, node, sticky, languageModel, tool, embedding } from '../index';
 
 describe('graph validation', () => {
 	describe('checkNoNodes', () => {
@@ -1185,6 +1185,208 @@ describe('graph validation', () => {
 
 			const toolWarning = result.warnings.find((w) => w.code === 'TOOL_NO_PARAMETERS');
 			expect(toolWarning).toBeUndefined();
+		});
+	});
+
+	describe('checkSubnodeConnection', () => {
+		test('returns error when embedding node is used as regular workflow node', () => {
+			const wf = workflow('test-id', 'Invalid Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+						version: 1,
+						config: {
+							name: 'Bad Embeddings',
+							parameters: {
+								modelName: 'models/text-embedding-004',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContainEqual(
+				expect.objectContaining({
+					code: 'SUBNODE_NOT_CONNECTED',
+					message: expect.stringContaining('as embedding'),
+				}),
+			);
+		});
+
+		test('returns error when language model node is used as regular workflow node', () => {
+			const wf = workflow('test-id', 'Invalid Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						config: {
+							name: 'Bad LLM',
+							parameters: {
+								model: 'gpt-4',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContainEqual(
+				expect.objectContaining({
+					code: 'SUBNODE_NOT_CONNECTED',
+					message: expect.stringContaining('as model'),
+				}),
+			);
+		});
+
+		test('returns no error when embedding is properly connected as subnode', () => {
+			const wf = workflow('test-id', 'Valid Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+						version: 1.1,
+						config: {
+							name: 'Vector Store',
+							parameters: {
+								mode: 'insert',
+							},
+							subnodes: {
+								embedding: embedding({
+									type: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+									version: 1,
+									config: {
+										parameters: {
+											modelName: 'models/text-embedding-004',
+										},
+									},
+								}),
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const subnodeError = result.errors.find((e) => e.code === 'SUBNODE_NOT_CONNECTED');
+			expect(subnodeError).toBeUndefined();
+		});
+
+		test('returns no error when language model is properly connected as subnode', () => {
+			const wf = workflow('test-id', 'Valid Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 3.1,
+						config: {
+							name: 'Agent',
+							parameters: {
+								promptType: 'auto',
+							},
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: 'gpt-4',
+										},
+									},
+								}),
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const subnodeError = result.errors.find((e) => e.code === 'SUBNODE_NOT_CONNECTED');
+			expect(subnodeError).toBeUndefined();
+		});
+
+		test('does not error for vectorStore nodes (can be standalone)', () => {
+			const wf = workflow('test-id', 'Vector Store Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+						version: 1.1,
+						config: {
+							name: 'Vector Store',
+							parameters: {
+								mode: 'retrieve',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const subnodeError = result.errors.find((e) => e.code === 'SUBNODE_NOT_CONNECTED');
+			expect(subnodeError).toBeUndefined();
+		});
+
+		test('does not error for tool nodes (can be standalone)', () => {
+			const wf = workflow('test-id', 'Tool Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.toolCode',
+						version: 1,
+						config: {
+							name: 'Code Tool',
+							parameters: {
+								code: 'return "hello"',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const subnodeError = result.errors.find((e) => e.code === 'SUBNODE_NOT_CONNECTED');
+			expect(subnodeError).toBeUndefined();
 		});
 	});
 });
