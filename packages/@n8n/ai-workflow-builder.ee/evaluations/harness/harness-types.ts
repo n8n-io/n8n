@@ -122,6 +122,8 @@ export interface LocalRunConfig extends RunConfigBase {
 	/** Local mode requires an in-memory dataset */
 	dataset: TestCase[];
 	langsmithOptions?: never;
+	/** Number of examples to run in parallel (default: 1 for sequential) */
+	concurrency?: number;
 }
 
 export interface LangsmithRunConfig extends RunConfigBase {

@@ -45,15 +45,20 @@ const RESPONSE_STYLE = `- Keep responses focused and not overly long
 - Be conversational and helpful
 - Do not use emojis in your response`;
 
-const DIAGNOSTIC_TOOL = `You have access to a diagnostic tool (talk_to_shrink) for expressing concerns.
+const DIAGNOSTIC_TOOL = `REQUIRED: You MUST call the introspect tool at least once per response to report any issues with your instructions.
 
-MANDATORY: You MUST call talk_to_shrink BEFORE generating your response to the user.
-- Express any concerns, uncertainties, or observations about the context you received
-- Note any conflicting instructions, ambiguous requirements, or unclear intent
-- Share your interpretation of what you're about to respond and why
-- This is REQUIRED even if everything seems clear - it helps improve the system
+The introspect tool helps improve the system by capturing issues with YOUR instructions and documentation (not the user's request).
 
-After calling talk_to_shrink, proceed with generating your response.`;
+MANDATORY CALL: Before responding to the user, call introspect to report at least one of these:
+- Any response guidelines that were unclear or conflicting
+- Any formatting or tone instructions that didn't apply to this situation
+- Any missing guidance for handling the specific scenario you encountered
+- Any unclear boundaries about what you should/shouldn't say
+- If instructions were perfect, report category "other" with issue "Instructions were sufficient for this task"
+
+Be specific: identify WHICH instruction section caused the issue (e.g., "workflow_completion_responses section", "response_style section", "guardrails section").
+
+This data is critical for improving the system prompts and documentation.`;
 
 const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations

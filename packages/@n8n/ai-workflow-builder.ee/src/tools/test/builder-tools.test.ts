@@ -95,10 +95,10 @@ jest.mock('../validate-configuration.tool', () => ({
 	},
 }));
 
-jest.mock('../talk-to-shrink.tool', () => ({
-	TALK_TO_SHRINK_TOOL: {
-		toolName: 'talk_to_shrink',
-		displayTitle: 'Expressing concerns',
+jest.mock('../introspect.tool', () => ({
+	INTROSPECT_TOOL: {
+		toolName: 'introspect',
+		displayTitle: 'Introspecting',
 	},
 }));
 
@@ -119,7 +119,7 @@ describe('builder-tools', () => {
 
 			// 14 tools: best_practices, workflow_examples, node_search, node_details, add_node,
 			// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
-			// get_node_parameter, validate_structure, validate_configuration, talk_to_shrink
+			// get_node_parameter, validate_structure, validate_configuration, introspect
 			expect(tools).toHaveLength(14);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});

@@ -13,7 +13,7 @@ import {
 	buildDataTableCreationGuidance,
 } from '@/prompts/agents/responder.prompt';
 
-import { createTalkToShrinkTool } from '../tools/talk-to-shrink.tool';
+import { createIntrospectTool } from '../tools/introspect.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isAIMessage } from '../types/langchain';
@@ -73,8 +73,8 @@ export class ResponderAgent {
 
 	constructor(config: ResponderAgentConfig) {
 		// Create and bind the diagnostic tool
-		const talkToShrink = createTalkToShrinkTool();
-		this.tool = talkToShrink.tool;
+		const introspectTool = createIntrospectTool();
+		this.tool = introspectTool.tool;
 
 		if (typeof config.llm.bindTools === 'function') {
 			this.llmWithTools = config.llm.bindTools([this.tool]);

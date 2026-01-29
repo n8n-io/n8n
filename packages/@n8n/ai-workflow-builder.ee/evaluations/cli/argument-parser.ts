@@ -8,7 +8,12 @@ import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
 import type { StageModels } from '../support/environment.js';
 
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
 export type EvaluationBackend = 'local' | 'langsmith';
 
 export interface EvaluationArgs {
@@ -76,7 +81,9 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		suite: z
+			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
 
 		verbose: z.boolean().default(false),
@@ -148,7 +155,7 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
 	'--max-examples': {

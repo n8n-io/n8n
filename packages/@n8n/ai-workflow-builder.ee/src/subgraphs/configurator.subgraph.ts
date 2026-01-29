@@ -21,7 +21,7 @@ import type { ParentGraphState } from '../parent-graph-state';
 import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
-import { createTalkToShrinkTool } from '../tools/talk-to-shrink.tool';
+import { createIntrospectTool } from '../tools/introspect.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -171,7 +171,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 						),
 					]
 				: []),
-			createTalkToShrinkTool(),
+			createIntrospectTool(),
 		];
 
 		// Conditionally add node configuration examples tool if feature flag is enabled

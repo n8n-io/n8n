@@ -47,6 +47,14 @@ export {
 	type SimilarityEvaluatorOptions,
 } from './evaluators';
 
+// Introspection evaluator
+export {
+	createIntrospectionEvaluator,
+	clearIntrospectionEvents,
+	getIntrospectionEvents,
+	type IntrospectionEvent,
+} from './evaluators/introspection';
+
 // Output
 export {
 	createArtifactSaver,

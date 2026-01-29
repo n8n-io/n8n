@@ -21,6 +21,8 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createIntrospectionEvaluator,
+	clearIntrospectionEvents,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -159,35 +161,76 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Create workflow generator with per-stage LLMs
-	const generateWorkflow = createWorkflowGenerator(
-		env.parsedNodeTypes,
-		env.llms,
-		args.featureFlags,
-	);
-
 	// Create evaluators based on mode (using judge LLM for evaluation)
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
+	// Default workflow generator
+	let generateWorkflow: (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow>;
+
+	// Handle introspection suite separately - uses global event store
+	if (args.suite === 'introspection') {
+		// Custom generator that clears events before each run
+		generateWorkflow = async (prompt: string, callbacks?: Callbacks): Promise<SimpleWorkflow> => {
+			// Clear events from previous runs before starting
+			clearIntrospectionEvents();
+
+			const runId = generateRunId();
+
+			const agent = createAgent({
+				parsedNodeTypes: env.parsedNodeTypes,
+				llms: env.llms,
+				featureFlags: args.featureFlags,
+			});
+
+			await consumeGenerator(
+				agent.chat(
+					getChatPayload({
+						evalType: EVAL_TYPES.LANGSMITH,
+						message: prompt,
+						workflowId: runId,
+						featureFlags: args.featureFlags,
+					}),
+					EVAL_USERS.LANGSMITH,
+					undefined, // abortSignal
+					callbacks,
+				),
 			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
+
+			const state = await agent.getState(runId, EVAL_USERS.LANGSMITH);
+
+			if (!state.values || !isWorkflowStateValues(state.values)) {
+				throw new Error('Invalid workflow state: workflow or messages missing');
+			}
+
+			return state.values.workflowJSON;
+		};
+
+		// Create evaluator that reads from global event store
+		evaluators.push(createIntrospectionEvaluator());
+	} else {
+		// Create standard workflow generator
+		generateWorkflow = createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
+
+		switch (args.suite) {
+			case 'llm-judge':
+				evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'pairwise':
+				evaluators.push(
+					createPairwiseEvaluator(env.llms.judge, {
+						numJudges: args.numJudges,
+					}),
+				);
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'programmatic':
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'similarity':
+				evaluators.push(createSimilarityEvaluator());
+				break;
+		}
 	}
 
 	const llmCallLimiter = pLimit(args.concurrency);
@@ -228,6 +271,7 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'local',
 					dataset: loadTestCases(args),
+					concurrency: args.concurrency,
 				};
 
 	// Run evaluation

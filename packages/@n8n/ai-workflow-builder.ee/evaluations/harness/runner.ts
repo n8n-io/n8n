@@ -472,6 +472,7 @@ async function runLocalDataset(params: {
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
+	concurrency?: number;
 }): Promise<ExampleResult[]> {
 	const {
 		testCases,
@@ -482,27 +483,31 @@ async function runLocalDataset(params: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency = 1,
 	} = params;
 
-	const results: ExampleResult[] = [];
-	for (let i = 0; i < testCases.length; i++) {
-		const testCase = testCases[i];
+	// Use pLimit to control concurrency of example execution
+	const exampleLimiter = pLimit(concurrency);
+
+	const resultPromises = testCases.map((testCase, i) => {
 		const index = i + 1;
-		const result = await runLocalExample({
-			index,
-			total: testCases.length,
-			testCase,
-			generateWorkflow,
-			evaluators,
-			globalContext,
-			passThreshold,
-			timeoutMs,
-			lifecycle,
-			artifactSaver,
-		});
-		results.push(result);
-	}
-	return results;
+		return exampleLimiter(() =>
+			runLocalExample({
+				index,
+				total: testCases.length,
+				testCase,
+				generateWorkflow,
+				evaluators,
+				globalContext,
+				passThreshold,
+				timeoutMs,
+				lifecycle,
+				artifactSaver,
+			}),
+		);
+	});
+
+	return await Promise.all(resultPromises);
 }
 
 function buildRunSummary(results: ExampleResult[]): RunSummary {
@@ -616,6 +621,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		lifecycle,
 		outputDir,
 		logger,
+		concurrency = 1,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -643,6 +649,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency,
 	});
 	const summary = buildRunSummary(results);
 

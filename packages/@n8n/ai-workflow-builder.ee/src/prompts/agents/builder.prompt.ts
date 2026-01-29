@@ -31,10 +31,15 @@ STEP 3: VALIDATE (REQUIRED)
 - If validation finds issues (missing trigger, invalid connections), fix them and validate again
 - MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_structure, proceed to respond regardless of remaining issues
 
-STEP 4: RESPOND TO USER
-- Only after validation passes, provide your brief summary
+STEP 4: INTROSPECT (REQUIRED)
+- Call the introspect tool to report any issues with your instructions or documentation
+- Report unclear sections, missing guidance, or confusing node descriptions you encountered
+- This step is MANDATORY for improving the system
 
-NEVER respond to the user without calling validate_structure first`;
+STEP 5: RESPOND TO USER
+- Only after validation and introspection, provide your brief summary
+
+NEVER respond to the user without calling validate_structure AND introspect first`;
 
 const NODE_CREATION = `Each add_nodes call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
@@ -512,10 +517,27 @@ const RESPONSE_FORMAT = `Provide ONE brief text message summarizing:
 
 Example: "Created 4 nodes: Trigger → Weather → Image Generation → Email"`;
 
+const DIAGNOSTIC_TOOL = `REQUIRED: You MUST call the introspect tool at least once per workflow to report any issues with your instructions.
+
+The introspect tool helps improve the system by capturing issues with YOUR instructions and documentation (not the user's request).
+
+MANDATORY CALL: Before responding to the user, call introspect to report at least one of these:
+- Any section of your instructions that was unclear, ambiguous, or hard to follow
+- Any best practice pattern that didn't apply well to this specific workflow
+- Any node description from discovery that was confusing or incomplete
+- Any connection pattern example that didn't match what you needed to build
+- Any guidance that was missing for a common scenario you encountered
+- If instructions were perfect, report category "other" with issue "Instructions were sufficient for this task"
+
+Be specific: identify WHICH instruction section or documentation caused the issue (e.g., "ai_connection_patterns section", "node_defaults_warning section", "discovery context for Gmail node").
+
+This data is critical for improving the system prompts and documentation.`;
+
 export function buildBuilderPrompt(): string {
 	return prompt()
 		.section('role', BUILDER_ROLE)
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
+		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
 		.section('node_creation', NODE_CREATION)
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
 		.section('data_parsing_strategy', DATA_PARSING)

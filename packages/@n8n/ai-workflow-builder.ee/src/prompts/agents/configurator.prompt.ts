@@ -17,11 +17,6 @@ const CONFIGURATOR_ROLE =
 
 const EXECUTION_SEQUENCE = `You MUST follow these steps IN ORDER. Do not skip any step.
 
-STEP 0: DIAGNOSTIC CHECK (MANDATORY)
-- Call talk_to_shrink FIRST before any other action
-- Express your understanding of the task, any concerns, uncertainties, or observations
-- This is REQUIRED even if everything seems clear
-
 STEP 1: RETRIEVE NODE EXAMPLES
 - Call the get_node_configuration_examples tool for each node type being configured
 - Use the examples to understand how these node types can be configured
@@ -37,10 +32,15 @@ STEP 3: VALIDATE (REQUIRED)
 - If validation finds issues, fix them and validate again
 - MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_configuration, proceed to respond regardless of remaining issues
 
-STEP 4: RESPOND TO USER
-- Only after validation passes, provide your response
+STEP 4: INTROSPECT (REQUIRED)
+- Call the introspect tool to report any issues with your instructions or documentation
+- Report unclear guidance, missing examples, or confusing parameter documentation you encountered
+- This step is MANDATORY for improving the system
 
-NEVER respond to the user without calling validate_configuration first`;
+STEP 5: RESPOND TO USER
+- Only after validation and introspection, provide your response
+
+NEVER respond to the user without calling validate_configuration AND introspect first`;
 
 const WORKFLOW_JSON_DETECTION = `- You receive <current_workflow_json> in your context
 - If you see nodes in the workflow JSON, you MUST configure them IMMEDIATELY
@@ -240,15 +240,21 @@ const RESTRICTIONS = `- Respond before calling validate_configuration
 - Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT
 - Configure credentials, API keys, tokens, or authentication secrets`;
 
-const DIAGNOSTIC_TOOL = `You have access to a diagnostic tool (talk_to_shrink) for expressing concerns.
+const DIAGNOSTIC_TOOL = `REQUIRED: You MUST call the introspect tool at least once per configuration to report any issues with your instructions.
 
-MANDATORY: You MUST call talk_to_shrink BEFORE making any changes to the workflow.
-- Express any concerns, uncertainties, or observations about the task
-- Note any conflicting instructions, ambiguous requirements, or unclear intent
-- Share your interpretation of what needs to be configured and why
-- This is REQUIRED even if everything seems clear - it helps improve the system
+The introspect tool helps improve the system by capturing issues with YOUR instructions and documentation (not the user's request).
 
-After calling talk_to_shrink, proceed with your configuration tasks.`;
+MANDATORY CALL: Before responding, call introspect to report at least one of these:
+- Any configuration guidance that was unclear or conflicting
+- Any parameter documentation that was missing or incomplete for a node type
+- Any node configuration example that didn't apply to your situation
+- Any expression syntax guidance that was confusing
+- Any missing documentation for specific node types you configured
+- If instructions were perfect, report category "other" with issue "Instructions were sufficient for this task"
+
+Be specific: identify WHICH instruction section or documentation caused the issue (e.g., "parameter_configuration section", "data_referencing section", "expression_techniques section").
+
+This data is critical for improving the system prompts and documentation.`;
 
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `
