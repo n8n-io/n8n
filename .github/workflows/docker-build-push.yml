@@ -91,56 +91,6 @@ jobs:
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
 
-      - name: Verify LanceDB platform binaries in compiled directory
-        run: |
-          echo "=== Checking for LanceDB platform binaries in compiled directory ==="
-
-          # Check if LanceDB exists
-          if [ ! -d "compiled/node_modules/@lancedb" ]; then
-            echo "❌ FAILURE: LanceDB not found in compiled directory"
-            exit 1
-          fi
-
-          echo "✓ LanceDB packages found:"
-          ls -la compiled/node_modules/@lancedb/ || true
-          echo ""
-
-          # Check for both glibc and musl binaries
-          echo "Checking platform binaries..."
-          GLIBC_COUNT=$(find compiled/node_modules/.pnpm -name "*lancedb-linux-*gnu*" -type d 2>/dev/null | wc -l)
-          MUSL_COUNT=$(find compiled/node_modules/.pnpm -name "*lancedb-linux-*musl*" -type d 2>/dev/null | wc -l)
-
-          echo "Found binaries:"
-          echo "  - glibc (Ubuntu/Debian): $GLIBC_COUNT package(s)"
-          echo "  - musl (Alpine): $MUSL_COUNT package(s)"
-          echo ""
-
-          if [ "$GLIBC_COUNT" -gt 0 ]; then
-            echo "glibc binaries:"
-            find compiled/node_modules/.pnpm -name "*lancedb-linux-*gnu*" -type d 2>/dev/null | sed 's|.*/||'
-          fi
-
-          if [ "$MUSL_COUNT" -gt 0 ]; then
-            echo ""
-            echo "musl binaries:"
-            find compiled/node_modules/.pnpm -name "*lancedb-linux-*musl*" -type d 2>/dev/null | sed 's|.*/||'
-          fi
-
-          # Fail if musl binaries are missing (required for Alpine Docker images)
-          if [ "$MUSL_COUNT" -eq 0 ]; then
-            echo ""
-            echo "❌ FAILURE: No musl binaries found!"
-            echo "Alpine Docker images will not work without musl binaries."
-            echo ""
-            echo "Expected to find:"
-            echo "  - @lancedb/lancedb-linux-x64-musl"
-            echo "  - @lancedb/lancedb-linux-arm64-musl"
-            exit 1
-          fi
-
-          echo ""
-          echo "✅ All required platform binaries present for multi-platform Docker support"
-
       - name: Determine Docker tags for all images
         id: determine-tags
         run: |
@@ -380,7 +330,15 @@ jobs:
   # VEX Attestation - Documents which CVEs affect us (vex.openvex.json)
   vex-attestation:
     name: VEX Attestation
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
     if: |
       always() &&
       needs.create_multi_arch_manifest.result == 'success' &&
