@@ -139,7 +139,10 @@ export abstract class DirectoryLoader {
 
 	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
 		return fullNodeTypes
-			.map((fullNodeType) => fullNodeType.split('.'))
+			.map((fullNodeType) => {
+				const lastDotIndex = fullNodeType.lastIndexOf('.');
+				return [fullNodeType.substring(0, lastDotIndex), fullNodeType.substring(lastDotIndex + 1)];
+			})
 			.filter(([pkg]) => pkg === packageName)
 			.map(([_, nodeType]) => nodeType);
 	}
