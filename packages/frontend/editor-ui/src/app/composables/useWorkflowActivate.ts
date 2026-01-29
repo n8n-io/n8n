@@ -7,6 +7,7 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -21,6 +22,7 @@ export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
@@ -54,7 +56,7 @@ export function useWorkflowActivate() {
 		let workflowName = conflict?.workflowId;
 		try {
 			if (conflict?.workflowId) {
-				const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict?.workflowId);
+				const conflictingWorkflow = await workflowsListStore.fetchWorkflow(conflict?.workflowId);
 				workflowName = conflictingWorkflow.name;
 			}
 		} catch {}
@@ -82,7 +84,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
 
 		if (!hadPublishedVersion) {
@@ -152,7 +154,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 		const wasPublished = !!workflow.activeVersion;
 
 		const telemetryPayload = {

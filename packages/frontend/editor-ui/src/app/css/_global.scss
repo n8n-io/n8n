@@ -242,3 +242,14 @@
 		}
 	}
 }
+
+// Drag and drop: disable hover effects on all elements except valid drop targets
+body.dragging-resource {
+	* {
+		pointer-events: none;
+	}
+
+	[data-droppable] {
+		pointer-events: auto;
+	}
+}

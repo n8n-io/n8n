@@ -10,6 +10,7 @@ import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/uti
 import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
@@ -48,11 +49,12 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 });
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let searchWorkflowsSpy: MockInstance<(typeof workflowsStore)['searchWorkflows']>;
+let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
@@ -69,6 +71,7 @@ describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
 		pinia = createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
@@ -88,9 +91,9 @@ describe('WorkflowSettingsVue', () => {
 			active: true,
 			scopes: ['workflow:update'],
 		});
-		workflowsStore.workflowsById = { '1': testWorkflow };
-		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([testWorkflow]);
-		workflowsStore.getWorkflowById.mockImplementation(() => testWorkflow);
+		workflowsListStore.workflowsById = { '1': testWorkflow };
+		searchWorkflowsSpy = workflowsListStore.searchWorkflows.mockResolvedValue([testWorkflow]);
+		workflowsListStore.getWorkflowById.mockImplementation(() => testWorkflow);
 	});
 
 	afterEach(() => {
@@ -378,8 +381,8 @@ describe('WorkflowSettingsVue', () => {
 			active: true,
 			scopes: ['workflow:read'],
 		});
-		workflowsStore.workflowsById = { '1': readOnlyWorkflow };
-		workflowsStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+		workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+		workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
 
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
@@ -535,7 +538,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should disable execution order dropdown when user has no update permission', async () => {
-			workflowsStore.getWorkflowById.mockImplementation(() => ({
+			workflowsListStore.getWorkflowById.mockImplementation(() => ({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
@@ -694,7 +697,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should disable credential resolver dropdown when user has no update permission', async () => {
-			workflowsStore.getWorkflowById.mockImplementation(() => ({
+			workflowsListStore.getWorkflowById.mockImplementation(() => ({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
