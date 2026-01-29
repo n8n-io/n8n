@@ -29,6 +29,7 @@ Static analysis for Playwright test architecture. Catches problems before they s
 1. **Analysis only?** Run `pnpm janitor` (no TCR needed)
 2. **Making code changes?** Use TCR: `pnpm janitor tcr --execute -m="chore: ..."`
 3. **Never** manually `git commit` janitor-related fixes - always go through TCR
+4. **Never** modify `.janitor-baseline.json` via TCR - baseline updates must be done manually
 
 ### When to Use
 
@@ -102,9 +103,12 @@ git add .janitor-baseline.json && git commit -m "chore: add janitor baseline"
 
 Once baseline exists, janitor and TCR **only fail on NEW violations**. Pre-existing violations are tracked but don't block work.
 
+> **Safeguard:** TCR blocks commits that modify `.janitor-baseline.json`. This prevents accidentally "fixing" violations by updating the baseline instead of the actual code. Baseline updates must be done manually after fixing violations.
+
 ```bash
-# Update baseline after fixing violations
+# Update baseline after fixing violations (manual commit required)
 pnpm janitor baseline
+git add .janitor-baseline.json && git commit -m "chore: update baseline after cleanup"
 ```
 
 ### Incremental Cleanup Strategy

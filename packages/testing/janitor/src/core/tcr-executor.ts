@@ -41,7 +41,7 @@ export interface TcrOptions {
 
 export interface TcrResult {
 	success: boolean;
-	failedStep?: 'rules' | 'typecheck' | 'tests' | 'diff-too-large';
+	failedStep?: 'rules' | 'typecheck' | 'tests' | 'diff-too-large' | 'baseline-modified';
 	changedFiles: string[];
 	changedMethods: MethodChange[];
 	affectedTests: string[];
@@ -88,6 +88,12 @@ export class TcrExecutor {
 		const diffValidation = this.validateDiffSize(changedFiles, maxDiffLines, targetBranch);
 		if (diffValidation) {
 			return this.buildResult({ ...diffValidation, durationMs: performance.now() - startTime });
+		}
+
+		// Validation: baseline not modified (prevents AI from "fixing" violations by updating baseline)
+		const baselineValidation = this.validateBaselineNotModified(changedFiles);
+		if (baselineValidation) {
+			return this.buildResult({ ...baselineValidation, durationMs: performance.now() - startTime });
 		}
 
 		// No changes
@@ -241,6 +247,24 @@ export class TcrExecutor {
 
 		this.logger.debug(`Diff size: ${totalDiffLines} lines (max: ${maxDiffLines})`);
 		return null;
+	}
+
+	private validateBaselineNotModified(changedFiles: string[]): Partial<TcrResult> | null {
+		const baselineFile = changedFiles.find((f) => f.endsWith('.janitor-baseline.json'));
+		if (!baselineFile) return null;
+
+		this.logger.debug('\n✗ Cannot commit baseline changes via TCR');
+		this.logger.debug('  Baseline updates must be done manually:');
+		this.logger.debug('    git checkout .janitor-baseline.json');
+		this.logger.debug('    # Fix the actual violations, then:');
+		this.logger.debug('    pnpm janitor baseline && git add .janitor-baseline.json');
+
+		return {
+			success: false,
+			failedStep: 'baseline-modified',
+			changedFiles,
+			action: 'dry-run',
+		};
 	}
 
 	// --- Action Helpers ---
@@ -504,6 +528,9 @@ export function formatTcrResultConsole(result: TcrResult, verbose = false): void
 	if (result.totalDiffLines !== undefined) {
 		const diffStatus = result.failedStep === 'diff-too-large' ? '✗ Too large' : '✓ OK';
 		console.log(`  Diff size: ${diffStatus} (${result.totalDiffLines} lines)`);
+	}
+	if (result.failedStep === 'baseline-modified') {
+		console.log('  Baseline: ✗ Modified (baseline updates must be done manually)');
 	}
 	console.log(
 		`  Rules: ${result.ruleViolations === 0 ? '✓ Passed' : `✗ ${result.ruleViolations} violation(s)`}`,

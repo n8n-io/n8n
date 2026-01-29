@@ -153,6 +153,56 @@ describe('TcrExecutor', () => {
 		});
 	});
 
+	describe('baseline protection', () => {
+		it('blocks when baseline file is modified', () => {
+			// Create and commit a baseline file first
+			const baseline: BaselineFile = {
+				version: 1,
+				generated: new Date().toISOString(),
+				totalViolations: 0,
+				violations: {},
+			};
+			saveBaseline(baseline, tempDir);
+			execSync('git add -A && git commit -m "Add baseline"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Now modify the baseline
+			const modifiedBaseline: BaselineFile = {
+				...baseline,
+				totalViolations: 5,
+				violations: { 'some/file.ts': [] },
+			};
+			saveBaseline(modifiedBaseline, tempDir);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			expect(result.success).toBe(false);
+			expect(result.failedStep).toBe('baseline-modified');
+			expect(result.action).toBe('dry-run');
+		});
+
+		it('allows changes when baseline is not modified', () => {
+			// Create and commit a baseline file
+			const baseline: BaselineFile = {
+				version: 1,
+				generated: new Date().toISOString(),
+				totalViolations: 0,
+				violations: {},
+			};
+			saveBaseline(baseline, tempDir);
+			execSync('git add -A && git commit -m "Add baseline"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Modify a different file (not baseline)
+			fs.writeFileSync(path.join(tempDir, 'pages', 'OtherPage.ts'), 'export class OtherPage {}');
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// Should not fail on baseline-modified
+			expect(result.failedStep).not.toBe('baseline-modified');
+		});
+	});
+
 	describe('baseline filtering', () => {
 		it('filters known violations from baseline', () => {
 			// Create a file with a violation (importing another page)

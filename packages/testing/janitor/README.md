@@ -136,11 +136,13 @@ git commit -m "chore: add janitor baseline"
 
 Once a baseline exists, janitor and TCR **only fail on new violations**. Pre-existing violations are tracked but don't block commits.
 
+**Safeguard:** TCR blocks commits that modify `.janitor-baseline.json`. This prevents accidentally "fixing" violations by updating the baseline instead of the actual code. Baseline updates must always be done manually.
+
 ```bash
 # This now passes (only checks for NEW violations)
 playwright-janitor tcr --execute -m="Add new feature"
 
-# As you fix violations, update the baseline
+# As you fix violations, update the baseline (manual commit required - TCR won't commit baseline changes)
 playwright-janitor baseline
 git add .janitor-baseline.json
 git commit -m "chore: update baseline after cleanup"
