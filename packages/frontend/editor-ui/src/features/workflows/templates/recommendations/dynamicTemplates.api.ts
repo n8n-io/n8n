@@ -2,7 +2,7 @@ import type { IRestApiContext, ITemplatesWorkflowFull } from '@n8n/rest-api-clie
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export interface DynamicTemplatesResponse {
-	templates: { workflow: ITemplatesWorkflowFull }[];
+	templates: Array<{ workflow: ITemplatesWorkflowFull }>;
 }
 
 export async function getDynamicRecommendedTemplates(
