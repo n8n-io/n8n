@@ -86,21 +86,17 @@ describe('schema-validator', () => {
 			expect(result.errors[0].path).toContain('keepOnlySet');
 		});
 
-		it('returns clear error when discriminator is missing from parameters', () => {
-			// Set v3 requires mode inside parameters (discriminated union)
-			// If mode is missing, error should clearly indicate the discriminator issue
+		it('accepts missing discriminator when default matches a valid branch', () => {
+			// Set v3 mode defaults to 'manual', so missing mode is valid
+			// The schema applies the default and validates against the manual branch
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
 				parameters: {
-					// mode is missing! Should be 'manual' or 'raw'
-					assignments: { assignments: [] },
+					// mode is missing but defaults to 'manual'
+					fields: { values: [] },
 				},
 			});
-			expect(result.valid).toBe(false);
-			expect(result.errors.length).toBeGreaterThan(0);
-			// Error message should mention the discriminator and expected values
-			const errorMsg = result.errors[0].message;
-			expect(errorMsg).toMatch(/mode/i);
-			expect(errorMsg).toMatch(/(manual|raw)/i);
+			expect(result.valid).toBe(true);
+			expect(result.errors).toEqual([]);
 		});
 
 		it('returns clear error when discriminator has wrong value', () => {

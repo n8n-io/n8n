@@ -804,6 +804,7 @@ export interface SchemaInfo {
 export function generateSubnodeConfigSchemaCode(
 	aiInputTypes: AIInputTypeInfo[],
 	schemaName: string,
+	allProperties?: NodeProperty[],
 ): string | null {
 	if (aiInputTypes.length === 0) {
 		return null;
@@ -845,8 +846,16 @@ export function generateSubnodeConfigSchemaCode(
 			// Use resolveSchema for conditional fields
 			const displayOptionsStr = JSON.stringify(aiInput.displayOptions);
 			const indent = hasConditional ? '\t\t' : '\t';
+			// Extract defaults for properties referenced in displayOptions
+			let defaultsStr = '';
+			if (allProperties) {
+				const defaults = extractDefaultsForDisplayOptions(aiInput.displayOptions, allProperties);
+				if (Object.keys(defaults).length > 0) {
+					defaultsStr = `, defaults: ${JSON.stringify(defaults)}`;
+				}
+			}
 			lines.push(
-				`${indent}${fieldInfo.fieldName}: resolveSchema({ parameters, schema: ${schemaStr}, required: ${aiInput.required}, displayOptions: ${displayOptionsStr} }),`,
+				`${indent}${fieldInfo.fieldName}: resolveSchema({ parameters, schema: ${schemaStr}, required: ${aiInput.required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`,
 			);
 		} else if (!aiInput.required) {
 			const indent = hasConditional ? '\t\t' : '\t';
@@ -1089,7 +1098,11 @@ function generateSchemasForNode(
 
 			// Generate Subnode Config Schema (if AI node)
 			if (hasAiInputs) {
-				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				const subnodeCode = generateSubnodeConfigSchemaCode(
+					aiInputTypes,
+					baseSchemaName,
+					node.properties,
+				);
 				if (subnodeCode) {
 					lines.push(subnodeCode);
 					lines.push('');
@@ -1162,7 +1175,11 @@ function generateSchemasForNode(
 
 			// Generate Subnode Config Schema (if AI node)
 			if (hasAiInputs) {
-				const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+				const subnodeCode = generateSubnodeConfigSchemaCode(
+					aiInputTypes,
+					baseSchemaName,
+					node.properties,
+				);
 				if (subnodeCode) {
 					lines.push(subnodeCode);
 					lines.push('');
@@ -1330,7 +1347,11 @@ function generateSchemasForNode(
 
 	// Generate Subnode Config Schema (shared across combinations if AI node)
 	if (hasAiInputs) {
-		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
+		const subnodeCode = generateSubnodeConfigSchemaCode(
+			aiInputTypes,
+			baseSchemaName,
+			node.properties,
+		);
 		if (subnodeCode) {
 			// Insert subnode schema before the combination schemas
 			const subnodeLines = [subnodeCode, ''];
@@ -1930,7 +1951,7 @@ export function generateDiscriminatorSchemaFile(
 		lines.push('// Subnode Configuration Schema');
 		lines.push('// ' + '='.repeat(75));
 		lines.push('');
-		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, comboSchemaName);
+		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, comboSchemaName, props);
 		if (subnodeCode) {
 			lines.push(subnodeCode);
 			lines.push('');
@@ -1949,10 +1970,20 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\treturn z.object({');
 	lines.push('\t\tparameters: z.object({');
 
-	// Add discriminator fields as literals
+	// Add discriminator fields as literals (with defaults if they have matching defaults)
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
-			lines.push(`\t\t\t${key}: z.literal('${value}'),`);
+			// Check if this discriminator has a matching default value in node properties
+			const discProp = node.properties?.find((p) => p.name === key);
+			const hasMatchingDefault = discProp?.default === value;
+
+			if (hasMatchingDefault) {
+				// Accept undefined and default to the expected value
+				lines.push(`\t\t\t${key}: z.literal('${value}').default('${value}'),`);
+			} else {
+				// Require the literal value (no matching default)
+				lines.push(`\t\t\t${key}: z.literal('${value}'),`);
+			}
 		}
 	}
 
@@ -2062,19 +2093,37 @@ export function generateResourceIndexSchemaFile(
 	}
 	lines.push('');
 
+	// Find default for 'operation' discriminator
+	const operationProp = node.properties.find((p) => p.name === 'operation');
+	const operationDefault = operationProp?.default;
+
 	// Export factory function
 	lines.push(
 		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
 
+	// Apply operation default if operation is missing from parameters
+	if (operationDefault !== undefined) {
+		const defaultValueStr =
+			typeof operationDefault === 'string'
+				? `'${operationDefault}'`
+				: JSON.stringify(operationDefault);
+		lines.push(`\t// Apply operation default if not set`);
+		lines.push(
+			`\tconst effectiveParams = parameters.operation === undefined ? { ...parameters, operation: ${defaultValueStr} } : parameters;`,
+		);
+	}
+
+	const paramsVar = operationDefault !== undefined ? 'effectiveParams' : 'parameters';
+
 	if (operations.length === 1) {
 		const importName = `get${toPascalCase(operations[0])}Schema`;
-		lines.push(`\treturn ${importName}({ parameters, resolveSchema });`);
+		lines.push(`\treturn ${importName}({ parameters: ${paramsVar}, resolveSchema });`);
 	} else {
 		lines.push('\treturn z.union([');
 		for (const op of operations.sort()) {
 			const importName = `get${toPascalCase(op)}Schema`;
-			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
+			lines.push(`\t\t${importName}({ parameters: ${paramsVar}, resolveSchema }),`);
 		}
 		lines.push('\t]);');
 	}
@@ -2111,12 +2160,19 @@ export function generateSplitVersionIndexSchemaFile(
 
 	// Import default exports from child schemas
 	const importNames: string[] = [];
+	let discriminatorDefault: { name: string; value: unknown } | undefined;
+
 	if (tree.type === 'resource_operation' && tree.resources) {
 		for (const [resource] of tree.resources) {
 			const resourceDir = `resource_${toSnakeCase(resource)}`;
 			const importName = `get${toPascalCase(resource)}Schema`;
 			importNames.push(importName);
 			lines.push(`import ${importName} from './${resourceDir}/index.schema';`);
+		}
+		// Find default for 'resource' discriminator
+		const resourceProp = node.properties.find((p) => p.name === 'resource');
+		if (resourceProp?.default !== undefined) {
+			discriminatorDefault = { name: 'resource', value: resourceProp.default };
 		}
 	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
 		const discName = tree.discriminatorName;
@@ -2126,6 +2182,11 @@ export function generateSplitVersionIndexSchemaFile(
 			importNames.push(importName);
 			lines.push(`import ${importName} from './${fileName}';`);
 		}
+		// Find default for this discriminator
+		const discProp = node.properties.find((p) => p.name === discName);
+		if (discProp?.default !== undefined) {
+			discriminatorDefault = { name: discName, value: discProp.default };
+		}
 	}
 	lines.push('');
 
@@ -2134,12 +2195,26 @@ export function generateSplitVersionIndexSchemaFile(
 		`export default function getSchema({ parameters, resolveSchema }: { parameters: Record<string, unknown>; resolveSchema: typeof import('${basePath}').resolveSchema }) {`,
 	);
 
+	// Apply discriminator default if discriminator is missing from parameters
+	if (discriminatorDefault) {
+		const defaultValueStr =
+			typeof discriminatorDefault.value === 'string'
+				? `'${discriminatorDefault.value}'`
+				: JSON.stringify(discriminatorDefault.value);
+		lines.push(`\t// Apply discriminator default if not set`);
+		lines.push(
+			`\tconst effectiveParams = parameters.${discriminatorDefault.name} === undefined ? { ...parameters, ${discriminatorDefault.name}: ${defaultValueStr} } : parameters;`,
+		);
+	}
+
+	const paramsVar = discriminatorDefault ? 'effectiveParams' : 'parameters';
+
 	if (importNames.length === 1) {
-		lines.push(`\treturn ${importNames[0]}({ parameters, resolveSchema });`);
+		lines.push(`\treturn ${importNames[0]}({ parameters: ${paramsVar}, resolveSchema });`);
 	} else if (importNames.length > 1) {
 		lines.push('\treturn z.union([');
 		for (const importName of importNames) {
-			lines.push(`\t\t${importName}({ parameters, resolveSchema }),`);
+			lines.push(`\t\t${importName}({ parameters: ${paramsVar}, resolveSchema }),`);
 		}
 		lines.push('\t]);');
 	} else {

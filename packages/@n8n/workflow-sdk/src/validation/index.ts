@@ -140,7 +140,7 @@ const AI_CONNECTION_TO_SUBNODE_FIELD: Record<string, string> = {
 	ai_embedding: 'embedding',
 	ai_vectorStore: 'vectorStore',
 	ai_retriever: 'retriever',
-	ai_document: 'document',
+	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
 	ai_reranker: 'reranker',
 };

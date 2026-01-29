@@ -460,15 +460,15 @@ return workflow('test-id', 'Test Workflow')
 			expect(result.errors).toEqual([]);
 		});
 
-		it('handles empty parameters object (returns validation error for discriminated schema)', () => {
-			// For Set v3, the mode discriminator is required
-			// Empty parameters means the mode is missing, which fails discriminator matching
+		it('handles empty parameters object (uses discriminator defaults)', () => {
+			// For Set v3, mode defaults to 'manual'
+			// Empty parameters means mode defaults to 'manual', which is valid
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
 				parameters: {},
 			});
-			// Empty parameters fail because mode discriminator is required
-			expect(result.valid).toBe(false);
-			expect(result.errors.length).toBeGreaterThan(0);
+			// Empty parameters are valid because mode defaults to 'manual'
+			expect(result.valid).toBe(true);
+			expect(result.errors).toEqual([]);
 		});
 
 		it('handles unknown node type gracefully (no schema)', () => {
