@@ -586,11 +586,67 @@ function generateStickyCall(node: SemanticNode): string {
 }
 
 /**
+ * Check if node is a merge type
+ */
+function isMergeType(type: string): boolean {
+	return type === 'n8n-nodes-base.merge';
+}
+
+/**
+ * Generate merge factory call
+ * Uses simplified syntax: merge({ version: N, config: {...} })
+ */
+function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
+	const indent = getIndent(ctx);
+	const innerIndent = getIndent({ ...ctx, indent: ctx.indent + 1 });
+
+	const parts: string[] = [];
+
+	parts.push(`${innerIndent}version: ${node.json.typeVersion}`);
+
+	const configParts: string[] = [];
+
+	// Always include name for proper roundtrip
+	if (node.json.name) {
+		configParts.push(`name: '${escapeString(node.json.name)}'`);
+	}
+
+	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(node.json.parameters)}`);
+	}
+
+	if (node.json.credentials) {
+		configParts.push(`credentials: ${formatValue(node.json.credentials)}`);
+	}
+
+	// Include position if non-zero
+	const pos = node.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	// Include onError if set
+	if (node.json.onError) {
+		configParts.push(`onError: '${node.json.onError}'`);
+	}
+
+	if (configParts.length > 0) {
+		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);
+	}
+
+	return `merge({\n${parts.join(',\n')}\n${indent}})`;
+}
+
+/**
  * Generate node call
  */
 function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
 	if (isStickyNote(node.type)) {
 		return generateStickyCall(node);
+	}
+
+	if (isMergeType(node.type)) {
+		return generateMergeCall(node, ctx);
 	}
 
 	const config = generateNodeConfig(node, ctx);

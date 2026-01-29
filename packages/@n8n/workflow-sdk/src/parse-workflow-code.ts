@@ -449,6 +449,7 @@ import {
 	ifElse as ifElseFn,
 	ifNode as ifNodeFn,
 	switchCase as switchCaseFn,
+	merge as mergeFn,
 } from './node-builder';
 import {
 	languageModel as languageModelFn,
@@ -463,7 +464,6 @@ import {
 	textSplitter as textSplitterFn,
 	reranker as rerankerFn,
 } from './subnode-builders';
-import { merge as mergeFn } from './merge';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
 import { nextBatch as nextBatchFn } from './next-batch';
 // Backward compatibility shim: fanOut() just returns its arguments as an array

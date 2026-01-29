@@ -3,8 +3,84 @@ import {
 	generateSingleVersionSchemaFile,
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
+	mapPropertyToZodSchema,
 } from '../generate-types/generate-zod-schemas';
 import type { NodeProperty, NodeTypeDescription } from '../generate-types/generate-types';
+
+describe('mapPropertyToZodSchema for resourceLocator', () => {
+	it('returns resourceLocatorValueSchema when no modes are specified', () => {
+		const prop: NodeProperty = {
+			name: 'document',
+			displayName: 'Document',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('resourceLocatorValueSchema');
+	});
+
+	it('generates inline schema with single mode literal', () => {
+		const prop: NodeProperty = {
+			name: 'document',
+			displayName: 'Document',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [{ displayName: 'List', name: 'list', type: 'list' }],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain('z.object({');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('cachedResultUrl: z.string().optional()');
+		// Should not use z.union for mode when there's only one mode
+		expect(schema).not.toContain('z.union([z.literal');
+	});
+
+	it('generates inline schema with multiple modes as union', () => {
+		const prop: NodeProperty = {
+			name: 'document',
+			displayName: 'Document',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [
+				{ displayName: 'List', name: 'list', type: 'list' },
+				{ displayName: 'URL', name: 'url', type: 'string' },
+				{ displayName: 'ID', name: 'id', type: 'string' },
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain('z.object({');
+		expect(schema).toContain('__rl: z.literal(true)');
+		// Should use z.union for mode with multiple modes
+		expect(schema).toContain("z.union([z.literal('list'), z.literal('url'), z.literal('id')]");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+	});
+
+	it('generates inline schema with two modes as union', () => {
+		const prop: NodeProperty = {
+			name: 'channel',
+			displayName: 'Channel',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [
+				{ displayName: 'List', name: 'list', type: 'list' },
+				{ displayName: 'ID', name: 'id', type: 'string' },
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain("z.union([z.literal('list'), z.literal('id')]");
+	});
+});
 
 describe('generateConditionalSchemaLine', () => {
 	it('generates resolveSchema call for property with displayOptions.show', () => {

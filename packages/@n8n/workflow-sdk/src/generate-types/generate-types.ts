@@ -207,6 +207,11 @@ export interface NodeProperty {
 	};
 	typeOptions?: Record<string, unknown>;
 	noDataExpression?: boolean;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+	}>;
 }
 
 export interface NodeTypeDescription {
@@ -528,6 +533,17 @@ export interface DiscriminatedUnionResult {
 // =============================================================================
 
 /**
+ * Generate inline type for resourceLocator based on available modes
+ */
+function generateResourceLocatorType(prop: NodeProperty): string {
+	if (prop.modes && prop.modes.length > 0) {
+		const modeNames = prop.modes.map((m) => `'${m.name}'`).join(' | ');
+		return `{ __rl: true; mode: ${modeNames}; value: string; cachedResultName?: string }`;
+	}
+	return '{ __rl: true; mode: string; value: string; cachedResultName?: string }';
+}
+
+/**
  * Generate inline type for a nested property (used in fixedCollection)
  * This is a forward declaration - the actual function is defined below
  */
@@ -541,7 +557,7 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 			case 'multiOptions':
 				return 'string[]';
 			case 'resourceLocator':
-				return 'ResourceLocatorValue';
+				return generateResourceLocatorType(prop);
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -596,7 +612,7 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'json':
 			return 'IDataObject | string | Expression<string>';
 		case 'resourceLocator':
-			return 'ResourceLocatorValue';
+			return generateResourceLocatorType(prop);
 		case 'filter':
 			return 'FilterValue';
 		case 'assignmentCollection':
@@ -851,7 +867,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			case 'multiOptions':
 				return 'string[]';
 			case 'resourceLocator':
-				return 'ResourceLocatorValue';
+				return generateResourceLocatorType(prop);
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -913,7 +929,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return 'IDataObject | string | Expression<string>';
 
 		case 'resourceLocator':
-			return 'ResourceLocatorValue';
+			return generateResourceLocatorType(prop);
 
 		case 'filter':
 			return 'FilterValue';
@@ -1746,17 +1762,11 @@ export function generateSharedFile(
 	lines.push('');
 
 	// Helper types
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'export type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'export type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -1897,7 +1907,6 @@ export function generateDiscriminatorFile(
 	lines.push('');
 
 	// Check what helper types we need
-	const needsResourceLocator = props.some((p) => p.type === 'resourceLocator');
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
 	const needsIDataObject = props.some((p) => p.type === 'json');
@@ -1917,13 +1926,8 @@ export function generateDiscriminatorFile(
 	lines.push('');
 
 	// Inline helper types (only the ones needed)
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -2413,17 +2417,11 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 
 	// Helper types (if needed) based on filtered properties
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
@@ -2754,17 +2752,11 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	lines.push('');
 
 	// Helper types (if needed) - only add if they'll actually be used in output
-	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
 
-	if (needsResourceLocator || needsFilter || needsAssignment) {
+	if (needsFilter || needsAssignment) {
 		lines.push('// Helper types for special n8n fields');
-		if (needsResourceLocator) {
-			lines.push(
-				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
-			);
-		}
 		if (needsFilter) {
 			lines.push(
 				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
