@@ -101,9 +101,7 @@ describe('MySQL Integration - NODE-4174', () => {
 		expect(result[0][0].json).toHaveProperty('message');
 	});
 
-	// NODE-4174: createPool() is outside try-catch, so connection errors bypass continueOnFail.
-	// Remove .fails when fixed.
-	test.fails('bug: connection error should return error item with continueOnFail', async () => {
+	test('connection error should return error item with continueOnFail', async () => {
 		const params = {
 			resource: 'database',
 			operation: 'executeQuery',
