@@ -2051,7 +2051,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		: `NodeConfig<${configName}>`;
 	lines.push(`\tconfig: ${configType};`);
 	if (schema) {
-		lines.push(`\toutput?: ${outputTypeName};`);
+		lines.push(`\toutput?: Items<${outputTypeName}>;`);
 	}
 	lines.push('};');
 
@@ -2508,7 +2508,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 			lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
 		}
 		if (outputTypeName) {
-			lines.push(`\toutput?: ${outputTypeName};`);
+			lines.push(`\toutput?: Items<${outputTypeName}>;`);
 		}
 		lines.push('};');
 		lines.push('');
