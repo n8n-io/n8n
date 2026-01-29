@@ -10,7 +10,6 @@ test.describe('Debug mode', () => {
 	};
 
 	const NOTIFICATIONS = {
-		WORKFLOW_CREATED: 'Workflow successfully created',
 		EXECUTION_IMPORTED: 'Execution data imported',
 		PROBLEM_IN_NODE: 'Problem in node',
 		SUCCESSFUL: 'Successful',
@@ -30,7 +29,6 @@ test.describe('Debug mode', () => {
 		await n8n.ndv.fillParameterInput('URL', url);
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.ndv.close();
-		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	}
 
 	// Helper function to import execution for debugging
