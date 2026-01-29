@@ -4,7 +4,7 @@ import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
@@ -15,7 +15,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	const cloudPlanStore = useCloudPlanStore();
 	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
 	const INTERACTION_STORAGE_KEY = 'n8n-personalizedTemplatesV3-hasInteracted';
 
@@ -46,7 +46,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	});
 
 	const shouldShowTemplateTooltip = computed(() => {
-		const allWorkflows = workflowsStore.allWorkflows;
+		const allWorkflows = workflowsListStore.allWorkflows;
 
 		return (
 			isFeatureEnabled() &&
