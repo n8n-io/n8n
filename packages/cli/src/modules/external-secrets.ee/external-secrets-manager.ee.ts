@@ -52,6 +52,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Lifecycle
 	// ========================================
 
+	/**
+	 * @deprecated Use SecretsCacheRefresh.init() instead
+	 */
 	async init(): Promise<void> {
 		if (this.initialized) return;
 
@@ -75,6 +78,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.initializingPromise;
 	}
 
+	/**
+	 * @deprecated Use SecretsCacheRefresh.shutdown() instead
+	 */
 	shutdown(): void {
 		this.stopSecretsRefresh();
 		this.retryManager.cancelAll();
@@ -242,7 +248,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Event Handlers
 	// ========================================
 
-	@OnPubSubEvent('reload-external-secrets-providers')
+	/**
+	 * @deprecated Use SecretsCacheRefresh.reloadProviderConnections() instead
+	 */
 	async reloadAllProviders(): Promise<void> {
 		this.logger.debug('Reloading all external secrets providers');
 
@@ -305,14 +313,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		// Re-add provider with new settings
 		await this.addProvider(name, config);
-	}
-
-	// ========================================
-	// Public API - Secrets Refresh
-	// ========================================
-
-	async updateSecrets(): Promise<void> {
-		await this.secretsCache.refreshAll();
 	}
 
 	// ========================================

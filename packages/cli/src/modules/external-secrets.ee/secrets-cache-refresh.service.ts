@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { SecretsProviderConnection, SecretsProviderConnectionRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -41,31 +42,7 @@ export class SecretsCacheRefresh {
 
 		this.initializingPromise ??= (async () => {
 			try {
-				if (this.config.externalSecretsForProjects) {
-					this.logger.debug('Initializing external secrets with project-based providers');
-					const connections = await this.secretsProviderConnectionRepository.findAll();
-
-					for (const connection of connections) {
-						await this.tearDownProviderConnection(connection.providerKey);
-						await this.setupProviderConnection(connection);
-					}
-				} else {
-					this.logger.debug('Initializing external secrets with legacy settings');
-					const newSettings = await this.settingsStore.reload();
-
-					// Reload/add providers from legacy settings
-					for (const [name, providerSettings] of Object.entries(newSettings)) {
-						await this.tearDownProviderConnection(name);
-
-						await this.setupProvider({
-							providerType: name,
-							providerKey: name,
-							settings: providerSettings,
-						});
-					}
-				}
-
-				await this.secretsCache.refreshAll();
+				await this.reloadProviderConnections();
 				this.startRefreshInterval();
 
 				this.initialized = true;
@@ -103,6 +80,34 @@ export class SecretsCacheRefresh {
 			this.refreshInterval = undefined;
 			this.logger.debug('Stopped secrets refresh interval');
 		}
+	}
+
+	@OnPubSubEvent('reload-external-secrets-providers')
+	private async reloadProviderConnections(): Promise<void> {
+		if (this.config.externalSecretsForProjects) {
+			this.logger.debug('Initializing external secrets with project-based providers');
+			const connections = await this.secretsProviderConnectionRepository.findAll();
+
+			for (const connection of connections) {
+				await this.tearDownProviderConnection(connection.providerKey);
+				await this.setupProviderConnection(connection);
+			}
+		} else {
+			this.logger.debug('Initializing external secrets with legacy settings');
+			const newSettings = await this.settingsStore.reload();
+
+			// Reload/add providers from legacy settings
+			for (const [name, providerSettings] of Object.entries(newSettings)) {
+				await this.tearDownProviderConnection(name);
+
+				await this.setupProvider({
+					providerType: name,
+					providerKey: name,
+					settings: providerSettings,
+				});
+			}
+		}
+		await this.secretsCache.refreshAll();
 	}
 
 	private async tearDownProviderConnection(providerKey: string): Promise<void> {

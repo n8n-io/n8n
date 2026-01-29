@@ -15,17 +15,19 @@ export class ExternalSecretsModule implements ModuleInterface {
 		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');
 		const { ExternalSecretsProxy } = await import('n8n-core');
 
+		const { SecretsCacheRefresh } = await import('./secrets-cache-refresh.service');
+		const secretsCacheRefresh = Container.get(SecretsCacheRefresh);
+
+		await secretsCacheRefresh.init();
 		const externalSecretsManager = Container.get(ExternalSecretsManager);
 		const externalSecretsProxy = Container.get(ExternalSecretsProxy);
-
-		await externalSecretsManager.init();
 		externalSecretsProxy.setManager(externalSecretsManager);
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');
+		const { SecretsCacheRefresh } = await import('./secrets-cache-refresh.service');
 
-		Container.get(ExternalSecretsManager).shutdown();
+		Container.get(SecretsCacheRefresh).shutdown();
 	}
 }
