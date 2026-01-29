@@ -1,3 +1,18 @@
+## [1.123.18](https://github.com/n8n-io/n8n/compare/n8n@1.123.17...n8n@1.123.18) (2026-01-29)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Fix toolInput field in intermediateSteps output ([#24925](https://github.com/n8n-io/n8n/issues/24925)) ([6a9eccb](https://github.com/n8n-io/n8n/commit/6a9eccbfb957d5e3196ef85a0129630aee783120))
+* **Eventbrite Trigger Node:** Validate received URL ([#24874](https://github.com/n8n-io/n8n/issues/24874)) ([13ec09b](https://github.com/n8n-io/n8n/commit/13ec09b1597802df19caed362af437dacf7f1182))
+
+
+### Features
+
+* **Zendesk Trigger Node:** Add webhook signature verification ([#25011](https://github.com/n8n-io/n8n/issues/25011)) ([c6520e4](https://github.com/n8n-io/n8n/commit/c6520e4e87614fa60c9433e93019e211f19f65f9))
+
+
+
 ## [1.123.17](https://github.com/n8n-io/n8n/compare/n8n@1.123.16...n8n@1.123.17) (2026-01-23)
 
 
