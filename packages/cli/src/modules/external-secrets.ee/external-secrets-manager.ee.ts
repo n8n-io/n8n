@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { type IExternalSecretsManager } from 'n8n-core';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
