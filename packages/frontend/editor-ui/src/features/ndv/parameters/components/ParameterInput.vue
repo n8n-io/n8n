@@ -594,10 +594,6 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
-
-		if (isCollectionOverhaulEnabled.value) {
-			classes['inline-switch-mode'] = true;
-		}
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -2159,17 +2155,6 @@ onUpdated(async () => {
 	position: relative;
 	/* This is to balance for the extra margin on the switch */
 	top: -2px;
-}
-
-:global(.inline-switch-mode) .overrideButtonStandalone {
-	top: 0;
-
-	button {
-		width: 20px;
-		height: 20px;
-		padding: 2px;
-		min-width: 20px;
-	}
 }
 
 .overrideButtonInline {

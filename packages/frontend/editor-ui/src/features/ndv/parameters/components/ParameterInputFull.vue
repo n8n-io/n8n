@@ -370,32 +370,31 @@ function removeOverride(clearField = false) {
 					@focus="onFocus"
 					@blur="onBlur"
 					@drop="onDrop"
-				>
-					<template v-if="showOverrideButton" #overrideButton>
-						<FromAiOverrideButton @click="applyOverride" />
-					</template>
-				</ParameterInputWrapper>
+				/>
 			</template>
 		</DraggableTarget>
-		<div
-			:class="{
-				[$style.inlineSwitchOptions]: true,
-				[$style.visible]: menuExpanded || focused || wrapperHovered,
-			}"
-		>
-			<ParameterOptions
-				v-if="displayOptions"
-				:parameter="parameter"
-				:value="value"
-				:is-read-only="isReadOnly"
-				:show-options="displayOptions"
-				:show-expression-selector="showExpressionSelector"
-				:is-content-overridden="isContentOverride"
-				:show-delete="showDelete"
-				:on-delete="onDelete"
-				@update:model-value="optionSelected"
-				@menu-expanded="onMenuExpanded"
-			/>
+		<div :class="$style.inlineSwitchRight">
+			<div
+				:class="{
+					[$style.inlineSwitchOptions]: true,
+					[$style.visible]: menuExpanded || focused || wrapperHovered,
+				}"
+			>
+				<ParameterOptions
+					v-if="displayOptions"
+					:parameter="parameter"
+					:value="value"
+					:is-read-only="isReadOnly"
+					:show-options="displayOptions"
+					:show-expression-selector="showExpressionSelector"
+					:is-content-overridden="isContentOverride"
+					:show-delete="showDelete"
+					:on-delete="onDelete"
+					@update:model-value="optionSelected"
+					@menu-expanded="onMenuExpanded"
+				/>
+			</div>
+			<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
 		</div>
 	</div>
 	<N8nInputLabel
@@ -566,6 +565,12 @@ function removeOverride(clearField = false) {
 			opacity: 1;
 		}
 	}
+}
+
+.inlineSwitchRight {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
 .inlineSwitchOptions {
