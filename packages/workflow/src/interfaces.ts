@@ -2285,6 +2285,8 @@ export interface IBuilderHint {
 	message?: string;
 	/** Related node IDs that work together with this node */
 	relatedNodes?: string[];
+	/** Extra type context/examples to append to generated type files */
+	extraTypeContext?: string;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
