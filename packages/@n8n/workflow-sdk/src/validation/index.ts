@@ -23,7 +23,8 @@ export type ValidationErrorCode =
 	| 'FROM_AI_IN_NON_TOOL'
 	| 'MISSING_EXPRESSION_PREFIX'
 	| 'INVALID_PARAMETER'
-	| 'INVALID_INPUT_INDEX';
+	| 'INVALID_INPUT_INDEX'
+	| 'SUBNODE_NOT_CONNECTED';
 
 /**
  * Validation error class

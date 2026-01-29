@@ -905,6 +905,29 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		}
 
+		// Check: Subnode-only types used without proper AI connections
+		for (const [mapKey, graphNode] of this._nodes) {
+			const subnodeInfo = this.getRequiredSubnodeInfo(graphNode.instance.type);
+			if (subnodeInfo) {
+				// This is a subnode-only type - verify it has the required AI connection
+				if (!this.hasAiConnectionOfType(graphNode, subnodeInfo.connectionType)) {
+					const originalName = graphNode.instance.name;
+					const isRenamed = this.isAutoRenamed(mapKey, originalName);
+					const displayName = isRenamed ? mapKey : originalName;
+					const origForDisplay = isRenamed ? originalName : undefined;
+					const nodeRef = this.formatNodeRef(displayName, origForDisplay, graphNode.instance.type);
+
+					errors.push(
+						new ValidationError(
+							'SUBNODE_NOT_CONNECTED',
+							`${nodeRef} is a subnode that must be connected to a parent node as ${subnodeInfo.subnodeField}, but it has no such connection. Use the appropriate subnode factory (e.g., embedding(), languageModel()) and connect it to a parent node's subnodes config.`,
+							displayName,
+						),
+					);
+				}
+			}
+		}
+
 		return {
 			valid: errors.length === 0,
 			errors,
@@ -1511,6 +1534,65 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						return true; // Has AI connection to parent
 					}
 				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get the required AI connection info for subnode-only node types.
+	 * Returns the expected AI connection type and friendly subnode field name if the node
+	 * is a subnode-only type, or null if it's a regular node that can be used standalone.
+	 */
+	private getRequiredSubnodeInfo(
+		nodeType: string,
+	): { connectionType: string; subnodeField: string } | null {
+		// Extract the node name suffix after the package prefix
+		// e.g., '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini' -> 'embeddingsGoogleGemini'
+		const parts = nodeType.split('.');
+		const nodeName = parts.length > 1 ? parts[parts.length - 1] : nodeType;
+
+		// Map node name patterns to required AI connection types and subnode field names
+		// Field names match SubnodeConfig in sdk-api.ts
+		// Excluded from validation (can be standalone):
+		// - vectorStore* - Can operate in retrieval mode as standalone node
+		// - retriever* - Connects to agents, complex usage patterns
+		// - tool* - Many tools can work as standalone or subnodes
+		// - agent, chain* - These are parent nodes that host subnodes
+		if (nodeName.startsWith('embeddings')) {
+			return { connectionType: 'ai_embedding', subnodeField: 'embedding' };
+		}
+		if (nodeName.startsWith('lm')) {
+			return { connectionType: 'ai_languageModel', subnodeField: 'model' };
+		}
+		if (nodeName.startsWith('memory')) {
+			return { connectionType: 'ai_memory', subnodeField: 'memory' };
+		}
+		if (nodeName.startsWith('outputParser')) {
+			return { connectionType: 'ai_outputParser', subnodeField: 'outputParser' };
+		}
+		if (nodeName.startsWith('document')) {
+			return { connectionType: 'ai_document', subnodeField: 'documentLoader' };
+		}
+		if (nodeName.startsWith('textSplitter')) {
+			return { connectionType: 'ai_textSplitter', subnodeField: 'textSplitter' };
+		}
+		if (nodeName.startsWith('reranker')) {
+			return { connectionType: 'ai_reranker', subnodeField: 'reranker' };
+		}
+
+		return null;
+	}
+
+	/**
+	 * Check if a node has a specific AI connection type to a parent node.
+	 */
+	private hasAiConnectionOfType(graphNode: GraphNode, connectionType: string): boolean {
+		const outputMap = graphNode.connections.get(connectionType);
+		if (!outputMap) return false;
+		for (const [_outputIndex, targets] of outputMap) {
+			if (targets.length > 0) {
+				return true;
 			}
 		}
 		return false;
