@@ -18,19 +18,40 @@ describe('test-command', () => {
 	});
 
 	describe('resolveTestCommand', () => {
-		it('returns override when provided', () => {
+		it('appends default workers to override command', () => {
+			vi.mocked(config.hasConfig).mockReturnValue(false);
 			const result = resolveTestCommand('custom test command');
-			expect(result).toBe('custom test command');
+			expect(result).toBe('custom test command --workers=1');
 		});
 
-		it('returns config command when no override and config exists', () => {
+		it('appends default workers to config command', () => {
 			vi.mocked(config.hasConfig).mockReturnValue(true);
 			vi.mocked(config.getConfig).mockReturnValue({
 				tcr: { testCommand: 'pnpm test' },
 			} as ReturnType<typeof config.getConfig>);
 
 			const result = resolveTestCommand();
-			expect(result).toBe('pnpm test');
+			expect(result).toBe('pnpm test --workers=1');
+		});
+
+		it('uses custom worker count from config', () => {
+			vi.mocked(config.hasConfig).mockReturnValue(true);
+			vi.mocked(config.getConfig).mockReturnValue({
+				tcr: { testCommand: 'pnpm test', workerCount: 4 },
+			} as ReturnType<typeof config.getConfig>);
+
+			const result = resolveTestCommand();
+			expect(result).toBe('pnpm test --workers=4');
+		});
+
+		it('uses config worker count with override command', () => {
+			vi.mocked(config.hasConfig).mockReturnValue(true);
+			vi.mocked(config.getConfig).mockReturnValue({
+				tcr: { testCommand: 'pnpm test', workerCount: 2 },
+			} as ReturnType<typeof config.getConfig>);
+
+			const result = resolveTestCommand('pnpm test:container');
+			expect(result).toBe('pnpm test:container --workers=2');
 		});
 
 		it('returns default when no override and no config', () => {
@@ -69,9 +90,9 @@ describe('test-command', () => {
 			expect(result).toBe('npx playwright test --workers=1 test1.spec.ts test2.spec.ts');
 		});
 
-		it('uses override command when provided', () => {
+		it('uses override command with workers appended', () => {
 			const result = buildTestCommand(['test.spec.ts'], 'pnpm test');
-			expect(result).toBe('pnpm test test.spec.ts');
+			expect(result).toBe('pnpm test --workers=1 test.spec.ts');
 		});
 
 		it('handles empty file list', () => {

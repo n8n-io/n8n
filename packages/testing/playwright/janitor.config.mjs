@@ -80,5 +80,6 @@ export default defineConfig({
 
 	tcr: {
 		testCommand: 'pnpm test:local',
+		workerCount: 1,
 	},
 });

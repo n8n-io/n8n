@@ -81,6 +81,8 @@ export interface JanitorConfig {
 	tcr: {
 		/** Test command. File paths will be appended. @default 'npx playwright test' */
 		testCommand: string;
+		/** Number of Playwright workers. Always appended to test command. @default 1 */
+		workerCount?: number;
 	};
 }
 

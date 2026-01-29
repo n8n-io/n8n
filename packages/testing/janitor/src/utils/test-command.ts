@@ -2,6 +2,7 @@
  * Test Command Resolver
  *
  * Priority: CLI override > config file > fallback default
+ * Worker count is always appended from config (default: 1)
  */
 
 import { getConfig, hasConfig } from '../config.js';
@@ -9,7 +10,15 @@ import { getConfig, hasConfig } from '../config.js';
 const DEFAULT_TEST_COMMAND = 'npx playwright test';
 const DEFAULT_WORKERS = 1;
 
-export function resolveTestCommand(override?: string): string {
+function getWorkerCount(): number {
+	if (hasConfig()) {
+		const config = getConfig();
+		return config.tcr?.workerCount ?? DEFAULT_WORKERS;
+	}
+	return DEFAULT_WORKERS;
+}
+
+function getBaseCommand(override?: string): string {
 	if (override) {
 		return override;
 	}
@@ -21,7 +30,13 @@ export function resolveTestCommand(override?: string): string {
 		}
 	}
 
-	return `${DEFAULT_TEST_COMMAND} --workers=${DEFAULT_WORKERS}`;
+	return DEFAULT_TEST_COMMAND;
+}
+
+export function resolveTestCommand(override?: string): string {
+	const baseCommand = getBaseCommand(override);
+	const workers = getWorkerCount();
+	return `${baseCommand} --workers=${workers}`;
 }
 
 export function buildTestCommand(testFiles: string[], override?: string): string {
