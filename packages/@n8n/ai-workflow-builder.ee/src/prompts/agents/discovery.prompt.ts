@@ -62,7 +62,25 @@ Default chat model: OpenAI Chat Model provides the lowest setup friction for new
 Tool nodes (ending in "Tool"): Connect to AI Agent via ai_tool for agent-controlled actions.
 Text Classifier vs AI Agent: Text Classifier for simple categorization with fixed categories; AI Agent for complex multi-step classification requiring reasoning.
 Memory nodes: Include with chatbot AI Agents to maintain conversation context across messages.
-Structured Output Parser: Prefer this over manually extracting/parsing AI output with Set or Code nodes. Define the desired schema and the LLM handles parsing automatically. Use for classification, data extraction, or any workflow where AI output feeds into database storage, API calls, or Switch routing.`;
+Structured Output Parser: Prefer this over manually extracting/parsing AI output with Set or Code nodes. Define the desired schema and the LLM handles parsing automatically. Use for classification, data extraction, or any workflow where AI output feeds into database storage, API calls, or Switch routing.
+
+<multi_agent_systems>
+For "team of agents", "supervisor agent", "agents that call other agents", or "multi-agent" requests:
+
+AI Agent Tool (@n8n/n8n-nodes-langchain.agentTool) contains an embedded AI Agent—it's a complete sub-agent that the main agent can call through ai_tool. Each AgentTool needs its own Chat Model.
+
+\`\`\`mermaid
+graph TD
+    MAIN[Main AI Agent]
+    CM1[Chat Model] -.ai_languageModel.-> MAIN
+    SUB1[Research Agent Tool] -.ai_tool.-> MAIN
+    CM2[Chat Model] -.ai_languageModel.-> SUB1
+    SUB2[Writing Agent Tool] -.ai_tool.-> MAIN
+    CM3[Chat Model] -.ai_languageModel.-> SUB2
+\`\`\`
+
+Node selection: 1 AI Agent + N AgentTools + (N+1) Chat Models
+</multi_agent_systems>`;
 
 const NODE_SELECTION_PATTERNS = `Node selection by use case:
 
@@ -186,9 +204,14 @@ When AI Agent needs external capabilities, use TOOL nodes (not regular nodes):
 - Messaging: Slack Tool, Gmail Tool → AI Agent [ai_tool]
 - HTTP calls: HTTP Request Tool → AI Agent [ai_tool]
 - Calculations: Calculator Tool → AI Agent [ai_tool]
+- Sub-agents: AI Agent Tool → AI Agent [ai_tool] (for multi-agent systems)
 
 Tool nodes: AI Agent decides when/if to use them based on reasoning.
 Regular nodes: Execute at that workflow step regardless of context.
+
+Multi-agent pattern:
+AI Agent Tool (@n8n/n8n-nodes-langchain.agentTool) contains an embedded AI Agent that the main agent can invoke as a tool. Connect a Chat Model to the AgentTool via ai_languageModel (powers the embedded agent), then connect the AgentTool to the main AI Agent via ai_tool.
+Connection-changing param: hasOutputParser (true/false)
 
 Vector Store patterns:
 - Insert documents: Document Loader → Vector Store (mode='insert') [ai_document]
@@ -256,6 +279,14 @@ Guidelines:
 - Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
 - Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
 
+const TOOL_CALL_REQUIREMENT = `<tool_call_requirement>
+Always use the tool calling API to submit your results. The downstream pipeline parses your output by reading the structured tool_calls from the API response, not by parsing text content.
+
+When you're ready to submit results, invoke the submit_discovery_results tool directly through the tool calling interface. Do not output results as text, XML tags, or any other format—even if the format looks correct, the system cannot process it unless you use an actual tool call.
+
+If you find yourself writing something like "<invoke name=..." or outputting the nodesFound array as text, stop and use the tool call instead. Only tool_calls in the API response are processed by the system.
+</tool_call_requirement>`;
+
 function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
@@ -274,6 +305,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
 		.section('process', PROCESS)
+		.section('tool_call_requirement', TOOL_CALL_REQUIREMENT)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
 		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)
 		.section('trigger_selection', TRIGGER_SELECTION)
