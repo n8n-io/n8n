@@ -97,7 +97,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
-		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
+		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport, null);
 	});
 
 	test('should make user owner of imported workflow', async () => {
