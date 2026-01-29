@@ -345,7 +345,7 @@ export class ChatStreamService {
 			retryOfMessageId?: string | null;
 			executionId?: number | null;
 			content?: string;
-			status?: string;
+			status?: ChatHubMessageStatus;
 			error?: string;
 		};
 	}): void {
@@ -369,7 +369,7 @@ export class ChatStreamService {
 					type: 'chatHubExecutionEnd',
 					data: {
 						sessionId,
-						status: (payload.payload.status as 'success' | 'error' | 'cancelled') ?? 'success',
+						status: payload.payload.status ?? 'success',
 						timestamp,
 					},
 				};
@@ -408,7 +408,7 @@ export class ChatStreamService {
 						messageId,
 						sequenceNumber,
 						timestamp,
-						status: (payload.payload.status as ChatHubMessageStatus) ?? 'success',
+						status: payload.payload.status ?? 'success',
 					},
 				};
 				break;

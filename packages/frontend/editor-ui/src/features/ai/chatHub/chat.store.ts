@@ -1002,7 +1002,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 */
 	function handleWebSocketExecutionEnd(data: {
 		sessionId: ChatSessionId;
-		status: 'success' | 'error' | 'cancelled';
+		status: ChatHubMessageStatus;
 	}) {
 		const { sessionId, status } = data;
 
@@ -1016,9 +1016,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				const conversation = getConversation(sessionId);
 				const message = conversation?.messages[streaming.value.messageId];
 				if (message && message.status === 'running') {
-					const messageStatus =
-						status === 'cancelled' ? 'cancelled' : status === 'error' ? 'error' : 'success';
-					updateMessage(sessionId, streaming.value.messageId, messageStatus);
+					updateMessage(sessionId, streaming.value.messageId, status);
 				}
 			}
 

@@ -1,4 +1,4 @@
-import type { PushMessage, WorkerStatus } from '@n8n/api-types';
+import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
@@ -114,7 +114,7 @@ export type PubSubCommandMap = {
 			retryOfMessageId?: string | null;
 			executionId?: number | null;
 			content?: string;
-			status?: string;
+			status?: ChatHubMessageStatus;
 			error?: string;
 		};
 	};

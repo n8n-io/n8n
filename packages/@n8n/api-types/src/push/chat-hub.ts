@@ -135,7 +135,7 @@ export type ChatHubExecutionEnd = {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
 		/** Final status of the execution */
-		status: 'success' | 'error' | 'cancelled';
+		status: ChatHubMessageStatus;
 		/** Timestamp when execution ended */
 		timestamp: number;
 	};
