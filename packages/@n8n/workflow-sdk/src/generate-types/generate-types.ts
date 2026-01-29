@@ -229,6 +229,8 @@ export interface NodeTypeDescription {
 	usableAsTool?: boolean;
 	hidden?: boolean;
 	documentationUrl?: string;
+	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
+	schemaPath?: string;
 }
 
 export interface DiscriminatorCombination {
@@ -325,7 +327,15 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findSchemaDirectory(baseName: string): string | undefined {
+function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+	// If explicit schemaPath is provided, use it directly
+	if (schemaPath) {
+		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
+		if (fs.existsSync(explicitPath)) {
+			return explicitPath;
+		}
+	}
+
 	const possibleNames = [
 		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Gmail
 		baseName, // gmail
@@ -351,9 +361,14 @@ function findSchemaDirectory(baseName: string): string | undefined {
  *
  * @param nodeName Full node name (e.g., 'n8n-nodes-base.freshservice')
  * @param version The node version number
+ * @param schemaPath Optional explicit path to schema directory relative to nodes-base/dist/nodes/
  * @returns Array of discovered output schemas
  */
-export function discoverSchemasForNode(nodeName: string, version: number): OutputSchema[] {
+export function discoverSchemasForNode(
+	nodeName: string,
+	version: number,
+	schemaPath?: string,
+): OutputSchema[] {
 	const cacheKey = `${nodeName}:${version}`;
 	if (schemaCache.has(cacheKey)) {
 		return schemaCache.get(cacheKey)!;
@@ -365,8 +380,8 @@ export function discoverSchemasForNode(nodeName: string, version: number): Outpu
 	// n8n-nodes-base.freshservice -> freshservice
 	const baseName = nodeName.split('.').pop() ?? '';
 
-	// Find schema directory (handles both flat and nested paths)
-	const schemaDir = findSchemaDirectory(baseName);
+	// Find schema directory (handles both flat and nested paths, or explicit schemaPath)
+	const schemaDir = findSchemaDirectory(baseName, schemaPath);
 	if (!schemaDir) {
 		schemaCache.set(cacheKey, schemas);
 		return schemas;
@@ -2328,7 +2343,7 @@ export function generateSingleVersionTypeFile(
 	};
 
 	// Discover output schemas for this node/version
-	const outputSchemas = discoverSchemasForNode(node.name, specificVersion);
+	const outputSchemas = discoverSchemasForNode(node.name, specificVersion, node.schemaPath);
 
 	const lines: string[] = [];
 
