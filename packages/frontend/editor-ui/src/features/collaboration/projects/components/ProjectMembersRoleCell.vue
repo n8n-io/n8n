@@ -35,11 +35,20 @@ const router = useRouter();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-// Modal visibility states
+// Dropdown and modal visibility states
+const dropdownOpen = ref(false);
 const contactAdminModalVisible = ref(false);
 const upgradeModalVisible = ref(false);
 const roleDetailsModalVisible = ref(false);
 const selectedRoleForDetails = ref<Role | null>(null);
+
+const closeDropdown = () => {
+	dropdownOpen.value = false;
+	// Blur active element to remove focus ring
+	if (document.activeElement instanceof HTMLElement) {
+		document.activeElement.blur();
+	}
+};
 
 const selectedRole = computed(() => props.roles.find((role) => role.slug === props.data.role));
 const isEditable = computed(() => props.data.role !== 'project:personalOwner');
@@ -94,6 +103,7 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 	const role = props.roles.find((r) => r.slug === value);
 	if (role && !role.licensed) {
 		// Show upgrade modal for unlicensed roles
+		closeDropdown();
 		upgradeModalVisible.value = true;
 		return;
 	}
@@ -105,6 +115,7 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 };
 
 const onAddCustomRoleClick = () => {
+	closeDropdown();
 	if (!hasCustomRolesLicense.value) {
 		// No license - show upgrade modal
 		upgradeModalVisible.value = true;
@@ -118,6 +129,7 @@ const onAddCustomRoleClick = () => {
 };
 
 const onViewRoleDetails = (role: Role) => {
+	closeDropdown();
 	selectedRoleForDetails.value = role;
 	roleDetailsModalVisible.value = true;
 };
@@ -126,6 +138,7 @@ const onViewRoleDetails = (role: Role) => {
 <template>
 	<div v-if="isEditable" :class="$style.container">
 		<N8nSelect2
+			v-model:open="dropdownOpen"
 			:items="roleItems"
 			:model-value="data.role"
 			size="small"
@@ -177,7 +190,10 @@ const onViewRoleDetails = (role: Role) => {
 					"
 					theme="warning"
 					:class="$style.sectionUpgradeBadge"
-					@click.stop="upgradeModalVisible = true"
+					@click.stop="
+						closeDropdown();
+						upgradeModalVisible = true;
+					"
 				>
 					{{ i18n.baseText('generic.upgrade') }}
 				</N8nBadge>
@@ -199,7 +215,10 @@ const onViewRoleDetails = (role: Role) => {
 		</N8nSelect2>
 
 		<!-- Modals -->
-		<ProjectRoleContactAdminModal v-model="contactAdminModalVisible" />
+		<ProjectRoleContactAdminModal
+			v-model="contactAdminModalVisible"
+			:custom-roles-exist="customRoles.length > 0"
+		/>
 		<ProjectCustomRolesUpgradeModal v-model="upgradeModalVisible" />
 		<RoleDetailsModal v-model="roleDetailsModalVisible" :role="selectedRoleForDetails" />
 	</div>

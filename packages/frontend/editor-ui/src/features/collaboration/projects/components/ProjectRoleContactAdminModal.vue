@@ -7,9 +7,36 @@ import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
+const props = withDefaults(
+	defineProps<{
+		customRolesExist?: boolean;
+	}>(),
+	{
+		customRolesExist: false,
+	},
+);
+
 const visible = defineModel<boolean>();
 const i18n = useI18n();
 const usersStore = useUsersStore();
+
+const titleKey = computed(() =>
+	props.customRolesExist
+		? 'projects.settings.role.contactAdmin.titleWithRoles'
+		: 'projects.settings.role.contactAdmin.title',
+);
+
+const bodyKey = computed(() =>
+	props.customRolesExist
+		? 'projects.settings.role.contactAdmin.bodyWithRoles'
+		: 'projects.settings.role.contactAdmin.body',
+);
+
+const adminsDescriptionKey = computed(() =>
+	props.customRolesExist
+		? 'projects.settings.role.contactAdmin.admins.descriptionWithRoles'
+		: 'projects.settings.role.contactAdmin.admins.description',
+);
 
 const currentView = ref<'main' | 'admins'>('main');
 
@@ -63,7 +90,7 @@ const getUserDisplayName = (user: {
 				<N8nText tag="span" size="large" :bold="true">
 					{{
 						currentView === 'main'
-							? i18n.baseText('projects.settings.role.contactAdmin.title')
+							? i18n.baseText(titleKey)
 							: i18n.baseText('projects.settings.role.contactAdmin.admins.title')
 					}}
 				</N8nText>
@@ -75,26 +102,17 @@ const getUserDisplayName = (user: {
 				<!-- Main View -->
 				<div v-if="currentView === 'main'" :key="'main'" :class="$style.mainView">
 					<N8nText tag="p" size="medium">
-						{{
-							i18n
-								.baseText('projects.settings.role.contactAdmin.body')
-								.replace('{documentation}', '')
-						}}
+						{{ i18n.baseText(bodyKey).replace('{documentation}', '') }}
 						<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">
 							{{ i18n.baseText('generic.documentation') }}
 						</N8nLink>
-						{{
-							i18n.baseText('projects.settings.role.contactAdmin.body').includes('{documentation}')
-								? ''
-								: ''
-						}}
 					</N8nText>
 				</div>
 
 				<!-- Admins View -->
 				<div v-else :key="'admins'" :class="$style.adminsView">
 					<N8nText tag="p" size="small" color="text-light" :class="$style.adminsDescription">
-						{{ i18n.baseText('projects.settings.role.contactAdmin.admins.description') }}
+						{{ i18n.baseText(adminsDescriptionKey) }}
 					</N8nText>
 					<ul :class="$style.adminsList">
 						<li v-for="admin in instanceAdmins" :key="admin.id" :class="$style.adminItem">

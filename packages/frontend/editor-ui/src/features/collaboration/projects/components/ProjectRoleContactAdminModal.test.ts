@@ -185,4 +185,34 @@ describe('ProjectRoleContactAdminModal', () => {
 			expect(emitted()['update:modelValue']).toBeTruthy();
 		});
 	});
+
+	describe('When custom roles exist', () => {
+		it('should show different title when customRolesExist is true', () => {
+			const { getByText, queryByText } = renderComponent({
+				props: { modelValue: true, customRolesExist: true },
+			});
+
+			expect(getByText('Only instance admins can add custom roles')).toBeInTheDocument();
+			expect(queryByText("Custom roles aren't set up yet")).not.toBeInTheDocument();
+		});
+
+		it('should show different body text when customRolesExist is true', () => {
+			const { getByText } = renderComponent({
+				props: { modelValue: true, customRolesExist: true },
+			});
+
+			expect(getByText(/You can assign existing custom roles/)).toBeInTheDocument();
+		});
+
+		it('should show different admin description when customRolesExist is true', async () => {
+			const user = userEvent.setup();
+			const { getByText } = renderComponent({
+				props: { modelValue: true, customRolesExist: true },
+			});
+
+			await user.click(getByText('View admins'));
+
+			expect(getByText(/Instance admins can create new custom roles/)).toBeInTheDocument();
+		});
+	});
 });
