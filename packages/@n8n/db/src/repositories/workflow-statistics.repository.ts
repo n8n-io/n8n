@@ -12,6 +12,7 @@ import {
 } from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
+import assert from 'node:assert';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -107,6 +108,8 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 
 				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
 			}
+
+			assert.fail(`Unknown database type: ${dbType}`);
 		} catch (error) {
 			console.log('error', error);
 			if (error instanceof QueryFailedError) return 'failed';
