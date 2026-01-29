@@ -40,6 +40,11 @@ interface NodeProperty {
 		hide?: Record<string, unknown[]>;
 	};
 	typeOptions?: Record<string, unknown>;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+	}>;
 }
 
 interface NodeTypeDescription {
@@ -414,7 +419,7 @@ describe('generate-types', () => {
 			expect(result).toBe('IDataObject | string | Expression<string>');
 		});
 
-		it('should map resourceLocator type', () => {
+		it('should map resourceLocator type without modes to generic type', () => {
 			const prop: NodeProperty = {
 				name: 'channel',
 				displayName: 'Channel',
@@ -422,7 +427,25 @@ describe('generate-types', () => {
 				default: {},
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('ResourceLocatorValue');
+			expect(result).toBe('{ __rl: true; mode: string; value: string; cachedResultName?: string }');
+		});
+
+		it('should map resourceLocator type with specific modes', () => {
+			const prop: NodeProperty = {
+				name: 'documentId',
+				displayName: 'Document',
+				type: 'resourceLocator',
+				default: {},
+				modes: [
+					{ name: 'list', displayName: 'From List' },
+					{ name: 'url', displayName: 'By URL' },
+					{ name: 'id', displayName: 'By ID' },
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe(
+				"{ __rl: true; mode: 'list' | 'url' | 'id'; value: string; cachedResultName?: string }",
+			);
 		});
 
 		it('should map filter type', () => {
@@ -447,7 +470,24 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
-		it('should map resourceLocator type with loadOptionsDependsOn', () => {
+		it('should map resourceLocator with modes and loadOptionsDependsOn', () => {
+			const prop: NodeProperty = {
+				name: 'sheetName',
+				displayName: 'Sheet',
+				type: 'resourceLocator',
+				default: {},
+				typeOptions: {
+					loadOptionsDependsOn: ['documentId.value'],
+				},
+				modes: [{ name: 'list' }, { name: 'url' }, { name: 'id' }, { name: 'name' }],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe(
+				"{ __rl: true; mode: 'list' | 'url' | 'id' | 'name'; value: string; cachedResultName?: string }",
+			);
+		});
+
+		it('should map resourceLocator with loadOptionsDependsOn but no modes', () => {
 			const prop: NodeProperty = {
 				name: 'sheetName',
 				displayName: 'Sheet',
@@ -458,7 +498,7 @@ describe('generate-types', () => {
 				},
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('ResourceLocatorValue');
+			expect(result).toBe('{ __rl: true; mode: string; value: string; cachedResultName?: string }');
 		});
 
 		it('should map filter type with loadOptionsDependsOn', () => {

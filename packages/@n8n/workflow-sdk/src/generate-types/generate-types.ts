@@ -207,6 +207,11 @@ export interface NodeProperty {
 	};
 	typeOptions?: Record<string, unknown>;
 	noDataExpression?: boolean;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+	}>;
 }
 
 export interface NodeTypeDescription {
@@ -528,6 +533,17 @@ export interface DiscriminatedUnionResult {
 // =============================================================================
 
 /**
+ * Generate inline type for resourceLocator based on available modes
+ */
+function generateResourceLocatorType(prop: NodeProperty): string {
+	if (prop.modes && prop.modes.length > 0) {
+		const modeNames = prop.modes.map((m) => `'${m.name}'`).join(' | ');
+		return `{ __rl: true; mode: ${modeNames}; value: string; cachedResultName?: string }`;
+	}
+	return '{ __rl: true; mode: string; value: string; cachedResultName?: string }';
+}
+
+/**
  * Generate inline type for a nested property (used in fixedCollection)
  * This is a forward declaration - the actual function is defined below
  */
@@ -541,7 +557,7 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 			case 'multiOptions':
 				return 'string[]';
 			case 'resourceLocator':
-				return 'ResourceLocatorValue';
+				return generateResourceLocatorType(prop);
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -596,7 +612,7 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'json':
 			return 'IDataObject | string | Expression<string>';
 		case 'resourceLocator':
-			return 'ResourceLocatorValue';
+			return generateResourceLocatorType(prop);
 		case 'filter':
 			return 'FilterValue';
 		case 'assignmentCollection':
@@ -851,7 +867,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			case 'multiOptions':
 				return 'string[]';
 			case 'resourceLocator':
-				return 'ResourceLocatorValue';
+				return generateResourceLocatorType(prop);
 			case 'filter':
 				return 'FilterValue';
 			case 'assignmentCollection':
@@ -913,7 +929,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return 'IDataObject | string | Expression<string>';
 
 		case 'resourceLocator':
-			return 'ResourceLocatorValue';
+			return generateResourceLocatorType(prop);
 
 		case 'filter':
 			return 'FilterValue';
