@@ -85,7 +85,8 @@ export function getChangedFiles(options: GitChangedFilesOptions): string[] {
 			return parseGitDiff(output, gitRoot, scopeDir);
 		}
 
-		const status = execFileSync('git', ['status', '--porcelain'], {
+		// Use -uall to show individual files in new directories instead of just "dir/"
+		const status = execFileSync('git', ['status', '--porcelain', '-uall'], {
 			cwd: gitRoot,
 			encoding: 'utf-8',
 		});

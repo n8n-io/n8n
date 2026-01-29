@@ -68,6 +68,23 @@ describe('git-operations', () => {
 			const result = parseGitStatus(output, gitRoot, scopeDir);
 			expect(result).toEqual([]);
 		});
+
+		it('handles directory paths with trailing slash (filters them out when extension specified)', () => {
+			// If git status somehow returns a directory path, it should be filtered by extension
+			const output = '?? packages/testing/tests/new-feature/\n';
+			const result = parseGitStatus(output, gitRoot, scopeDir, ['.ts']);
+
+			// Directory paths don't end in .ts, so they're filtered out
+			expect(result).toEqual([]);
+		});
+
+		it('handles directory paths with trailing slash (included when no extension filter)', () => {
+			const output = '?? packages/testing/tests/new-feature/\n';
+			const result = parseGitStatus(output, gitRoot, scopeDir, []);
+
+			// With no extension filter, directory paths are included as-is
+			expect(result).toEqual(['/repo/packages/testing/tests/new-feature/']);
+		});
 	});
 
 	describe('parseGitDiff', () => {

@@ -37,8 +37,21 @@ describe('TcrExecutor', () => {
 					module: 'ESNext',
 					moduleResolution: 'node',
 					strict: true,
+					skipLibCheck: true,
+					noEmit: true,
 				},
 				include: ['**/*.ts'],
+			}),
+		);
+
+		// Create package.json with typecheck script
+		fs.writeFileSync(
+			path.join(tempDir, 'package.json'),
+			JSON.stringify({
+				name: 'tcr-test',
+				scripts: {
+					typecheck: 'tsc --noEmit',
+				},
 			}),
 		);
 
@@ -113,6 +126,175 @@ describe('TcrExecutor', () => {
 
 			expect(result.changedFiles).toHaveLength(0);
 			expect(result.success).toBe(true);
+		});
+
+		it('detects new test files in new directories (unstaged)', () => {
+			// Create a new directory with a test file (not staged)
+			// This reproduces the bug where git status shows "?? new-dir/" instead of the file
+			const newDir = path.join(tempDir, 'tests', 'e2e', 'new-feature');
+			fs.mkdirSync(newDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(newDir, 'new-feature.spec.ts'),
+				'import { test } from "@playwright/test"; test("new feature", () => {});',
+			);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// Should detect the actual test file, not just the directory
+			expect(result.changedFiles.some((f) => f.includes('new-feature.spec.ts'))).toBe(true);
+			// Should include the test in affected tests (as a directly changed test file)
+			// Note: affectedTests uses relative paths from root
+			const hasTestInChanged = result.changedFiles.some((f) => f.endsWith('.spec.ts'));
+			const hasTestInAffected = result.affectedTests.length > 0;
+			expect(hasTestInChanged || hasTestInAffected).toBe(true);
+		});
+
+		it('detects new test files in new directories (staged)', () => {
+			// Create a new directory with a test file and stage it
+			const newDir = path.join(tempDir, 'tests', 'e2e', 'staged-feature');
+			fs.mkdirSync(newDir, { recursive: true });
+			// Use valid TypeScript without external imports to pass typecheck
+			fs.writeFileSync(
+				path.join(newDir, 'staged-feature.spec.ts'),
+				'export const test = { name: "staged feature test" };\n',
+			);
+
+			// Stage the new file
+			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// Should detect the actual test file, not just the directory
+			expect(result.changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
+			// Should NOT include directory paths
+			expect(result.changedFiles.some((f) => f.endsWith('staged-feature/'))).toBe(false);
+			// Should include in affected tests
+			expect(result.affectedTests.some((t) => t.includes('staged-feature.spec.ts'))).toBe(true);
+		});
+
+		it('detects deleted files', () => {
+			// Create and commit a file first
+			fs.writeFileSync(
+				path.join(tempDir, 'pages', 'ToDelete.ts'),
+				'export class ToDelete { method() {} }',
+			);
+			execSync('git add -A && git commit -m "Add ToDelete"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Now delete it
+			fs.unlinkSync(path.join(tempDir, 'pages', 'ToDelete.ts'));
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			expect(result.changedFiles.some((f) => f.includes('ToDelete.ts'))).toBe(true);
+		});
+
+		it('detects renamed files', () => {
+			// Create and commit a file first
+			fs.writeFileSync(
+				path.join(tempDir, 'pages', 'OldName.ts'),
+				'export class OldName { method() {} }',
+			);
+			execSync('git add -A && git commit -m "Add OldName"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Rename it using git mv
+			execSync('git mv pages/OldName.ts pages/NewName.ts', { cwd: tempDir, stdio: 'pipe' });
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// Should detect the new name
+			expect(result.changedFiles.some((f) => f.includes('NewName.ts'))).toBe(true);
+		});
+	});
+
+	describe('changedMethods', () => {
+		it('detects added methods', () => {
+			// Put file at root level (not in any rule pattern, but still analyzed for methods)
+			fs.writeFileSync(
+				path.join(tempDir, 'MethodClass.ts'),
+				`export class MethodClass {
+	existing() {}
+}`,
+			);
+			execSync('git add -A && git commit -m "Add MethodClass"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Add a new method
+			fs.writeFileSync(
+				path.join(tempDir, 'MethodClass.ts'),
+				`export class MethodClass {
+	existing() {}
+	newMethod() {}
+}`,
+			);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// changedMethods is now populated early in the flow, even if later checks fail
+			expect(result.changedMethods.some((m) => m.methodName === 'newMethod')).toBe(true);
+			expect(result.changedMethods.find((m) => m.methodName === 'newMethod')?.changeType).toBe(
+				'added',
+			);
+		});
+
+		it('detects removed methods', () => {
+			// Put file at root level (not in any rule pattern, but still analyzed for methods)
+			fs.writeFileSync(
+				path.join(tempDir, 'RemoveClass.ts'),
+				`export class RemoveClass {
+	keepMe() {}
+	removeMe() {}
+}`,
+			);
+			execSync('git add -A && git commit -m "Add RemoveClass"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Remove one method
+			fs.writeFileSync(
+				path.join(tempDir, 'RemoveClass.ts'),
+				`export class RemoveClass {
+	keepMe() {}
+}`,
+			);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// changedMethods is now populated early in the flow, even if later checks fail
+			expect(result.changedMethods.some((m) => m.methodName === 'removeMe')).toBe(true);
+			expect(result.changedMethods.find((m) => m.methodName === 'removeMe')?.changeType).toBe(
+				'removed',
+			);
+		});
+
+		it('detects modified methods', () => {
+			// Put file at root level (not in any rule pattern, but still analyzed for methods)
+			fs.writeFileSync(
+				path.join(tempDir, 'ModifyClass.ts'),
+				`export class ModifyClass {
+	myMethod() { return 1; }
+}`,
+			);
+			execSync('git add -A && git commit -m "Add ModifyClass"', { cwd: tempDir, stdio: 'pipe' });
+
+			// Modify the method body
+			fs.writeFileSync(
+				path.join(tempDir, 'ModifyClass.ts'),
+				`export class ModifyClass {
+	myMethod() { return 2; }
+}`,
+			);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// changedMethods is now populated early in the flow, even if later checks fail
+			expect(result.changedMethods.some((m) => m.methodName === 'myMethod')).toBe(true);
+			expect(result.changedMethods.find((m) => m.methodName === 'myMethod')?.changeType).toBe(
+				'modified',
+			);
 		});
 	});
 

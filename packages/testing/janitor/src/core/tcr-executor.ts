@@ -109,6 +109,10 @@ export class TcrExecutor {
 		this.logger.debug(`Changed files: ${changedFiles.length}`);
 		this.logger.debugList(changedFiles);
 
+		// Analyze changed methods early (useful for understanding the change even if later checks fail)
+		const changedMethods = this.extractChangedMethods(changedFiles, baseRef);
+		this.logChangedMethods(changedMethods);
+
 		// Validation: rules
 		this.logger.debug('\nRunning janitor rules...');
 		const ruleViolations = this.runRules(changedFiles);
@@ -120,6 +124,7 @@ export class TcrExecutor {
 				success: false,
 				failedStep: 'rules',
 				changedFiles,
+				changedMethods,
 				ruleViolations,
 				action: execute ? 'revert' : 'dry-run',
 				durationMs: performance.now() - startTime,
@@ -138,6 +143,7 @@ export class TcrExecutor {
 				success: false,
 				failedStep: 'typecheck',
 				changedFiles,
+				changedMethods,
 				ruleViolations,
 				typecheckPassed: false,
 				action: execute ? 'revert' : 'dry-run',
@@ -145,10 +151,6 @@ export class TcrExecutor {
 			});
 		}
 		this.logger.debug('\u2713 Typecheck passed');
-
-		// Analyze changed methods
-		const changedMethods = this.extractChangedMethods(changedFiles, baseRef);
-		this.logChangedMethods(changedMethods);
 
 		// Find affected tests
 		const affectedTests = this.findAffectedTests(changedFiles, changedMethods);
@@ -250,8 +252,20 @@ export class TcrExecutor {
 	}
 
 	private validateBaselineNotModified(changedFiles: string[]): Partial<TcrResult> | null {
-		const baselineFile = changedFiles.find((f) => f.endsWith('.janitor-baseline.json'));
-		if (!baselineFile) return null;
+		// Check git status directly for baseline file (not relying on changedFiles which filters by .ts)
+		try {
+			const status = execSync('git status --porcelain', {
+				cwd: this.root,
+				encoding: 'utf-8',
+			});
+			const hasBaselineChange = status
+				.split('\n')
+				.some((line) => line.includes('.janitor-baseline.json'));
+
+			if (!hasBaselineChange) return null;
+		} catch {
+			return null;
+		}
 
 		this.logger.debug('\n✗ Cannot commit baseline changes via TCR');
 		this.logger.debug('  Baseline updates must be done manually:');
@@ -410,7 +424,7 @@ export class TcrExecutor {
 	}
 
 	private getChangedFiles(targetBranch?: string): string[] {
-		return gitGetChangedFiles({ targetBranch, scopeDir: this.root });
+		return gitGetChangedFiles({ targetBranch, scopeDir: this.root, extensions: ['.ts'] });
 	}
 
 	private findAffectedTests(changedFiles: string[], changedMethods: MethodChange[]): string[] {
