@@ -64,6 +64,7 @@ describe('Aws Credential', () => {
 			host: 'sts.eu-central-1.amazonaws.com',
 			path: '/?Action=GetCallerIdentity&Version=2011-06-15',
 			region: 'eu-central-1',
+			service: 'sts',
 		};
 
 		const securityHeaders = {
@@ -100,6 +101,7 @@ describe('Aws Credential', () => {
 						service: 'sns',
 					},
 					host: 'custom.endpoint.com',
+					service: 'sns',
 				},
 				securityHeaders,
 			);
@@ -137,6 +139,7 @@ describe('Aws Credential', () => {
 					path: '/',
 					host: 'iam.amazonaws.com',
 					url: 'https://iam.amazonaws.com',
+					service: 'iam',
 				},
 				securityHeaders,
 			);
@@ -173,14 +176,158 @@ describe('Aws Credential', () => {
 					headers: {
 						'content-type': 'application/x-www-form-urlencoded',
 					},
-					// PR #14037 introduces region normalization for global endpoints
-					// This test works with or without the normalization
-					region: expect.stringMatching(/[a-z]{2}-[a-z]+-[0-9]+/),
+					region: 'eu-central-1',
+					service: 'iam',
 				},
 				securityHeaders,
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe('https://iam.amazonaws.com/');
+		});
+
+		describe('Bedrock header injection', () => {
+			it('should auto-inject Content-Type and Accept headers for bedrock service', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock' },
+					headers: {},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should auto-inject headers for bedrock-runtime service', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock-runtime' },
+					headers: {},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should auto-inject headers for bedrock-agent-runtime service', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock-agent-runtime' },
+					headers: {},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should not override existing Content-Type header for bedrock', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock' },
+					headers: {
+						'Content-Type': 'application/x-custom',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'Content-Type': 'application/x-custom',
+							Accept: 'application/json',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should not override existing Accept header for bedrock', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock' },
+					headers: {
+						Accept: 'text/plain',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'Content-Type': 'application/json',
+							Accept: 'text/plain',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should handle case-sensitive headers correctly', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'bedrock' },
+					headers: {
+						'content-type': 'application/x-custom',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'content-type': 'application/x-custom',
+							Accept: 'application/json',
+						}),
+					}),
+					securityHeaders,
+				);
+			});
+
+			it('should not inject headers for non-bedrock services', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 's3' },
+					headers: {},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						headers: {},
+					}),
+					securityHeaders,
+				);
+			});
 		});
 
 		describe('China regions', () => {
@@ -278,6 +425,91 @@ describe('Aws Credential', () => {
 					},
 				);
 				expect(result.url).toBe('https://s3.eu-central-1.amazonaws.com/');
+			});
+		});
+
+		describe('Explicit service parameter preservation', () => {
+			it('should preserve explicit iot-data service parameter and normalize to iotdevicegateway', async () => {
+				// IoT Data uses custom endpoint format: {account-id}-ats.iot.{region}.amazonaws.com
+				// Service must be explicitly set to 'iot-data' which gets normalized to 'iotdevicegateway'
+				// Region should also be set explicitly for non-standard endpoint formats
+				const iotDataUrl =
+					'https://a3ks7h4zvs4k3n-ats.iot.us-east-1.amazonaws.com/things/test-thing/shadow';
+
+				const result = await aws.authenticate(
+					{ ...credentials, region: 'us-east-1' },
+					{
+						...requestOptions,
+						url: iotDataUrl,
+						baseURL: '',
+						qs: { service: 'iot-data' },
+					},
+				);
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						service: 'iotdevicegateway', // Should normalize iot-data to iotdevicegateway
+						host: 'a3ks7h4zvs4k3n-ats.iot.us-east-1.amazonaws.com',
+						path: '/things/test-thing/shadow',
+						region: 'us-east-1',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+				expect(result.url).toBe(iotDataUrl);
+			});
+
+			it('should not override explicit service parameter with URL-based parsing', async () => {
+				// Test that explicit service in qs takes precedence over URL parsing
+				// Use credentials without explicit region to allow URL region parsing
+				const credsWithoutRegion = { ...credentials, region: '' };
+				const result = await aws.authenticate(credsWithoutRegion, {
+					...requestOptions,
+					url: 'https://s3.us-west-2.amazonaws.com/bucket/key',
+					baseURL: '',
+					qs: { service: 'lambda' }, // Explicitly setting different service
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						service: 'lambda', // Should use explicit service, not 's3' from URL
+						host: 's3.us-west-2.amazonaws.com',
+						region: 'us-west-2',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+			});
+
+			it('should use URL-parsed service when no explicit service provided', async () => {
+				// Test that URL parsing works when service is not explicitly set
+				// Use credentials without explicit region to allow URL parsing
+				const credsWithoutRegion = { ...credentials, region: '' };
+				const result = await aws.authenticate(credsWithoutRegion, {
+					...requestOptions,
+					url: 'https://dynamodb.ap-southeast-1.amazonaws.com/',
+					baseURL: '',
+					qs: {}, // No explicit service
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						service: 'dynamodb', // Should parse from URL
+						host: 'dynamodb.ap-southeast-1.amazonaws.com',
+						region: 'ap-southeast-1',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
 			});
 		});
 
