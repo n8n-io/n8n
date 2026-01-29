@@ -78,7 +78,7 @@ export class TriggersAndPollers {
 					reject(error);
 				};
 
-				triggerFunctions.emitExecutionError = (error: ExecutionError) => {
+				triggerFunctions.saveFailedExecution = (error: ExecutionError) => {
 					reject(error);
 				};
 			});

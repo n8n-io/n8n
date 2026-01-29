@@ -410,7 +410,15 @@ export class ActiveWorkflowManager {
 				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
 			};
 
-			const emitExecutionError = (error: ExecutionError) => {
+			const saveFailedExecution = (error: ExecutionError) => {
+				this.logger.info(
+					`The trigger node "${node.name}" of workflow "${workflowData.name}" reported the error: "${error.message}". Saving to failed executions`,
+					{
+						nodeName: node.name,
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+					},
+				);
 				void this.executionService
 					.createErrorExecution(error, node, workflowData, workflow, mode)
 					.then(() => {
@@ -425,7 +433,7 @@ export class ActiveWorkflowManager {
 				activation,
 				emit,
 				emitError,
-				emitExecutionError,
+				saveFailedExecution,
 			);
 		};
 	}

@@ -24,8 +24,8 @@ const throwOnEmitError = () => {
 	throw new ApplicationError('Overwrite TriggerContext.emitError function');
 };
 
-const throwOnEmitExecutionError = () => {
-	throw new ApplicationError('Overwrite TriggerContext.emitExecutionError function');
+const throwOnSaveFailedExecution = () => {
+	throw new ApplicationError('Overwrite TriggerContext.saveFailedExecution function');
 };
 
 export class TriggerContext extends NodeExecutionContext implements ITriggerFunctions {
@@ -39,7 +39,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		private readonly activation: WorkflowActivateMode,
 		readonly emit: ITriggerFunctions['emit'] = throwOnEmit,
 		readonly emitError: ITriggerFunctions['emitError'] = throwOnEmitError,
-		readonly emitExecutionError: ITriggerFunctions['emitExecutionError'] = throwOnEmitExecutionError,
+		readonly saveFailedExecution: ITriggerFunctions['saveFailedExecution'] = throwOnSaveFailedExecution,
 	) {
 		super(workflow, node, additionalData, mode);
 

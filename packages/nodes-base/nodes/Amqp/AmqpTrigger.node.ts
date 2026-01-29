@@ -183,7 +183,7 @@ export class AmqpTrigger implements INodeType {
 					lastMsgId = result.messageId;
 				}
 			} catch (error) {
-				this.emitExecutionError(new NodeOperationError(this.getNode(), error as Error));
+				this.saveFailedExecution(new NodeOperationError(this.getNode(), error as Error));
 			}
 		});
 

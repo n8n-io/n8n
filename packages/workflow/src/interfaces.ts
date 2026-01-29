@@ -1212,10 +1212,13 @@ export interface ITriggerFunctions
 	): void;
 	/**
 	 * Save the execution as failed and call the error workflow if defined
+	 * Calling this method will add the execution to the failed execution log and call the error workflow
+	 * @param error - The error to save as failed
 	 */
-	emitExecutionError(error: ExecutionError): void;
+	saveFailedExecution(error: ExecutionError): void;
 	/**
 	 * Log error, reactivate the workflow, and call the error workflow if defined
+	 * Calling this method will log error in console, republish the workflow and call the error workflow
 	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
