@@ -616,7 +616,10 @@ function generateResourceLocatorType(prop: NodeProperty): string {
  * Generate inline type for a nested property (used in fixedCollection)
  * This is a forward declaration - the actual function is defined below
  */
-function mapNestedPropertyType(prop: NodeProperty): string {
+function mapNestedPropertyType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	// Handle dynamic options (loadOptionsMethod)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		// Dynamic options fallback to string, but preserve complex types
@@ -687,9 +690,9 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'assignmentCollection':
 			return 'AssignmentCollectionValue';
 		case 'fixedCollection':
-			return generateFixedCollectionType(prop);
+			return generateFixedCollectionType(prop, discriminatorContext);
 		case 'collection':
-			return generateCollectionType(prop);
+			return generateCollectionType(prop, discriminatorContext);
 		case 'dateTime':
 			return 'string | Expression<string>';
 		case 'color':
@@ -729,7 +732,11 @@ function quotePropertyName(name: string): string {
  * Generate a compact JSDoc comment for a nested property (used in fixedCollections)
  * Returns a multi-line JSDoc that can be placed before property definitions
  */
-function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string {
+function generateNestedPropertyJSDoc(
+	prop: NodeProperty,
+	indent: string,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	const lines: string[] = [];
 
 	// Description
@@ -760,11 +767,22 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
 	}
 
 	// Display options - filter out @version since version is implicit from the file
+	// Also filter out conditions that match the current discriminator context (redundant)
 	if (prop.displayOptions) {
 		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const filteredShow = Object.entries(prop.displayOptions.show).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredShow = Object.entries(prop.displayOptions.show).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
+					const showValues = values as unknown[];
+					// If the discriminator value is in the show list, this is redundant
+					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
+				}
+				return true;
+			});
 			if (filteredShow.length > 0) {
 				const showConditions = filteredShow
 					.map(
@@ -776,9 +794,19 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
 			}
 		}
 		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const filteredHide = Object.entries(prop.displayOptions.hide).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredHide = Object.entries(prop.displayOptions.hide).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
+					const hideValues = values as unknown[];
+					// If the discriminator value is in the hide list, this is redundant
+					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
+				}
+				return true;
+			});
 			if (filteredHide.length > 0) {
 				const hideConditions = filteredHide
 					.map(
@@ -806,7 +834,10 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
  * Generate inline type for a fixedCollection property
  * This generates proper nested types instead of Record<string, unknown>
  */
-function generateFixedCollectionType(prop: NodeProperty): string {
+function generateFixedCollectionType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	if (!prop.options || prop.options.length === 0) {
 		return 'Record<string, unknown>';
 	}
@@ -829,11 +860,11 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 				continue;
 			}
 
-			const nestedType = mapNestedPropertyType(nestedProp);
+			const nestedType = mapNestedPropertyType(nestedProp, discriminatorContext);
 			if (nestedType) {
 				const quotedName = quotePropertyName(nestedProp.name);
 				// Generate JSDoc for the nested property
-				const jsDoc = generateNestedPropertyJSDoc(nestedProp, '\t\t\t');
+				const jsDoc = generateNestedPropertyJSDoc(nestedProp, '\t\t\t', discriminatorContext);
 				nestedProps.push(`${jsDoc}\n\t\t\t${quotedName}?: ${nestedType}`);
 			}
 		}
@@ -882,7 +913,10 @@ function generateFixedCollectionType(prop: NodeProperty): string {
  * Generate inline type for a collection property
  * Collections have a flat structure with optional nested properties
  */
-function generateCollectionType(prop: NodeProperty): string {
+function generateCollectionType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	if (!prop.options || prop.options.length === 0) {
 		return 'Record<string, unknown>';
 	}
@@ -901,11 +935,15 @@ function generateCollectionType(prop: NodeProperty): string {
 			continue;
 		}
 
-		const propType = mapNestedPropertyType(nestedProp as NodeProperty);
+		const propType = mapNestedPropertyType(nestedProp as NodeProperty, discriminatorContext);
 		if (propType) {
 			const quotedName = quotePropertyName(nestedProp.name);
 			// Generate JSDoc for the nested property
-			const jsDoc = generateNestedPropertyJSDoc(nestedProp as NodeProperty, '\t\t');
+			const jsDoc = generateNestedPropertyJSDoc(
+				nestedProp as NodeProperty,
+				'\t\t',
+				discriminatorContext,
+			);
 			nestedProps.push(`${jsDoc}\n\t\t${quotedName}?: ${propType}`);
 		}
 	}
@@ -920,7 +958,10 @@ function generateCollectionType(prop: NodeProperty): string {
 /**
  * Map n8n property types to TypeScript types with Expression wrappers
  */
-export function mapPropertyType(prop: NodeProperty): string {
+export function mapPropertyType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	// Special handling for known credentialsSelect fields with fixed values
 	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType') {
 		const values = GENERIC_AUTH_TYPE_VALUES.map((v) => `'${v}'`).join(' | ');
@@ -1007,10 +1048,10 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return 'AssignmentCollectionValue';
 
 		case 'fixedCollection':
-			return generateFixedCollectionType(prop);
+			return generateFixedCollectionType(prop, discriminatorContext);
 
 		case 'collection':
-			return generateCollectionType(prop);
+			return generateCollectionType(prop, discriminatorContext);
 
 		case 'dateTime':
 			return 'string | Expression<string>';
@@ -1408,10 +1449,12 @@ export function generatePropertyJSDoc(
 				// Filter out @version (existing behavior)
 				if (key === '@version') return false;
 				// Filter out conditions that match current discriminator context
-				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
 					const showValues = values as unknown[];
 					// If the discriminator value is in the show list, this is redundant
-					if (showValues.includes(discriminatorContext[key])) return false;
+					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
 				}
 				return true;
 			});
@@ -1430,10 +1473,12 @@ export function generatePropertyJSDoc(
 				// Filter out @version (existing behavior)
 				if (key === '@version') return false;
 				// Filter out conditions that match current discriminator context
-				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
 					const hideValues = values as unknown[];
 					// If the discriminator value is in the hide list, this is redundant
-					if (hideValues.includes(discriminatorContext[key])) return false;
+					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
 				}
 				return true;
 			});
@@ -1491,7 +1536,7 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
-	const tsType = mapPropertyType(prop);
+	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property
 	}
