@@ -186,6 +186,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -254,6 +255,9 @@ describe('GlobalConfig', () => {
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
 					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -510,6 +514,24 @@ describe('GlobalConfig', () => {
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
+	});
+
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
 	});
 
 	it('should handle invalid numbers', () => {
