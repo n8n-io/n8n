@@ -28,8 +28,8 @@ const connectionStatus = computed<ConnectionStatus>(() => {
 	if (!networkStore.isOnline) {
 		return {
 			hasError: true,
-			message: 'autosave.connectionLost',
-			tooltip: 'autosave.connectionLost.tooltip',
+			message: 'network.error.message',
+			tooltip: 'network.error.tooltip',
 		};
 	}
 
@@ -41,8 +41,8 @@ const connectionStatus = computed<ConnectionStatus>(() => {
 	if (pushConnectionStore.isConnectionRequested && !pushConnectionStore.isConnected) {
 		return {
 			hasError: true,
-			message: 'pushConnectionTracker.connectionLost',
-			tooltip: 'pushConnectionTracker.cannotConnectToServer',
+			message: 'pushConnection.error.message',
+			tooltip: 'pushConnection.error.tooltip',
 		};
 	}
 
