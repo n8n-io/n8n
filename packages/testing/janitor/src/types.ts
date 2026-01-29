@@ -35,6 +35,8 @@ export interface RuleSettings {
 	severity?: Severity | 'off';
 	allowPatterns?: RegExp[];
 	allowInExpect?: boolean;
+	/** Method names that indicate a standalone/top-level page (for scope-lockdown rule) */
+	navigationMethods?: string[];
 }
 
 export interface RuleConfig {

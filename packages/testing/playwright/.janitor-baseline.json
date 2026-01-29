@@ -1,8 +1,180 @@
 {
 	"version": 1,
-	"generated": "2026-01-27T15:30:11.070Z",
-	"totalViolations": 322,
+	"generated": "2026-01-29T13:10:50.534Z",
+	"totalViolations": 388,
 	"violations": {
+		"pages/AIAssistantPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "AIAssistantPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "4dd6c0c1862a"
+			}
+		],
+		"pages/AIBuilderPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "AIBuilderPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "4d204a89414e"
+			}
+		],
+		"pages/CanvasPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 15,
+				"message": "CanvasPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e0c352d26d04"
+			}
+		],
+		"pages/ChatHubChatPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "ChatHubChatPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e4eaeac24146"
+			}
+		],
+		"pages/ChatHubPersonalAgentsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "ChatHubPersonalAgentsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f8ca4379facf"
+			},
+			{
+				"rule": "deduplication",
+				"line": 8,
+				"message": "Duplicate locator: this.page.getByTestId(\"agentEditorModal-modal\") in pages scope",
+				"hash": "9c085627d33a"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			},
+			{
+				"rule": "deduplication",
+				"line": 28,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			}
+		],
+		"pages/ChatHubSettingsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 7,
+				"message": "ChatHubSettingsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ffbeab089486"
+			},
+			{
+				"rule": "deduplication",
+				"line": 11,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/ChatHubWorkflowAgentsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "ChatHubWorkflowAgentsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "deaefa88466a"
+			},
+			{
+				"rule": "deduplication",
+				"line": 11,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			}
+		],
+		"pages/CommunityNodesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "CommunityNodesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "008a055bd8e3"
+			}
+		],
+		"pages/CredentialsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "CredentialsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "8a192ab0e1af"
+			},
+			{
+				"rule": "deduplication",
+				"line": 7,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/DataTableDetails.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "DataTableDetails: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "a28b14eea75f"
+			}
+		],
+		"pages/DataTableView.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 4,
+				"message": "DataTableView: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "6d4a9d2ee846"
+			}
+		],
+		"pages/DemoPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "DemoPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "4e185445748e"
+			}
+		],
+		"pages/ExecutionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "ExecutionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "35feaf11a7c9"
+			}
+		],
+		"pages/InteractionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "InteractionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fab9bccc270e"
+			}
+		],
+		"pages/KeycloakLoginPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "KeycloakLoginPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "c904517ef2df"
+			}
+		],
+		"pages/MfaLoginPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 8,
+				"message": "MfaLoginPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "65f89f81ef90"
+			}
+		],
+		"pages/MfaSetupModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "MfaSetupModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "bde632f5ade8"
+			}
+		],
 		"pages/NodeDetailsViewPage.ts": [
 			{
 				"rule": "scope-lockdown",
@@ -635,6 +807,248 @@
 				"hash": "5244a408a8df"
 			}
 		],
+		"pages/NotificationsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "NotificationsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fadcf75fa385"
+			}
+		],
+		"pages/NpsSurveyPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "NpsSurveyPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "b4532143776c"
+			}
+		],
+		"pages/ProjectSettingsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "ProjectSettingsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fbf0ce1ab326"
+			}
+		],
+		"pages/SettingsEnvironmentPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsEnvironmentPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "36447173c675"
+			}
+		],
+		"pages/SettingsLogStreamingPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsLogStreamingPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f334f4d128a2"
+			}
+		],
+		"pages/SettingsPersonalPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 8,
+				"message": "SettingsPersonalPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ea35206b3713"
+			}
+		],
+		"pages/SettingsUsersPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsUsersPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ff0328cb8ec5"
+			}
+		],
+		"pages/SidebarPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "SidebarPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "6a6e1341c8f5"
+			}
+		],
+		"pages/SignInPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SignInPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "1cc558fbab29"
+			}
+		],
+		"pages/SourceControlPullModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "SourceControlPullModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fe2503c9ea8b"
+			}
+		],
+		"pages/SourceControlPushModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "SourceControlPushModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "bcc36f59ad8a"
+			}
+		],
+		"pages/TemplateCredentialSetupPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "TemplateCredentialSetupPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e1981dd460f8"
+			},
+			{
+				"rule": "deduplication",
+				"line": 7,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/TemplatesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "TemplatesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "9ee7245554a9"
+			}
+		],
+		"pages/VariablesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "VariablesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f5ce7000f714"
+			},
+			{
+				"rule": "deduplication",
+				"line": 22,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			}
+		],
+		"pages/VersionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "VersionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "06f7a26b38d8"
+			}
+		],
+		"pages/WorkerViewPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "WorkerViewPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "d235aee41517"
+			},
+			{
+				"rule": "deduplication",
+				"line": 13,
+				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
+				"hash": "d2fda13bfcbe"
+			}
+		],
+		"pages/WorkflowActivationModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "WorkflowActivationModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e48153a68aa5"
+			}
+		],
+		"pages/WorkflowCredentialSetupModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 10,
+				"message": "WorkflowCredentialSetupModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fcefbd002d16"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"continue-button\") in pages scope",
+				"hash": "137ec08820a5"
+			},
+			{
+				"rule": "deduplication",
+				"line": 16,
+				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
+				"hash": "30c7a494b54c"
+			}
+		],
+		"pages/WorkflowSettingsModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "WorkflowSettingsModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "cff0f23ce5d3"
+			}
+		],
+		"pages/WorkflowSharingModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "WorkflowSharingModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "524404e370c4"
+			},
+			{
+				"rule": "deduplication",
+				"line": 5,
+				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
+				"hash": "8a7555df8f27"
+			}
+		],
+		"pages/WorkflowsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 7,
+				"message": "WorkflowsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "44a4e1b07c9f"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			},
+			{
+				"rule": "deduplication",
+				"line": 32,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			},
+			{
+				"rule": "deduplication",
+				"line": 113,
+				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
+				"hash": "6e4581e4338b"
+			},
+			{
+				"rule": "deduplication",
+				"line": 28,
+				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
+				"hash": "7080dca7588e"
+			},
+			{
+				"rule": "deduplication",
+				"line": 42,
+				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
+				"hash": "1b8f3012152c"
+			}
+		],
+		"pages/nodes/EditFieldsNode.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "EditFieldsNode: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f59dd095b02f"
+			}
+		],
 		"composables/NodeDetailsViewComposer.ts": [
 			{
 				"rule": "selector-purity",
@@ -845,6 +1259,24 @@
 				"line": 30,
 				"message": "Direct page locator call: n8n.page.getByTestId('editCredential-modal')",
 				"hash": "2786a49972b3"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 9,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 29,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 56,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
 			}
 		],
 		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
@@ -865,6 +1297,24 @@
 				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
 				"hash": "68deb7ade2bb"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 43,
+				"message": "Direct page instantiation: new ChatHubPersonalAgentsPage(n8n.page)",
+				"hash": "e85eb6a08ae6"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 44,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
 			}
 		],
 		"tests/e2e/credentials/crud.spec.ts": [
@@ -1045,48 +1495,50 @@
 				"hash": "0f573d3d200b"
 			}
 		],
+		"tests/e2e/projects/projects-move-resources.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 103,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 120,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 137,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			}
+		],
 		"tests/e2e/projects/projects.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 165,
+				"line": 164,
 				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
 				"hash": "788ef93cfb62"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 170,
+				"line": 169,
 				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'Notion account' })",
 				"hash": "43671aca120d"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 252,
+				"line": 251,
 				"message": "Direct page locator call: n8n.page.locator('body').click()",
 				"hash": "4484dbdcd879"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 252,
+				"line": 251,
 				"message": "Direct page locator call: n8n.page.locator('body')",
 				"hash": "6667df4502c4"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 354,
-				"message": "Direct page locator call: n8n.page.getByRole('option')",
-				"hash": "c58b0877f9a1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 371,
-				"message": "Direct page locator call: n8n.page.getByRole('option')",
-				"hash": "c58b0877f9a1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 388,
-				"message": "Direct page locator call: n8n.page.getByRole('option')",
-				"hash": "c58b0877f9a1"
 			}
 		],
 		"tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts": [
@@ -1335,6 +1787,12 @@
 				"line": 283,
 				"message": "Direct page locator call: n8n.page.locator('body')",
 				"hash": "6667df4502c4"
+			},
+			{
+				"rule": "duplicate-logic",
+				"line": 113,
+				"message": "Duplicate test logic: \"shows waiting state initially\" has identical structure to tests/e2e/ai/workflow-builder.spec.ts:\"should show Build with AI button on empty canvas\"",
+				"hash": "6cf55be1ebdb"
 			}
 		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
@@ -1897,128 +2355,6 @@
 				"hash": "8b1d786219ad"
 			}
 		],
-		"pages/ChatHubSettingsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 11,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "2823ff890426"
-			}
-		],
-		"pages/CredentialsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 7,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "2823ff890426"
-			}
-		],
-		"pages/TemplateCredentialSetupPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 7,
-				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
-				"hash": "2823ff890426"
-			}
-		],
-		"pages/WorkflowSharingModal.ts": [
-			{
-				"rule": "deduplication",
-				"line": 5,
-				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
-				"hash": "8a7555df8f27"
-			}
-		],
-		"pages/ChatHubPersonalAgentsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 8,
-				"message": "Duplicate locator: this.page.getByTestId(\"agentEditorModal-modal\") in pages scope",
-				"hash": "9c085627d33a"
-			},
-			{
-				"rule": "deduplication",
-				"line": 24,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "93472d766ead"
-			},
-			{
-				"rule": "deduplication",
-				"line": 28,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "93472d766ead"
-			}
-		],
-		"pages/ChatHubWorkflowAgentsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 11,
-				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
-				"hash": "93472d766ead"
-			}
-		],
-		"pages/VariablesPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 22,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "3b38dddeafed"
-			}
-		],
-		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 24,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "3b38dddeafed"
-			},
-			{
-				"rule": "deduplication",
-				"line": 32,
-				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
-				"hash": "3b38dddeafed"
-			},
-			{
-				"rule": "deduplication",
-				"line": 113,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
-				"hash": "6e4581e4338b"
-			},
-			{
-				"rule": "deduplication",
-				"line": 28,
-				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
-				"hash": "7080dca7588e"
-			},
-			{
-				"rule": "deduplication",
-				"line": 42,
-				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
-				"hash": "1b8f3012152c"
-			}
-		],
-		"pages/WorkerViewPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 13,
-				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
-				"hash": "d2fda13bfcbe"
-			}
-		],
-		"pages/WorkflowCredentialSetupModal.ts": [
-			{
-				"rule": "deduplication",
-				"line": 24,
-				"message": "Duplicate locator: this.page.getByTestId(\"continue-button\") in pages scope",
-				"hash": "137ec08820a5"
-			},
-			{
-				"rule": "deduplication",
-				"line": 16,
-				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
-				"hash": "30c7a494b54c"
-			}
-		],
 		"workflows/Test_workflow_5.json": [
 			{
 				"rule": "test-data-hygiene",
@@ -2041,6 +2377,140 @@
 				"line": 1,
 				"message": "Poorly named test data: Test_workflow_1.json",
 				"hash": "59565c005bcb"
+			}
+		],
+		"pages/components/VariableModal.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 36,
+				"message": "Duplicate method logic: VariableModal.close() has identical structure to pages/components/CredentialModal.ts:CredentialModal.close()",
+				"hash": "271e51542c85"
+			}
+		],
+		"tests/e2e/workflows/editor/canvas/actions.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 62,
+				"message": "Duplicate test logic: \"should add disconnected node if nothing is selected\" has identical structure to tests/e2e/building-blocks/canvas-actions.spec.ts:\"should add disconnected node when nothing selected\"",
+				"hash": "5cda70c65afc"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 38,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 64,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 80,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-chat-user.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 24,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-settings.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 10,
+				"message": "Direct page instantiation: new ChatHubSettingsPage(n8n.page)",
+				"hash": "03642a3feb2b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 35,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 57,
+				"message": "Direct page instantiation: new ChatHubSettingsPage(n8n.page)",
+				"hash": "03642a3feb2b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 94,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-tools.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(n8n.page)",
+				"hash": "c9be1b5d1bc9"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 13,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 31,
+				"message": "Direct page instantiation: new CanvasPage(tab1)",
+				"hash": "57ca97b38297"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 32,
+				"message": "Direct page instantiation: new NodeDetailsViewPage(tab1)",
+				"hash": "b2f3d965950b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 54,
+				"message": "Direct page instantiation: new CanvasPage(tab2)",
+				"hash": "0bd465646efa"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 55,
+				"message": "Direct page instantiation: new NodeDetailsViewPage(tab2)",
+				"hash": "e3b9a2a545fd"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 80,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(n8n.page)",
+				"hash": "c9be1b5d1bc9"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 85,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(memberN8n.page)",
+				"hash": "13e61175005b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 103,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
 			}
 		]
 	}

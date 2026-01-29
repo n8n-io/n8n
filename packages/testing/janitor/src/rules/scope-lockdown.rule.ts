@@ -1,4 +1,10 @@
-import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
+import {
+	SyntaxKind,
+	type Project,
+	type SourceFile,
+	type CallExpression,
+	type ClassDeclaration,
+} from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
@@ -10,7 +16,7 @@ import {
 	isPageLevelMethod,
 	isLocatorCall,
 } from '../utils/ast-helpers.js';
-import { isExcludedPage } from '../utils/paths.js';
+import { isExcludedPage, isComponentFile } from '../utils/paths.js';
 
 /**
  * Check if a call expression is inside a container getter or property definition
@@ -38,28 +44,41 @@ function isInsideContainerDefinition(call: CallExpression): boolean {
 }
 
 /**
+ * Check if a class has a navigation method (indicating it's a standalone top-level page)
+ */
+function hasNavigationMethod(classDecl: ClassDeclaration, methodNames: string[]): boolean {
+	const methods = classDecl.getMethods();
+	return methods.some((method) => methodNames.includes(method.getName()));
+}
+
+/**
  * Scope Lockdown Rule
  *
  * Page classes with a container must scope all locators to that container.
  * This ensures isolation and prevents selector conflicts.
  *
  * A page must either:
- * 1. Have a container property/getter and use it for all locators
- * 2. Not have a container (standalone page like LoginPage)
+ * 1. Have a container property/getter and use it for all locators (scoped component/section)
+ * 2. Have a navigation method (standalone top-level page, can use this.page directly)
  *
  * Violations:
  * - Page with container using this.page.getByTestId() instead of this.container.getByTestId()
- * - Page with container using unscoped locators
+ * - Page with neither container nor navigation method (ambiguous architecture)
  *
  * Allowed:
  * - this.page.goto(), this.page.waitForURL() etc. (page-level operations)
- * - Pages without containers (navigate via goto)
+ * - Pages with navigation methods (explicit standalone pages)
  */
 export class ScopeLockdownRule extends BaseRule {
 	readonly id = 'scope-lockdown';
 	readonly name = 'Scope Lockdown';
 	readonly description = 'Page locators must be scoped to container';
 	readonly severity = 'error' as const;
+
+	private getNavigationMethods(): string[] {
+		const config = getConfig();
+		return config.rules?.['scope-lockdown']?.navigationMethods ?? ['goto'];
+	}
 
 	getTargetGlobs(): string[] {
 		const config = getConfig();
@@ -68,6 +87,7 @@ export class ScopeLockdownRule extends BaseRule {
 
 	analyze(_project: Project, files: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
+		const navigationMethods = this.getNavigationMethods();
 
 		for (const file of files) {
 			const filePath = file.getFilePath();
@@ -77,13 +97,39 @@ export class ScopeLockdownRule extends BaseRule {
 				continue;
 			}
 
+			// Skip component files (they use a different pattern with root locator)
+			if (isComponentFile(filePath)) {
+				continue;
+			}
+
 			for (const classDecl of file.getClasses()) {
-				// Skip classes without container (standalone pages)
-				if (!hasContainerMember(classDecl)) {
+				const className = classDecl.getName() ?? 'Anonymous';
+				const hasContainer = hasContainerMember(classDecl);
+				const hasNavMethod = hasNavigationMethod(classDecl, navigationMethods);
+
+				// Check for ambiguous pages (neither container nor navigation method)
+				if (!hasContainer && !hasNavMethod) {
+					const startLine = classDecl.getStartLineNumber();
+					const startColumn = classDecl.getStart() - classDecl.getStartLinePos();
+
+					violations.push(
+						this.createViolation(
+							file,
+							startLine,
+							startColumn,
+							`${className}: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)`,
+							`Add a 'container' getter or a navigation method (${navigationMethods.join(', ')})`,
+						),
+					);
 					continue;
 				}
 
-				const className = classDecl.getName() ?? 'Anonymous';
+				// Skip classes without container but with navigation method (explicit standalone pages)
+				if (!hasContainer && hasNavMethod) {
+					continue;
+				}
+
+				// For classes with container, check for unscoped locator calls
 				const calls = getCallExpressions(classDecl);
 
 				for (const call of calls) {

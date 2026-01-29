@@ -180,25 +180,60 @@ export class WorkflowPage {
 
 **Severity:** error
 
-Page objects with a container must scope all locators to that container. Prevents selector conflicts when multiple instances of a component exist.
+Enforces explicit architectural intent for page objects. Each page must either:
+1. Have a `container` getter (scoped component - must use container for all locators)
+2. Have a navigation method (standalone top-level page - can use `this.page` directly)
+
+This prevents ambiguous page objects and ensures consistent patterns.
 
 ```typescript
-// Bad - Unscoped locator escapes container
-export class NodePanel {
-  get container() { return this.page.locator('.node-panel'); }
-
-  async selectNode(name: string) {
-    await this.page.getByTestId('node-item').click(); // Finds ANY node-item on page
+// Bad - Ambiguous page (neither container nor navigation method)
+export class SettingsPage {
+  async toggleOption() {
+    await this.page.getByTestId('toggle').click(); // Is this a page or component?
   }
 }
 
-// Good - Scoped to container
+// Good - Standalone page with navigation method
+export class SettingsPage {
+  async goto() {
+    await this.page.goto('/settings');
+  }
+
+  async toggleOption() {
+    await this.page.getByTestId('toggle').click(); // OK - explicit standalone page
+  }
+}
+
+// Good - Scoped component with container
 export class NodePanel {
   get container() { return this.page.locator('.node-panel'); }
 
   async selectNode(name: string) {
-    await this.container.getByTestId('node-item').click(); // Only within panel
+    await this.container.getByTestId('node-item').click(); // Scoped to container
   }
+}
+
+// Bad - Component with container using unscoped locators
+export class NodePanel {
+  get container() { return this.page.locator('.node-panel'); }
+
+  async selectNode(name: string) {
+    await this.page.getByTestId('node-item').click(); // Escapes container!
+  }
+}
+```
+
+**Configuration:**
+
+```typescript
+rules: {
+  'scope-lockdown': {
+    enabled: true,
+    severity: 'error',
+    // Customize which method names indicate a standalone page
+    navigationMethods: ['goto', 'navigate', 'visit', 'open'],
+  },
 }
 ```
 
