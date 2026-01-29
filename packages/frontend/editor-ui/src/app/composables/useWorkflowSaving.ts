@@ -98,7 +98,7 @@ export function useWorkflowSaving({
 				const saved = await saveCurrentWorkflow({}, false);
 
 				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
+					await npsSurveyStore.showNpsSurveyIfPossible();
 					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
