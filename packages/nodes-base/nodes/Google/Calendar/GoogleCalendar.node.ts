@@ -40,11 +40,15 @@ export class GoogleCalendar implements INodeType {
 		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
+		schemaPath: 'Google/Calendar',
 		defaults: {
 			name: 'Google Calendar',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: ['n8n-nodes-base.googleCalendarTool'],
+		},
 		usableAsTool: true,
 		credentials: [
 			{

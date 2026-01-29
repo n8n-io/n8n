@@ -17,6 +17,7 @@ export class Gmail extends VersionedNodeType {
 			builderHint: {
 				relatedNodes: ['n8n-nodes-base.gmailTrigger'],
 			},
+			schemaPath: 'Google/Gmail',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

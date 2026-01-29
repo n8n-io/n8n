@@ -19,6 +19,7 @@ export class AwsRekognition implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to AWS Rekognition',
+		schemaPath: 'Aws/Rekognition',
 		defaults: {
 			name: 'AWS Rekognition',
 		},

@@ -26,6 +26,7 @@ export class GoogleTranslate implements INodeType {
 		version: [1, 2],
 		description: 'Translate data using Google Translate',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		schemaPath: 'Google/Translate',
 		defaults: {
 			name: 'Google Translate',
 		},
