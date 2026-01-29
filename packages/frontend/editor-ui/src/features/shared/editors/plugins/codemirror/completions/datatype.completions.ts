@@ -64,6 +64,7 @@ import {
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -1269,18 +1270,41 @@ export const secretOptions = (base: string) => {
 
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
+	const { check } = useEnvFeatureFlag();
 
-	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption({
+	const externalSecretProviderToOption = (provider: string, group?: 'global' | 'project') => {
+		const doc: DocMetadata = {
 			name: provider,
-			doc: {
-				name: provider,
-				returnType: 'Object',
-				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
-				docURL: i18n.baseText('settings.externalSecrets.docs'),
-			},
-		}),
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
+			docURL: i18n.baseText('settings.externalSecrets.docs'),
+		};
+		if (group) {
+			// group will be undefined if project secret development feature flag is disabled
+			// TODO: make group param mandatory once feature flag is removed
+			doc.section = i18n.baseText(`codeNodeEditor.completer.$secrets.group.${group}`);
+		}
+
+		return createCompletionOption({
+			name: provider,
+			doc,
+		});
+	};
+
+	const projectSecretsEnabled = check.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+	if (!projectSecretsEnabled) {
+		return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+			externalSecretProviderToOption(provider),
+		);
+	}
+
+	const globalSecretProviders = Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+		externalSecretProviderToOption(provider, 'global'),
 	);
+	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'project'),
+	);
+	return globalSecretProviders.concat(projectSecretProviders);
 };
 
 /**
