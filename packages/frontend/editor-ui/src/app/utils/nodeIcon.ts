@@ -40,6 +40,12 @@ const resolveIconExpression = (
 ): string | null => {
 	try {
 		const workflowDocumentsStore = useWorkflowDocumentsStore();
+		const workflowObject =
+			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		if (!workflowObject) {
+			return null;
+		}
+
 		const defaults =
 			nodeType.defaults && 'parameters' in nodeType.defaults ? nodeType.defaults.parameters : {};
 		const parameters = node?.parameters ?? defaults ?? {};
@@ -47,9 +53,7 @@ const resolveIconExpression = (
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
 
-		const result = workflowDocumentsStore.workflowObjectsById[
-			workflowDocumentsStore.workflowDocumentId
-		].expression.getParameterValue(
+		const result = workflowObject.expression.getParameterValue(
 			icon,
 			null,
 			0,

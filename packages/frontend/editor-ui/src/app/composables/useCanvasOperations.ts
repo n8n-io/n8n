@@ -539,6 +539,9 @@ export function useCanvasOperations() {
 		}
 		const workflowObject =
 			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		if (!workflowObject) {
+			return;
+		}
 
 		const inputNodeNames = replaceInputs
 			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))

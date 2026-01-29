@@ -581,6 +581,8 @@ export function useWorkflowHelpers() {
 	async function getWorkflowDataToSave() {
 		const workflowNodes = workflowsStore.allNodes;
 		const workflowConnections = workflowsStore.allConnections;
+		const currentWorkflow =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId];
 
 		let nodeData;
 
@@ -597,15 +599,10 @@ export function useWorkflowHelpers() {
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
 			active: workflowsStore.isWorkflowActive,
-			settings:
-				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-					.settings,
+			settings: currentWorkflow.settings,
 			tags: workflowsStore.workflowTags,
-			versionId:
-				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-					.versionId,
-			meta: workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.meta,
+			versionId: currentWorkflow.versionId,
+			meta: currentWorkflow.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;

@@ -183,10 +183,17 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowDocumentsStore.workflowObjectsById[
-			workflowDocumentsStore.workflowDocumentId
-		]?.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
-		return parentNodes?.includes(inputNodeName) ?? false;
+		const workflowObject =
+			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		if (!workflowObject) {
+			return false;
+		}
+		const parentNodes = workflowObject.getParentNodes(
+			activeNode.value.name,
+			NodeConnectionTypes.Main,
+			1,
+		);
+		return parentNodes.includes(inputNodeName);
 	});
 
 	const getHoveringItem = computed(() => {
@@ -365,22 +372,26 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
 		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
-
-		if (activeNode) {
-			const nodeIndex =
-				workflowDocumentsStore.workflowDocumentsById[
-					workflowDocumentsStore.workflowDocumentId
-				]?.nodes.findIndex((node) => {
-					return node.name === activeNode.name;
-				}) ?? -1;
-
-			workflowState.updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...activeNode.issues,
-					...issues,
-				},
-			});
+		if (!activeNode) {
+			return;
 		}
+
+		const currentWorkflow =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId];
+		if (!currentWorkflow) {
+			return;
+		}
+
+		const nodeIndex = currentWorkflow.nodes.findIndex((node) => {
+			return node.name === activeNode.name;
+		});
+
+		workflowState.updateNodeAtIndex(nodeIndex, {
+			issues: {
+				...activeNode.issues,
+				...issues,
+			},
+		});
 	};
 
 	const setFocusedInputPath = (path: string) => {
