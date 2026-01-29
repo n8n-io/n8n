@@ -1,26 +1,30 @@
-import { defineStore } from 'pinia';
+import { defineStore, storeToRefs } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from './workflows.store';
 
-export const createWorkflowDocumentStore = (id: string) =>
-	defineStore(`${STORES.WORKFLOW_DOCUMENTS}/${id}`, () => {
+/**
+ * Creates a workflow document store for a specific workflow ID.
+ *
+ * Note: We use a factory function rather than a module-level cache because
+ * Pinia store instances must be tied to the active Pinia instance. A module-level
+ * cache would cause test isolation issues where stale store references persist
+ * across test runs with different Pinia instances.
+ *
+ * Pinia internally handles store deduplication per-instance via the store ID.
+ */
+export function useWorkflowDocumentsStore(id: string) {
+	return defineStore(`${STORES.WORKFLOW_DOCUMENTS}/${id}`, () => {
 		const workflowsStore = useWorkflowsStore();
 
-		// Return the actual refs directly (not wrapped in computed)
-		// This allows mutations and proper reactivity
+		// Use storeToRefs to get the actual refs (not unwrapped values)
+		// This maintains reactivity when workflowsStore.workflow changes
+		const { workflow, workflowObject } = storeToRefs(workflowsStore);
+
+		// Return the refs directly - Pinia will handle auto-unwrapping for consumers
 		// In the future, this will store per-document state
 		return {
-			workflow: workflowsStore.workflow,
-			workflowObject: workflowsStore.workflowObject,
+			workflow,
+			workflowObject,
 		};
-	});
-
-const storesCache = new Map<string, ReturnType<typeof createWorkflowDocumentStore>>();
-
-export function useWorkflowDocumentsStore(id: string) {
-	if (!storesCache.has(id)) {
-		storesCache.set(id, createWorkflowDocumentStore(id));
-	}
-
-	return storesCache.get(id)!();
+	})();
 }

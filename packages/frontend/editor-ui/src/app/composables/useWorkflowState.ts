@@ -41,7 +41,6 @@ import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowMetadata } from '@n8n/rest-api-client';
 import { dataPinningEventBus } from '../event-bus';
-import { useWorkflowDocumentsStore } from '../stores/workflowDocuments.store';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -57,7 +56,11 @@ export function useWorkflowState(workflowId: string) {
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const { workflow, workflowObject } = useWorkflowDocumentsStore(workflowId);
+	// Note: workflowId is for future multi-document support.
+	// Currently we use the global workflows store directly.
+	// The documents store (useWorkflowDocumentsStore) can be used later when
+	// we need per-document state isolation.
+	void workflowId; // Mark as intentionally unused for now
 
 	////
 	// Workflow editing state
@@ -67,11 +70,11 @@ export function useWorkflowState(workflowId: string) {
 		if (data.setStateDirty) {
 			uiStore.markStateDirty();
 		}
-		workflow.name = data.newName;
-		workflowObject.name = data.newName;
+		ws.workflow.name = data.newName;
+		ws.workflowObject.name = data.newName;
 
-		if (workflow.id && workflowsListStore.workflowsById[workflow.id]) {
-			workflowsListStore.workflowsById[workflow.id].name = data.newName;
+		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
+			workflowsListStore.workflowsById[ws.workflow.id].name = data.newName;
 		}
 	}
 
@@ -80,8 +83,8 @@ export function useWorkflowState(workflowId: string) {
 			uiStore.markStateDirty();
 		}
 
-		workflow.connections = {};
-		workflowObject.setConnections({});
+		ws.workflow.connections = {};
+		ws.workflowObject.setConnections({});
 	}
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
@@ -90,11 +93,11 @@ export function useWorkflowState(workflowId: string) {
 		}
 
 		if (data.removePinData) {
-			workflow.pinData = {};
+			ws.workflow.pinData = {};
 		}
 
-		workflow.nodes.splice(0, workflow.nodes.length);
-		workflowObject.setNodes(workflow.nodes);
+		ws.workflow.nodes.splice(0, ws.workflow.nodes.length);
+		ws.workflowObject.setNodes(ws.workflow.nodes);
 		ws.nodeMetadata = {};
 	}
 
@@ -111,21 +114,21 @@ export function useWorkflowState(workflowId: string) {
 	}
 
 	function resetAllNodesIssues(): boolean {
-		workflow.nodes.forEach((node) => {
+		ws.workflow.nodes.forEach((node) => {
 			node.issues = undefined;
 		});
 		return true;
 	}
 
 	function setActive(activeVersionId: string | null) {
-		workflow.active = activeVersionId !== null;
-		workflow.activeVersionId = activeVersionId;
+		ws.workflow.active = activeVersionId !== null;
+		ws.workflow.activeVersionId = activeVersionId;
 	}
 
 	function setWorkflowId(id?: string) {
 		// Set the workflow ID directly, or empty string if not provided
-		workflow.id = id || '';
-		workflowObject.id = workflow.id;
+		ws.workflow.id = id || '';
+		ws.workflowObject.id = ws.workflow.id;
 	}
 
 	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
@@ -133,7 +136,7 @@ export function useWorkflowState(workflowId: string) {
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
-		workflow.tags = tags;
+		ws.workflow.tags = tags;
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
@@ -179,8 +182,8 @@ export function useWorkflowState(workflowId: string) {
 		const homeProject = currentProject ?? personalProject ?? {};
 		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
-		workflow.homeProject = homeProject as ProjectSharingData;
-		workflow.scopes = scopes;
+		ws.workflow.homeProject = homeProject as ProjectSharingData;
+		ws.workflow.scopes = scopes;
 	}
 
 	async function getNewWorkflowDataAndMakeShareable(
@@ -194,26 +197,26 @@ export function useWorkflowState(workflowId: string) {
 	}
 
 	function addWorkflowTagIds(tags: string[]) {
-		workflow.tags = [...new Set([...(workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
+		ws.workflow.tags = [...new Set([...(ws.workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
 	}
 
 	function removeWorkflowTagId(tagId: string) {
-		const tags = workflow.tags as string[];
+		const tags = ws.workflow.tags as string[];
 		const updated = tags.filter((id: string) => id !== tagId);
-		workflow.tags = updated as IWorkflowDb['tags'];
+		ws.workflow.tags = updated as IWorkflowDb['tags'];
 	}
 
 	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
-		workflow.scopes = scopes;
+		ws.workflow.scopes = scopes;
 	}
 
 	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		workflow.meta = metadata;
+		ws.workflow.meta = metadata;
 	}
 
 	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
-		workflow.meta = {
-			...workflow.meta,
+		ws.workflow.meta = {
+			...ws.workflow.meta,
 			...data,
 		};
 	}
@@ -231,8 +234,8 @@ export function useWorkflowState(workflowId: string) {
 			return accu;
 		}, {} as IPinData);
 
-		workflow.pinData = validPinData;
-		workflowObject.setPinData(validPinData);
+		ws.workflow.pinData = validPinData;
+		ws.workflowObject.setPinData(validPinData);
 
 		dataPinningEventBus.emit('pin-data', validPinData);
 	}
@@ -300,14 +303,14 @@ export function useWorkflowState(workflowId: string) {
 	 */
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
-			const node = workflow.nodes[nodeIndex];
+			const node = ws.workflow.nodes[nodeIndex];
 			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
 			const changed = !isEqual(existingData, nodeData);
 
 			if (changed) {
 				Object.assign(node, nodeData);
-				workflow.nodes[nodeIndex] = node;
-				workflowObject.setNodes(workflow.nodes);
+				ws.workflow.nodes[nodeIndex] = node;
+				ws.workflowObject.setNodes(ws.workflow.nodes);
 			}
 
 			return changed;
@@ -317,7 +320,7 @@ export function useWorkflowState(workflowId: string) {
 
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 		// Find the node that should be updated
-		const nodeIndex = workflow.nodes.findIndex((node) => {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === updateInformation.name;
 		});
 
@@ -327,7 +330,7 @@ export function useWorkflowState(workflowId: string) {
 			);
 		}
 
-		const { name, parameters } = workflow.nodes[nodeIndex];
+		const { name, parameters } = ws.workflow.nodes[nodeIndex];
 
 		const newParameters =
 			!!append && isObject(updateInformation.value)
@@ -346,7 +349,7 @@ export function useWorkflowState(workflowId: string) {
 
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
 		const latestNode = findLast(
-			workflow.nodes,
+			ws.workflow.nodes,
 			(node) => node.type === updateInformation.key,
 		) as INodeUi;
 		const nodeType = nodeTypesStore.getNodeType(latestNode.type);
@@ -368,7 +371,7 @@ export function useWorkflowState(workflowId: string) {
 
 	function setNodeValue(updateInformation: IUpdateInformation): void {
 		// Find the node that should be updated
-		const nodeIndex = workflow.nodes.findIndex((node) => {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === updateInformation.name;
 		});
 
@@ -389,12 +392,12 @@ export function useWorkflowState(workflowId: string) {
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
 		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			ws.nodeMetadata[workflow.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+			ws.nodeMetadata[ws.workflow.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
 		}
 	}
 
 	function setNodePositionById(id: string, position: INodeUi['position']): void {
-		const node = workflow.nodes.find((n) => n.id === id);
+		const node = ws.workflow.nodes.find((n) => n.id === id);
 		if (!node) return;
 
 		setNodeValue({ name: node.name, key: 'position', value: position });
@@ -405,7 +408,7 @@ export function useWorkflowState(workflowId: string) {
 	 * @returns `true` if the node was found and updated
 	 */
 	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
-		const nodeIndex = workflow.nodes.findIndex((node) => node.id === nodeId);
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => node.id === nodeId);
 		if (nodeIndex === -1) return false;
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
@@ -426,7 +429,7 @@ export function useWorkflowState(workflowId: string) {
 		updateInformation: INodeUpdatePropertiesInformation,
 	): void {
 		// Find the node that should be updated
-		const nodeIndex = workflow.nodes.findIndex((node) => {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === updateInformation.name;
 		});
 
@@ -447,14 +450,14 @@ export function useWorkflowState(workflowId: string) {
 	}
 
 	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = workflow.nodes.findIndex((node) => {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === nodeIssueData.node;
 		});
 		if (nodeIndex === -1) {
 			return;
 		}
 
-		const node = workflow.nodes[nodeIndex];
+		const node = ws.workflow.nodes[nodeIndex];
 
 		if (nodeIssueData.value === null) {
 			// Remove the value if one exists
