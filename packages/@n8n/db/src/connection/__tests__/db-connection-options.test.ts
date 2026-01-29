@@ -3,7 +3,6 @@ import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
 
-import { mysqlMigrations } from '../../migrations/mysqldb';
 import { postgresMigrations } from '../../migrations/postgresdb';
 import { sqliteMigrations } from '../../migrations/sqlite';
 import { DbConnectionOptions } from '../db-connection-options';
@@ -133,57 +132,6 @@ describe('DbConnectionOptions', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toMatchObject({ ssl });
-			});
-		});
-
-		describe('for MySQL / MariaDB', () => {
-			beforeEach(() => {
-				dbConfig.mysqldb = {
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					user: 'root',
-					password: 'password',
-					poolSize: 10,
-				};
-			});
-
-			it('should return MySQL connection options when type is mysqldb', () => {
-				dbConfig.type = 'mysqldb';
-
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'mysql',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
-			});
-
-			it('should return MariaDB connection options when type is mariadb', () => {
-				dbConfig.type = 'mariadb';
-
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'mariadb',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
 			});
 		});
 
