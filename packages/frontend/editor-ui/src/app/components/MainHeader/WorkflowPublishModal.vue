@@ -35,6 +35,10 @@ const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('pu
 const description = ref('');
 const versionName = ref('');
 
+const workflowDocument = computed(
+	() => workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+);
+
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
 );
@@ -44,12 +48,7 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return (
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.versionId !==
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.activeVersion?.versionId
-	);
+	return workflowDocument.value.versionId !== workflowDocument.value.activeVersion?.versionId;
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -88,10 +87,7 @@ function onModalOpened() {
 
 onMounted(() => {
 	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.versionId,
-		);
+		versionName.value = generateVersionName(workflowDocument.value.versionId);
 	}
 	modalBus.on('opened', onModalOpened);
 });
@@ -138,9 +134,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId].id,
-		);
+		const errorData = await workflowsStore.getActivationError(workflowDocument.value.id);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -174,9 +168,8 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId].id,
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.versionId,
+		workflowDocument.value.id,
+		workflowDocument.value.versionId,
 		{
 			name: versionName.value,
 			description: description.value,
@@ -195,8 +188,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id:
-				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId].id,
+			workflow_id: workflowDocument.value.id,
 		});
 
 		// For now, just close the modal after successful activation
@@ -241,7 +233,7 @@ async function handlePublish() {
 						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId].id}/${node.id}`"
+								:to="`/workflow/${workflowDocument.id}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

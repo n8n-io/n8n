@@ -537,8 +537,7 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const workflowObject =
-			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		const workflowObject = editableWorkflowObject.value;
 		if (!workflowObject) {
 			return;
 		}
@@ -1838,10 +1837,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = cloneDeep(
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.connections,
-		);
+		const connections = cloneDeep(editableWorkflow.value.connections);
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
@@ -1951,9 +1947,8 @@ export function useCanvasOperations() {
 		}
 
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.connections,
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId].nodes,
+			editableWorkflow.value.connections,
+			editableWorkflow.value.nodes,
 		);
 
 		connections.forEach((connection) => {
@@ -2212,9 +2207,7 @@ export function useCanvasOperations() {
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
-			const nodeIndex = workflowDocumentsStore.workflowDocumentsById[
-				workflowDocumentsStore.workflowDocumentId
-			].nodes.findIndex((n) => {
+			const nodeIndex = editableWorkflow.value.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
 			workflowState.updateNodeAtIndex(nodeIndex, node);
@@ -2734,8 +2727,7 @@ export function useCanvasOperations() {
 
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.meta,
+			...editableWorkflow.value.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2803,8 +2795,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflowObject =
-			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId]; // @TODO Check if we actually need workflowObject here
+		const workflowObject = editableWorkflowObject.value; // @TODO Check if we actually need workflowObject here
 
 		logsStore.toggleOpen(true);
 

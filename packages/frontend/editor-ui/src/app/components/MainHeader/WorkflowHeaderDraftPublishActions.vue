@@ -49,6 +49,10 @@ const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 
 const autoSaveForPublish = ref(false);
 
+const workflowDocument = computed(
+	() => workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+);
+
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
 const foundTriggers = computed(() =>
@@ -68,14 +72,10 @@ type WorkflowPublishState =
 	| 'published-invalid-trigger'; // Published but no trigger nodes
 
 const workflowPublishState = computed((): WorkflowPublishState => {
-	const hasBeenPublished =
-		!!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.activeVersion;
+	const hasBeenPublished = !!workflowDocument.value.activeVersion;
 	const hasChanges =
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.versionId !==
-			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.activeVersion?.versionId || uiStore.stateIsDirty;
+		workflowDocument.value.versionId !== workflowDocument.value.activeVersion?.versionId ||
+		uiStore.stateIsDirty;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -165,9 +165,7 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished =
-			!!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-				.activeVersion;
+		const isWorkflowPublished = !!workflowDocument.value.activeVersion;
 		if (isWorkflowPublished) {
 			return {
 				...defaultConfigForNoPermission,
@@ -265,11 +263,7 @@ const publishButtonConfig = computed(() => {
 	return configs[workflowPublishState.value];
 });
 
-const activeVersion = computed(
-	() =>
-		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.activeVersion,
-);
+const activeVersion = computed(() => workflowDocument.value.activeVersion);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
