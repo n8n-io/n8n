@@ -1525,7 +1525,7 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
  * @param combo The discriminator combination (e.g., { resource: 'ticket', operation: 'get' })
  * @param props Properties applicable to this combination
  * @param importDepth How many levels deep (for import paths to base.schema.ts)
- * @param aiInputTypes AI input types for this node (for subnode schema reference)
+ * @param aiInputTypes AI input types for this specific combo (filtered by discriminator)
  */
 export function generateDiscriminatorSchemaFile(
 	node: NodeTypeDescription,
@@ -1540,6 +1540,13 @@ export function generateDiscriminatorSchemaFile(
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const versionSuffix = versionToTypeName(version);
 	const baseSchemaName = `${nodeName}${versionSuffix}`;
+
+	// Build combo suffix for schema naming
+	const comboValues = Object.entries(combo)
+		.filter(([_, v]) => v !== undefined)
+		.map(([_, v]) => toPascalCase(v!));
+	const comboSuffix = comboValues.join('');
+	const comboSchemaName = `${baseSchemaName}${comboSuffix}`;
 
 	// Get discriminator keys to strip from displayOptions
 	// Always include @version since it's implicit in the file path
@@ -1590,15 +1597,29 @@ export function generateDiscriminatorSchemaFile(
 	if (hasRemainingDisplayOptions) {
 		lines.push('\tresolveSchema,');
 	}
+	// Add subnode schema imports if this combo has AI inputs
+	if (hasAiInputs) {
+		const subnodeImports = getSubnodeSchemaImports(aiInputTypes);
+		for (const schemaImport of subnodeImports) {
+			lines.push(`\t${schemaImport},`);
+		}
+	}
 	lines.push(`} from '${basePath}';`);
 
-	// Import subnode schema from version index if AI node
-	if (hasAiInputs) {
-		const versionIndexPath = importDepth === 5 ? '../index.schema' : './index.schema';
-		lines.push(`import { ${baseSchemaName}SubnodeConfigSchema } from '${versionIndexPath}';`);
-	}
-
 	lines.push('');
+
+	// Generate combo-specific Subnode Config Schema if AI node
+	if (hasAiInputs) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Subnode Configuration Schema');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, comboSchemaName);
+		if (subnodeCode) {
+			lines.push(subnodeCode);
+			lines.push('');
+		}
+	}
 
 	// Schema definition - always export default factory function
 	lines.push('// ' + '='.repeat(75));
@@ -1660,7 +1681,7 @@ export function generateDiscriminatorSchemaFile(
 	if (hasAiInputs) {
 		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
 		lines.push(
-			`\t\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			`\t\tsubnodes: ${comboSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
 		);
 	}
 
@@ -1729,26 +1750,17 @@ export function generateResourceIndexSchemaFile(
 /**
  * Generate a version-level index file for split structure schemas (e.g., v1/index.schema.ts)
  * Exports a factory function that unions all discriminator schemas.
- * Also generates the subnode config schema for AI nodes.
+ * Note: Subnode schemas are now generated per-combo in each discriminator file.
  *
  * @param node The node type description
  * @param version The specific version number
  * @param tree The discriminator tree structure
- * @param aiInputTypes AI input types for subnode schema generation
- * @param comboFactoryMap Map tracking which combos need factory functions (unused, all use factories now)
  */
 export function generateSplitVersionIndexSchemaFile(
 	node: NodeTypeDescription,
 	version: number,
 	tree: DiscriminatorTree,
-	aiInputTypes: AIInputTypeInfo[] = [],
-	_comboFactoryMap: Map<string, boolean> = new Map(),
 ): string {
-	const prefix = getPackagePrefix(node.name);
-	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
-	const versionSuffix = versionToTypeName(version);
-	const baseSchemaName = `${nodeName}${versionSuffix}`;
-	const hasAiInputs = aiInputTypes.length > 0;
 	const basePath = '../../../../base.schema';
 
 	const lines: string[] = [];
@@ -1760,18 +1772,6 @@ export function generateSplitVersionIndexSchemaFile(
 	lines.push('');
 
 	lines.push("import { z } from 'zod';");
-
-	// Add base schema imports if we have AI inputs
-	if (hasAiInputs) {
-		const subnodeImports = getSubnodeSchemaImports(aiInputTypes);
-		if (subnodeImports.length > 0) {
-			lines.push('import {');
-			for (const schemaImport of subnodeImports) {
-				lines.push(`\t${schemaImport},`);
-			}
-			lines.push(`} from '${basePath}';`);
-		}
-	}
 
 	// Import default exports from child schemas
 	const importNames: string[] = [];
@@ -1792,19 +1792,6 @@ export function generateSplitVersionIndexSchemaFile(
 		}
 	}
 	lines.push('');
-
-	// Generate Subnode Config Schema if AI node (must be defined before it's used)
-	if (hasAiInputs) {
-		const subnodeCode = generateSubnodeConfigSchemaCode(aiInputTypes, baseSchemaName);
-		if (subnodeCode) {
-			lines.push('// ' + '='.repeat(75));
-			lines.push('// Subnode Configuration Schema');
-			lines.push('// ' + '='.repeat(75));
-			lines.push('');
-			lines.push(subnodeCode);
-			lines.push('');
-		}
-	}
 
 	// Export factory function
 	lines.push(
@@ -1846,13 +1833,12 @@ export function planSplitVersionSchemaFiles(
 	const combinations = extractDiscriminatorCombinations(node);
 	const tree = buildDiscriminatorTree(combinations);
 
-	// Extract AI input types for subnode schema
+	// Prepare version-filtered node for AI input extraction
 	const versionFilteredNode: NodeTypeDescription = {
 		...node,
 		properties: filterPropertiesForVersion(node.properties, version),
 		version,
 	};
-	const aiInputTypes = extractAIInputTypesFromBuilderHint(versionFilteredNode);
 
 	if (tree.type === 'resource_operation' && tree.resources) {
 		// Resource/operation pattern: nested directories
@@ -1868,6 +1854,9 @@ export function planSplitVersionSchemaFiles(
 				const fileName = `operation_${toSnakeCase(operation)}.schema.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
+				// Extract AI inputs specific to this combo
+				const comboAiInputTypes = extractAIInputTypesFromBuilderHint(versionFilteredNode, combo);
+
 				// Import depth: 5 levels deep (nodes/pkg/nodeName/version/resource_x/operation.schema.ts -> base.schema)
 				const content = generateDiscriminatorSchemaFile(
 					node,
@@ -1875,7 +1864,7 @@ export function planSplitVersionSchemaFiles(
 					combo,
 					props,
 					5,
-					aiInputTypes,
+					comboAiInputTypes,
 				);
 				files.set(filePath, content);
 			}
@@ -1900,17 +1889,24 @@ export function planSplitVersionSchemaFiles(
 			const props = getPropertiesForCombination(nodeForCombination, combo);
 			const fileName = `${discName}_${toSnakeCase(value)}.schema.ts`;
 
+			// Extract AI inputs specific to this combo
+			const comboAiInputTypes = extractAIInputTypesFromBuilderHint(versionFilteredNode, combo);
+
 			// Import depth: 4 levels deep (nodes/pkg/nodeName/version/mode.schema.ts -> base.schema)
-			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 4, aiInputTypes);
+			const content = generateDiscriminatorSchemaFile(
+				node,
+				version,
+				combo,
+				props,
+				4,
+				comboAiInputTypes,
+			);
 			files.set(fileName, content);
 		}
 	}
 
-	// Generate version schema index file (includes subnode schema for AI nodes)
-	files.set(
-		'index.schema.ts',
-		generateSplitVersionIndexSchemaFile(node, version, tree, aiInputTypes),
-	);
+	// Generate version schema index file (no longer includes shared subnode schema - each combo has its own)
+	files.set('index.schema.ts', generateSplitVersionIndexSchemaFile(node, version, tree));
 
 	return files;
 }

@@ -252,7 +252,7 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
  * Format a single Zod issue into a clear, actionable error message
  */
 function formatZodIssue(issue: ZodIssue): string {
-	const path = issue.path.join('.');
+	const path = issue.path.length > 0 ? issue.path.join('.') : 'config';
 
 	switch (issue.code) {
 		case 'invalid_type':
