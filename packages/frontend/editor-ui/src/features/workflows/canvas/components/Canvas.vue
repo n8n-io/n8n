@@ -65,6 +65,7 @@ import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
 const $style = useCssModule();
 
@@ -162,6 +163,7 @@ const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
+const chatPanelStateStore = useChatPanelStateStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -409,9 +411,8 @@ watch(selectedNodes, (nodes) => {
 	}
 });
 
-// Sync canvas selection with focused nodes (unconfirmed badges) when chat panel is open
 watch(selectedNodeIds, (newIds) => {
-	if (chatPanelStore.isOpen) {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
@@ -419,7 +420,7 @@ watch(selectedNodeIds, (newIds) => {
 watch(
 	() => chatPanelStore.isOpen,
 	(isOpen) => {
-		if (isOpen && selectedNodeIds.value.length > 0) {
+		if (isOpen && selectedNodeIds.value.length > 0 && focusedNodesStore.isFeatureEnabled) {
 			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
 		}
 	},
@@ -442,6 +443,11 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
+		focusedNodesStore.confirmNodes([node.id], 'canvas_selection');
+		chatPanelStateStore.focusRequested++;
+	}
+
 	emit('click:node', node.id, getProjectedPosition(event));
 
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
@@ -542,6 +548,9 @@ function onAddToAi(id: string) {
 }
 
 function onAddSelectedNodesToAi(nodeIds: string[]) {
+	if (!focusedNodesStore.isFeatureEnabled) {
+		return;
+	}
 	focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
 	void chatPanelStore.open({ mode: 'builder' });
 }

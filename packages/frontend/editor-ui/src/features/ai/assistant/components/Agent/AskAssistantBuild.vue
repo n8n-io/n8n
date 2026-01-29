@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { AutoSaveState } from '@/app/constants';
-import { computed, watch, ref, useSlots } from 'vue';
+import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -31,6 +31,8 @@ import shuffle from 'lodash/shuffle';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 import {
@@ -59,6 +61,8 @@ const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const focusedNodesStore = useFocusedNodesStore();
+const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
@@ -81,6 +85,7 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
@@ -248,6 +253,7 @@ async function onCustomInputSubmit() {
 	if (!inputText.value.trim()) return;
 	const content = inputText.value;
 	inputText.value = '';
+	focusedNodesStore.clearAll();
 	await onUserMessage(content);
 }
 
@@ -452,9 +458,23 @@ watch(currentRoute, () => {
 	}
 });
 
+// Refocus chat input when a canvas node is clicked while chat is open
+watch(
+	() => chatPanelStateStore.focusRequested,
+	() => {
+		void nextTick(() => {
+			suggestionsInputRef.value?.focusInput() ??
+				chatInputRef.value?.focusInput() ??
+				n8nChatRef.value?.focusInput();
+		});
+	},
+);
+
 defineExpose({
 	focusInput: () => {
-		chatInputRef.value?.focusInput() ?? n8nChatRef.value?.focusInput();
+		suggestionsInputRef.value?.focusInput() ??
+			chatInputRef.value?.focusInput() ??
+			n8nChatRef.value?.focusInput();
 	},
 });
 </script>
@@ -536,6 +556,42 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+			</template>
+			<template
+				#suggestions-input="{
+					modelValue,
+					onUpdateModelValue,
+					placeholder,
+					disabled: slotDisabled,
+					disabledTooltip: slotDisabledTooltip,
+					streaming: slotStreaming,
+					creditsQuota: slotCreditsQuota,
+					creditsRemaining: slotCreditsRemaining,
+					showAskOwnerTooltip: slotShowAskOwnerTooltip,
+					onSubmit,
+					onStop,
+					onUpgradeClick,
+					registerFocus,
+				}"
+			>
+				<ChatInputWithMention
+					ref="suggestionsInputRef"
+					:model-value="modelValue"
+					:placeholder="placeholder"
+					:disabled="slotDisabled"
+					:disabled-tooltip="slotDisabledTooltip"
+					:streaming="slotStreaming"
+					:credits-quota="slotCreditsQuota"
+					:credits-remaining="slotCreditsRemaining"
+					:show-ask-owner-tooltip="slotShowAskOwnerTooltip"
+					@update:model-value="onUpdateModelValue"
+					@submit="onSubmit"
+					@stop="onStop"
+					@upgrade-click="onUpgradeClick"
+					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
+				/>
+			</template>
 			<template #inputPlaceholder>
 				<ChatInputWithMention
 					ref="chatInputRef"

@@ -46,39 +46,43 @@ const DEICTIC_RESOLUTION = buildDeicticResolutionPrompt({
 	conversationContext:
 		'(e.g., a proposed change, an approach, an error, a feature), use that referent.\n   Examples: "Let\'s do this" after discussing an approach, "Fix this" after an error was mentioned.',
 	selectedNodes: [
-		'"change this" / "update this" / "fix this" → configurator',
+		'"change this" / "update this" / "fix this" → builder',
 		'"connect this to X" / "disconnect this" → builder',
 		'"add X before/after this" → discovery first, then builder',
 		'"what does this do?" / "explain this" → responder',
 	],
 	positionalReferences: [
-		'"configure the previous node" → configurator (for node in incomingConnections)',
+		'"configure the previous node" → builder (for node in incomingConnections)',
 		'"explain what comes next" → responder (for node in outgoingConnections)',
 		'"add a node before this" → discovery + builder',
 	],
 	explicitNameMentions: [
-		'"configure the HTTP Request node" → configurator (explicit node reference)',
+		'"configure the HTTP Request node" → builder (explicit node reference)',
 		'"explain the Gmail node" → responder (explain named node)',
 		'"connect HTTP Request to Slack" → builder (named nodes)',
 	],
 	attributeBasedReferences: [
-		'"fix the broken node" → configurator (node with issues)',
+		'"fix the broken node" → builder (node with issues)',
 		'"what\'s wrong with the red one?" → responder (explain issues)',
 	],
 	dualReferences: [
 		'"connect this to that" → builder (may need clarification for "that")',
-		'"copy settings from this to the HTTP Request" → configurator',
+		'"copy settings from this to the HTTP Request" → builder',
 	],
 	workflowFallback: [
-		'"change this" → configurator (workflow-wide changes)',
+		'"change this" → builder (workflow-wide changes)',
 		'"explain this" → responder (explain the workflow)',
 		'"what does this do?" → responder (describe what the workflow does)',
 	],
-	examples: [
-		'No selection + "what does this do?" → responder (explain the workflow)',
-		'No selection + "fix these" → configurator (review all nodes for issues)',
+	examplesWithSelection: [
 		'Selected node + "what does this do?" → responder (explain selected node)',
-		'No selection + "configure the HTTP Request node" → configurator (explicit name)',
+		'Selected node + "fix this" → builder (configure selected node)',
+		'Selected node + "add a Slack node after this" → discovery (find Slack node)',
+	],
+	examplesWithoutSelection: [
+		'No selection + "what does this do?" → responder (explain the workflow)',
+		'No selection + "fix these" → builder (review all nodes for issues)',
+		'No selection + "configure the HTTP Request node" → builder (explicit name)',
 	],
 });
 

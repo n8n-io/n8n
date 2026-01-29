@@ -12,6 +12,7 @@ interface Props {
 	highlightedIndex: number;
 	position: { top: number; left?: number; right?: number };
 	searchQuery: string;
+	viaButton?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -30,7 +31,6 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const listRef = ref<HTMLDivElement | null>(null);
 const localQuery = ref(props.searchQuery);
 
-// Sync local query with prop (incoming changes from parent)
 watch(
 	() => props.searchQuery,
 	(newQuery) => {
@@ -38,7 +38,6 @@ watch(
 	},
 );
 
-// Emit local query changes to parent
 watch(localQuery, (newQuery) => {
 	emit('update:searchQuery', newQuery);
 });
@@ -93,9 +92,11 @@ watch(
 );
 
 onMounted(() => {
-	void nextTick(() => {
-		inputRef.value?.focus();
-	});
+	if (props.viaButton) {
+		void nextTick(() => {
+			inputRef.value?.focus();
+		});
+	}
 	document.addEventListener('click', handleClickOutside);
 });
 
@@ -107,8 +108,8 @@ onUnmounted(() => {
 <template>
 	<Teleport to="body">
 		<div data-node-mention-dropdown :class="$style.dropdown" :style="positionStyle">
-			<!-- Search input -->
-			<div :class="$style.searchWrapper">
+			<!-- Search input (only shown when opened via button) -->
+			<div v-if="viaButton" :class="$style.searchWrapper">
 				<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
 				<input
 					ref="inputRef"
@@ -126,7 +127,11 @@ onUnmounted(() => {
 					v-for="(node, index) in nodes"
 					:key="node.id"
 					data-mention-item
-					:class="[$style.item, { [$style.highlighted]: index === highlightedIndex }]"
+					:class="[
+						$style.item,
+						{ [$style.highlighted]: index === highlightedIndex },
+						{ [$style.selected]: selectedNodeIds.includes(node.id) },
+					]"
 					@click="handleSelect(node)"
 					@mouseenter="handleMouseEnter(index)"
 				>
@@ -210,6 +215,15 @@ onUnmounted(() => {
 	&:hover,
 	&.highlighted {
 		background: var(--color--foreground--tint-2);
+	}
+
+	&.selected {
+		background-color: var(--color--success--tint-4);
+	}
+
+	&.selected:hover,
+	&.selected.highlighted {
+		background-color: var(--color--success--tint-3);
 	}
 }
 

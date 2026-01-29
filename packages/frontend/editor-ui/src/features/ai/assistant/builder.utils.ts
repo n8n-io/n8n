@@ -74,12 +74,7 @@ export async function createBuilderPayload(
 		);
 	}
 
-	// Include focused/selected nodes for context-aware AI responses
 	const selectedNodes = focusedNodesStore.buildContextPayload();
-	console.log('[AI Builder] Focused nodes payload:', {
-		confirmedCount: focusedNodesStore.confirmedNodes.length,
-		selectedNodes,
-	});
 	if (selectedNodes.length > 0) {
 		workflowContext.selectedNodes = selectedNodes;
 	}

@@ -568,7 +568,6 @@ export function buildSelectedNodesContextBlock(
 	for (const node of selectedNodes) {
 		parts.push(`<node name="${escapeXmlAttr(node.name)}">`);
 
-		// Issues/validation errors (additional context not in currentWorkflow)
 		if (node.issues && Object.keys(node.issues).length > 0) {
 			parts.push('  <issues>');
 			for (const [param, issues] of Object.entries(node.issues)) {
@@ -581,7 +580,6 @@ export function buildSelectedNodesContextBlock(
 			parts.push('  </issues>');
 		}
 
-		// Connections (pre-resolved node names for convenience)
 		if (node.incomingConnections.length > 0) {
 			parts.push(
 				`  <incoming_connections>${node.incomingConnections.map(escapeXmlContent).join(', ')}</incoming_connections>`,

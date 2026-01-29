@@ -78,15 +78,12 @@ export class AiBuilderChatRequestDto extends Z.class({
 
 			selectedNodes: z
 				.custom<SelectedNodeContext[]>((val: SelectedNodeContext[]) => {
-					// Check if it's an array with valid node context objects
 					if (!Array.isArray(val)) {
 						return false;
 					}
-					// Allow empty arrays
 					if (val.length === 0) {
 						return val;
 					}
-					// Check that items have required properties
 					if (val.every((item) => typeof item.name === 'string')) {
 						return val;
 					}

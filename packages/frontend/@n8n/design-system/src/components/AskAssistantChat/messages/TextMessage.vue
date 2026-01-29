@@ -121,6 +121,15 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				:class="[$style.assistantText, $style.renderedContent]"
 				:style="color ? { color } : undefined"
 			></div>
+			<!-- Focused nodes context pills (shown below user message) -->
+			<div
+				v-if="message.role === 'user' && message.focusedNodeNames?.length"
+				:class="$style.focusedNodesPills"
+			>
+				<span v-for="name in message.focusedNodeNames" :key="name" :class="$style.focusedNodePill">
+					{{ name }}
+				</span>
+			</div>
 			<div
 				v-if="message?.codeSnippet"
 				:class="$style.codeSnippet"
@@ -303,5 +312,23 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			padding: var(--spacing--4xs);
 		}
 	}
+}
+
+.focusedNodesPills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+}
+
+.focusedNodePill {
+	display: inline-flex;
+	align-items: center;
+	height: 20px;
+	padding: 0 var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
 }
 </style>

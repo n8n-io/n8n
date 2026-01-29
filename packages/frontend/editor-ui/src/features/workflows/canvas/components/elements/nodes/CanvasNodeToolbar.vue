@@ -212,7 +212,7 @@ function onAddToAi() {
 .canvasNodeToolbar {
 	padding-bottom: var(--spacing--xs);
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
 	width: 100%;
 	cursor: default;
 	pointer-events: none;

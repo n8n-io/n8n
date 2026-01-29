@@ -6,24 +6,27 @@ import { createAgent, createMiddleware } from 'langchain';
 import { z } from 'zod';
 
 import {
-	buildResponderPrompt,
-	buildRecursionErrorWithWorkflowGuidance,
-	buildRecursionErrorNoWorkflowGuidance,
-	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
+	buildGeneralErrorGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildResponderPrompt,
 } from '@/prompts';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { DiscoveryContext } from '@/types/discovery-types';
 import type { SimpleWorkflow } from '@/types/workflow';
-import { buildSimplifiedExecutionContext, buildWorkflowOverview } from '@/utils/context-builders';
 import {
-	getErrorEntry,
+	buildSelectedNodesContextBlock,
+	buildSimplifiedExecutionContext,
+	buildWorkflowOverview,
+} from '@/utils/context-builders';
+import {
 	getBuilderOutput,
+	getErrorEntry,
 	hasRecursionErrorsCleared,
 } from '@/utils/coordination-log';
 import { extractDataTableInfo } from '@/utils/data-table-helpers';
 import type { ChatPayload } from '@/workflow-builder-agent';
-import { buildSelectedNodesContextBlock } from '../utils/context-builders';
 
 /**
  * Context required for the responder to generate a response

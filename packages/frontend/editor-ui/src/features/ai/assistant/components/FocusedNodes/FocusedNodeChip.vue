@@ -61,15 +61,15 @@ function handleRemove(event: MouseEvent) {
 	gap: var(--spacing--4xs);
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
-	background-color: var(--color--green-100);
-	border: 1px solid var(--color--green-100);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	background-color: var(--background--success);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	border: 1px solid var(--background--success);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	color: var(--color--green-800);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
 	cursor: pointer;
-	transition:
-		background-color 0.15s ease,
-		opacity 0.15s ease;
 	white-space: nowrap;
 
 	&:hover {
@@ -80,6 +80,7 @@ function handleRemove(event: MouseEvent) {
 		background-color: var(--color--background--light-3);
 		border: 1px dashed var(--color--foreground);
 		color: var(--color--text--tint-1);
+		font-style: italic;
 
 		&:hover {
 			background-color: var(--color--background--light-1);
@@ -94,10 +95,13 @@ function handleRemove(event: MouseEvent) {
 }
 
 .confirmedIcon {
-	color: var(--color--green-800);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
+	mix-blend-mode: luminosity;
 
 	:global(svg) {
-		color: var(--color--green-800);
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		color: var(--text-color--success);
 	}
 }
 
@@ -113,16 +117,19 @@ function handleRemove(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	min-width: 24px;
+	min-height: 24px;
 	padding: 0;
 	margin-left: var(--spacing--4xs);
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color--green-800);
-	transition: color 0.15s ease;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
 
 	&:hover {
-		color: var(--color--green-800);
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		color: var(--text-color--success);
 	}
 }
 </style>

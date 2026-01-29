@@ -2031,7 +2031,7 @@
 	"contextMenu.changeColor": "Change color",
 	"contextMenu.copyTestUrl": "Copy test url",
 	"contextMenu.copyProductionUrl": "Copy production url",
-	"contextMenu.focusAiOnSelected": "Add selection to n8n AI | Add {count} nodes to n8n AI",
+	"contextMenu.focusAiOnSelected": "Add to n8n AI | Add {count} nodes to n8n AI",
 	"contextMenu.addToAi": "Add to n8n AI",
 	"nodeWebhooks.clickToCopyWebhookUrls": "Click to copy webhook URLs",
 	"nodeWebhooks.clickToCopyWebhookUrls.formTrigger": "Click to copy Form URL",

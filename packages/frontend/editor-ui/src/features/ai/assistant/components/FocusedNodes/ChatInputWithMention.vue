@@ -1,9 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
-import { N8nPromptInput, N8nIconButton, N8nIcon } from '@n8n/design-system';
+import { ref, computed, watch, nextTick } from 'vue';
+import { N8nPromptInput, N8nIconButton, N8nIcon, N8nPopover } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeMentionDropdown from './NodeMentionDropdown.vue';
 import FocusedNodeChip from './FocusedNodeChip.vue';
 
@@ -40,11 +43,16 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const focusedNodesStore = useFocusedNodesStore();
+const nodeTypesStore = useNodeTypesStore();
+const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
+
+function getNodeType(nodeTypeName: string) {
+	return nodeTypesStore.getNodeType(nodeTypeName);
+}
 
 const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
 const textValue = ref(props.modelValue);
 
-// Sync with prop
 watch(
 	() => props.modelValue,
 	(newValue) => {
@@ -52,7 +60,6 @@ watch(
 	},
 );
 
-// Emit on change
 watch(textValue, (newValue) => {
 	emit('update:modelValue', newValue);
 });
@@ -63,6 +70,7 @@ const {
 	highlightedIndex,
 	dropdownPosition,
 	filteredNodes,
+	openedViaButton,
 	handleInput,
 	handleKeyDown,
 	selectNode,
@@ -72,25 +80,29 @@ const {
 
 const confirmedNodeIds = computed(() => focusedNodesStore.confirmedNodeIds);
 const confirmedNodes = computed(() => focusedNodesStore.confirmedNodes);
-const unconfirmedNodes = computed(() => focusedNodesStore.unconfirmedNodes);
+const unconfirmedNodes = computed(() => focusedNodesStore.filteredUnconfirmedNodes);
 const hasConfirmedNodes = computed(() => confirmedNodes.value.length > 0);
 const hasUnconfirmedNodes = computed(() => unconfirmedNodes.value.length > 0);
 const confirmedCount = computed(() => confirmedNodes.value.length);
 const unconfirmedCount = computed(() => unconfirmedNodes.value.length);
 
-// Bundling logic: show bundled chip when 2+ nodes
-const shouldBundleConfirmed = computed(() => confirmedCount.value >= 2);
-const shouldBundleUnconfirmed = computed(() => unconfirmedCount.value >= 2);
-const singleConfirmedNode = computed(() =>
-	confirmedCount.value === 1 ? confirmedNodes.value[0] : null,
+const shouldBundleConfirmed = computed(() => confirmedCount.value >= 4);
+const shouldBundleUnconfirmed = computed(() => unconfirmedCount.value >= 4);
+const individualConfirmedNodes = computed(() =>
+	confirmedCount.value >= 1 && confirmedCount.value <= 3 ? confirmedNodes.value : [],
 );
-const singleUnconfirmedNode = computed(() =>
-	unconfirmedCount.value === 1 ? unconfirmedNodes.value[0] : null,
+const individualUnconfirmedNodes = computed(() =>
+	unconfirmedCount.value >= 1 && unconfirmedCount.value <= 3 ? unconfirmedNodes.value : [],
 );
 
 function handleChipClick(nodeId: string) {
-	const isSelectedOnCanvas = focusedNodesStore.isNodeSelectedOnCanvas(nodeId);
-	focusedNodesStore.toggleNode(nodeId, isSelectedOnCanvas);
+	const node = focusedNodesStore.focusedNodesMap[nodeId];
+	if (node?.state === 'confirmed') {
+		canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+	} else {
+		const isSelectedOnCanvas = focusedNodesStore.isNodeSelectedOnCanvas(nodeId);
+		focusedNodesStore.toggleNode(nodeId, isSelectedOnCanvas);
+	}
 }
 
 function confirmAllUnconfirmed() {
@@ -111,6 +123,9 @@ function handleRemove(nodeId: string) {
 }
 
 function onInput(event: Event) {
+	if (!isFeatureEnabled.value) {
+		return;
+	}
 	const inputEvent = event as InputEvent;
 	const target = event.target as HTMLTextAreaElement;
 	if (target) {
@@ -145,6 +160,9 @@ function handleDropdownKeyDown(event: KeyboardEvent) {
 
 function handleDropdownSelect(node: { id: string; name: string; type: string }) {
 	selectNode(node as Parameters<typeof selectNode>[0]);
+	void nextTick(() => {
+		focusInput();
+	});
 }
 
 function handleSearchQueryUpdate(query: string) {
@@ -152,7 +170,6 @@ function handleSearchQueryUpdate(query: string) {
 }
 
 function handleClose() {
-	// Remove @query text if there are no matches when closing via click outside
 	closeDropdown(filteredNodes.value.length === 0);
 }
 
@@ -161,9 +178,7 @@ function focusInput() {
 }
 
 function handleMentionButtonClick(event: MouseEvent) {
-	// Stop propagation to prevent the click outside handler from immediately closing the dropdown
 	event.stopPropagation();
-	// Use the button element for positioning the dropdown
 	const button = event.currentTarget as HTMLElement;
 	if (button) {
 		openDropdown(button, { viaButton: true, alignRight: true });
@@ -197,29 +212,55 @@ defineExpose({
 			@stop="onStop"
 			@upgrade-click="onUpgradeClick"
 		>
-			<!-- Confirmed chips - inline with text input -->
-			<template v-if="hasConfirmedNodes" #inline-chips>
-				<!-- Single confirmed: show individual chip -->
+			<!-- Confirmed chips - inline with text input (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasConfirmedNodes" #inline-chips>
+				<!-- Individual confirmed chips (1-3 nodes) -->
 				<FocusedNodeChip
-					v-if="singleConfirmedNode"
-					:node="singleConfirmedNode"
-					@click="handleChipClick(singleConfirmedNode.nodeId)"
-					@remove="handleRemove(singleConfirmedNode.nodeId)"
+					v-for="node in individualConfirmedNodes"
+					:key="node.nodeId"
+					:node="node"
+					@click="handleChipClick(node.nodeId)"
+					@remove="handleRemove(node.nodeId)"
 				/>
-				<!-- Multiple confirmed: show bundled chip -->
-				<span v-else-if="shouldBundleConfirmed" :class="$style.bundledConfirmedChip">
-					<N8nIcon icon="layers" size="small" :class="$style.bundledConfirmedIcon" />
-					<span>{{
-						i18n.baseText('focusedNodes.nodesCount', { interpolate: { count: confirmedCount } })
-					}}</span>
-					<button type="button" :class="$style.removeButton" @click.stop="removeAllConfirmed">
-						<N8nIcon icon="x" size="xsmall" />
-					</button>
-				</span>
+				<!-- Bundled confirmed chip (4+ nodes) with expandable popover -->
+				<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px">
+					<template #trigger>
+						<span :class="$style.bundledConfirmedChip">
+							<N8nIcon icon="layers" size="small" :class="$style.bundledConfirmedIcon" />
+							<span>{{
+								i18n.baseText('focusedNodes.nodesCount', {
+									interpolate: { count: confirmedCount },
+								})
+							}}</span>
+							<button type="button" :class="$style.removeButton" @click.stop="removeAllConfirmed">
+								<N8nIcon icon="x" size="xsmall" />
+							</button>
+						</span>
+					</template>
+					<template #content>
+						<div :class="$style.expandedNodeList">
+							<div
+								v-for="node in confirmedNodes"
+								:key="node.nodeId"
+								:class="$style.expandedNodeItem"
+							>
+								<NodeIcon :node-type="getNodeType(node.nodeType)" :size="12" />
+								<span :class="$style.expandedNodeName">{{ node.nodeName }}</span>
+								<button
+									type="button"
+									:class="$style.expandedRemoveButton"
+									@click.stop="handleRemove(node.nodeId)"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
+							</div>
+						</div>
+					</template>
+				</N8nPopover>
 			</template>
 
-			<!-- Mention button -->
-			<template #extra-actions>
+			<!-- Mention button (only when feature enabled) -->
+			<template v-if="isFeatureEnabled" #extra-actions>
 				<N8nIconButton
 					icon="at-sign"
 					type="tertiary"
@@ -230,18 +271,19 @@ defineExpose({
 				/>
 			</template>
 
-			<!-- Unconfirmed chips - in bottom actions row -->
-			<template v-if="hasUnconfirmedNodes" #bottom-actions-chips>
-				<!-- Single unconfirmed: show individual chip -->
+			<!-- Unconfirmed chips - in bottom actions row (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #bottom-actions-chips>
+				<!-- Individual unconfirmed chips (1-3 nodes) -->
 				<FocusedNodeChip
-					v-if="singleUnconfirmedNode"
-					:node="singleUnconfirmedNode"
-					@click="handleChipClick(singleUnconfirmedNode.nodeId)"
-					@remove="handleRemove(singleUnconfirmedNode.nodeId)"
+					v-for="node in individualUnconfirmedNodes"
+					:key="node.nodeId"
+					:node="node"
+					@click="handleChipClick(node.nodeId)"
+					@remove="handleRemove(node.nodeId)"
 				/>
-				<!-- Multiple unconfirmed: show bundled chip -->
+				<!-- Bundled unconfirmed chip (4+ nodes) -->
 				<button
-					v-else-if="shouldBundleUnconfirmed"
+					v-if="shouldBundleUnconfirmed"
 					type="button"
 					:class="$style.bundledUnconfirmedChip"
 					@click="confirmAllUnconfirmed"
@@ -255,12 +297,13 @@ defineExpose({
 		</N8nPromptInput>
 
 		<NodeMentionDropdown
-			v-if="showDropdown"
+			v-if="isFeatureEnabled && showDropdown"
 			:nodes="filteredNodes"
 			:selected-node-ids="confirmedNodeIds"
 			:highlighted-index="highlightedIndex"
 			:position="dropdownPosition"
 			:search-query="searchQuery"
+			:via-button="openedViaButton"
 			@select="handleDropdownSelect"
 			@highlight="highlightedIndex = $event"
 			@keydown="handleDropdownKeyDown"
@@ -287,32 +330,39 @@ defineExpose({
 	gap: var(--spacing--4xs);
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
-	background-color: var(--color--green-100);
-	border: 1px solid var(--color--green-100);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	background-color: var(--background--success);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	border: 1px solid var(--background--success);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	color: var(--color--green-800);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
 	white-space: nowrap;
 }
 
 .bundledConfirmedIcon {
-	color: var(--color--green-800);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
 }
 
 .removeButton {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	min-width: 24px;
+	min-height: 24px;
 	padding: 0;
 	margin-left: var(--spacing--4xs);
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color--green-800);
-	transition: color 0.15s ease;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	color: var(--text-color--success);
 
 	&:hover {
-		color: var(--color--green-800);
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		color: var(--text-color--success);
 	}
 }
 
@@ -327,9 +377,9 @@ defineExpose({
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
+	font-style: italic;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
-	transition: background-color 0.15s ease;
 	white-space: nowrap;
 
 	&:hover {
@@ -339,5 +389,50 @@ defineExpose({
 
 .bundledUnconfirmedIcon {
 	color: var(--color--text--tint-1);
+}
+
+.expandedNodeList {
+	padding: var(--spacing--4xs);
+	max-height: 240px;
+	overflow-y: auto;
+}
+
+.expandedNodeItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+
+	&:hover {
+		background-color: var(--color--foreground--tint-2);
+	}
+}
+
+.expandedNodeName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: 1;
+}
+
+.expandedRemoveButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	min-height: 24px;
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color--text--tint-2);
+
+	&:hover {
+		color: var(--color--text);
+	}
 }
 </style>

@@ -30,7 +30,11 @@ import type { PlanDecision, PlanOutput } from '@/types/planning';
 import type { WorkflowMetadata } from '@/types/tools';
 import type { SimpleWorkflow } from '@/types/workflow';
 import { applySubgraphCacheMarkers } from '@/utils/cache-control';
-import { buildWorkflowSummary, buildSelectedNodesSummary, createContextMessage } from '@/utils/context-builders';
+import {
+	buildWorkflowSummary,
+	buildSelectedNodesSummary,
+	createContextMessage,
+} from '@/utils/context-builders';
 import {
 	createResourceCacheKey,
 	extractResourceOperations,
@@ -653,8 +657,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		contextParts.push(userRequest);
 		contextParts.push('</user_request>');
 
-		// 2. Selected nodes summary (for deictic resolution context)
-		// Discovery needs to know about selected nodes when user says "add X before/after this"
 		const selectedNodesSummary = buildSelectedNodesSummary(parentState.workflowContext);
 		if (selectedNodesSummary) {
 			contextParts.push('=== SELECTED NODES ===');
@@ -666,8 +668,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			contextParts.push('</selected_nodes>');
 		}
 
-		// 3. Current workflow summary (just node names, to know what exists)
-		// Discovery doesn't need full JSON, just awareness of existing nodes
 		if (parentState.workflowJSON.nodes.length > 0) {
 			contextParts.push('<existing_workflow_summary>');
 			contextParts.push(buildWorkflowSummary(parentState.workflowJSON));

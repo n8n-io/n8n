@@ -768,7 +768,6 @@ export function buildBuilderPrompt(
 			.section('anti_overengineering', ANTI_OVERENGINEERING)
 			.section('response_format', RESPONSE_FORMAT)
 			.section('common_mistakes', COMMON_MISTAKES)
-			// Deictic resolution for handling "this", "that", etc.
 			.section('deictic_resolution', DEICTIC_RESOLUTION)
 			.build()
 	);

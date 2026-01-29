@@ -481,7 +481,6 @@ defineExpose({
 	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
 }
 
-// Textarea and scroll area
 .scrollAreaWrapper {
 	width: 100%;
 	margin-bottom: 0;
@@ -524,7 +523,6 @@ defineExpose({
 	gap: var(--spacing--4xs);
 }
 
-// Chips row above textarea
 .chipsRow {
 	display: flex;
 	flex-wrap: wrap;

@@ -30,8 +30,6 @@ export interface DeicticExamples {
 	/** Additional role-specific notes */
 	additionalNotes?: string;
 
-	// New enhanced resolution options
-
 	/** Examples for positional references (previous, next, upstream, downstream) */
 	positionalReferences?: string[];
 	/** Examples for explicit name mentions without @ selection */
