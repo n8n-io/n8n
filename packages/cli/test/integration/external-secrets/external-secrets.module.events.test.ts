@@ -4,19 +4,19 @@ import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
+import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service';
+import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
+import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
+
 import {
 	AnotherDummyProvider,
 	DummyProvider,
 	FailedProvider,
 	MockProviders,
-} from '@test/external-secrets/utils';
-
-import { ExternalSecretsProviders } from '../external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
-import { SecretsCacheRefresh } from '../secrets-cache-refresh.service';
-import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
-import { ExternalSecretsSettingsStore } from '../settings-store.service';
+} from '../../shared/external-secrets/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
@@ -45,7 +45,6 @@ describe('ExternalSecretsModule Events', () => {
 
 		Container.set(Logger, mockLogger());
 
-		// Get services from container
 		secretsCacheRefresh = Container.get(SecretsCacheRefresh);
 		settingsStore = Container.get(ExternalSecretsSettingsStore);
 		providerRegistry = Container.get(ExternalSecretsProviderRegistry);
@@ -54,12 +53,8 @@ describe('ExternalSecretsModule Events', () => {
 		cipher = Container.get(Cipher);
 		config = Container.get(ExternalSecretsConfig);
 
-		// Clear provider registry between tests
-		for (const name of providerRegistry.getNames()) {
-			providerRegistry.remove(name);
-		}
+		providerRegistry.clear();
 
-		// Default to legacy mode
 		(config as any).externalSecretsForProjects = false;
 	});
 

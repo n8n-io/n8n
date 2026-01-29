@@ -2,20 +2,20 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
+import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service';
+import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
+import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
+
 import {
 	AnotherDummyProvider,
 	DummyProvider,
 	ErrorProvider,
 	FailedProvider,
 	MockProviders,
-} from '@test/external-secrets/utils';
-
-import { ExternalSecretsProviders } from '../external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
-import { SecretsCacheRefresh } from '../secrets-cache-refresh.service';
-import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
-import { ExternalSecretsSettingsStore } from '../settings-store.service';
+} from '../../shared/external-secrets/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
