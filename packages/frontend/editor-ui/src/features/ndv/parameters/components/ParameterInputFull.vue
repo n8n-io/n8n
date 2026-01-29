@@ -404,11 +404,7 @@ function removeOverride(clearField = false) {
 				/>
 			</template>
 		</N8nInputLabel>
-		<FromAiOverrideButton
-			v-if="showOverrideButton"
-			:class="$style.inlineAiButton"
-			@click="applyOverride"
-		/>
+		<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
 	</div>
 	<N8nInputLabel
 		v-else
@@ -574,20 +570,13 @@ function removeOverride(clearField = false) {
 	line-height: 0;
 }
 
-.inlineSwitchToggle {
-	flex-shrink: 0;
-}
-
-/* When droppable, hide the external label and AI button */
 .inlineSwitchWrapper:has(:global(.switch-droppable-input)) {
-	.inlineSwitchLabel,
-	.inlineAiButton {
+	.inlineSwitchLabel {
 		display: none;
 	}
 
 	.inlineSwitchToggle {
 		flex: 1;
-		width: 100%;
 	}
 }
 
@@ -599,10 +588,6 @@ function removeOverride(clearField = false) {
 	:global(label.n8n-input-label) {
 		padding-bottom: 0;
 	}
-}
-
-.inlineAiButton {
-	flex-shrink: 0;
 }
 
 .overrideButtonInOptions {
