@@ -146,7 +146,7 @@ export const devstral = createOpenRouterModel('mistralai/devstral-small');
  *
  * Non-Anthropic models (OpenAI, OpenRouter) are available for evaluation/judging
  * purposes only. Using them for generation stages (supervisor, discovery, builder,
- * configurator, responder, parameterUpdater) will likely fail due to:
+ * responder, parameterUpdater) will likely fail due to:
  *
  * 1. Prompt caching: Our prompts use Anthropic's cache_control for efficiency
  * 2. Tool schemas: add_nodes and update_parameters tools use passthrough() schemas

@@ -18,7 +18,7 @@ export const VALIDATE_CONFIGURATION_TOOL: BuilderToolBase = {
 };
 
 /**
- * Validation tool for Configurator subgraph.
+ * Validation tool for Builder subgraph.
  * Checks node configuration: agent prompts, tool parameters, $fromAI usage.
  */
 export function createValidateConfigurationTool(

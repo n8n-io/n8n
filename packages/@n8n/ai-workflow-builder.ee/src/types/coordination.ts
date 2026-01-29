@@ -5,7 +5,7 @@
  * and enable deterministic routing without polluting the messages array.
  */
 
-export type SubgraphPhase = 'discovery' | 'builder' | 'configurator' | 'state_management';
+export type SubgraphPhase = 'discovery' | 'builder' | 'state_management';
 
 /**
  * Entry in the coordination log tracking subgraph completion.
@@ -15,7 +15,7 @@ export interface CoordinationLogEntry {
 	phase: SubgraphPhase;
 
 	/** Completion status */
-	status: 'completed' | 'error';
+	status: 'completed' | 'in_progress' | 'error';
 
 	/** When the subgraph completed (Unix timestamp) */
 	timestamp: number;
@@ -23,7 +23,7 @@ export interface CoordinationLogEntry {
 	/** Brief summary for logging/debugging */
 	summary: string;
 
-	/** Full output message (e.g., configurator's setup instructions) */
+	/** Full output message (e.g., builder's setup instructions) */
 	output?: string;
 
 	/** Phase-specific metadata */
@@ -33,7 +33,6 @@ export interface CoordinationLogEntry {
 export type CoordinationMetadata =
 	| DiscoveryMetadata
 	| BuilderMetadata
-	| ConfiguratorMetadata
 	| StateManagementMetadata
 	| ErrorMetadata;
 
@@ -55,14 +54,6 @@ export interface BuilderMetadata {
 	connectionsCreated: number;
 	/** Names of nodes created */
 	nodeNames: string[];
-}
-
-export interface ConfiguratorMetadata {
-	phase: 'configurator';
-	/** Number of nodes configured */
-	nodesConfigured: number;
-	/** Whether setup instructions were generated */
-	hasSetupInstructions: boolean;
 }
 
 export interface ErrorMetadata {
@@ -97,12 +88,6 @@ export function createDiscoveryMetadata(data: Omit<DiscoveryMetadata, 'phase'>):
 
 export function createBuilderMetadata(data: Omit<BuilderMetadata, 'phase'>): BuilderMetadata {
 	return { phase: 'builder', ...data };
-}
-
-export function createConfiguratorMetadata(
-	data: Omit<ConfiguratorMetadata, 'phase'>,
-): ConfiguratorMetadata {
-	return { phase: 'configurator', ...data };
 }
 
 export function createErrorMetadata(data: Omit<ErrorMetadata, 'phase'>): ErrorMetadata {

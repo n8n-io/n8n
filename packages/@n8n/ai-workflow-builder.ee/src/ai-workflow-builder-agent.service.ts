@@ -191,7 +191,6 @@ export class AiWorkflowBuilderService {
 				responder: anthropicClaude,
 				discovery: anthropicClaude,
 				builder: anthropicClaude,
-				configurator: anthropicClaude,
 				parameterUpdater: anthropicClaude,
 			},
 			logger: this.logger,
