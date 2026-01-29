@@ -88,8 +88,8 @@ catalogs:
       specifier: 9.0.2
       version: 9.0.2
     lodash:
-      specifier: 4.17.21
-      version: 4.17.21
+      specifier: 4.17.23
+      version: 4.17.23
     luxon:
       specifier: 3.4.4
       version: 3.4.4
@@ -237,6 +237,14 @@ overrides:
   '@modelcontextprotocol/sdk': 1.25.1
   langchain: 1.2.3
   '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
+<<<<<<< HEAD
+=======
+  diff: 8.0.3
+  undici@6: ^6.23.0
+  undici@7: ^7.18.2
+  tar: ^7.5.4
+  lodash-es: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
 
 patchedDependencies:
   '@lezer/highlight':
@@ -414,7 +422,7 @@ importers:
         version: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -709,7 +717,7 @@ importers:
         version: 3.2.7
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -758,7 +766,7 @@ importers:
         version: link:../permissions
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1108,7 +1116,11 @@ importers:
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
+<<<<<<< HEAD
         version: 1.0.5(a531ea28dc1a73c7198367c220452e41)
+=======
+        version: 1.0.5(57f2cbc5c07c51e825dc067e997f6035)
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1231,7 +1243,7 @@ importers:
         version: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(zod-to-json-schema@3.23.3(zod@3.25.67))
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       mammoth:
         specifier: 1.11.0
         version: 1.11.0
@@ -1411,7 +1423,7 @@ importers:
         version: 8.3.4
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -1654,7 +1666,7 @@ importers:
         version: 4.2.6
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -1952,7 +1964,7 @@ importers:
         version: 9.0.2
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -2201,7 +2213,7 @@ importers:
         version: 0.0.5
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -2694,7 +2706,7 @@ importers:
         version: 1.1.1
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -3017,7 +3029,7 @@ importers:
         version: 4.2.6
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       lossless-json:
         specifier: 1.0.5
         version: 1.0.5
@@ -3119,7 +3131,7 @@ importers:
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2
-        version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@4.1.12)
+        version: 1.2.2(date-fns@2.30.0)(lodash@4.17.23)(zod@4.1.12)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -3330,7 +3342,7 @@ importers:
         version: 3.3.1
       lodash:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 4.17.23
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -13798,15 +13810,15 @@ packages:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
 
-  lodash-es@4.17.21:
-    resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
+  lodash-es@4.17.23:
+    resolution: {integrity: sha512-kVI48u3PZr38HdYz98UmfPnXl2DXrpdctLrFLCd3kOx1xUkOmpFPx7gCWWM5MPkL/fD8zb+Ph0QzjGFs4+hHWg==}
 
   lodash-unified@1.0.3:
     resolution: {integrity: sha512-WK9qSozxXOD7ZJQlpSqOT+om2ZfcT4yO+03FuzAHD0wF6S0l0090LRPDx3vhTTLZ8cFKpBn+IOcVXK6qOcIlfQ==}
     peerDependencies:
       '@types/lodash-es': '*'
       lodash: '*'
-      lodash-es: '*'
+      lodash-es: 4.17.23
 
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
@@ -13871,6 +13883,9 @@ packages:
 
   lodash@4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+  lodash@4.17.23:
+    resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
 
   log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
@@ -16982,9 +16997,15 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
+<<<<<<< HEAD
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+=======
+  tar@7.5.6:
+    resolution: {integrity: sha512-xqUeu2JAIJpXyvskvU3uvQW8PAmHrtXp2KDuMJwQqW8Sqq0CaZBAQ+dKS3RBXVhU4wC5NjAdKrmh84241gO9cA==}
+    engines: {node: '>=18'}
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
 
   tarn@3.0.2:
     resolution: {integrity: sha512-51LAVKUSZSVfI05vjPESNc5vwqqZpbXCsU+/+wxlOrUjk2SnFTt97v9ZgQrD4YmxYW1Px6w2KjaDitCfkvgxMQ==}
@@ -17974,8 +17995,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.2.2:
-    resolution: {integrity: sha512-x8C2nx5XlUNM0WirgfTkHjJGO/ABBxlANZDtHw2HclHtQnn+RFPTnbjMJn8jHZW4TlUam0asHcA14lf1C6Jb+A==}
+  vue-component-type-helpers@3.2.3:
+    resolution: {integrity: sha512-lpJTa8a+12Cgy/n5OdlQTzQhSWOCu+6zQoNFbl3KYxwAoB95mYIgMLKEYMvQykPJ2ucBDjJJISdIBHc1d9Hd3w==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -22379,7 +22400,11 @@ snapshots:
       - aws-crt
       - encoding
 
+<<<<<<< HEAD
   '@langchain/community@1.0.5(a531ea28dc1a73c7198367c220452e41)':
+=======
+  '@langchain/community@1.0.5(57f2cbc5c07c51e825dc067e997f6035)':
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22426,8 +22451,13 @@ snapshots:
       ignore: 5.2.4
       ioredis: 5.3.2
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+<<<<<<< HEAD
       jsonwebtoken: 9.0.2
       lodash: 4.17.21
+=======
+      jsonwebtoken: 9.0.3
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mammoth: 1.11.0
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       mysql2: 3.15.0
@@ -24963,8 +24993,13 @@ snapshots:
       '@storybook/global': 5.0.0
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
+<<<<<<< HEAD
       vue: 3.5.13(typescript@5.9.2)
       vue-component-type-helpers: 3.2.2
+=======
+      vue: 3.5.26(typescript@5.9.2)
+      vue-component-type-helpers: 3.2.3
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -26570,7 +26605,7 @@ snapshots:
   array-hyper-unique@2.1.4:
     dependencies:
       deep-eql: 4.0.0
-      lodash: 4.17.21
+      lodash: 4.17.23
 
   array-includes@3.1.9:
     dependencies:
@@ -27142,7 +27177,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2
-      lodash: 4.17.21
+      lodash: 4.17.23
       msgpackr: 1.11.2
       semver: 7.7.2
       uuid: 8.3.2
@@ -27154,7 +27189,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2
-      lodash: 4.17.21
+      lodash: 4.17.23
       msgpackr: 1.11.2
       semver: 7.7.3
       uuid: 8.3.2
@@ -27237,7 +27272,11 @@ snapshots:
       promise-inflight: 1.0.1
       rimraf: 3.0.2
       ssri: 8.0.1
+<<<<<<< HEAD
       tar: 6.2.1
+=======
+      tar: 7.5.6
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       unique-filename: 1.1.1
     transitivePeerDependencies:
       - bluebird
@@ -27681,7 +27720,7 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       date-fns: 2.30.0
-      lodash: 4.17.21
+      lodash: 4.17.23
       rxjs: 7.8.1
       shell-quote: 1.8.1
       spawn-command: 0.0.2
@@ -28533,9 +28572,9 @@ snapshots:
       async-validator: 4.2.5
       dayjs: 1.11.10
       escape-html: 1.0.3
-      lodash: 4.17.21
-      lodash-es: 4.17.21
-      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.21)(lodash@4.17.21)
+      lodash: 4.17.23
+      lodash-es: 4.17.23
+      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.23)(lodash@4.17.23)
       memoize-one: 6.0.0
       normalize-wheel-es: 1.2.0
       vue: 3.5.13(typescript@5.9.2)
@@ -29822,7 +29861,11 @@ snapshots:
       node-fetch-native: 1.6.6
       nypm: 0.5.4
       pathe: 2.0.3
+<<<<<<< HEAD
       tar: 6.2.1
+=======
+      tar: 7.5.6
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
 
   github-buttons@2.29.1: {}
 
@@ -32023,13 +32066,13 @@ snapshots:
     dependencies:
       p-locate: 5.0.0
 
-  lodash-es@4.17.21: {}
+  lodash-es@4.17.23: {}
 
-  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.21)(lodash@4.17.21):
+  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.23)(lodash@4.17.23):
     dependencies:
       '@types/lodash-es': 4.17.12
-      lodash: 4.17.21
-      lodash-es: 4.17.21
+      lodash: 4.17.23
+      lodash-es: 4.17.23
 
   lodash.camelcase@4.3.0: {}
 
@@ -32072,6 +32115,8 @@ snapshots:
   lodash.truncate@4.4.2: {}
 
   lodash@4.17.21: {}
+
+  lodash@4.17.23: {}
 
   log-symbols@4.1.0:
     dependencies:
@@ -32464,39 +32509,59 @@ snapshots:
     dependencies:
       '@miragejs/pretender-node-polyfill': 0.1.2
       inflected: 2.1.0
-      lodash: 4.17.21
+      lodash: 4.17.23
       pretender: 3.4.7
 
   mitt@2.1.0: {}
 
   mjml-accordion@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-body@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-button@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-carousel@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -32508,7 +32573,7 @@ snapshots:
       glob: 10.5.0
       html-minifier: 4.0.0
       js-beautify: 1.14.9
-      lodash: 4.17.21
+      lodash: 4.17.23
       minimatch: 9.0.5
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-migrate: 4.15.3(encoding@0.1.13)
@@ -32520,8 +32585,13 @@ snapshots:
 
   mjml-column@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -32534,7 +32604,7 @@ snapshots:
       html-minifier: 4.0.0
       js-beautify: 1.14.9
       juice: 10.0.1(encoding@0.1.13)
-      lodash: 4.17.21
+      lodash: 4.17.23
       mjml-migrate: 4.15.3(encoding@0.1.13)
       mjml-parser-xml: 4.15.3
       mjml-validator: 4.15.3
@@ -32543,96 +32613,156 @@ snapshots:
 
   mjml-divider@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-group@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-attributes@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-breakpoint@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-font@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-html-attributes@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-preview@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-style@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head-title@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-head@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-hero@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-image@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -32641,7 +32771,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.26.10
       js-beautify: 1.14.9
-      lodash: 4.17.21
+      lodash: 4.17.23
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-parser-xml: 4.15.3
       yargs: 17.7.2
@@ -32650,8 +32780,13 @@ snapshots:
 
   mjml-navbar@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -32661,7 +32796,7 @@ snapshots:
       '@babel/runtime': 7.26.10
       detect-node: 2.1.0
       htmlparser2: 9.1.0
-      lodash: 4.17.21
+      lodash: 4.17.23
 
   mjml-preset-core@4.15.3(encoding@0.1.13):
     dependencies:
@@ -32696,48 +32831,78 @@ snapshots:
 
   mjml-raw@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-section@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-social@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-spacer@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-table@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
   mjml-text@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -32748,8 +32913,13 @@ snapshots:
 
   mjml-wrapper@4.15.3(encoding@0.1.13):
     dependencies:
+<<<<<<< HEAD
       '@babel/runtime': 7.26.10
       lodash: 4.17.21
+=======
+      '@babel/runtime': 7.28.4
+      lodash: 4.17.23
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-section: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -33075,7 +33245,11 @@ snapshots:
       npmlog: 6.0.2
       rimraf: 3.0.2
       semver: 7.7.3
+<<<<<<< HEAD
       tar: 6.2.1
+=======
+      tar: 7.5.6
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
       which: 2.0.2
     transitivePeerDependencies:
       - bluebird
@@ -35432,7 +35606,11 @@ snapshots:
       bindings: 1.5.0
       node-addon-api: 7.1.0
       prebuild-install: 7.1.3
+<<<<<<< HEAD
       tar: 6.2.1
+=======
+      tar: 7.5.6
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
     optionalDependencies:
       node-gyp: 8.4.1
     transitivePeerDependencies:
@@ -35974,7 +36152,11 @@ snapshots:
       fast-fifo: 1.3.2
       streamx: 2.22.1
 
+<<<<<<< HEAD
   tar@6.2.1:
+=======
+  tar@7.5.6:
+>>>>>>> 993228ad (chore: Bump up dependencies (#24886))
     dependencies:
       chownr: 2.0.0
       fs-minipass: 2.1.0
@@ -36238,11 +36420,11 @@ snapshots:
       '@ts-graphviz/common': 2.1.5
       '@ts-graphviz/core': 2.0.7
 
-  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@4.1.12):
+  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.17.23)(zod@4.1.12):
     dependencies:
       date-fns: 2.30.0
       date-fns-tz: 2.0.0(date-fns@2.30.0)
-      lodash: 4.17.21
+      lodash: 4.17.23
       zod: 4.1.12
 
   ts-interface-checker@0.1.13: {}
@@ -37027,7 +37209,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.2.2: {}
+  vue-component-type-helpers@3.2.3: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
@@ -37057,7 +37239,7 @@ snapshots:
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
       esquery: 1.6.0
-      lodash: 4.17.21
+      lodash: 4.17.23
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
@@ -37578,8 +37760,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/lodash': 4.17.17
-      lodash: 4.17.21
-      lodash-es: 4.17.21
+      lodash: 4.17.23
+      lodash-es: 4.17.23
       nanoclone: 0.2.1
       property-expr: 2.0.5
       toposort: 2.0.2
