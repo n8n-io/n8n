@@ -49,7 +49,7 @@ export type WorkflowStateBusEvents = {
 
 export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
-export function useWorkflowState(workflowId: string) {
+export function useWorkflowState(workflowId?: string) {
 	const ws = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
@@ -57,7 +57,12 @@ export function useWorkflowState(workflowId: string) {
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const { workflow, workflowObject } = useWorkflowDocumentsStore(workflowId);
+	// If workflowId is provided, use the documents store
+	// Otherwise, use the workflows store directly for backward compatibility
+	const documentStore = workflowId ? useWorkflowDocumentsStore(workflowId) : null;
+
+	const workflow = documentStore?.workflow ?? ws.workflow;
+	const workflowObject = documentStore?.workflowObject ?? ws.workflowObject;
 
 	////
 	// Workflow editing state
