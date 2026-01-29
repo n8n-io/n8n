@@ -41,7 +41,7 @@ export function useChatPushHandler() {
 	 */
 	function handleExecutionBegin(event: ChatHubExecutionBegin): void {
 		const { sessionId } = event.data;
-		chatStore.handleWebSocketExecutionBegin?.({ sessionId });
+		chatStore.handleWebSocketExecutionBegin({ sessionId });
 	}
 
 	/**
@@ -53,7 +53,7 @@ export function useChatPushHandler() {
 		// Clean up all active streams for this session
 		activeStreams.value.delete(sessionId);
 
-		chatStore.handleWebSocketExecutionEnd?.({ sessionId, status });
+		chatStore.handleWebSocketExecutionEnd({ sessionId, status });
 	}
 
 	/**
@@ -79,7 +79,7 @@ export function useChatPushHandler() {
 			}
 		}
 
-		chatStore.handleWebSocketStreamBegin?.({
+		chatStore.handleWebSocketStreamBegin({
 			sessionId,
 			messageId,
 			previousMessageId,
@@ -105,7 +105,7 @@ export function useChatPushHandler() {
 		streamState.lastSequenceNumber = sequenceNumber;
 		streamState.content += content;
 
-		chatStore.handleWebSocketStreamChunk?.({
+		chatStore.handleWebSocketStreamChunk({
 			sessionId,
 			messageId,
 			content,
@@ -120,7 +120,7 @@ export function useChatPushHandler() {
 
 		activeStreams.value.delete(sessionId);
 
-		chatStore.handleWebSocketStreamEnd?.({
+		chatStore.handleWebSocketStreamEnd({
 			sessionId,
 			messageId,
 			status,
@@ -135,7 +135,7 @@ export function useChatPushHandler() {
 
 		activeStreams.value.delete(sessionId);
 
-		chatStore.handleWebSocketStreamError?.({
+		chatStore.handleWebSocketStreamError({
 			sessionId,
 			messageId,
 			error,
@@ -146,14 +146,14 @@ export function useChatPushHandler() {
 	 * Handle a human message created event
 	 */
 	function handleHumanMessageCreated(event: ChatHubHumanMessageCreated): void {
-		chatStore.handleHumanMessageCreated?.(event.data);
+		chatStore.handleHumanMessageCreated(event.data);
 	}
 
 	/**
 	 * Handle a message edited event
 	 */
 	function handleMessageEdited(event: ChatHubMessageEdited): void {
-		chatStore.handleMessageEdited?.(event.data);
+		chatStore.handleMessageEdited(event.data);
 	}
 
 	/**

@@ -139,20 +139,20 @@ describe('ChatView', () => {
 		},
 	) {
 		if (type === 'begin') {
-			chatStore.handleWebSocketStreamBegin?.({
+			chatStore.handleWebSocketStreamBegin({
 				sessionId: chatStore.streaming?.sessionId ?? '',
 				messageId: metadata.messageId,
 				previousMessageId: metadata.previousMessageId,
 				retryOfMessageId: metadata.retryOfMessageId ?? null,
 			});
 		} else if (type === 'item') {
-			chatStore.handleWebSocketStreamChunk?.({
+			chatStore.handleWebSocketStreamChunk({
 				sessionId: chatStore.streaming?.sessionId ?? '',
 				messageId: metadata.messageId,
 				content,
 			});
 		} else if (type === 'end') {
-			chatStore.handleWebSocketStreamEnd?.({
+			chatStore.handleWebSocketStreamEnd({
 				sessionId: chatStore.streaming?.sessionId ?? '',
 				messageId: metadata.messageId,
 				status: 'success',
@@ -161,9 +161,26 @@ describe('ChatView', () => {
 	}
 
 	function simulateStreamDone() {
-		chatStore.handleWebSocketExecutionEnd?.({
+		chatStore.handleWebSocketExecutionEnd({
 			sessionId: chatStore.streaming?.sessionId ?? '',
 			status: 'success',
+		});
+	}
+
+	// Helper to simulate human message created event (sent from backend when message is accepted)
+	function simulateHumanMessageCreated(metadata: {
+		sessionId: string;
+		messageId: string;
+		previousMessageId: string | null;
+		content: string;
+	}) {
+		chatStore.handleHumanMessageCreated({
+			sessionId: metadata.sessionId,
+			messageId: metadata.messageId,
+			previousMessageId: metadata.previousMessageId,
+			content: metadata.content,
+			attachments: [],
+			timestamp: Date.now(),
 		});
 	}
 
@@ -485,6 +502,14 @@ describe('ChatView', () => {
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
 
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: sessionIdFromApi,
+				messageId: messageIdFromApi,
+				previousMessageId: null,
+				content: 'What is n8n?',
+			});
+
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-123',
 				previousMessageId: messageIdFromApi,
@@ -588,6 +613,14 @@ describe('ChatView', () => {
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
+
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: 'existing-session-123',
+				messageId: messageIdFromApi,
+				previousMessageId: 'msg-2',
+				content: 'New question',
+			});
 
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-456',
