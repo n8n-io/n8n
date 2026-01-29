@@ -9,21 +9,30 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { SourceControlGitService } from './source-control-git.service.ee';
+import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
 import {
 	hasOwnerChanged,
+	getDataTableExportPath,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
+	isDataTableModified,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
+import type { StatusResourceOwner } from './types/resource-owner';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
@@ -43,6 +52,40 @@ export class SourceControlStatusService {
 
 	private get gitFolder(): string {
 		return this.sourceControlPreferencesService.gitFolder;
+	}
+
+	private get dataTableExportFolder(): string {
+		return `${this.gitFolder}/${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}`;
+	}
+
+	/**
+	 * Converts data table ownership (from file or DB) to StatusResourceOwner (for API).
+	 * Returns undefined for personal projects since IDs don't sync across instances.
+	 */
+	private convertToStatusResourceOwner(
+		owner: DataTableResourceOwner | StatusResourceOwner | null | undefined,
+	): StatusResourceOwner | undefined {
+		if (!owner) {
+			return;
+		}
+
+		if (owner.type === 'personal') {
+			return;
+		}
+
+		if ('teamId' in owner && 'teamName' in owner) {
+			return {
+				type: 'team',
+				projectId: owner.teamId,
+				projectName: owner.teamName,
+			};
+		}
+
+		if ('projectId' in owner) {
+			return owner;
+		}
+
+		return;
 	}
 
 	/**
@@ -81,6 +124,9 @@ export class SourceControlStatusService {
 
 		const { varMissingInLocal, varMissingInRemote, varModifiedInEither } =
 			await this.getStatusVariables(options, sourceControlledFiles);
+
+		const { dtMissingInLocal, dtMissingInRemote, dtModifiedInEither } =
+			await this.getStatusDataTables(options, sourceControlledFiles);
 
 		const {
 			tagsMissingInLocal,
@@ -128,6 +174,9 @@ export class SourceControlStatusService {
 				varMissingInLocal,
 				varMissingInRemote,
 				varModifiedInEither,
+				dtMissingInLocal,
+				dtMissingInRemote,
+				dtModifiedInEither,
 				tagsMissingInLocal,
 				tagsMissingInRemote,
 				tagsModifiedInEither,
@@ -448,6 +497,89 @@ export class SourceControlStatusService {
 			varMissingInLocal,
 			varMissingInRemote,
 			varModifiedInEither,
+		};
+	}
+
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
+		const dataTablesRemote =
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+		const dataTablesLocal =
+			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+
+		const dtMissingInLocal = dataTablesRemote.filter(
+			(remote) => dataTablesLocal.findIndex((local) => local.id === remote.id) === -1,
+		);
+
+		const dtMissingInRemote = dataTablesLocal.filter(
+			(local) => dataTablesRemote.findIndex((remote) => remote.id === local.id) === -1,
+		);
+
+		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
+		dataTablesLocal.forEach((local) => {
+			const remote = dataTablesRemote.find((r) => r.id === local.id);
+
+			if (remote) {
+				const hasMismatch =
+					(remote.id === local.id && remote.name !== local.name) ||
+					(remote.id !== local.id && remote.name === local.name);
+
+				const isModified = isDataTableModified(local, remote);
+
+				if (hasMismatch || isModified) {
+					dtModifiedInEither.push(options.preferLocalVersion ? local : remote);
+				}
+			}
+		});
+
+		dtMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
+				updatedAt: new Date().toISOString(),
+				owner: this.convertToStatusResourceOwner(item.ownedBy),
+			});
+		});
+
+		dtMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
+				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy ?? undefined,
+			});
+		});
+
+		dtModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
+				updatedAt: new Date().toISOString(),
+				owner: this.convertToStatusResourceOwner(item.ownedBy),
+			});
+		});
+
+		return {
+			dtMissingInLocal,
+			dtMissingInRemote,
+			dtModifiedInEither,
 		};
 	}
 
