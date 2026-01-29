@@ -21,7 +21,7 @@ import {
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
-describe('ExternalSecretsModule Events', () => {
+describe('External Secrets Events', () => {
 	let secretsCacheRefresh: SecretsCacheRefresh;
 	let settingsStore: ExternalSecretsSettingsStore;
 	let providerRegistry: ExternalSecretsProviderRegistry;
