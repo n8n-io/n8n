@@ -249,45 +249,208 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 }
 
 /**
- * Extract discriminator information from union errors.
- * Detects when all union variants fail on the same literal field (e.g., parameters.mode).
+ * Score a union variant by how well it matches - lower score = better match.
+ * Returns the number of discriminator mismatches.
  */
-function extractDiscriminatorInfo(
-	unionErrors: Array<{ issues: ZodIssue[] }>,
-): { discriminatorPath: string; expectedValues: unknown[]; receivedValue: unknown } | null {
-	// Common discriminator fields in n8n nodes
+function scoreUnionVariant(issues: ZodIssue[]): number {
 	const discriminatorFields = ['mode', 'resource', 'operation'];
+	let discriminatorMismatches = 0;
 
-	// Collect all invalid_literal issues from each union variant
-	const literalIssuesByPath = new Map<string, Array<{ expected: unknown; received: unknown }>>();
+	for (const iss of issues) {
+		if (iss.code === 'invalid_literal') {
+			const lastPart = iss.path[iss.path.length - 1];
+			if (typeof lastPart === 'string' && discriminatorFields.includes(lastPart)) {
+				discriminatorMismatches++;
+			}
+		} else if (
+			iss.code === 'invalid_union' &&
+			'unionErrors' in iss &&
+			Array.isArray(iss.unionErrors)
+		) {
+			// For nested unions, find the best scoring nested variant
+			const nestedScores = (iss.unionErrors as Array<{ issues: ZodIssue[] }>).map((ue) =>
+				scoreUnionVariant(ue.issues),
+			);
+			discriminatorMismatches += Math.min(...nestedScores);
+		}
+	}
+
+	return discriminatorMismatches;
+}
+
+/**
+ * Find the best matching union variant (one with fewest discriminator mismatches).
+ */
+function findBestMatchingVariant(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+): { issues: ZodIssue[] } | null {
+	if (unionErrors.length === 0) return null;
+
+	let bestVariant = unionErrors[0];
+	let bestScore = scoreUnionVariant(bestVariant.issues);
+
+	for (let i = 1; i < unionErrors.length; i++) {
+		const score = scoreUnionVariant(unionErrors[i].issues);
+		if (score < bestScore) {
+			bestScore = score;
+			bestVariant = unionErrors[i];
+		}
+	}
+
+	return bestVariant;
+}
+
+/**
+ * Recursively collect issues from the best matching path through nested unions.
+ */
+function collectIssuesFromBestPath(unionErrors: Array<{ issues: ZodIssue[] }>): ZodIssue[] {
+	const bestVariant = findBestMatchingVariant(unionErrors);
+	if (!bestVariant) return [];
+
+	const result: ZodIssue[] = [];
+
+	for (const iss of bestVariant.issues) {
+		if (iss.code === 'invalid_union' && 'unionErrors' in iss && Array.isArray(iss.unionErrors)) {
+			// Recursively follow the best path for nested unions
+			result.push(...collectIssuesFromBestPath(iss.unionErrors as Array<{ issues: ZodIssue[] }>));
+		} else {
+			result.push(iss);
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Recursively collect ALL discriminator values from all union variants.
+ * Used when a discriminator is missing to show all valid options.
+ */
+function collectAllDiscriminatorValues(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+	discriminatorPath: string,
+): unknown[] {
+	const values: unknown[] = [];
 
 	for (const unionError of unionErrors) {
 		for (const iss of unionError.issues) {
-			if (iss.code === 'invalid_literal') {
-				const issPath = iss.path.join('.');
-				const lastPart = iss.path[iss.path.length - 1];
-				// Only track known discriminator fields
-				if (typeof lastPart === 'string' && discriminatorFields.includes(lastPart)) {
-					if (!literalIssuesByPath.has(issPath)) {
-						literalIssuesByPath.set(issPath, []);
+			if (iss.code === 'invalid_literal' && iss.path.join('.') === discriminatorPath) {
+				values.push((iss as { expected?: unknown }).expected);
+			} else if (
+				iss.code === 'invalid_union' &&
+				'unionErrors' in iss &&
+				Array.isArray(iss.unionErrors)
+			) {
+				values.push(
+					...collectAllDiscriminatorValues(
+						iss.unionErrors as Array<{ issues: ZodIssue[] }>,
+						discriminatorPath,
+					),
+				);
+			}
+		}
+	}
+
+	return [...new Set(values)];
+}
+
+/**
+ * Extract the most useful error information from union validation failures.
+ * Returns a clear, actionable error message summarizing what went wrong.
+ */
+function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): string | null {
+	// Find the best matching variant and collect its issues (handles nested unions)
+	const bestPathIssues = collectIssuesFromBestPath(unionErrors);
+
+	if (bestPathIssues.length === 0) {
+		return null;
+	}
+
+	// Group issues by path
+	const issuesByPath = new Map<string, ZodIssue[]>();
+	for (const iss of bestPathIssues) {
+		const path = iss.path.join('.');
+		if (!issuesByPath.has(path)) {
+			issuesByPath.set(path, []);
+		}
+		issuesByPath.get(path)!.push(iss);
+	}
+
+	// Check for discriminator issues first (invalid_literal on resource/operation/mode)
+	const discriminatorFields = ['mode', 'resource', 'operation'];
+	for (const field of discriminatorFields) {
+		for (const [path, issues] of issuesByPath) {
+			if (path.endsWith(field)) {
+				const literalIssues = issues.filter((i) => i.code === 'invalid_literal');
+				if (literalIssues.length > 0) {
+					const receivedValue = (literalIssues[0] as { received?: unknown }).received;
+
+					// For missing discriminators, collect ALL valid values from ALL variants
+					const expectedValues =
+						receivedValue === undefined
+							? collectAllDiscriminatorValues(unionErrors, path)
+							: [...new Set(literalIssues.map((i) => (i as { expected?: unknown }).expected))];
+
+					const expectedStr = expectedValues.map((v) => `"${v}"`).join(', ');
+					if (receivedValue === undefined) {
+						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. Make sure "${field}" is inside "parameters".`;
 					}
-					literalIssuesByPath.get(issPath)!.push({
-						expected: (iss as { expected?: unknown }).expected,
-						received: (iss as { received?: unknown }).received,
-					});
+					return `Invalid value for "${path}": got "${receivedValue}", expected one of: ${expectedStr}.`;
 				}
 			}
 		}
 	}
 
-	// Find a discriminator path where all union variants have a literal mismatch
-	for (const [discriminatorPath, issues] of literalIssuesByPath) {
-		if (issues.length === unionErrors.length) {
-			// All variants failed on this discriminator
-			const expectedValues = issues.map((i) => i.expected);
-			const receivedValue = issues[0].received; // All should have same received value
-			return { discriminatorPath, expectedValues, receivedValue };
+	// Check for type mismatches
+	const typeMismatches: Array<{ path: string; expected: string; received: string }> = [];
+	for (const [path, issues] of issuesByPath) {
+		for (const iss of issues) {
+			if (iss.code === 'invalid_type') {
+				typeMismatches.push({
+					path,
+					expected: (iss as { expected?: string }).expected ?? 'unknown',
+					received: (iss as { received?: string }).received ?? 'unknown',
+				});
+			}
 		}
+	}
+
+	if (typeMismatches.length > 0) {
+		// Find unique type mismatches
+		const uniqueMismatches = new Map<string, { expected: string; received: string }>();
+		for (const m of typeMismatches) {
+			if (!uniqueMismatches.has(m.path)) {
+				uniqueMismatches.set(m.path, { expected: m.expected, received: m.received });
+			}
+		}
+
+		if (uniqueMismatches.size === 1) {
+			const [path, { expected, received }] = [...uniqueMismatches.entries()][0];
+			return `Field "${path}" has wrong type: expected ${expected}, got ${received}.`;
+		}
+
+		// Multiple type mismatches - summarize
+		const paths = [...uniqueMismatches.keys()].slice(0, 3);
+		const summaries = paths.map((p) => {
+			const { expected, received } = uniqueMismatches.get(p)!;
+			return `"${p}" (expected ${expected}, got ${received})`;
+		});
+		const more = uniqueMismatches.size > 3 ? ` and ${uniqueMismatches.size - 3} more` : '';
+		return `Type mismatches: ${summaries.join(', ')}${more}.`;
+	}
+
+	// Fallback: show the first few specific issues
+	const specificIssues = bestPathIssues
+		.filter((i: ZodIssue) => i.code !== 'invalid_union')
+		.slice(0, 3);
+	if (specificIssues.length > 0) {
+		const summaries = specificIssues.map((iss: ZodIssue) => {
+			const path = iss.path.join('.') || 'config';
+			if (iss.code === 'invalid_literal') {
+				return `"${path}" must be "${(iss as { expected?: unknown }).expected}"`;
+			}
+			return `"${path}": ${iss.message}`;
+		});
+		return `Validation failed: ${summaries.join('; ')}.`;
 	}
 
 	return null;
@@ -320,15 +483,10 @@ function formatZodIssue(issue: ZodIssue): string {
 					return `Required field "${path}" is missing.`;
 				}
 
-				// Check for discriminator mismatch (all variants have invalid_literal on same path)
-				const discriminatorInfo = extractDiscriminatorInfo(issue.unionErrors);
-				if (discriminatorInfo) {
-					const { discriminatorPath, expectedValues, receivedValue } = discriminatorInfo;
-					const expectedStr = expectedValues.map((v) => `"${v}"`).join(', ');
-					if (receivedValue === undefined) {
-						return `Missing discriminator field "${discriminatorPath}". Expected one of: ${expectedStr}. Make sure "${discriminatorPath.split('.').pop()}" is inside "parameters".`;
-					}
-					return `Invalid discriminator "${discriminatorPath}": got "${receivedValue}", expected one of: ${expectedStr}.`;
+				// Extract the most useful error summary from the union
+				const errorSummary = extractUnionErrorSummary(issue.unionErrors);
+				if (errorSummary) {
+					return errorSummary;
 				}
 			}
 			return `Field "${path}" has invalid value. None of the expected types matched.`;
