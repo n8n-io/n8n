@@ -270,9 +270,8 @@ return workflow('id', 'name')
 
 ## Parallel Execution (Merge)
 \`\`\`typescript
-// First declare the Merge node
-const combineResults = node({{
-  type: 'n8n-nodes-base.merge',
+// First declare the Merge node using merge() factory
+const combineResults = merge({{
   version: 3.2,
   config: {{
     name: 'Combine Results',

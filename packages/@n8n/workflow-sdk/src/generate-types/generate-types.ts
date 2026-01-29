@@ -1700,7 +1700,7 @@ export function buildDiscriminatorTree(
 export function generateSharedFile(
 	node: NodeTypeDescription,
 	version: number,
-	importDepth: number = 5,
+	_importDepth: number = 5,
 ): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
@@ -1722,44 +1722,10 @@ export function generateSharedFile(
 	lines.push('');
 	lines.push('');
 
-	// Helper function to check if property needs Expression import
-	const propNeedsExpression = (p: NodeProperty): boolean => {
-		if (p.type === 'fixedCollection' || p.type === 'collection') {
-			return false;
-		}
-		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
-	};
-
 	// Check properties
 	const outputProps = filteredProperties.filter(
 		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
 	);
-
-	// Determine imports needed
-	const needsExpression = outputProps.some(propNeedsExpression);
-	const needsCredentialReference = node.credentials && node.credentials.length > 0;
-	const needsIDataObject = outputProps.some((p) => p.type === 'json');
-
-	// Build imports (relative path based on depth)
-	const basePath = '../'.repeat(importDepth) + 'base';
-	const baseImports: string[] = ['NodeConfig'];
-	if (needsExpression) baseImports.unshift('Expression');
-	if (needsCredentialReference)
-		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
-
-	lines.push(`import type { ${baseImports.join(', ')} } from '${basePath}';`);
-	if (needsIDataObject) {
-		lines.push(`import type { IDataObject } from '${basePath}';`);
-	}
-	lines.push('');
-
-	// Re-export imports that discriminator files will need
-	lines.push('// Re-export types for discriminator files');
-	lines.push(`export type { ${baseImports.join(', ')} } from '${basePath}';`);
-	if (needsIDataObject) {
-		lines.push(`export type { IDataObject } from '${basePath}';`);
-	}
-	lines.push('');
 
 	// Helper types
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
@@ -1789,12 +1755,6 @@ export type AssignmentCollectionValue = { assignments: Array<{ id: string; name:
 		}
 		lines.push('');
 	}
-
-	// Credentials
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Credentials');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	const credTypeName =
 		node.credentials && node.credentials.length > 0
@@ -1831,12 +1791,6 @@ export type AssignmentCollectionValue = { assignments: Array<{ id: string; name:
 		lines.push('');
 	}
 
-	// Base type
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Base Node Type');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
-
 	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
 	lines.push(`export interface ${baseTypeName} {`);
 	lines.push(`\ttype: '${node.name}';`);
@@ -1868,7 +1822,7 @@ export function generateDiscriminatorFile(
 	combo: DiscriminatorCombination,
 	props: NodeProperty[],
 	schema?: JsonSchema,
-	importDepth: number = 5,
+	_importDepth: number = 5,
 ): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
@@ -1886,7 +1840,6 @@ export function generateDiscriminatorFile(
 
 	// Extract AI input types for subnode configuration (use builderHint if available)
 	const aiInputTypes = extractAIInputTypesFromBuilderHint(node, combo);
-	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
 	const subnodeConfigTypeName =
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}${comboSuffix}SubnodeConfig` : undefined;
 
@@ -1909,21 +1862,6 @@ export function generateDiscriminatorFile(
 	// Check what helper types we need
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
-	const needsIDataObject = props.some((p) => p.type === 'json');
-	const needsCredentialReference = node.credentials && node.credentials.length > 0;
-
-	// Build imports directly from base (self-contained, no _shared.ts)
-	const basePath = '../'.repeat(importDepth) + 'base';
-	const baseImports: string[] = ['Expression', 'NodeConfig'];
-	if (needsCredentialReference) baseImports.push('CredentialReference');
-	if (needsIDataObject) baseImports.push('IDataObject');
-	// Add subnode instance type imports if needed
-	if (subnodeInstanceImports.length > 0) {
-		baseImports.push(...subnodeInstanceImports);
-	}
-
-	lines.push(`import type { ${baseImports.join(', ')} } from '${basePath}';`);
-	lines.push('');
 
 	// Inline helper types (only the ones needed)
 	if (needsFilter || needsAssignment) {
@@ -1953,10 +1891,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 
 	// Inline credentials interface (if node has credentials)
 	if (node.credentials && node.credentials.length > 0) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Credentials');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
 		lines.push('interface Credentials {');
 		const seenCreds = new Set<string>();
 		for (const cred of node.credentials) {
@@ -1998,12 +1932,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		}
 	}
 
-	// Config type
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Config');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
-
 	if (description) {
 		lines.push(`/** ${description} */`);
 	}
@@ -2033,21 +1961,12 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 
 	// Output type (if schema provided)
 	if (schema) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Output');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
 		lines.push(`export type ${outputTypeName} = ${jsonSchemaToTypeScript(schema)};`);
 		lines.push('');
 	}
 
 	// Subnode Configuration (if AI inputs exist)
 	if (subnodeConfigTypeName && aiInputTypes.length > 0) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Subnode Configuration');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
-
 		const subnodeConfigCode = generateNarrowedSubnodeConfig(
 			aiInputTypes,
 			nodeName,
@@ -2059,12 +1978,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 			lines.push('');
 		}
 	}
-
-	// Node type (inline, not extending NodeBase)
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Node Type');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	lines.push(`export type ${nodeTypeName} = {`);
 	lines.push(`\ttype: '${node.name}';`);
@@ -2377,44 +2290,13 @@ export function generateSingleVersionTypeFile(
 
 	// Extract AI input types for narrowed subnode config (use builderHint if available)
 	const aiInputTypes = extractAIInputTypesFromBuilderHint(node);
-	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
 	const subnodeConfigTypeName =
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}SubnodeConfig` : undefined;
-
-	// Helper function to check if a property type needs Expression import
-	const propNeedsExpression = (p: NodeProperty): boolean => {
-		if (p.type === 'fixedCollection' || p.type === 'collection') {
-			return false;
-		}
-		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
-	};
 
 	// Check filtered properties that will actually be output
 	const outputProps = filteredProperties.filter(
 		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
 	);
-
-	// Determine which imports are needed based on filtered properties
-	const needsExpression = outputProps.some(propNeedsExpression);
-	const needsCredentialReference = node.credentials && node.credentials.length > 0;
-	const needsIDataObject = outputProps.some((p) => p.type === 'json');
-
-	// Build imports
-	const baseImports: string[] = ['NodeConfig'];
-	if (needsExpression) baseImports.unshift('Expression');
-	if (needsCredentialReference)
-		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
-
-	// Add subnode instance type imports if needed
-	if (subnodeInstanceImports.length > 0) {
-		baseImports.push(...subnodeInstanceImports);
-	}
-
-	lines.push(`import type { ${baseImports.join(', ')} } from '../../../../base';`);
-	if (needsIDataObject) {
-		lines.push("import type { IDataObject } from '../../../../base';");
-	}
-	lines.push('');
 
 	// Helper types (if needed) based on filtered properties
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
@@ -2444,12 +2326,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		}
 		lines.push('');
 	}
-
-	// Parameters section
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Parameters');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	// Use filtered node for discriminated union generation
 	const unionResult = generateDiscriminatedUnionForEntry(filteredNode, nodeName, versionSuffix);
@@ -2485,11 +2361,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 
 	// Only generate Output Types section if there are schemas
 	if (outputTypesToGenerate.length > 0) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Output Types');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
-
 		for (const { typeName, schema } of outputTypesToGenerate) {
 			lines.push(`export type ${typeName} = ${jsonSchemaToTypeScript(schema)};`);
 			lines.push('');
@@ -2498,23 +2369,12 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 
 	// Subnode Config section (for AI nodes)
 	if (subnodeConfigTypeName) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Subnode Configuration');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
-
 		const subnodeConfigCode = generateNarrowedSubnodeConfig(aiInputTypes, nodeName, versionSuffix);
 		if (subnodeConfigCode) {
 			lines.push(subnodeConfigCode);
 			lines.push('');
 		}
 	}
-
-	// Credentials section
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Credentials');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	const credTypeName =
 		node.credentials && node.credentials.length > 0
@@ -2550,12 +2410,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		lines.push('}');
 		lines.push('');
 	}
-
-	// Node type section
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Node Types');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	// Generate base type with common fields to avoid repetition
 	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
@@ -2715,41 +2569,12 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	// Header with JSDoc
 	lines.push(generateNodeJSDoc(node));
 	lines.push('');
-	// Suppress unused variable warnings - some imports may be conditional
 	lines.push('');
-
-	// Helper function to check if a property type needs Expression import
-	// Only types that produce "| Expression<T>" in output need the import
-	const propNeedsExpression = (p: NodeProperty): boolean => {
-		// fixedCollection and collection map to Record<string, unknown> - no Expression needed
-		if (p.type === 'fixedCollection' || p.type === 'collection') {
-			return false;
-		}
-		// These types include Expression wrapper in their output
-		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
-	};
 
 	// Check properties that will actually be output (skip notice, curlImport, etc.) across all node entries
 	const outputProps = nodeArray.flatMap((n) =>
 		n.properties.filter((p) => !['notice', 'curlImport', 'credentials'].includes(p.type)),
 	);
-
-	// Determine which imports are needed based on actual output
-	const needsExpression = outputProps.some(propNeedsExpression);
-	const needsCredentialReference = nodeArray.some((n) => n.credentials && n.credentials.length > 0);
-	const needsIDataObject = outputProps.some((p) => p.type === 'json');
-
-	// Build imports - only include what's actually used
-	const baseImports: string[] = ['NodeConfig'];
-	if (needsExpression) baseImports.unshift('Expression');
-	if (needsCredentialReference)
-		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
-
-	lines.push(`import type { ${baseImports.join(', ')} } from '../../../base';`);
-	if (needsIDataObject) {
-		lines.push("import type { IDataObject } from '../../../base';");
-	}
-	lines.push('');
 
 	// Helper types (if needed) - only add if they'll actually be used in output
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
@@ -2783,12 +2608,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 	// Note: fixedCollection types are represented as Record<string, unknown>
 	// to avoid naming conflicts across nodes with different structures
 
-	// Separator
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Parameters');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
-
 	// Generate discriminated union or simple interface for each node entry
 	// Sort by highest version descending so newest is first
 	const sortedNodes = [...nodeArray].sort((a, b) => {
@@ -2818,12 +2637,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 			}
 		}
 	}
-
-	// Generate credentials type for each version entry
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Credentials');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	for (const n of sortedNodes) {
 		const entryVersion = getHighestVersion(n.version);
@@ -2859,12 +2672,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 			lines.push('');
 		}
 	}
-
-	// Generate node type for each version entry
-	lines.push('// ' + '='.repeat(75));
-	lines.push('// Node Types');
-	lines.push('// ' + '='.repeat(75));
-	lines.push('');
 
 	const nodeTypeNames: string[] = [];
 

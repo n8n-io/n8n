@@ -1417,8 +1417,8 @@ describe('generate-types', () => {
 			expect(result).toContain('Gmail');
 			expect(result).toContain('Send and receive emails using Gmail');
 
-			// Should have imports
-			expect(result).toContain('import type { Expression');
+			// Should NOT have imports (simplified output for LLM)
+			expect(result).not.toMatch(/^import type/m);
 
 			// Should have discriminated union types (with version suffix to avoid duplicates)
 			expect(result).toContain('GmailV21MessageSendConfig');
@@ -2531,8 +2531,9 @@ describe('generate-types', () => {
 				expect(content).toContain("type: 'n8n-nodes-base.freshservice'");
 				expect(content).toContain('version: 1');
 
-				// Should re-export types for discriminator files (all on one line)
-				expect(content).toContain('export type { Expression, CredentialReference, NodeConfig }');
+				// Should NOT have imports or re-exports (simplified output for LLM)
+				expect(content).not.toMatch(/^import type/m);
+				expect(content).not.toMatch(/^export type \{.*\} from/m);
 			});
 
 			it('should generate _shared.ts without credentials for node without them', () => {
@@ -2583,8 +2584,8 @@ describe('generate-types', () => {
 				// Should have header with discriminator info
 				expect(content).toContain('Discriminator: resource=ticket, operation=get');
 
-				// Should import DIRECTLY from base (not from _shared)
-				expect(content).toContain("from '../../../../../../base'");
+				// Should NOT have imports (simplified output for LLM)
+				expect(content).not.toMatch(/^import type/m);
 				expect(content).not.toContain("from '../_shared'");
 				expect(content).not.toContain("from './_shared'");
 
@@ -2614,8 +2615,8 @@ describe('generate-types', () => {
 					5, // import depth for flat files (v2/mode_run_once_for_all_items.ts)
 				);
 
-				// Should import DIRECTLY from base
-				expect(content).toContain("from '../../../../../base'");
+				// Should NOT have imports (simplified output for LLM)
+				expect(content).not.toMatch(/^import type/m);
 				expect(content).not.toContain("from './_shared'");
 
 				// Should have config type
@@ -3077,18 +3078,18 @@ describe('generate-types', () => {
 				expect([...plan.keys()].some((k) => k.startsWith('resource_'))).toBe(false);
 			});
 
-			it('should generate self-contained discriminator files that import from base', () => {
+			it('should generate self-contained discriminator files without imports (simplified for LLM)', () => {
 				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
 
-				// Operation files should import DIRECTLY from base (not _shared)
+				// Operation files should NOT have imports (simplified output for LLM)
 				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
-				expect(ticketGetContent).toContain("from '../../../../../../base'");
+				expect(ticketGetContent).not.toMatch(/^import type/m);
 				expect(ticketGetContent).not.toContain("from '../_shared'");
 
-				// Mode files should import DIRECTLY from base (not _shared)
+				// Mode files should NOT have imports (simplified output for LLM)
 				const codePlan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
 				const modeContent = codePlan.get('mode_run_once_for_all_items.ts');
-				expect(modeContent).toContain("from '../../../../../base'");
+				expect(modeContent).not.toMatch(/^import type/m);
 				expect(modeContent).not.toContain("from './_shared'");
 			});
 
@@ -3615,7 +3616,7 @@ describe('generate-types', () => {
 				expect(result).not.toContain('SubnodeConfig');
 			});
 
-			it('should import subnode instance types when AI inputs exist', () => {
+			it('should use subnode instance types when AI inputs exist (no imports in simplified output)', () => {
 				const mockAgentNode: NodeTypeDescription = {
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -3633,7 +3634,9 @@ describe('generate-types', () => {
 
 				const result = generateTypes.generateSingleVersionTypeFile(mockAgentNode, 3.1);
 
-				// Should import the needed instance types
+				// Should NOT have imports (simplified output for LLM)
+				expect(result).not.toMatch(/^import type/m);
+				// But should still use the instance types in the type definitions
 				expect(result).toContain('LanguageModelInstance');
 				expect(result).toContain('ToolInstance');
 			});
@@ -3671,6 +3674,129 @@ describe('generate-types', () => {
 				expect(result).toContain('memory?: MemoryInstance');
 				// tools should be optional (no required field)
 				expect(result).toContain('tools?: ToolInstance[]');
+			});
+		});
+	});
+
+	describe('generated type files should be simplified (no imports, no section dividers)', () => {
+		describe('generateDiscriminatorFile', () => {
+			it('should NOT contain import type statements', () => {
+				const content = generateTypes.generateDiscriminatorFile(
+					mockGmailNode,
+					2,
+					{ resource: 'message', operation: 'send' },
+					mockGmailNode.properties.filter((p) =>
+						p.displayOptions?.show?.resource?.includes('message'),
+					),
+				);
+
+				expect(content).not.toMatch(/^import type/m);
+			});
+
+			it('should NOT contain section dividers', () => {
+				const content = generateTypes.generateDiscriminatorFile(
+					mockGmailNode,
+					2,
+					{ resource: 'message', operation: 'send' },
+					mockGmailNode.properties.filter((p) =>
+						p.displayOptions?.show?.resource?.includes('message'),
+					),
+				);
+
+				expect(content).not.toMatch(/^\/\/ =+$/m);
+				expect(content).not.toMatch(/^\/\/ Credentials$/m);
+				expect(content).not.toMatch(/^\/\/ Config$/m);
+				expect(content).not.toMatch(/^\/\/ Node Type$/m);
+			});
+
+			it('should still contain valid type definitions', () => {
+				const content = generateTypes.generateDiscriminatorFile(
+					mockGmailNode,
+					2,
+					{ resource: 'message', operation: 'send' },
+					mockGmailNode.properties.filter((p) =>
+						p.displayOptions?.show?.resource?.includes('message'),
+					),
+				);
+
+				expect(content).toContain('interface Credentials');
+				expect(content).toContain('export type');
+			});
+		});
+
+		describe('generateSharedFile', () => {
+			it('should NOT contain import type statements', () => {
+				const content = generateTypes.generateSharedFile(mockGmailNode, 2);
+
+				expect(content).not.toMatch(/^import type/m);
+			});
+
+			it('should NOT contain section dividers', () => {
+				const content = generateTypes.generateSharedFile(mockGmailNode, 2);
+
+				expect(content).not.toMatch(/^\/\/ =+$/m);
+				expect(content).not.toMatch(/^\/\/ Credentials$/m);
+				expect(content).not.toMatch(/^\/\/ Base Node Type$/m);
+			});
+
+			it('should NOT contain re-export statements', () => {
+				const content = generateTypes.generateSharedFile(mockGmailNode, 2);
+
+				expect(content).not.toMatch(/^export type \{.*\} from/m);
+			});
+
+			it('should still contain valid type definitions', () => {
+				const content = generateTypes.generateSharedFile(mockGmailNode, 2);
+
+				expect(content).toContain('export interface');
+			});
+		});
+
+		describe('generateSingleVersionTypeFile', () => {
+			it('should NOT contain import type statements', () => {
+				const content = generateTypes.generateSingleVersionTypeFile(mockGmailNode, 2);
+
+				expect(content).not.toMatch(/^import type/m);
+			});
+
+			it('should NOT contain section dividers', () => {
+				const content = generateTypes.generateSingleVersionTypeFile(mockGmailNode, 2);
+
+				expect(content).not.toMatch(/^\/\/ =+$/m);
+				expect(content).not.toMatch(/^\/\/ Parameters$/m);
+				expect(content).not.toMatch(/^\/\/ Credentials$/m);
+				expect(content).not.toMatch(/^\/\/ Node Types$/m);
+			});
+
+			it('should still contain valid type definitions', () => {
+				const content = generateTypes.generateSingleVersionTypeFile(mockGmailNode, 2);
+
+				expect(content).toContain('export type');
+				expect(content).toContain('export interface');
+			});
+		});
+
+		describe('generateNodeTypeFile', () => {
+			it('should NOT contain import type statements', () => {
+				const content = generateTypes.generateNodeTypeFile(mockGmailNode);
+
+				expect(content).not.toMatch(/^import type/m);
+			});
+
+			it('should NOT contain section dividers', () => {
+				const content = generateTypes.generateNodeTypeFile(mockGmailNode);
+
+				expect(content).not.toMatch(/^\/\/ =+$/m);
+				expect(content).not.toMatch(/^\/\/ Parameters$/m);
+				expect(content).not.toMatch(/^\/\/ Credentials$/m);
+				expect(content).not.toMatch(/^\/\/ Node Types$/m);
+			});
+
+			it('should still contain valid type definitions', () => {
+				const content = generateTypes.generateNodeTypeFile(mockGmailNode);
+
+				expect(content).toContain('export type');
+				expect(content).toContain('export interface');
 			});
 		});
 	});
