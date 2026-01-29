@@ -434,7 +434,9 @@ export class OneShotWorkflowCodeAgent {
 							});
 
 							// Check for new warnings that haven't been sent to agent before
-							const newWarnings = result.warnings.filter((w) => !previousWarningCodes.has(w.code));
+							const newWarnings = result.warnings.filter(
+								(w) => !previousWarningCodes.has(`${w.code}:${w.message}`),
+							);
 
 							if (newWarnings.length > 0) {
 								this.debugLog('CHAT', 'New validation warnings found', {
@@ -444,7 +446,7 @@ export class OneShotWorkflowCodeAgent {
 
 								// Mark these warnings as sent (so we don't repeat)
 								for (const w of newWarnings) {
-									previousWarningCodes.add(w.code);
+									previousWarningCodes.add(`${w.code}:${w.message}`);
 								}
 
 								// Format warnings for the agent
