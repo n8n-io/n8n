@@ -3,7 +3,6 @@ import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
@@ -75,7 +74,6 @@ import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
-import ContactPromptModal from '@/app/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
@@ -124,12 +122,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 <template>
 	<div>
-		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template #default="{ modalName }">
-				<ContactPromptModal :modal-name="modalName" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
