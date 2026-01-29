@@ -109,7 +109,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
 			}
 
-			assert.fail(`Unknown database type: ${dbType}`);
+			assert.fail('Unknown database type');
 		} catch (error) {
 			console.log('error', error);
 			if (error instanceof QueryFailedError) return 'failed';
