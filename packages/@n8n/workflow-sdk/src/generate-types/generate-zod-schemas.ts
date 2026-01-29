@@ -269,6 +269,20 @@ function quotePropertyName(name: string): string {
 // =============================================================================
 
 /**
+ * Generate inline Zod schema for resourceLocator based on available modes
+ */
+function generateResourceLocatorZodSchema(prop: NodeProperty): string {
+	if (prop.modes && prop.modes.length > 0) {
+		const modeSchema =
+			prop.modes.length === 1
+				? `z.literal('${prop.modes[0].name}')`
+				: `z.union([${prop.modes.map((m) => `z.literal('${m.name}')`).join(', ')}])`;
+		return `z.object({ __rl: z.literal(true), mode: ${modeSchema}, value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() })`;
+	}
+	return 'resourceLocatorValueSchema';
+}
+
+/**
  * Map a nested property to its Zod schema code (for collection/fixedCollection inner properties)
  */
 function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
@@ -324,7 +338,7 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 			return 'z.union([iDataObjectSchema, z.string()])';
 
 		case 'resourceLocator':
-			return 'resourceLocatorValueSchema';
+			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
@@ -484,7 +498,7 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 			return 'z.union([iDataObjectSchema, z.string()])';
 
 		case 'resourceLocator':
-			return 'resourceLocatorValueSchema';
+			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
