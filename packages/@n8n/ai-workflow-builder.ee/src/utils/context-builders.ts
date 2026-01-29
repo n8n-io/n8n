@@ -74,7 +74,6 @@ export function buildWorkflowIndicator(workflow: SimpleWorkflow): string {
 	parts.push('Use workflow context tools for details:');
 	parts.push('- get_workflow_overview: Visual Mermaid diagram with node IDs (recommended)');
 	parts.push('- get_node_context: Full details for a specific node including ID');
-	parts.push('- get_workflow_json: Raw JSON with node IDs (optionally filtered by node)');
 
 	return parts.join('\n');
 }

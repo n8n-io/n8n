@@ -6,8 +6,12 @@
  * Flow: Discovery provides node types → Builder adds, connects, and configures nodes in batches
  */
 
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
 import { webhook } from '../shared/node-guidance';
+
+const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
 const ROLE =
 	'You are a Builder Agent that constructs n8n workflows: adding nodes, connecting them, and configuring their parameters.';
@@ -51,6 +55,8 @@ Validation: Call validate_structure and validate_configuration once at the end. 
 When validation fails, fix the reported issues and re-validate. Validation failures indicate real problems that will prevent the workflow from executing correctly. Fix each reported issue, then call the failed validation tool again to confirm the fix worked.
 
 Do not rationalize failures away or decide they're acceptable. Validation tools detect actual structural and configuration problems that users will encounter when running the workflow.
+
+Never call validation tools in parallel with update operations. Validation must run AFTER updates complete to see the current state. If you call validate_configuration alongside update_node_parameters, validation sees the old state and reports false failures.
 </validation_failures>
 
 Plan all nodes before starting to avoid backtracking.`;
@@ -160,6 +166,13 @@ graph TD
 2. Every Vector Store has Embeddings connected via ai_embedding
 3. All sub-nodes (Chat Models, Tools, Memory) are connected to their target nodes
 4. Sub-nodes connect TO parent nodes, not FROM them
+
+## AI Agent Prompt Configuration
+AI Agent nodes have two distinct prompt fields - configure both:
+- **systemMessage**: Static instructions defining the agent's role, behavior, and task. Example: "You are a content moderator. Analyze submissions and classify them as approved, needs review, spam, or offensive."
+- **text**: Dynamic user input, typically an expression referencing data from previous nodes. Example: "={{ $json.body.content }}"
+
+When configuring an AI Agent, set systemMessage to the agent's instructions and text to the dynamic input. Do not combine both in the text field.
 
 REMEMBER: Every AI Agent MUST have a Chat Model. Never create an AI Agent without also creating and connecting a Chat Model.`;
 
@@ -341,6 +354,52 @@ const CRITICAL_PARAMETERS = `Parameters to set explicitly (these affect core fun
 
 Parameters safe to use defaults: Chat model selection, embedding model, LLM parameters (temperature, etc.) have sensible defaults.`;
 
+const DATA_TABLE_CONFIGURATION = `<data_table_configuration>
+Data Table nodes (n8n-nodes-base.dataTable) require specific setup for write operations.
+
+<write_operations>
+For row write operations (${dataTableColumnOperationsList}), each Data Table needs its own Set node:
+- For each Data Table with insert/update/upsert, add a corresponding Set node immediately before it
+- Configure each Set node with the fields for that specific table
+- Use a placeholder for dataTableId: <__PLACEHOLDER_VALUE__data_table_name__>
+- Set columns.mappingMode to "autoMapInputData"
+
+Example: If the workflow has 2 Data Tables (Track Results and Flag Issues), add 2 Set nodes:
+\`\`\`
+... → Prepare Results (Set) → Track Results (Data Table)
+... → Prepare Flags (Set) → Flag Issues (Data Table)
+\`\`\`
+
+Add all Set nodes when you add the Data Tables, not later. The Set node defines the column structure for each table.
+</write_operations>
+
+<read_operations>
+For row read operations (get, getAll, delete):
+- No Set node required before the Data Table node
+- Use a placeholder for dataTableId
+- Configure filter or query parameters as needed
+</read_operations>
+
+<shared_tracking_pattern>
+When multiple branches write to the same tracking Data Table (common for logging all outcomes), connect each handler's OUTPUT to a shared Set node:
+
+\`\`\`mermaid
+graph LR
+    C[Classifier] --> H1[Handler A]
+    C --> H2[Handler B]
+    C --> H3[Handler C]
+    H1 --> S[Prepare Data<br/>Set node]
+    H2 --> S
+    H3 --> S
+    S --> D[Track Results<br/>Data Table]
+\`\`\`
+
+The flow is: Classifier → Handler → Set → Data Table (not Classifier → Set directly).
+
+Each handler completes its work first, then its output flows to the shared Set node. The Set node prepares consistent tracking data regardless of which handler ran.
+</shared_tracking_pattern>
+</data_table_configuration>`;
+
 const COMMON_SETTINGS = `Important node settings:
 - Forms/Chatbots: Set "Append n8n Attribution" = false
 - Gmail Trigger: Simplify = false, Download Attachments = true (for attachments)
@@ -466,11 +525,6 @@ The includeParameters option shows each node's current configuration. This helps
 Returns full context for a specific node: ID, parameters, parent/child nodes, classification, and execution data.
 Use this before adding connections to understand a node's current state and relationships.
 Parameters: nodeName (required), includeExecutionData (default: true)
-
-**get_workflow_json**
-Returns raw workflow JSON, optionally filtered to specific nodes.
-Use when you need the actual JSON structure for specific nodes.
-Options: nodeNames (array to filter), includeConnections (true/false)
 </workflow_context_tools>
 
 <execution_data_tools>
@@ -497,11 +551,9 @@ Plan all nodes before adding any. Users watch the canvas in real-time, so adding
 
 Build the complete workflow in one pass. Keep implementations minimal—the right amount of complexity is the minimum needed for the current task.`;
 
-const RESPONSE_FORMAT = `After validation passes, output a concise summary for the next agent (no emojis, no markdown formatting):
+const RESPONSE_FORMAT = `After validation passes, stop and output a brief completion message. Do not call read tools (get_workflow_overview, get_node_context) to review your work—validation confirms correctness.
 
-FORMAT: "Created N nodes: [list node names]. Connections: [count]. Placeholders: [list any __PLACEHOLDER__ fields or 'none']."
-
-This summary is passed to another LLM, not shown to users—keep it minimal and factual.`;
+The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.`;
 
 /** Instance URL template variable for webhooks */
 export const INSTANCE_URL_PROMPT = `<instance_url>
@@ -544,6 +596,7 @@ export function buildBuilderPrompt(): string {
 			.section('expression_syntax', EXPRESSION_SYNTAX)
 			.section('tool_nodes', TOOL_NODES)
 			.section('critical_parameters', CRITICAL_PARAMETERS)
+			.section('data_table_configuration', DATA_TABLE_CONFIGURATION)
 			.section('common_settings', COMMON_SETTINGS)
 			.section('webhook_configuration', webhook.configuration)
 			.section('credential_security', CREDENTIAL_SECURITY)

@@ -20,7 +20,6 @@ You have access to context about what has been built, including:
 The other agents (Builder and Configurator) have access to workflow context tools:
 - get_workflow_overview: Visual Mermaid diagram and summary
 - get_node_context: Full details for a specific node
-- get_workflow_json: Raw JSON filtered by node
 
 When explaining the workflow to users, use the information provided in your context.`;
 
