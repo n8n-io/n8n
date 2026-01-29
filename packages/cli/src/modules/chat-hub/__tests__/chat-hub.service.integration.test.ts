@@ -21,6 +21,7 @@ import { createAdmin, createMember } from '@test-integration/db/users';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { ActiveExecutions } from '../../../active-executions';
+import { ExecutionPersistence } from '../../../executions/execution-persistence';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
@@ -62,6 +63,7 @@ describe('chatHub', () => {
 	let sessionsRepository: ChatHubSessionRepository;
 	let agentRepository: ChatHubAgentRepository;
 	let executionRepository: ExecutionRepository;
+	let executionPersistence: ExecutionPersistence;
 	let instanceSettings: InstanceSettings;
 	let settingsRepository: SettingsRepository;
 
@@ -74,6 +76,7 @@ describe('chatHub', () => {
 		sessionsRepository = Container.get(ChatHubSessionRepository);
 		agentRepository = Container.get(ChatHubAgentRepository);
 		executionRepository = Container.get(ExecutionRepository);
+		executionPersistence = Container.get(ExecutionPersistence);
 		instanceSettings = Container.get(InstanceSettings);
 		settingsRepository = Container.get(SettingsRepository);
 	});
@@ -959,7 +962,7 @@ describe('chatHub', () => {
 			it('should respond and persist generated response chunks sent from workflow execution', async () => {
 				// First call: main message execution with stream
 				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
-					const executionId = await executionRepository.createNewExecution({
+					const executionId = await executionPersistence.create({
 						finished: false,
 						mode: 'chat',
 						status: 'running',
@@ -1046,7 +1049,7 @@ describe('chatHub', () => {
 			it('should respond and persist an error chunk sent from workflow execution', async () => {
 				// First call: main message execution with stream
 				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
-					const executionId = await executionRepository.createNewExecution({
+					const executionId = await executionPersistence.create({
 						finished: false,
 						mode: 'chat',
 						status: 'running',
@@ -1128,7 +1131,7 @@ describe('chatHub', () => {
 			it('should respond and persist an error set in the workflow execution', async () => {
 				// First call: main message execution with stream
 				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
-					const executionId = await executionRepository.createNewExecution({
+					const executionId = await executionPersistence.create({
 						finished: false,
 						mode: 'chat',
 						status: 'running',
@@ -1244,7 +1247,7 @@ describe('chatHub', () => {
 
 				// First call: main message execution with stream that closes quickly
 				spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
-					const executionId = await executionRepository.createNewExecution({
+					const executionId = await executionPersistence.create({
 						finished: false,
 						mode: 'chat',
 						status: 'running',
@@ -1330,7 +1333,7 @@ describe('chatHub', () => {
 
 				// First call: main message execution with stream that never closes
 				spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
-					const executionId = await executionRepository.createNewExecution({
+					const executionId = await executionPersistence.create({
 						finished: false,
 						mode: 'chat',
 						status: 'running',
@@ -1497,7 +1500,7 @@ describe('chatHub', () => {
 
 					// Mock the execution to return lastNode output
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -1635,7 +1638,7 @@ describe('chatHub', () => {
 
 					// Mock the execution to return an error
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -1743,7 +1746,7 @@ describe('chatHub', () => {
 
 					// Mock the execution to return text field instead of output
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -1865,7 +1868,7 @@ describe('chatHub', () => {
 
 					// Mock initial execution - returns waiting status
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -2024,7 +2027,7 @@ describe('chatHub', () => {
 
 					// Mock execution - returns waiting status
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -2221,7 +2224,7 @@ describe('chatHub', () => {
 					);
 
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -2349,7 +2352,7 @@ describe('chatHub', () => {
 					);
 
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -2475,7 +2478,7 @@ describe('chatHub', () => {
 					);
 
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
@@ -2572,7 +2575,7 @@ describe('chatHub', () => {
 					);
 
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
+						const executionId = await executionPersistence.create({
 							finished: false,
 							mode: 'webhook',
 							status: 'running',
