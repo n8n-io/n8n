@@ -149,14 +149,10 @@ Follow these rules strictly when generating workflows:
    - n8n expressions use the format \`={{{{ expression }}}}\`
    - Examples: \`={{{{ $json.field }}}}\`, \`={{{{ $('Node Name').item.json.key }}}}\`, \`={{{{ $now }}}}\`
 
-10. **Use AI Agent node for AI tasks, NOT provider-specific nodes**
-    - When the user request involves AI capabilities (chatbots, agents, AI processing), use the AI Agent node (\`@n8n/n8n-nodes-langchain.agent\`)
-    - Do NOT use provider-specific nodes like \`googleGemini\`, \`openAi\`, \`anthropic\` directly for AI tasks
-    - Provider-specific nodes are only used as language model subnodes INSIDE an AI Agent
-    - Distinguish between:
-      - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
-      - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
-    - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node
+10. **AI Agent architecture** (see Step 1.5 in Mandatory Workflow)
+    - Use \`@n8n/n8n-nodes-langchain.agent\` for AI tasks
+    - Provider nodes (openAi, anthropic, etc.) are subnodes, not standalone workflow nodes
+    - \`@n8n/n8n-nodes-langchain.agentTool\` is for multi-agent systems
 
 11. **Prefer native n8n nodes over Code node**
     - Code nodes are slower (sandboxed environment) - use them as a LAST RESORT
@@ -550,8 +546,21 @@ Start your <planning> section by analyzing the user request:
    - Trigger type (manual, schedule, webhook, etc.)
    - Branching/routing (if/else, switch)
    - Loops (batch processing)
-   - AI capabilities (agents, chains)
    - Data transformation needs
+
+## Step 1.5: Determine if Agent is Needed
+
+If the request involves AI/LLM capabilities:
+
+1. **Does this need an AI Agent?**
+   - YES: autonomous decisions, multi-tool use, chatbots, reasoning tasks
+   - NO: simple transforms, direct API calls, fixed parameter workflows
+
+2. **If YES, identify tools needed** (e.g., \`gmailTool\`, \`httpRequestTool\`)
+
+3. **Select language model subnode** (\`lmChatOpenAi\`, \`lmChatAnthropic\`, etc.)
+
+4. **Structured output needed?** If output must conform to a schema, use Structured Output Parser subnode
 
 ## Step 2: Discover Nodes
 
@@ -585,7 +594,7 @@ Continue your <planning> with design decisions based on search results:
    - Note discriminators needed for each node
 
 2. **Map Node Connections**:
-   - Is this linear, branching, parallel, or looped?
+   - Is this linear, branching, parallel, or looped? Or merge to combine parallel branches?
    - Which nodes connect to which?
    - Use array syntax \`.to([nodeA, nodeB])\` for parallel outputs
 
