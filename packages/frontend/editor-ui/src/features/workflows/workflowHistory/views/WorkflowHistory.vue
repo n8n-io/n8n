@@ -114,7 +114,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	lastReceivedItemsLength.value = history.length;
 	const userIds = history
 		.flatMap((item) => item.workflowPublishHistory.map((pub) => pub.userId))
-		.filter((id) => id) as string[];
+		.filter((id): id is string => Boolean(id));
 	const userIdsToFetch = new Set<string>(userIds);
 	await usersStore.fetchUsers({ filter: { ids: Array.from(userIdsToFetch) } });
 	workflowHistory.value = workflowHistory.value.concat(history);

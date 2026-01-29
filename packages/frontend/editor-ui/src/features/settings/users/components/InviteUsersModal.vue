@@ -94,6 +94,11 @@ const isTamperProofInviteLinksEnabled = computed(() =>
 	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
 );
 
+const invitedUsers = computed(() => {
+	if (!showInviteUrls.value) return [];
+	return showInviteUrls.value.map((invite) => ({ ...invite.user, isPendingUser: true }));
+});
+
 const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
 		return false;
@@ -367,9 +372,7 @@ onMounted(() => {
 				</I18nT>
 			</N8nNotice>
 			<div v-if="showInviteUrls">
-				<N8nUsersList
-					:users="showInviteUrls.map((invite) => ({ ...invite.user, isPendingUser: true }))"
-				>
+				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">
 						<N8nTooltip v-if="isTamperProofInviteLinksEnabled">
 							<template #content>
