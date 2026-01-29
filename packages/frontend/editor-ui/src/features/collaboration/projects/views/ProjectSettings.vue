@@ -493,24 +493,26 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 const searchUsers = async (query: string) => {
 	userSearchQuery.value = query;
 
-	if (!query.trim()) {
-		userSearchResults.value = [];
-		return;
-	}
-
 	isLoadingUsers.value = true;
 	try {
+		// If query is empty, load initial set of users, otherwise search
+		const filter = query.trim() ? { fullText: query } : undefined;
 		await usersStore.fetchUsers({
 			take: 50,
-			filter: { fullText: query },
+			filter,
 		});
 		// Get the search results from the store
-		userSearchResults.value = usersStore.allUsers.filter((user) => {
-			const searchLower = query.toLowerCase();
-			const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
-			const email = (user.email ?? '').toLowerCase();
-			return fullName.includes(searchLower) || email.includes(searchLower);
-		});
+		if (query.trim()) {
+			userSearchResults.value = usersStore.allUsers.filter((user) => {
+				const searchLower = query.toLowerCase();
+				const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
+				const email = (user.email ?? '').toLowerCase();
+				return fullName.includes(searchLower) || email.includes(searchLower);
+			});
+		} else {
+			// Show all loaded users when no search query
+			userSearchResults.value = usersStore.allUsers;
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
 	} finally {
@@ -521,8 +523,8 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	// No longer need to fetch all users upfront
-	// Users will be fetched on-demand when searching
+	// Load initial set of users for dropdown
+	await searchUsers('');
 });
 
 const isProjectRoleProvisioningEnabled = computed(
