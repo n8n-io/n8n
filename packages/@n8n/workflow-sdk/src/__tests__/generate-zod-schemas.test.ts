@@ -4,6 +4,7 @@ import {
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
 	mapPropertyToZodSchema,
+	mergeDisplayOptions,
 } from '../generate-types/generate-zod-schemas';
 import type { NodeProperty, NodeTypeDescription } from '../generate-types/generate-types';
 
@@ -192,6 +193,97 @@ describe('stripDiscriminatorKeysFromDisplayOptions', () => {
 			['resource', '@version'],
 		);
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('mergeDisplayOptions', () => {
+	it('merges show conditions with same key', () => {
+		const result = mergeDisplayOptions(
+			{ show: { promptType: ['guardrails'] } },
+			{ show: { promptType: ['auto'] } },
+		);
+		expect(result).toEqual({ show: { promptType: ['guardrails', 'auto'] } });
+	});
+
+	it('merges show conditions with different keys', () => {
+		const result = mergeDisplayOptions(
+			{ show: { promptType: ['guardrails'] } },
+			{ show: { mode: ['advanced'] } },
+		);
+		expect(result).toEqual({
+			show: { promptType: ['guardrails'], mode: ['advanced'] },
+		});
+	});
+
+	it('merges hide conditions with same key', () => {
+		const result = mergeDisplayOptions(
+			{ hide: { resource: ['task'] } },
+			{ hide: { resource: ['project'] } },
+		);
+		expect(result).toEqual({ hide: { resource: ['task', 'project'] } });
+	});
+
+	it('merges both show and hide conditions', () => {
+		const result = mergeDisplayOptions(
+			{ show: { promptType: ['guardrails'] }, hide: { mode: ['simple'] } },
+			{ show: { promptType: ['auto'] }, hide: { mode: ['advanced'] } },
+		);
+		expect(result).toEqual({
+			show: { promptType: ['guardrails', 'auto'] },
+			hide: { mode: ['simple', 'advanced'] },
+		});
+	});
+
+	it('adds incoming show conditions when existing has none', () => {
+		const result = mergeDisplayOptions({}, { show: { promptType: ['auto'] } });
+		expect(result).toEqual({ show: { promptType: ['auto'] } });
+	});
+
+	it('adds incoming hide conditions when existing has none', () => {
+		const result = mergeDisplayOptions(
+			{ show: { promptType: ['guardrails'] } },
+			{ hide: { mode: ['advanced'] } },
+		);
+		expect(result).toEqual({
+			show: { promptType: ['guardrails'] },
+			hide: { mode: ['advanced'] },
+		});
+	});
+
+	it('avoids duplicate values when merging', () => {
+		const result = mergeDisplayOptions(
+			{ show: { promptType: ['guardrails', 'auto'] } },
+			{ show: { promptType: ['auto', 'define'] } },
+		);
+		expect(result).toEqual({
+			show: { promptType: ['guardrails', 'auto', 'define'] },
+		});
+	});
+
+	it('handles object values using JSON comparison', () => {
+		const result = mergeDisplayOptions(
+			{ show: { complexKey: [{ _cnd: { eq: 'value1' } }] } },
+			{ show: { complexKey: [{ _cnd: { eq: 'value2' } }, { _cnd: { eq: 'value1' } }] } },
+		);
+		expect(result).toEqual({
+			show: { complexKey: [{ _cnd: { eq: 'value1' } }, { _cnd: { eq: 'value2' } }] },
+		});
+	});
+
+	it('preserves existing when incoming is empty', () => {
+		const result = mergeDisplayOptions({ show: { promptType: ['guardrails'] } }, {});
+		expect(result).toEqual({ show: { promptType: ['guardrails'] } });
+	});
+
+	it('handles three-way merge for Agent text field scenario', () => {
+		// Simulates the real-world scenario: Agent node has 3 text fields
+		let merged = { show: { promptType: ['guardrails'] } };
+		merged = mergeDisplayOptions(merged, { show: { promptType: ['auto'] } });
+		merged = mergeDisplayOptions(merged, { show: { promptType: ['define'] } });
+
+		expect(merged).toEqual({
+			show: { promptType: ['guardrails', 'auto', 'define'] },
+		});
 	});
 });
 

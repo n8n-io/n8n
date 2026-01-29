@@ -602,6 +602,68 @@ export function stripDiscriminatorKeysFromDisplayOptions(
 }
 
 /**
+ * Display options type for merging (matches DisplayOptions defined later in this file)
+ */
+type MergeableDisplayOptions = {
+	show?: Record<string, unknown[]>;
+	hide?: Record<string, unknown[]>;
+};
+
+/**
+ * Merge two displayOptions objects by combining their show/hide conditions.
+ * Used when multiple properties share the same name but have different visibility conditions.
+ *
+ * @param existing - The existing displayOptions to merge into
+ * @param incoming - The incoming displayOptions to merge from
+ * @returns Merged displayOptions with combined show/hide conditions
+ */
+export function mergeDisplayOptions(
+	existing: MergeableDisplayOptions,
+	incoming: MergeableDisplayOptions,
+): MergeableDisplayOptions {
+	const merged: MergeableDisplayOptions = { ...existing };
+
+	// Merge 'show' conditions
+	if (incoming.show) {
+		merged.show = merged.show ?? {};
+		for (const [key, values] of Object.entries(incoming.show)) {
+			const existingValues = merged.show[key] ?? [];
+			// Combine arrays, avoiding duplicates using JSON comparison for objects
+			const combined = [...existingValues];
+			for (const val of values) {
+				const isDuplicate = combined.some(
+					(existingVal) => JSON.stringify(existingVal) === JSON.stringify(val),
+				);
+				if (!isDuplicate) {
+					combined.push(val);
+				}
+			}
+			merged.show[key] = combined;
+		}
+	}
+
+	// Merge 'hide' conditions (same logic)
+	if (incoming.hide) {
+		merged.hide = merged.hide ?? {};
+		for (const [key, values] of Object.entries(incoming.hide)) {
+			const existingValues = merged.hide[key] ?? [];
+			const combined = [...existingValues];
+			for (const val of values) {
+				const isDuplicate = combined.some(
+					(existingVal) => JSON.stringify(existingVal) === JSON.stringify(val),
+				);
+				if (!isDuplicate) {
+					combined.push(val);
+				}
+			}
+			merged.hide[key] = combined;
+		}
+	}
+
+	return merged;
+}
+
+/**
  * Generate a conditional schema property line using resolveSchema helper.
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
  *
@@ -881,16 +943,33 @@ function generateSchemasForNode(
 			);
 			lines.push('\treturn z.object({');
 
-			const seenNames = new Set<string>();
+			// Group properties by name, merging displayOptions for duplicates
+			const propsByName = new Map<string, NodeProperty>();
 			for (const prop of node.properties) {
 				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 					continue;
 				}
-				if (seenNames.has(prop.name)) {
-					continue;
-				}
-				seenNames.add(prop.name);
 
+				const existing = propsByName.get(prop.name);
+				if (existing) {
+					// Merge displayOptions from duplicate property
+					if (prop.displayOptions && existing.displayOptions) {
+						existing.displayOptions = mergeDisplayOptions(
+							existing.displayOptions,
+							prop.displayOptions,
+						);
+					} else if (prop.displayOptions && !existing.displayOptions) {
+						// If only the new one has displayOptions, the existing one has no condition
+						// which means it's always visible - keep existing as-is (no condition)
+					}
+					// Keep the first property's other attributes (type, required, etc.)
+				} else {
+					propsByName.set(prop.name, { ...prop });
+				}
+			}
+
+			// Generate schema for each merged property
+			for (const prop of propsByName.values()) {
 				// Use conditional schema line for properties with displayOptions
 				// Strip @version since it's implicit in the file path
 				if (prop.displayOptions) {
@@ -968,15 +1047,28 @@ function generateSchemasForNode(
 			// Generate static Parameters Schema
 			lines.push(`export const ${parametersSchemaName} = z.object({`);
 
-			const seenNames = new Set<string>();
+			// Group properties by name, merging displayOptions for duplicates
+			const propsByName = new Map<string, NodeProperty>();
 			for (const prop of node.properties) {
 				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 					continue;
 				}
-				if (seenNames.has(prop.name)) {
-					continue;
+
+				const existing = propsByName.get(prop.name);
+				if (existing) {
+					// Merge displayOptions from duplicate property
+					if (prop.displayOptions && existing.displayOptions) {
+						existing.displayOptions = mergeDisplayOptions(
+							existing.displayOptions,
+							prop.displayOptions,
+						);
+					}
+				} else {
+					propsByName.set(prop.name, { ...prop });
 				}
-				seenNames.add(prop.name);
+			}
+
+			for (const prop of propsByName.values()) {
 				const propLine = generateSchemaPropertyLine(prop, !prop.required);
 				if (propLine) {
 					lines.push(propLine);
@@ -1093,13 +1185,24 @@ function generateSchemasForNode(
 			}
 		}
 
-		// Add other properties
-		const seenNames = new Set<string>();
+		// Group properties by name, merging displayOptions for duplicates
+		const propsByName = new Map<string, NodeProperty>();
 		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue;
+			const existing = propsByName.get(prop.name);
+			if (existing) {
+				// Merge displayOptions from duplicate property
+				if (prop.displayOptions && existing.displayOptions) {
+					existing.displayOptions = mergeDisplayOptions(
+						existing.displayOptions,
+						prop.displayOptions,
+					);
+				}
+			} else {
+				propsByName.set(prop.name, { ...prop });
 			}
-			seenNames.add(prop.name);
+		}
+
+		for (const prop of propsByName.values()) {
 			const propLine = generateSchemaPropertyLine(prop, !prop.required);
 			if (propLine) {
 				lines.push(propLine);
@@ -1736,14 +1839,25 @@ export function generateDiscriminatorSchemaFile(
 		}
 	}
 
-	// Add other properties
-	const seenNames = new Set<string>();
+	// Group properties by name, merging displayOptions for duplicates
+	const propsByName = new Map<string, NodeProperty>();
 	for (const prop of props) {
-		if (seenNames.has(prop.name)) {
-			continue;
+		const existing = propsByName.get(prop.name);
+		if (existing) {
+			// Merge displayOptions from duplicate property
+			if (prop.displayOptions && existing.displayOptions) {
+				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
+			} else if (prop.displayOptions && !existing.displayOptions) {
+				// If only the new one has displayOptions, the existing one has no condition
+				// which means it's always visible - keep existing as-is (no condition)
+			}
+		} else {
+			propsByName.set(prop.name, { ...prop });
 		}
-		seenNames.add(prop.name);
+	}
 
+	// Generate schema for each merged property
+	for (const prop of propsByName.values()) {
 		if (prop.displayOptions) {
 			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
 				prop.displayOptions,
