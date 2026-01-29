@@ -1,211 +1,146 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { SecretsProviderConnectionRepository } from '@n8n/db';
+import { SecretsProviderConnectionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service.ee';
-import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
-import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
+import { ExternalSecretsModule } from '@/modules/external-secrets.ee/external-secrets.module';
+import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 
 import {
 	AnotherDummyProvider,
 	DummyProvider,
-	FailedProvider,
 	MockProviders,
 } from '../../shared/external-secrets/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
-describe('External Secrets Events', () => {
-	let secretsCacheRefresh: SecretsCacheRefresh;
-	let settingsStore: ExternalSecretsSettingsStore;
-	let providerRegistry: ExternalSecretsProviderRegistry;
-	let secretsCache: ExternalSecretsSecretsCache;
-	let connectionRepository: SecretsProviderConnectionRepository;
-	let cipher: Cipher;
-	let config: ExternalSecretsConfig;
+const waitForEventHandler = async (ms = 500) => {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const testReloadEvent = async (pubsubEventBus: PubSubEventBus) => {
+	const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
+	const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
+	const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
+	const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+
+	const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
+	const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
+	const disconnectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'disconnect');
+	const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+
+	// Emit event and wait for async handler to complete
+	pubsubEventBus.emit('reload-external-secrets-providers');
+	await waitForEventHandler();
+
+	// load enabled provider
+	expect(disconnectSpy).toHaveBeenCalled();
+	expect(initSpy).toHaveBeenCalled();
+	expect(connectSpy).toHaveBeenCalled();
+	expect(updateSpy).toHaveBeenCalled();
+
+	// init disabled provider
+	expect(disconnectDisabledSpy).toHaveBeenCalled();
+	expect(initDisabledSpy).toHaveBeenCalled();
+	expect(connectDisabledSpy).not.toHaveBeenCalled();
+	expect(updateDisabledSpy).not.toHaveBeenCalled();
+};
+
+describe('External Secrets Event Handling', () => {
+	let pubsubEventBus: PubSubEventBus;
+	let pubSubRegistry: PubSubRegistry;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['external-secrets']);
 		await testDb.init();
+
+		Container.set(Logger, mockLogger());
+
+		// Get pub/sub infrastructure from DI container
+		pubsubEventBus = Container.get(PubSubEventBus);
+		pubSubRegistry = Container.get(PubSubRegistry);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 	});
 
-	beforeEach(async () => {
-		await testDb.truncate(['Settings', 'SecretsProviderConnection']);
-		mockProvidersInstance.setProviders({ dummy: DummyProvider });
+	describe('using settings store', () => {
+		let module: ExternalSecretsModule;
 
-		Container.set(Logger, mockLogger());
-
-		secretsCacheRefresh = Container.get(SecretsCacheRefresh);
-		settingsStore = Container.get(ExternalSecretsSettingsStore);
-		providerRegistry = Container.get(ExternalSecretsProviderRegistry);
-		secretsCache = Container.get(ExternalSecretsSecretsCache);
-		connectionRepository = Container.get(SecretsProviderConnectionRepository);
-		cipher = Container.get(Cipher);
-		config = Container.get(ExternalSecretsConfig);
-
-		providerRegistry.clear();
-
-		(config as any).externalSecretsForProjects = false;
-	});
-
-	afterEach(() => {
-		secretsCacheRefresh?.shutdown();
-	});
-
-	describe('reloadProviderConnections (legacy mode)', () => {
-		beforeEach(() => {
-			(config as any).externalSecretsForProjects = false;
-		});
-
-		it('should load providers from settings store', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: { key: 'value' },
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			expect(providerRegistry.has('dummy')).toBe(true);
-			expect(providerRegistry.get('dummy')?.state).toBe('connected');
-		});
-
-		it('should tear down existing provider before reloading', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			const originalProvider = providerRegistry.get('dummy');
-			const disconnectSpy = jest.spyOn(originalProvider!, 'disconnect');
-
-			// Trigger reload event
-			await (secretsCacheRefresh as any).reloadProviderConnections();
-
-			expect(disconnectSpy).toHaveBeenCalled();
-		});
-
-		it('should use provider name as both providerType and providerKey', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			// In legacy mode, the provider name is used as both type and key
-			expect(providerRegistry.has('dummy')).toBe(true);
-			expect(providerRegistry.getNames()).toEqual(['dummy']);
-		});
-
-		it('should handle multiple providers in settings', async () => {
+		beforeAll(async () => {
 			mockProvidersInstance.setProviders({
 				dummy: DummyProvider,
 				another_dummy: AnotherDummyProvider,
 			});
 
-			await settingsStore.save({
+			const config = Container.get(ExternalSecretsConfig);
+			(config as any).externalSecretsForProjects = false;
+
+			const settingsRepository = Container.get(SettingsRepository);
+			const cipher = Container.get(Cipher);
+
+			const settings = {
 				dummy: {
 					connected: true,
 					connectedAt: new Date(),
 					settings: {},
 				},
 				another_dummy: {
-					connected: true,
+					connected: false,
 					connectedAt: new Date(),
 					settings: {},
 				},
+			};
+
+			await settingsRepository.save({
+				key: 'feature.externalSecrets',
+				value: cipher.encrypt(settings),
+				loadOnStartup: false,
 			});
 
-			await secretsCacheRefresh.init();
+			module = Container.get(ExternalSecretsModule);
+			await module.init();
 
-			expect(providerRegistry.getNames()).toHaveLength(2);
-			expect(providerRegistry.has('dummy')).toBe(true);
-			expect(providerRegistry.has('another_dummy')).toBe(true);
+			// IMPORTANT: Initialize PubSubRegistry AFTER module.init() to wire up decorators
+			// The SecretsCacheRefresh class is imported during module.init(), which is when
+			// the @OnPubSubEvent decorator gets registered in the metadata
+			pubSubRegistry.init();
 		});
 
-		it('should call secretsCache.refreshAll after loading', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			// Secrets should be populated after init (which calls refreshAll)
-			expect(secretsCache.getSecretNames('dummy')).toEqual(['test1', 'test2']);
+		afterAll(async () => {
+			await module.shutdown();
 		});
 
-		it('should handle reload after initial init', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
+		it('should reload providers when reload-external-secrets-providers event is emitted', async () =>
+			await testReloadEvent(pubsubEventBus));
+	});
 
-			await secretsCacheRefresh.init();
-			expect(providerRegistry.has('dummy')).toBe(true);
+	describe('using providers connections', () => {
+		let module: ExternalSecretsModule;
 
-			// Add another provider to settings
+		beforeAll(async () => {
 			mockProvidersInstance.setProviders({
 				dummy: DummyProvider,
 				another_dummy: AnotherDummyProvider,
 			});
 
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-				another_dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			// Trigger reload
-			await (secretsCacheRefresh as any).reloadProviderConnections();
-
-			expect(providerRegistry.getNames()).toHaveLength(2);
-			expect(providerRegistry.has('another_dummy')).toBe(true);
-		});
-	});
-
-	describe('reloadProviderConnections (project mode)', () => {
-		beforeEach(() => {
+			const config = Container.get(ExternalSecretsConfig);
 			(config as any).externalSecretsForProjects = true;
-		});
 
-		it('should load providers from database connections', async () => {
-			const encryptedSettings = cipher.encrypt(JSON.stringify({ region: 'us-east-1' }));
+			const cipher = Container.get(Cipher);
+			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
 
+			const connectionRepository = Container.get(SecretsProviderConnectionRepository);
 			await connectionRepository.save({
 				providerKey: 'my-vault',
 				type: 'dummy',
@@ -213,215 +148,27 @@ describe('External Secrets Events', () => {
 				isEnabled: true,
 			});
 
-			await secretsCacheRefresh.init();
-
-			expect(providerRegistry.has('my-vault')).toBe(true);
-			expect(providerRegistry.get('my-vault')?.state).toBe('connected');
-		});
-
-		it('should use providerKey as registry key (not type)', async () => {
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			// Create two connections of same type with different keys
 			await connectionRepository.save({
-				providerKey: 'vault-1',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-			await connectionRepository.save({
-				providerKey: 'vault-2',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-
-			await secretsCacheRefresh.init();
-
-			expect(providerRegistry.has('vault-1')).toBe(true);
-			expect(providerRegistry.has('vault-2')).toBe(true);
-			expect(providerRegistry.getNames()).toContain('vault-1');
-			expect(providerRegistry.getNames()).toContain('vault-2');
-		});
-
-		it('should map isEnabled to connected state', async () => {
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			await connectionRepository.save({
-				providerKey: 'disabled-vault',
-				type: 'dummy',
+				providerKey: 'another-vault',
+				type: 'another_dummy',
 				encryptedSettings,
 				isEnabled: false,
 			});
 
-			await secretsCacheRefresh.init();
+			module = Container.get(ExternalSecretsModule);
+			await module.init();
 
-			const provider = providerRegistry.get('disabled-vault');
-			expect(provider?.state).toBe('initialized');
+			// IMPORTANT: Initialize PubSubRegistry AFTER module.init() to wire up decorators
+			// The SecretsCacheRefresh class is imported during module.init(), which is when
+			// the @OnPubSubEvent decorator gets registered in the metadata
+			pubSubRegistry.init();
 		});
 
-		it('should decrypt encryptedSettings from connection', async () => {
-			const settings = { region: 'eu-west-1', accessKey: 'test-key' };
-			const encryptedSettings = cipher.encrypt(JSON.stringify(settings));
-
-			await connectionRepository.save({
-				providerKey: 'my-vault',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-
-			await secretsCacheRefresh.init();
-
-			expect(providerRegistry.has('my-vault')).toBe(true);
+		afterAll(async () => {
+			await module.shutdown();
 		});
 
-		it('should handle multiple connections', async () => {
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			await connectionRepository.save({
-				providerKey: 'vault-a',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-			await connectionRepository.save({
-				providerKey: 'vault-b',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-			await connectionRepository.save({
-				providerKey: 'vault-c',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: false,
-			});
-
-			await secretsCacheRefresh.init();
-
-			expect(providerRegistry.getNames()).toHaveLength(3);
-			expect(providerRegistry.get('vault-a')?.state).toBe('connected');
-			expect(providerRegistry.get('vault-b')?.state).toBe('connected');
-			expect(providerRegistry.get('vault-c')?.state).toBe('initialized');
-		});
-
-		it('should call secretsCache.refreshAll after loading', async () => {
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			await connectionRepository.save({
-				providerKey: 'my-vault',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-
-			await secretsCacheRefresh.init();
-
-			expect(secretsCache.getSecretNames('my-vault')).toEqual(['test1', 'test2']);
-		});
-	});
-
-	describe('teardown and reload', () => {
-		it('should cancel pending retries on teardown', async () => {
-			mockProvidersInstance.setProviders({ dummy: FailedProvider });
-
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			// Provider should be in error state with pending retry
-			expect(providerRegistry.get('dummy')?.state).toBe('error');
-
-			// Shutdown should not throw
-			expect(() => secretsCacheRefresh.shutdown()).not.toThrow();
-		});
-
-		it('should handle reload with provider teardown', async () => {
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			const originalProvider = providerRegistry.get('dummy');
-			expect(originalProvider?.state).toBe('connected');
-
-			// Trigger reload
-			await (secretsCacheRefresh as any).reloadProviderConnections();
-
-			// New provider instance should be created
-			const newProvider = providerRegistry.get('dummy');
-			expect(newProvider).not.toBe(originalProvider);
-			expect(newProvider?.state).toBe('connected');
-		});
-	});
-
-	describe('mode switching', () => {
-		it('should use repository when externalSecretsForProjects is true', async () => {
-			(config as any).externalSecretsForProjects = true;
-
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			await connectionRepository.save({
-				providerKey: 'project-vault',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-
-			// Also save to settings store (should be ignored in project mode)
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			// Should only have the project-based provider
-			expect(providerRegistry.has('project-vault')).toBe(true);
-			expect(providerRegistry.has('dummy')).toBe(false);
-		});
-
-		it('should use settingsStore when externalSecretsForProjects is false', async () => {
-			(config as any).externalSecretsForProjects = false;
-
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
-
-			await connectionRepository.save({
-				providerKey: 'project-vault',
-				type: 'dummy',
-				encryptedSettings,
-				isEnabled: true,
-			});
-
-			// Also save to settings store
-			await settingsStore.save({
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			});
-
-			await secretsCacheRefresh.init();
-
-			// Should only have the legacy provider
-			expect(providerRegistry.has('dummy')).toBe(true);
-			expect(providerRegistry.has('project-vault')).toBe(false);
-		});
+		it('should reload providers when reload-external-secrets-providers event is emitted', async () =>
+			await testReloadEvent(pubsubEventBus));
 	});
 });

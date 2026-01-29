@@ -16,7 +16,7 @@ import { SecretsProviderSettings } from './types';
 
 @Service()
 export class SecretsCacheRefresh {
-	initialized = false;
+	private initialized = false;
 	private refreshInterval?: NodeJS.Timeout;
 	private initializingPromise?: Promise<void>;
 

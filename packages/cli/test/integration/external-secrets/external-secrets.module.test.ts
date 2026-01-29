@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { SecretsProviderConnectionRepository } from '@n8n/db';
+import { SecretsProviderConnectionRepository, SettingsRepository } from '@n8n/db';
 import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -8,7 +8,6 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsModule } from '@/modules/external-secrets.ee/external-secrets.module';
-import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 
 import {
 	AnotherDummyProvider,
@@ -56,7 +55,6 @@ describe('ExternalSecretsModule', () => {
 	});
 
 	describe('using settings store', () => {
-		let settingsStore: ExternalSecretsSettingsStore;
 		let module: ExternalSecretsModule;
 
 		beforeAll(async () => {
@@ -65,13 +63,14 @@ describe('ExternalSecretsModule', () => {
 				another_dummy: AnotherDummyProvider,
 			});
 
-			settingsStore = Container.get(ExternalSecretsSettingsStore);
+			const settingsRepository = Container.get(SettingsRepository);
+			const cipher = Container.get(Cipher);
 			config = Container.get(ExternalSecretsConfig);
 			module = Container.get(ExternalSecretsModule);
 
 			(config as any).externalSecretsForProjects = false;
 
-			await settingsStore.save({
+			const settings = {
 				dummy: {
 					connected: true,
 					connectedAt: new Date(),
@@ -82,6 +81,12 @@ describe('ExternalSecretsModule', () => {
 					connectedAt: new Date(),
 					settings: {},
 				},
+			};
+
+			await settingsRepository.save({
+				key: 'feature.externalSecrets',
+				value: cipher.encrypt(settings),
+				loadOnStartup: false,
 			});
 		});
 

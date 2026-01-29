@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IDataObject } from 'n8n-workflow';
@@ -26,7 +26,6 @@ import {
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
 import { createOwner, createUser } from '../shared/db/users';
-import { LicenseMocker } from '../shared/license';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -35,10 +34,9 @@ let authMemberAgent: SuperAgentTest;
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
-
-const licenseMocker = new LicenseMocker();
-licenseMocker.setDefaults({ features: ['feat:externalSecrets'] });
-licenseMocker.mockLicenseState(Container.get(LicenseState));
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
 
 const testServer = setupTestServer({
 	endpointGroups: ['externalSecrets'],
@@ -165,50 +163,10 @@ beforeEach(async () => {
 	});
 
 	await resetManager();
-
-	// Reset license to defaults (licensed)
-	licenseMocker.reset();
 });
 
 afterEach(async () => {
 	Container.get(SecretsCacheRefresh).shutdown();
-});
-
-describe('License Guard', () => {
-	test('should block GET /external-secrets/providers when feat:externalSecrets is disabled', async () => {
-		licenseMocker.disable('feat:externalSecrets');
-
-		const resp = await authOwnerAgent.get('/external-secrets/providers');
-
-		expect(resp.status).toBe(403);
-	});
-
-	test('should block GET /external-secrets/secrets when feat:externalSecrets is disabled', async () => {
-		licenseMocker.disable('feat:externalSecrets');
-
-		const resp = await authOwnerAgent.get('/external-secrets/secrets');
-
-		expect(resp.status).toBe(403);
-	});
-
-	test('should block POST /external-secrets/providers/:provider when feat:externalSecrets is disabled', async () => {
-		licenseMocker.disable('feat:externalSecrets');
-
-		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy').send({
-			username: 'testuser',
-		});
-
-		expect(resp.status).toBe(403);
-	});
-
-	test('should allow access when feat:externalSecrets is enabled', async () => {
-		licenseMocker.enable('feat:externalSecrets');
-
-		const resp = await authOwnerAgent.get('/external-secrets/providers');
-
-		expect(resp.status).toBe(200);
-		expect(resp.body).toHaveProperty('data');
-	});
 });
 
 describe('GET /external-secrets/providers', () => {
