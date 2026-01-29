@@ -23,6 +23,8 @@ vi.mock('../composables/useSecretsProviders', () => ({
 		activeProviders: computed(() => mockActiveProviders.value),
 		fetchProviderTypes: mockFetchProviders,
 		fetchActiveConnections: mockFetchActiveConnections,
+		canCreate: computed(() => true),
+		canUpdate: computed(() => true),
 		isLoading: computed(() => mockIsLoading.value),
 		isEnterpriseExternalSecretsEnabled: computed(() => mockIsEnterpriseEnabled.value),
 		secrets: computed(() => ({})),
