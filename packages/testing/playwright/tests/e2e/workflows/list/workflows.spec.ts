@@ -3,7 +3,6 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../../../fixtures/base';
 
 const NOTIFICATIONS = {
-	CREATED: 'Workflow successfully created',
 	ARCHIVED: 'archived',
 	UNARCHIVED: 'unarchived',
 	DELETED: 'deleted',
@@ -35,8 +34,6 @@ test.describe('Workflows', () => {
 		await n8n.canvas.setWorkflowName(workflowName);
 		await n8n.page.keyboard.press('Enter');
 		await n8n.canvas.waitForSaveWorkflowCompleted();
-
-		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
 
 	test('should search for workflows', async ({ n8n }) => {

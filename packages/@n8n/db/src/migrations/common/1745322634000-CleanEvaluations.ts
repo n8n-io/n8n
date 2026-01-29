@@ -9,7 +9,6 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 		tablePrefix,
 		isSqlite,
 		isPostgres,
-		isMysql,
 	}: MigrationContext) {
 		// Drop test_metric, test_definition
 		await dropTable(testCaseExecutionTableName);
@@ -18,8 +17,6 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 		if (isSqlite) {
 			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition;`);
 		} else if (isPostgres) {
-			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition CASCADE;`);
-		} else if (isMysql) {
 			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition CASCADE;`);
 		}
 

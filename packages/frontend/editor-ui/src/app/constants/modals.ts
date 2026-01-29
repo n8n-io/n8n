@@ -11,7 +11,6 @@ export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
-export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
@@ -24,6 +23,7 @@ export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpubli
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+export const SECRETS_PROVIDER_CONNECTION_MODAL_KEY = 'secretsProviderConnection';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
