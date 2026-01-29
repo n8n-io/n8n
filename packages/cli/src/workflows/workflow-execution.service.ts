@@ -34,6 +34,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { TriggerValidationService } from '@/workflows/trigger-validation.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -49,6 +50,7 @@ export class WorkflowExecutionService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly triggerValidation: TriggerValidationService,
 	) {}
 
 	async runWorkflow(
@@ -105,6 +107,15 @@ export class WorkflowExecutionService {
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
+
+		const triggerToStartFrom =
+			'triggerToStartFrom' in payload ? payload.triggerToStartFrom : undefined;
+
+		await this.triggerValidation.validateManualExecution(
+			payload.workflowData,
+			workflowIsActive,
+			triggerToStartFrom,
+		);
 
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
