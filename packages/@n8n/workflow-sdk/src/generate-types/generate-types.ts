@@ -534,11 +534,18 @@ export interface DiscriminatedUnionResult {
 function mapNestedPropertyType(prop: NodeProperty): string {
 	// Handle dynamic options (loadOptionsMethod)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
+		// Dynamic options fallback to string, but preserve complex types
 		switch (prop.type) {
 			case 'options':
 				return 'string | Expression<string>';
 			case 'multiOptions':
 				return 'string[]';
+			case 'resourceLocator':
+				return 'ResourceLocatorValue';
+			case 'filter':
+				return 'FilterValue';
+			case 'assignmentCollection':
+				return 'AssignmentCollectionValue';
 			default:
 				return 'string | Expression<string>';
 		}
@@ -837,12 +844,18 @@ export function mapPropertyType(prop: NodeProperty): string {
 
 	// Handle dynamic options (loadOptionsMethod)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
-		// Dynamic options fallback to string
+		// Dynamic options fallback to string, but preserve complex types
 		switch (prop.type) {
 			case 'options':
 				return 'string | Expression<string>';
 			case 'multiOptions':
 				return 'string[]';
+			case 'resourceLocator':
+				return 'ResourceLocatorValue';
+			case 'filter':
+				return 'FilterValue';
+			case 'assignmentCollection':
+				return 'AssignmentCollectionValue';
 			default:
 				return 'string | Expression<string>';
 		}
