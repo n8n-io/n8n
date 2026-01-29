@@ -56,7 +56,6 @@ export function useSecretsProviderConnection(options?: { useMockApi?: boolean })
 	}
 
 	async function getConnection(providerKey: string): Promise<SecretProviderConnection> {
-		console.log('getConnection', providerKey);
 		// GET /rest/secret-providers/connections/:providerKey
 		isLoading.value = true;
 		try {
