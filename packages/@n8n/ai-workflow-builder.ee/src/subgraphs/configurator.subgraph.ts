@@ -18,6 +18,9 @@ import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent'
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
 import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
@@ -31,8 +34,8 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
+	buildConversationContext,
 	buildWorkflowJsonBlock,
-	buildExecutionContextBlock,
 	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
@@ -160,6 +163,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Execution data tools - fetch on-demand instead of context injection
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
 			// Conditionally add resource locator tool if callback is provided
 			...(config.resourceLocatorCallback
 				? [
@@ -297,10 +304,15 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		// Build context parts for Configurator
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		if (userRequest) {
-			contextParts.push('=== USER REQUEST ===');
-			contextParts.push(userRequest);
+		// 1. Conversation context (history, original request, previous actions)
+		const conversationContext = buildConversationContext(
+			parentState.messages,
+			parentState.coordinationLog,
+			parentState.previousSummary,
+		);
+		if (conversationContext) {
+			contextParts.push('=== CONVERSATION CONTEXT ===');
+			contextParts.push(conversationContext);
 		}
 
 		// 2. Discovery context - includes available resources/operations for each node type
@@ -334,9 +346,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 5. Full execution context (data + schema for parameter values)
-		contextParts.push('=== EXECUTION CONTEXT ===');
-		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
+		// Note: Execution data (schema, logs, expressions) is available via tools:
+		// - get_execution_schema: Node output types
+		// - get_execution_logs: Full execution data (runData, errors)
+		// - get_expression_data_mapping: Resolved expression values
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);

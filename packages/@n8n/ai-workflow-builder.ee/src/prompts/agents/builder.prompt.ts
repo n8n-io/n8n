@@ -499,6 +499,34 @@ CORRECT: Calculator Tool -> AI Agent
 CORRECT: Window Buffer Memory -> AI Agent
 </connection_type_reference>`;
 
+const UNDERSTANDING_CONTEXT = `You receive CONVERSATION CONTEXT showing:
+- Original request: What the user initially asked for
+- Previous actions: What Discovery/Builder/Configurator did before
+- Current request: What the user is asking now
+
+When the current request is vague (e.g., "fix it", "it's not working", "help"), you MUST investigate before acting:
+1. Review the conversation context to understand what was built and why
+2. Use execution data tools to understand what went wrong
+3. Then make targeted changes based on your findings
+
+Do NOT blindly re-do previous work. Understand the problem first.`;
+
+const EXECUTION_DATA_TOOLS = `Tools for investigating workflow execution issues:
+
+**get_execution_logs**
+Returns full execution data: runData for each node, errors, and which node failed.
+Use this to see what data flowed through the workflow and identify failures.
+
+**get_execution_schema**
+Returns data structure/types from each node's output (field names and types).
+Use this to understand what data is available for new nodes you're adding.
+
+**get_expression_data_mapping**
+Returns resolved expression values - what {{ $json.field }} evaluated to.
+Use this to debug expression-related issues.
+
+These tools show execution state from BEFORE your session - they help you understand what the user experienced.`;
+
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
 - Add commentary between tool calls - execute tools silently
@@ -515,6 +543,7 @@ Example: "Created 4 nodes: Trigger → Weather → Image Generation → Email"`;
 export function buildBuilderPrompt(): string {
 	return prompt()
 		.section('role', BUILDER_ROLE)
+		.section('understanding_context', UNDERSTANDING_CONTEXT)
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('node_creation', NODE_CREATION)
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
@@ -537,6 +566,7 @@ export function buildBuilderPrompt(): string {
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)
+		.section('execution_data_tools', EXECUTION_DATA_TOOLS)
 		.section('do_not', RESTRICTIONS)
 		.section('response_format', RESPONSE_FORMAT)
 		.build();

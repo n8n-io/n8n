@@ -95,6 +95,27 @@ jest.mock('../validate-configuration.tool', () => ({
 	},
 }));
 
+jest.mock('../get-execution-schema.tool', () => ({
+	GET_EXECUTION_SCHEMA_TOOL: {
+		toolName: 'get_execution_schema',
+		displayTitle: 'Getting execution schema',
+	},
+}));
+
+jest.mock('../get-execution-logs.tool', () => ({
+	GET_EXECUTION_LOGS_TOOL: {
+		toolName: 'get_execution_logs',
+		displayTitle: 'Getting execution logs',
+	},
+}));
+
+jest.mock('../get-expression-data-mapping.tool', () => ({
+	GET_EXPRESSION_DATA_MAPPING_TOOL: {
+		toolName: 'get_expression_data_mapping',
+		displayTitle: 'Getting expression data mapping',
+	},
+}));
+
 describe('builder-tools', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 
@@ -110,10 +131,11 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: true },
 			});
 
-			// 13 tools: best_practices, workflow_examples, node_search, node_details, add_node,
+			// 16 tools: best_practices, workflow_examples, node_search, node_details, add_node,
 			// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
-			// get_node_parameter, validate_structure, validate_configuration
-			expect(tools).toHaveLength(13);
+			// get_node_parameter, validate_structure, validate_configuration,
+			// get_execution_schema, get_execution_logs, get_expression_data_mapping
+			expect(tools).toHaveLength(16);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -123,7 +145,7 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: false },
 			});
 
-			expect(tools).toHaveLength(12);
+			expect(tools).toHaveLength(15);
 		});
 
 		it('should exclude workflow examples tool when feature flag is not provided', () => {
@@ -131,7 +153,7 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(12);
+			expect(tools).toHaveLength(15);
 		});
 
 		it('should work with empty node types array', () => {
@@ -139,7 +161,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(12);
+			expect(tools).toHaveLength(15);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

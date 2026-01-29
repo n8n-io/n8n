@@ -184,6 +184,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						workflowJSON: state.workflowJSON,
 						coordinationLog: state.coordinationLog,
 						previousSummary: state.previousSummary,
+						workflowContext: state.workflowContext,
 					},
 					config,
 				);
@@ -202,6 +203,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						discoveryContext: state.discoveryContext,
 						workflowJSON: state.workflowJSON,
 						previousSummary: state.previousSummary,
+						workflowContext: state.workflowContext,
 					},
 					config,
 				);

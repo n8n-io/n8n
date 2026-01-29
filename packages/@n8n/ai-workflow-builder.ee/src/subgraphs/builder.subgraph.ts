@@ -16,6 +16,9 @@ import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
 import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
@@ -28,9 +31,9 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
+	buildConversationContext,
 	buildDiscoveryContextBlock,
 	buildWorkflowJsonBlock,
-	buildExecutionSchemaBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -122,6 +125,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createRemoveConnectionTool(config.logger),
 			createRenameNodeTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
 		];
 
 		// Conditionally add node connection examples tool if feature flag is enabled
@@ -191,9 +197,16 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build context parts for Builder
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		contextParts.push('=== USER REQUEST ===');
-		contextParts.push(userRequest);
+		// 1. Conversation context (history, original request, previous actions)
+		const conversationContext = buildConversationContext(
+			parentState.messages,
+			parentState.coordinationLog,
+			parentState.previousSummary,
+		);
+		if (conversationContext) {
+			contextParts.push('=== CONVERSATION CONTEXT ===');
+			contextParts.push(conversationContext);
+		}
 
 		// 2. Discovery context (what nodes to use)
 		if (parentState.discoveryContext) {
@@ -209,12 +222,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push('Empty workflow - ready to build');
 		}
 
-		// 4. Execution schema (data types available, NOT full data)
-		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
-		if (schemaBlock) {
-			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
-			contextParts.push(schemaBlock);
-		}
+		// Note: Execution data (schema, logs, expressions) is available via tools:
+		// - get_execution_schema: Node output types
+		// - get_execution_logs: Full execution data (runData, errors)
+		// - get_expression_data_mapping: Resolved expression values
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);

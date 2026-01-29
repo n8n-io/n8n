@@ -6,6 +6,9 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { getAddNodeToolBase } from './add-node.tool';
 import { CONNECT_NODES_TOOL } from './connect-nodes.tool';
 import { GET_DOCUMENTATION_TOOL } from './get-documentation.tool';
+import { GET_EXECUTION_LOGS_TOOL } from './get-execution-logs.tool';
+import { GET_EXECUTION_SCHEMA_TOOL } from './get-execution-schema.tool';
+import { GET_EXPRESSION_DATA_MAPPING_TOOL } from './get-expression-data-mapping.tool';
 import { GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { GET_WORKFLOW_EXAMPLES_TOOL } from './get-workflow-examples.tool';
 import { NODE_DETAILS_TOOL } from './node-details.tool';
@@ -50,6 +53,9 @@ export function getBuilderToolsForDisplay({
 		GET_NODE_PARAMETER_TOOL,
 		VALIDATE_STRUCTURE_TOOL,
 		VALIDATE_CONFIGURATION_TOOL,
+		GET_EXECUTION_SCHEMA_TOOL,
+		GET_EXECUTION_LOGS_TOOL,
+		GET_EXPRESSION_DATA_MAPPING_TOOL,
 	);
 
 	return tools;

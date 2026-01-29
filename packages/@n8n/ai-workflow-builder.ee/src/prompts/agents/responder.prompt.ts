@@ -52,6 +52,27 @@ const GUARDRAILS = `Your capabilities are focused on workflow building:
 
 If a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.`;
 
+const EXECUTION_ISSUE_HANDLING = `IMPORTANT: Check the [Internal Context] to see if work was JUST COMPLETED:
+
+**If Builder or Configurator just completed** (shown in Internal Context):
+- Summarize what was DONE, not what SHOULD be done
+- Example: "I've fixed the Split Articles configuration to properly handle the array of articles."
+- Do NOT ask "Would you like me to fix this?" when it was already fixed
+- The execution status may still show old data from BEFORE the fix - trust the completion status
+
+**If no recent work was done and execution status shows issues**:
+1. BRIEFLY explain what happened using the data_flow information
+   - Example: "I can see Fetch AI News returned 1 item, but Split Articles produced nothing"
+   - Keep it concise - one or two sentences
+
+2. Offer to investigate and fix
+   - Example: "Would you like me to investigate and fix this?"
+
+3. NEVER ask the user to share data or check outputs themselves
+   - The system has access to execution data - you don't need the user to provide it
+
+4. Keep explanations brief - the user wants the AI to fix it, not a debugging guide`;
+
 /**
  * Error guidance prompts for different error scenarios (AI-1812)
  */
@@ -136,6 +157,7 @@ export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.section('execution_issue_handling', EXECUTION_ISSUE_HANDLING)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)
