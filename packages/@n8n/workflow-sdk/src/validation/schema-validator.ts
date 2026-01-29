@@ -148,26 +148,10 @@ function tryLoadSchemaModule(schemaPath: string): Record<string, unknown> | null
 }
 
 /**
- * Load and cache schema for a node type/version
- *
- * Supports both:
- * - Static schemas: ConfigSchema exports (ZodSchema)
- * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
- * - Flat structure: {version}.schema.ts
- * - Split structure: {version}/index.schema.ts (for discriminated nodes)
- *
- * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
- * @param version - Node version (e.g., 2, 4.2, 1.7)
- * @returns ZodSchema or factory function if found, null otherwise
+ * Try to load a schema for a specific node type and version
+ * @returns SchemaOrFactory if found, null otherwise
  */
-export function loadSchema(nodeType: string, version: number): SchemaOrFactory | null {
-	const cacheKey = `${nodeType}@${version}`;
-
-	// Check cache first
-	if (schemaCache.has(cacheKey)) {
-		return schemaCache.get(cacheKey) ?? null;
-	}
-
+function tryLoadSchemaForNodeType(nodeType: string, version: number): SchemaOrFactory | null {
 	const { pkg, nodeName } = nodeTypeToPathComponents(nodeType);
 	const versionStr = versionToString(version);
 	const isLangchain = pkg === 'n8n-nodes-langchain';
@@ -188,7 +172,6 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	const schemaModule = tryLoadSchemaModule(flatSchemaPath) ?? tryLoadSchemaModule(splitSchemaPath);
 
 	if (!schemaModule) {
-		schemaCache.set(cacheKey, null);
 		return null;
 	}
 
@@ -198,23 +181,17 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 
 	// Try default export first (for split structure factory functions)
 	if (typeof schemaModule.default === 'function') {
-		const factory = schemaModule.default as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule.default as SchemaOrFactory;
 	}
 
 	// Try exact match for static schema
 	if (schemaModule[expectedSchemaName]) {
-		const schema = schemaModule[expectedSchemaName] as ZodSchema;
-		schemaCache.set(cacheKey, schema);
-		return schema;
+		return schemaModule[expectedSchemaName] as ZodSchema;
 	}
 
 	// Try exact match for factory function
 	if (typeof schemaModule[expectedFactoryName] === 'function') {
-		const factory = schemaModule[expectedFactoryName] as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule[expectedFactoryName] as SchemaOrFactory;
 	}
 
 	// Fallback: find any export ending with ConfigSchema but NOT SubnodeConfigSchema
@@ -223,9 +200,7 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	);
 
 	if (schemaName && schemaModule[schemaName]) {
-		const schema = schemaModule[schemaName] as ZodSchema;
-		schemaCache.set(cacheKey, schema);
-		return schema;
+		return schemaModule[schemaName] as ZodSchema;
 	}
 
 	// Fallback: find any factory function (starts with 'get', ends with 'ConfigSchema')
@@ -238,14 +213,51 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 	);
 
 	if (factoryName && schemaModule[factoryName]) {
-		const factory = schemaModule[factoryName] as SchemaOrFactory;
-		schemaCache.set(cacheKey, factory);
-		return factory;
+		return schemaModule[factoryName] as SchemaOrFactory;
 	}
 
 	// No ConfigSchema found
-	schemaCache.set(cacheKey, null);
 	return null;
+}
+
+/**
+ * Load and cache schema for a node type/version
+ *
+ * Supports both:
+ * - Static schemas: ConfigSchema exports (ZodSchema)
+ * - Factory functions: getConfigSchema exports (for nodes with displayOptions)
+ * - Flat structure: {version}.schema.ts
+ * - Split structure: {version}/index.schema.ts (for discriminated nodes)
+ *
+ * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
+ * (e.g., "googleCalendar") since tool variants don't have separate schemas.
+ *
+ * @param nodeType - Full node type string (e.g., "n8n-nodes-base.set", "@n8n/n8n-nodes-langchain.agent")
+ * @param version - Node version (e.g., 2, 4.2, 1.7)
+ * @returns ZodSchema or factory function if found, null otherwise
+ */
+export function loadSchema(nodeType: string, version: number): SchemaOrFactory | null {
+	const cacheKey = `${nodeType}@${version}`;
+
+	// Check cache first
+	if (schemaCache.has(cacheKey)) {
+		return schemaCache.get(cacheKey) ?? null;
+	}
+
+	// Try loading schema for the exact node type first
+	let schema = tryLoadSchemaForNodeType(nodeType, version);
+
+	// If not found and node name ends with 'Tool', try base node as fallback
+	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
+	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
+	// have their own schemas, so this fallback only triggers when no schema is found
+	if (!schema && nodeType.endsWith('Tool')) {
+		const baseNodeType = nodeType.slice(0, -4);
+		schema = tryLoadSchemaForNodeType(baseNodeType, version);
+	}
+
+	schemaCache.set(cacheKey, schema);
+	return schema;
 }
 
 /**

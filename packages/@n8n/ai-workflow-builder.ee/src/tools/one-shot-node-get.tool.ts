@@ -218,15 +218,14 @@ interface PathResolutionResult {
 }
 
 /**
- * Get the file path for a node ID, optionally for a specific version and discriminators
- * If no version specified, returns the latest version
- * If node uses split structure, discriminators are required
+ * Try to resolve file path for a specific node ID
+ * This is the core resolution logic used by getNodeFilePath
  */
-function getNodeFilePath(
+function tryGetNodeFilePath(
 	nodeId: string,
-	version?: string,
-	generatedTypesDir?: string,
-	discriminators?: { resource?: string; operation?: string; mode?: string },
+	version: string | undefined,
+	generatedTypesDir: string | undefined,
+	discriminators: { resource?: string; operation?: string; mode?: string } | undefined,
 ): PathResolutionResult {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
@@ -361,6 +360,36 @@ function getNodeFilePath(
 	}
 
 	return { filePath };
+}
+
+/**
+ * Get the file path for a node ID, optionally for a specific version and discriminators
+ * If no version specified, returns the latest version
+ * If node uses split structure, discriminators are required
+ *
+ * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
+ * (e.g., "googleCalendar") since tool variants don't have separate type files.
+ */
+function getNodeFilePath(
+	nodeId: string,
+	version?: string,
+	generatedTypesDir?: string,
+	discriminators?: { resource?: string; operation?: string; mode?: string },
+): PathResolutionResult {
+	// Try exact node ID first
+	let result = tryGetNodeFilePath(nodeId, version, generatedTypesDir, discriminators);
+
+	// If not found and node name ends with 'Tool', try base node as fallback
+	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
+	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
+	// have their own type files, so this fallback only triggers when no file is found
+	if (result.error && nodeId.endsWith('Tool')) {
+		const baseNodeId = nodeId.slice(0, -4);
+		debugLog('Trying base node fallback', { nodeId, baseNodeId });
+		result = tryGetNodeFilePath(baseNodeId, version, generatedTypesDir, discriminators);
+	}
+
+	return result;
 }
 
 /**
