@@ -588,7 +588,8 @@ onMounted(() => {
 
 .dataTableList {
 	margin: var(--spacing--2xs) 0 0 0;
-	padding-left: var(--spacing--md);
+	padding-left: 0;
+	list-style-position: inside;
 
 	li {
 		margin-bottom: var(--spacing--3xs);
