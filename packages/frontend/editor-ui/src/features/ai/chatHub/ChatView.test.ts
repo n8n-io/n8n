@@ -150,7 +150,6 @@ describe('ChatView', () => {
 				sessionId: chatStore.streaming?.sessionId ?? '',
 				messageId: metadata.messageId,
 				content,
-				sequenceNumber: Date.now(),
 			});
 		} else if (type === 'end') {
 			chatStore.handleWebSocketStreamEnd?.({

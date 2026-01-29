@@ -44,6 +44,12 @@ import {
 	type AgentIconOrEmoji,
 	type ChatHubEditMessageRequest,
 	type ChatHubRegenerateMessageRequest,
+	type ChatHubStreamBegin,
+	type ChatHubStreamChunk,
+	type ChatHubStreamEnd,
+	type ChatHubStreamError,
+	type ChatHubExecutionBegin,
+	type ChatHubExecutionEnd,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -853,12 +859,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle the beginning of a WebSocket stream
 	 */
-	function handleWebSocketStreamBegin(data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		previousMessageId: ChatMessageId | null;
-		retryOfMessageId: ChatMessageId | null;
-	}) {
+	function handleWebSocketStreamBegin(
+		data: Pick<
+			ChatHubStreamBegin['data'],
+			'sessionId' | 'messageId' | 'previousMessageId' | 'retryOfMessageId'
+		>,
+	) {
 		const { sessionId, messageId, previousMessageId, retryOfMessageId } = data;
 
 		// Update streaming state with message info (for both local and remote)
@@ -894,12 +900,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle a WebSocket stream chunk
 	 */
-	function handleWebSocketStreamChunk(data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		content: string;
-		sequenceNumber: number;
-	}) {
+	function handleWebSocketStreamChunk(
+		data: Pick<ChatHubStreamChunk['data'], 'sessionId' | 'messageId' | 'content'>,
+	) {
 		const { sessionId, messageId, content } = data;
 
 		// Append the content to the message
@@ -915,11 +918,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle the end of a WebSocket stream (individual message stream ends, but execution may continue)
 	 */
-	function handleWebSocketStreamEnd(data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		status: ChatHubMessageStatus;
-	}) {
+	function handleWebSocketStreamEnd(
+		data: Pick<ChatHubStreamEnd['data'], 'sessionId' | 'messageId' | 'status'>,
+	) {
 		const { sessionId, messageId, status } = data;
 
 		// Update the message status
@@ -933,11 +934,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle a WebSocket stream error (individual message has an error)
 	 */
-	function handleWebSocketStreamError(data: {
-		sessionId: ChatSessionId;
-		messageId: ChatMessageId;
-		error: string;
-	}) {
+	function handleWebSocketStreamError(
+		data: Pick<ChatHubStreamError['data'], 'sessionId' | 'messageId' | 'error'>,
+	) {
 		const { sessionId, messageId, error } = data;
 
 		// Ensure the message exists
@@ -957,7 +956,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle execution begin (whole streaming session starts)
 	 */
-	function handleWebSocketExecutionBegin(data: { sessionId: ChatSessionId }) {
+	function handleWebSocketExecutionBegin(data: Pick<ChatHubExecutionBegin['data'], 'sessionId'>) {
 		const { sessionId } = data;
 
 		// If we're already tracking this session locally, nothing to do
@@ -1000,10 +999,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	/**
 	 * Handle execution end (whole streaming session ends)
 	 */
-	function handleWebSocketExecutionEnd(data: {
-		sessionId: ChatSessionId;
-		status: ChatHubMessageStatus;
-	}) {
+	function handleWebSocketExecutionEnd(
+		data: Pick<ChatHubExecutionEnd['data'], 'sessionId' | 'status'>,
+	) {
 		const { sessionId, status } = data;
 
 		// Clear streaming state if this is the current session

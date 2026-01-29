@@ -108,7 +108,6 @@ export function useChatPushHandler() {
 			sessionId,
 			messageId,
 			content,
-			sequenceNumber,
 		});
 	}
 
