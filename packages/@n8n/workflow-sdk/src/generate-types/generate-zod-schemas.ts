@@ -330,6 +330,7 @@ export function extractDefaultsForDisplayOptions(
 
 /**
  * Generate inline Zod schema for resourceLocator based on available modes
+ * Accepts either the object format { __rl: true, mode, value } OR an expression string
  */
 function generateResourceLocatorZodSchema(prop: NodeProperty): string {
 	if (prop.modes && prop.modes.length > 0) {
@@ -337,8 +338,11 @@ function generateResourceLocatorZodSchema(prop: NodeProperty): string {
 			prop.modes.length === 1
 				? `z.literal('${prop.modes[0].name}')`
 				: `z.union([${prop.modes.map((m) => `z.literal('${m.name}')`).join(', ')}])`;
-		return `z.object({ __rl: z.literal(true), mode: ${modeSchema}, value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() })`;
+		const objectSchema = `z.object({ __rl: z.literal(true), mode: ${modeSchema}, value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() })`;
+		// Allow either the object format or an expression string
+		return `z.union([${objectSchema}, expressionSchema])`;
 	}
+	// Default case: use the general resourceLocatorValueSchema which already accepts expressions
 	return 'resourceLocatorValueSchema';
 }
 
@@ -356,7 +360,12 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 		return generateResourceLocatorZodSchema(prop);
 	}
 
-	// Handle dynamic options (but not for resourceLocator which has specific structure)
+	// Handle resourceMapper - it has its own structure with mappingMode and value
+	if (prop.type === 'resourceMapper') {
+		return 'resourceMapperValueSchema';
+	}
+
+	// Handle dynamic options (but not for types with specific structure)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		if (prop.type === 'multiOptions') {
 			return 'z.array(z.string())';
@@ -517,7 +526,12 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 		return generateResourceLocatorZodSchema(prop);
 	}
 
-	// Handle dynamic options (loadOptionsMethod) - but not for resourceLocator which has specific structure
+	// Handle resourceMapper - it has its own structure with mappingMode and value
+	if (prop.type === 'resourceMapper') {
+		return 'resourceMapperValueSchema';
+	}
+
+	// Handle dynamic options (loadOptionsMethod) - but not for types with specific structure
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		switch (prop.type) {
 			case 'options':
@@ -931,6 +945,7 @@ export function generateSingleVersionSchemaFile(
 	lines.push('\tnumberOrExpression,');
 	lines.push('\tbooleanOrExpression,');
 	lines.push('\tresourceLocatorValueSchema,');
+	lines.push('\tresourceMapperValueSchema,');
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
@@ -1418,15 +1433,36 @@ export const booleanOrExpression = z.union([
 // =============================================================================
 
 /**
- * Resource Locator Value schema
+ * Resource Locator Value schema (object format)
  */
-export const resourceLocatorValueSchema = z.object({
+const resourceLocatorObjectSchema = z.object({
 	__rl: z.literal(true),
 	mode: z.string(),
 	value: z.union([z.string(), z.number()]),
 	cachedResultName: z.string().optional(),
 	cachedResultUrl: z.string().optional(),
 });
+
+/**
+ * Resource Locator Value schema - accepts object format OR expression
+ */
+export const resourceLocatorValueSchema = z.union([resourceLocatorObjectSchema, expressionSchema]);
+
+/**
+ * Resource Mapper Value schema (object format)
+ * Used for mapping input data to columns/fields
+ */
+const resourceMapperObjectSchema = z.object({
+	mappingMode: z.string(),
+	value: z.unknown().optional(),
+	schema: z.array(z.unknown()).optional(),
+	cachedResultName: z.string().optional(),
+}).passthrough();
+
+/**
+ * Resource Mapper Value schema - accepts object format OR expression
+ */
+export const resourceMapperValueSchema = z.union([resourceMapperObjectSchema, expressionSchema]);
 
 /**
  * Filter condition operator schema
@@ -1869,6 +1905,7 @@ export function generateDiscriminatorSchemaFile(
 	lines.push('\tnumberOrExpression,');
 	lines.push('\tbooleanOrExpression,');
 	lines.push('\tresourceLocatorValueSchema,');
+	lines.push('\tresourceMapperValueSchema,');
 	lines.push('\tfilterValueSchema,');
 	lines.push('\tassignmentCollectionValueSchema,');
 	lines.push('\tiDataObjectSchema,');
