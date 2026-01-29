@@ -1,5 +1,26 @@
 {
 	"permissions": {
-		"allow": ["Bash(find:*)", "Bash(pnpm typecheck:*)", "Bash(pnpm build)", "Bash(pnpm lint:*)"]
+		"allow": [
+			"Bash(cat:*)",
+      "Bash(cd:*)",
+			"Bash(find:*)",
+			"Bash(gh:*)",
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(jq:*)",
+      "Bash(less:*)",
+      "Bash(ls:*)",
+			"Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm:*)",
+			"Bash(pnpmx:*)",
+      "Bash(popd:*)",
+      "Bash(pushd:*)",
+      "Bash(pwd)",
+			"Bash(rg:*)",
+			"Bash(tail:*)",
+			"Bash(tree:*)"
+		]
 	}
 }
