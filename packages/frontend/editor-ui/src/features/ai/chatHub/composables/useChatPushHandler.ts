@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch, type WatchStopHandle } from 'vue';
 import type {
 	PushMessage,
 	ChatHubStreamBegin,
@@ -34,6 +34,7 @@ export function useChatPushHandler() {
 
 	const activeStreams = ref<Map<ChatSessionId, ChatPushStreamState>>(new Map());
 	const removeEventListener = ref<(() => void) | null>(null);
+	const stopReconnectWatcher = ref<WatchStopHandle | null>(null);
 
 	/**
 	 * Handle a chat execution begin event (whole streaming session starts)
@@ -156,6 +157,23 @@ export function useChatPushHandler() {
 	}
 
 	/**
+	 * Handle WebSocket reconnection by catching up all active streams
+	 */
+	async function handleReconnect(): Promise<void> {
+		for (const [sessionId, streamState] of activeStreams.value.entries()) {
+			const result = await chatStore.reconnectToStream(sessionId, streamState.lastSequenceNumber);
+
+			if (result?.pendingChunks?.length) {
+				for (const chunk of result.pendingChunks) {
+					if (chunk.sequenceNumber > streamState.lastSequenceNumber) {
+						streamState.lastSequenceNumber = chunk.sequenceNumber;
+					}
+				}
+			}
+		}
+	}
+
+	/**
 	 * Process a push message if it's a chat stream event
 	 */
 	function processMessage(event: PushMessage): void {
@@ -188,26 +206,44 @@ export function useChatPushHandler() {
 	}
 
 	/**
-	 * Initialize the push handler
+	 * Initialize the push handler and connect to WebSocket
 	 */
 	function initialize(): void {
 		if (removeEventListener.value) {
 			return; // Already initialized
 		}
 
+		pushStore.pushConnect();
+
 		removeEventListener.value = pushStore.addEventListener(processMessage);
+
+		stopReconnectWatcher.value = watch(
+			() => pushStore.isConnected,
+			async (isConnected, wasConnected) => {
+				if (isConnected && !wasConnected) {
+					await handleReconnect();
+				}
+			},
+		);
 	}
 
 	/**
-	 * Terminate the push handler
+	 * Terminate the push handler and disconnect from WebSocket
 	 */
 	function terminate(): void {
+		if (stopReconnectWatcher.value) {
+			stopReconnectWatcher.value();
+			stopReconnectWatcher.value = null;
+		}
+
 		if (removeEventListener.value) {
 			removeEventListener.value();
 			removeEventListener.value = null;
 		}
 
 		activeStreams.value.clear();
+
+		pushStore.pushDisconnect();
 	}
 
 	/**
