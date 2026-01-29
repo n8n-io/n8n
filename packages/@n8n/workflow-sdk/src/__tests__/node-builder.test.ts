@@ -1,4 +1,4 @@
-import { node, trigger, sticky, placeholder, newCredential } from '../node-builder';
+import { node, trigger, sticky, placeholder, newCredential, merge } from '../node-builder';
 import { languageModel, memory, tool, outputParser } from '../subnode-builders';
 
 describe('Node Builder', () => {
@@ -516,6 +516,58 @@ describe('Node Builder', () => {
 			});
 
 			expect(chainNode.config.subnodes?.outputParser).toBe(parserNode);
+		});
+	});
+
+	describe('merge() factory', () => {
+		it('should create a merge node with specified version', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(mergeNode.type).toBe('n8n-nodes-base.merge');
+			expect(mergeNode.version).toBe('3');
+		});
+
+		it('should create a merge node with optional name in config', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { name: 'Combine Data' },
+			});
+			expect(mergeNode.name).toBe('Combine Data');
+		});
+
+		it('should create a merge node with parameters in config', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { parameters: { mode: 'append' } },
+			});
+			expect(mergeNode.config.parameters).toEqual({ mode: 'append' });
+		});
+
+		it('should support .input(n) method for branch connections', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(typeof mergeNode.input).toBe('function');
+
+			const inputTarget = mergeNode.input(0);
+			expect(inputTarget._isInputTarget).toBe(true);
+			expect(inputTarget.node).toBe(mergeNode);
+			expect(inputTarget.inputIndex).toBe(0);
+		});
+
+		it('should support .then() method for chaining', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(typeof mergeNode.then).toBe('function');
+		});
+
+		it('should auto-generate name if not provided', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(mergeNode.name).toBe('Merge');
+		});
+
+		it('should create a merge node with position', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { position: [100, 200] },
+			});
+			expect(mergeNode.config.position).toEqual([100, 200]);
 		});
 	});
 });

@@ -924,6 +924,41 @@ export function ifElse<TOutput = unknown>(
 export const ifNode = ifElse;
 
 /**
+ * Config for merge() factory function
+ */
+export interface MergeFactoryConfig {
+	/** Node version (required) */
+	version: number;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
+}
+
+/**
+ * Create a Merge node for combining data from multiple branches.
+ * Use .input(n) method to connect sources to specific input indices.
+ *
+ * @param input - Config with version (required) and config object
+ * @returns A Merge NodeInstance with .input(n) method for branch connections
+ *
+ * @example
+ * ```typescript
+ * const mergeNode = merge({ version: 3, config: { name: 'Combine Data' } });
+ * source1.then(mergeNode.input(0));
+ * source2.then(mergeNode.input(1));
+ * mergeNode.then(downstream);
+ * ```
+ */
+export function merge<TOutput = unknown>(
+	input: MergeFactoryConfig,
+): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	return node({
+		type: 'n8n-nodes-base.merge',
+		version: input.version,
+		config: input.config ?? {},
+	}) as NodeInstance<'n8n-nodes-base.merge', string, TOutput>;
+}
+
+/**
  * Config for switchCase() factory function
  */
 export interface SwitchCaseFactoryConfig {

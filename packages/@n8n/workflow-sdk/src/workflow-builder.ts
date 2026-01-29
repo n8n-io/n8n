@@ -19,8 +19,18 @@ import type {
 	NewCredentialValue,
 } from './types/base';
 import { isNodeChain } from './types/base';
-import { isMergeNamedInputSyntax } from './merge';
 import { isInputTarget, isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
+
+/**
+ * Type guard to check if a MergeComposite uses the old named input syntax.
+ * This is for backward compatibility with code using the old merge(node, { input0: ..., input1: ... }) syntax.
+ * New code should use the merge() factory and .input(n) syntax instead.
+ */
+function isMergeNamedInputSyntax(
+	composite: MergeComposite<NodeInstance<string, string, unknown>[]>,
+): boolean {
+	return '_isNamedInputSyntax' in composite && composite._isNamedInputSyntax === true;
+}
 import type { IfElseBuilder, SwitchCaseBuilder } from './types/base';
 import { isTriggerNodeType } from './utils/trigger-detection';
 

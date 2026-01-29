@@ -101,7 +101,11 @@ export {
 	ifElse,
 	ifNode,
 	switchCase,
+	merge,
 } from './node-builder';
+
+// Export MergeFactoryConfig type for merge() factory
+export type { MergeFactoryConfig } from './node-builder';
 
 // Subnode builders (for AI/LangChain nodes)
 export {
@@ -117,9 +121,8 @@ export {
 	textSplitter,
 } from './subnode-builders';
 
-// Merge composite - use .input(n) syntax instead of merge() function
-// The merge() function is internal only (used by code generator)
-// Export only the type guard needed by workflow-builder
+// Merge nodes - use merge() factory and .input(n) syntax for connections
+// Example: const mergeNode = merge({ version: 3 }); source.then(mergeNode.input(0))
 
 // IF else types - use .onTrue()/.onFalse() fluent syntax
 export type { IfElseTarget } from './if-else';
