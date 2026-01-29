@@ -144,6 +144,7 @@ export const promptTypeOptions: INodeProperties = {
 		},
 	],
 	default: 'auto',
+	builderHint: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
 };
 
 export const textInput: INodeProperties = {

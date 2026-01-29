@@ -134,6 +134,7 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
+		builderHint: "Set to 'memory' to persist conversation history across sessions",
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',

@@ -41,6 +41,9 @@ export class AgentV3 implements INodeType {
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
 			builderHint: {
+				message:
+					'Need to aggregate multiple items together? Use n8n-nodes-base.aggregate before to combine the items.',
+				relatedNodes: ['n8n-nodes-base.aggregate'],
 				inputs: {
 					ai_languageModel: { required: true },
 					ai_memory: { required: false },
