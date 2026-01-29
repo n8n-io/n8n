@@ -16,7 +16,7 @@ describe('DynamicTemplatesController', () => {
 		mockRequest = { user: { id: 'user-123' } } as unknown as AuthenticatedRequest;
 	});
 
-	describe('getRecommendedTemplates', () => {
+	describe('get', () => {
 		it('should return templates from the service', async () => {
 			const mockTemplates = [
 				{ id: 1, name: 'Template 1' },
@@ -25,7 +25,7 @@ describe('DynamicTemplatesController', () => {
 
 			mockDynamicTemplatesService.fetchDynamicTemplates.mockResolvedValue(mockTemplates);
 
-			const result = await dynamicTemplatesController.getRecommendedTemplates(mockRequest);
+			const result = await dynamicTemplatesController.get(mockRequest);
 
 			expect(result).toEqual({ templates: mockTemplates });
 			expect(mockDynamicTemplatesService.fetchDynamicTemplates).toHaveBeenCalledTimes(1);
@@ -34,7 +34,7 @@ describe('DynamicTemplatesController', () => {
 		it('should return empty templates array when service returns empty', async () => {
 			mockDynamicTemplatesService.fetchDynamicTemplates.mockResolvedValue([]);
 
-			const result = await dynamicTemplatesController.getRecommendedTemplates(mockRequest);
+			const result = await dynamicTemplatesController.get(mockRequest);
 
 			expect(result).toEqual({ templates: [] });
 		});
@@ -44,7 +44,7 @@ describe('DynamicTemplatesController', () => {
 				new Error('External API error'),
 			);
 
-			await expect(dynamicTemplatesController.getRecommendedTemplates(mockRequest)).rejects.toThrow(
+			await expect(dynamicTemplatesController.get(mockRequest)).rejects.toThrow(
 				InternalServerError,
 			);
 		});
@@ -55,7 +55,7 @@ describe('DynamicTemplatesController', () => {
 			);
 
 			try {
-				await dynamicTemplatesController.getRecommendedTemplates(mockRequest);
+				await dynamicTemplatesController.get(mockRequest);
 				fail('Expected error to be thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(InternalServerError);

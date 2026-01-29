@@ -9,7 +9,7 @@ export class DynamicTemplatesController {
 	constructor(private readonly dynamicTemplatesService: DynamicTemplatesService) {}
 
 	@Get('/')
-	async getRecommendedTemplates(_req: AuthenticatedRequest) {
+	async get(_req: AuthenticatedRequest) {
 		try {
 			const templates = await this.dynamicTemplatesService.fetchDynamicTemplates();
 			return { templates };
