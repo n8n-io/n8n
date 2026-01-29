@@ -957,6 +957,14 @@ export class OneShotWorkflowCodeAgent {
 				this.logger?.info('Workflow validation warnings', {
 					warnings: validationResult.warnings.map((w: { message: string }) => w.message),
 				});
+				// Add JSON validation warnings to allWarnings for agent self-correction
+				for (const w of validationResult.warnings) {
+					allWarnings.push({
+						code: w.code,
+						message: w.message,
+						nodeName: w.nodeName,
+					});
+				}
 			}
 
 			// Log full workflow JSON
