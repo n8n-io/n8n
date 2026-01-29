@@ -934,10 +934,10 @@ describe('generate-types', () => {
 		it('should generate discriminated union types for Gmail node', () => {
 			const result = generateTypes.generateDiscriminatedUnion(mockGmailNode);
 
-			// Should contain individual config types
-			expect(result).toContain('GmailMessageSendConfig');
-			expect(result).toContain('GmailMessageGetConfig');
-			expect(result).toContain('GmailLabelCreateConfig');
+			// Should contain individual params types
+			expect(result).toContain('GmailMessageSendParams');
+			expect(result).toContain('GmailMessageGetParams');
+			expect(result).toContain('GmailLabelCreateParams');
 
 			// Should contain discriminator fields
 			expect(result).toContain("resource: 'message'");
@@ -951,10 +951,10 @@ describe('generate-types', () => {
 			const result = generateTypes.generateDiscriminatedUnion(mockHttpRequestNode);
 
 			// Should NOT have discriminated unions
-			expect(result).not.toContain('HttpRequestMessageSendConfig');
+			expect(result).not.toContain('HttpRequestMessageSendParams');
 
-			// Should have a single config interface (not Params)
-			expect(result).toContain('HttpRequestV42Config');
+			// Should have a single params interface
+			expect(result).toContain('HttpRequestV42Params');
 
 			// Should include authentication as a regular property (not split by it)
 			expect(result).toContain('authentication?:');
@@ -1009,8 +1009,8 @@ describe('generate-types', () => {
 
 			const result = generateTypes.generateDiscriminatedUnion(agentNode);
 
-			// Should have a single config interface (not split by promptType)
-			expect(result).toContain('LcAgentV31Config');
+			// Should have a single params interface (not split by promptType)
+			expect(result).toContain('LcAgentV31Params');
 
 			// Should include promptType as a regular property with union type
 			expect(result).toContain('promptType?:');
@@ -1455,7 +1455,7 @@ describe('generate-types', () => {
 			expect(result).not.toMatch(/^import type/m);
 
 			// Should have discriminated union types (with version suffix to avoid duplicates)
-			expect(result).toContain('GmailV21MessageSendConfig');
+			expect(result).toContain('GmailV21MessageSendParams');
 			expect(result).toContain('GmailV21Params');
 
 			// Should have credentials type
@@ -2623,8 +2623,8 @@ describe('generate-types', () => {
 				expect(content).not.toContain("from '../_shared'");
 				expect(content).not.toContain("from './_shared'");
 
-				// Should have config type with discriminators
-				expect(content).toContain('FreshserviceV1TicketGetConfig');
+				// Should have params type with discriminators
+				expect(content).toContain('FreshserviceV1TicketGetParams');
 				expect(content).toContain("resource: 'ticket'");
 				expect(content).toContain("operation: 'get'");
 
@@ -2653,8 +2653,8 @@ describe('generate-types', () => {
 				expect(content).not.toMatch(/^import type/m);
 				expect(content).not.toContain("from './_shared'");
 
-				// Should have config type
-				expect(content).toContain('CodeV2RunOnceForAllItemsConfig');
+				// Should have params type
+				expect(content).toContain('CodeV2RunOnceForAllItemsParams');
 				expect(content).toContain("mode: 'runOnceForAllItems'");
 
 				// Should have node type with inlined fields
@@ -3084,7 +3084,7 @@ describe('generate-types', () => {
 				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
 				expect(ticketGetContent).toContain("resource: 'ticket'");
 				expect(ticketGetContent).toContain("operation: 'get'");
-				expect(ticketGetContent).toContain('FreshserviceV1TicketGetConfig');
+				expect(ticketGetContent).toContain('FreshserviceV1TicketGetParams');
 				expect(ticketGetContent).toContain('FreshserviceV1TicketGetNode');
 			});
 
@@ -3105,7 +3105,7 @@ describe('generate-types', () => {
 				// Mode files should have correct content
 				const allItemsContent = plan.get('mode_run_once_for_all_items.ts');
 				expect(allItemsContent).toContain("mode: 'runOnceForAllItems'");
-				expect(allItemsContent).toContain('CodeV2RunOnceForAllItemsConfig');
+				expect(allItemsContent).toContain('CodeV2RunOnceForAllItemsParams');
 				expect(allItemsContent).toContain('CodeV2RunOnceForAllItemsNode');
 
 				// Should NOT have nested resource directories
