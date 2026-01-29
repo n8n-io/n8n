@@ -1272,17 +1272,17 @@ export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
 	const { check } = useEnvFeatureFlag();
 
-	const externalSecretProviderToOption = (provider: string, group?: 'global' | 'project') => {
+	const externalSecretProviderToOption = (provider: string, section?: 'global' | 'project') => {
 		const doc: DocMetadata = {
 			name: provider,
 			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
 			docURL: i18n.baseText('settings.externalSecrets.docs'),
 		};
-		if (group) {
+		if (section) {
 			// group will be undefined if project secret development feature flag is disabled
 			// TODO: make group param mandatory once feature flag is removed
-			doc.section = i18n.baseText(`codeNodeEditor.completer.$secrets.group.${group}`);
+			doc.section = section;
 		}
 
 		return createCompletionOption({
@@ -1304,7 +1304,20 @@ export const secretProvidersOptions = () => {
 	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
 		(provider) => externalSecretProviderToOption(provider, 'project'),
 	);
-	return globalSecretProviders.concat(projectSecretProviders);
+	const secretSections: Record<string, CompletionSection> = {
+		project: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.project'),
+			rank: 1,
+		},
+		global: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.global'),
+			rank: 2,
+		},
+	};
+	return applySections({
+		options: projectSecretProviders.concat(globalSecretProviders),
+		sections: secretSections,
+	});
 };
 
 /**
