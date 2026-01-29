@@ -9,6 +9,7 @@ const i18n = useI18n();
 
 const props = defineProps<{
 	providerTypes?: SecretProviderTypeResponse[];
+	canCreate?: boolean;
 }>();
 
 const providerTypes = toRef(props, 'providerTypes');
@@ -107,8 +108,8 @@ function onAddSecretsStore() {
 			>
 				{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
 			</N8nButton>
-			<N8nButton variant="solid" @click="onAddSecretsStore">
-				{{ i18n.baseText('settings.secretsProviderConnections.emptyState.buttonText') }}
+			<N8nButton v-if="canCreate" variant="solid" @click="onAddSecretsStore">
+				{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
 			</N8nButton>
 		</template>
 	</N8nActionBox>
