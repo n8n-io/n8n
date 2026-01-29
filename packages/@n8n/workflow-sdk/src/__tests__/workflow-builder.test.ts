@@ -1,6 +1,6 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
-import { languageModel, memory, tool } from '../subnode-builders';
+import { languageModel, memory, tool, outputParser } from '../subnode-builders';
 import type { NodeInstance, WorkflowJSON } from '../types/base';
 
 describe('Workflow Builder', () => {
@@ -1614,6 +1614,63 @@ describe('Workflow Builder', () => {
 				mode: 'list',
 				value: 'nested-value',
 			});
+		});
+	});
+
+	describe('addNodeWithSubnodes duplicate detection', () => {
+		it('should not create duplicate nodes when same instance appears in multiple chain targets', () => {
+			// Create AI agent with subnode named "Format Response"
+			const outputParserSubnode = outputParser({
+				type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				version: 1.3,
+				config: { name: 'Format Response', parameters: {} },
+			});
+
+			const aiAgent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 3.1,
+				config: {
+					name: 'AI Agent',
+					subnodes: { outputParser: outputParserSubnode },
+				},
+			});
+
+			// Create Set node with SAME name as outputParser
+			const setNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Format Response' },
+			});
+
+			const finalNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Send Request' },
+			});
+
+			// Build chain: trigger -> aiAgent -> setNode -> finalNode
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+
+			const wf = workflow('test', 'Test Workflow').add(
+				triggerNode.to(aiAgent.to(setNode.to(finalNode))),
+			);
+
+			const json = wf.toJSON();
+
+			// Count Set nodes - should be exactly 1 (renamed to "Format Response 1")
+			const setNodes = json.nodes.filter((n) => n.type === 'n8n-nodes-base.set');
+			expect(setNodes).toHaveLength(1);
+			expect(setNodes[0].name).toBe('Format Response 1');
+
+			// Verify no duplicates like "Format Response 2", "Format Response 3", etc.
+			const formatResponseNodes = json.nodes.filter(
+				(n) => n.name?.startsWith('Format Response') && n.type === 'n8n-nodes-base.set',
+			);
+			expect(formatResponseNodes).toHaveLength(1);
 		});
 	});
 });
