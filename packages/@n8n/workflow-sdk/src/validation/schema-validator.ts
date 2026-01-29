@@ -249,6 +249,51 @@ export function loadSchema(nodeType: string, version: number): SchemaOrFactory |
 }
 
 /**
+ * Extract discriminator information from union errors.
+ * Detects when all union variants fail on the same literal field (e.g., parameters.mode).
+ */
+function extractDiscriminatorInfo(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+): { discriminatorPath: string; expectedValues: unknown[]; receivedValue: unknown } | null {
+	// Common discriminator fields in n8n nodes
+	const discriminatorFields = ['mode', 'resource', 'operation'];
+
+	// Collect all invalid_literal issues from each union variant
+	const literalIssuesByPath = new Map<string, Array<{ expected: unknown; received: unknown }>>();
+
+	for (const unionError of unionErrors) {
+		for (const iss of unionError.issues) {
+			if (iss.code === 'invalid_literal') {
+				const issPath = iss.path.join('.');
+				const lastPart = iss.path[iss.path.length - 1];
+				// Only track known discriminator fields
+				if (typeof lastPart === 'string' && discriminatorFields.includes(lastPart)) {
+					if (!literalIssuesByPath.has(issPath)) {
+						literalIssuesByPath.set(issPath, []);
+					}
+					literalIssuesByPath.get(issPath)!.push({
+						expected: (iss as { expected?: unknown }).expected,
+						received: (iss as { received?: unknown }).received,
+					});
+				}
+			}
+		}
+	}
+
+	// Find a discriminator path where all union variants have a literal mismatch
+	for (const [discriminatorPath, issues] of literalIssuesByPath) {
+		if (issues.length === unionErrors.length) {
+			// All variants failed on this discriminator
+			const expectedValues = issues.map((i) => i.expected);
+			const receivedValue = issues[0].received; // All should have same received value
+			return { discriminatorPath, expectedValues, receivedValue };
+		}
+	}
+
+	return null;
+}
+
+/**
  * Format a single Zod issue into a clear, actionable error message
  */
 function formatZodIssue(issue: ZodIssue): string {
@@ -273,6 +318,17 @@ function formatZodIssue(issue: ZodIssue): string {
 				);
 				if (allMissing) {
 					return `Required field "${path}" is missing.`;
+				}
+
+				// Check for discriminator mismatch (all variants have invalid_literal on same path)
+				const discriminatorInfo = extractDiscriminatorInfo(issue.unionErrors);
+				if (discriminatorInfo) {
+					const { discriminatorPath, expectedValues, receivedValue } = discriminatorInfo;
+					const expectedStr = expectedValues.map((v) => `"${v}"`).join(', ');
+					if (receivedValue === undefined) {
+						return `Missing discriminator field "${discriminatorPath}". Expected one of: ${expectedStr}. Make sure "${discriminatorPath.split('.').pop()}" is inside "parameters".`;
+					}
+					return `Invalid discriminator "${discriminatorPath}": got "${receivedValue}", expected one of: ${expectedStr}.`;
 				}
 			}
 			return `Field "${path}" has invalid value. None of the expected types matched.`;

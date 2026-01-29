@@ -86,6 +86,39 @@ describe('schema-validator', () => {
 			expect(result.errors[0].path).toContain('keepOnlySet');
 		});
 
+		it('returns clear error when discriminator is missing from parameters', () => {
+			// Set v3 requires mode inside parameters (discriminated union)
+			// If mode is missing, error should clearly indicate the discriminator issue
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					// mode is missing! Should be 'manual' or 'raw'
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors.length).toBeGreaterThan(0);
+			// Error message should mention the discriminator and expected values
+			const errorMsg = result.errors[0].message;
+			expect(errorMsg).toMatch(/mode/i);
+			expect(errorMsg).toMatch(/(manual|raw)/i);
+		});
+
+		it('returns clear error when discriminator has wrong value', () => {
+			// Set v3 mode must be 'manual' or 'raw'
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					mode: 'invalid-mode',
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors.length).toBeGreaterThan(0);
+			// Error message should mention the wrong value and expected values
+			const errorMsg = result.errors[0].message;
+			expect(errorMsg).toMatch(/mode/i);
+			expect(errorMsg).toMatch(/invalid-mode/i);
+		});
+
 		it('validates AI node with valid subnode config', () => {
 			// The schema now models conditional visibility with displayOptions.
 			// For 'conversationalAgent' (default), only certain fields are visible.
