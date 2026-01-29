@@ -99,6 +99,10 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
 	idleTimeoutMs: number = 30_000;
 
+	/** Postgres statement timeout (ms). If a query takes longer than this time to complete, it is terminated. Set `0` to disable. */
+	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
+	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
+
 	@Nested
 	ssl: PostgresSSLConfig;
 }
