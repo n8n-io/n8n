@@ -288,6 +288,8 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
 		},
 		logging: {
 			level: 'info',

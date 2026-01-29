@@ -15,7 +15,8 @@ export class TaskRunnerSentry {
 	) {}
 
 	async initIfEnabled() {
-		const { dsn, n8nVersion, environment, deploymentName } = this.config;
+		const { dsn, n8nVersion, environment, deploymentName, profilesSampleRate, tracesSampleRate } =
+			this.config;
 
 		if (!dsn) return;
 
@@ -27,6 +28,8 @@ export class TaskRunnerSentry {
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
 			withEventLoopBlockDetection: false,
+			tracesSampleRate,
+			profilesSampleRate,
 		});
 	}
 
