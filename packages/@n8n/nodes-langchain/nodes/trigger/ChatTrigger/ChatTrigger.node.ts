@@ -255,6 +255,19 @@ export class ChatTrigger extends Node {
 			];
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_memory: {
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['hostedChat', 'webhook'],
+							'options.loadPreviousSession': ['memory'],
+						},
+					},
+				},
+			},
+		},
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
