@@ -2,9 +2,10 @@ import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT, getDebounceTime } from '@/app/constants';
 import type {
 	FocusedNode,
 	FocusedNodeState,
@@ -17,7 +18,12 @@ const MAX_UNCONFIRMED_DISPLAY = 50;
 
 export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const workflowsStore = useWorkflowsStore();
+	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
+
+	const isFeatureEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(FOCUSED_NODES_EXPERIMENT.name),
+	);
 
 	// State
 	const focusedNodesMap = ref<Record<string, FocusedNode>>({});
@@ -317,6 +323,10 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	 * about which nodes the user wants the AI to focus on.
 	 */
 	function buildContextPayload(): FocusedNodesContextPayload[] {
+		if (!isFeatureEnabled.value) {
+			return [];
+		}
+
 		const confirmedNodesList = confirmedNodes.value;
 		if (confirmedNodesList.length === 0) {
 			return [];
@@ -410,6 +420,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		focusedNodesMap,
 		canvasSelectedNodeIds,
 		// Computed
+		isFeatureEnabled,
 		confirmedNodes,
 		unconfirmedNodes,
 		allVisibleNodes,

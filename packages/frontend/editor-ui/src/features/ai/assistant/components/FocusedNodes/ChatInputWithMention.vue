@@ -40,6 +40,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const focusedNodesStore = useFocusedNodesStore();
+const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
 
 const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
 const textValue = ref(props.modelValue);
@@ -111,6 +112,9 @@ function handleRemove(nodeId: string) {
 }
 
 function onInput(event: Event) {
+	if (!isFeatureEnabled.value) {
+		return;
+	}
 	const inputEvent = event as InputEvent;
 	const target = event.target as HTMLTextAreaElement;
 	if (target) {
@@ -197,8 +201,8 @@ defineExpose({
 			@stop="onStop"
 			@upgrade-click="onUpgradeClick"
 		>
-			<!-- Confirmed chips - inline with text input -->
-			<template v-if="hasConfirmedNodes" #inline-chips>
+			<!-- Confirmed chips - inline with text input (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasConfirmedNodes" #inline-chips>
 				<!-- Single confirmed: show individual chip -->
 				<FocusedNodeChip
 					v-if="singleConfirmedNode"
@@ -218,8 +222,8 @@ defineExpose({
 				</span>
 			</template>
 
-			<!-- Mention button -->
-			<template #extra-actions>
+			<!-- Mention button (only when feature enabled) -->
+			<template v-if="isFeatureEnabled" #extra-actions>
 				<N8nIconButton
 					icon="at-sign"
 					type="tertiary"
@@ -230,8 +234,8 @@ defineExpose({
 				/>
 			</template>
 
-			<!-- Unconfirmed chips - in bottom actions row -->
-			<template v-if="hasUnconfirmedNodes" #bottom-actions-chips>
+			<!-- Unconfirmed chips - in bottom actions row (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #bottom-actions-chips>
 				<!-- Single unconfirmed: show individual chip -->
 				<FocusedNodeChip
 					v-if="singleUnconfirmedNode"
@@ -255,7 +259,7 @@ defineExpose({
 		</N8nPromptInput>
 
 		<NodeMentionDropdown
-			v-if="showDropdown"
+			v-if="isFeatureEnabled && showDropdown"
 			:nodes="filteredNodes"
 			:selected-node-ids="confirmedNodeIds"
 			:highlighted-index="highlightedIndex"

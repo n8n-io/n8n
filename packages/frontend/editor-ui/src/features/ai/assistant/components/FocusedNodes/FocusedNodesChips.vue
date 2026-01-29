@@ -12,6 +12,7 @@ const emit = defineEmits<{
 const focusedNodesStore = useFocusedNodesStore();
 const i18n = useI18n();
 
+const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
 const hasVisibleNodes = computed(() => focusedNodesStore.hasVisibleNodes);
 const shouldCollapse = computed(() => focusedNodesStore.shouldCollapseChips);
 const confirmedCount = computed(() => focusedNodesStore.confirmedNodes.length);
@@ -57,7 +58,7 @@ function handleRemoveAllConfirmed() {
 </script>
 
 <template>
-	<div v-if="hasVisibleNodes" :class="$style.container">
+	<div v-if="isFeatureEnabled && hasVisibleNodes" :class="$style.container">
 		<!-- Collapsed: total count chip (when >= 7 confirmed) -->
 		<template v-if="shouldCollapse">
 			<button type="button" :class="$style.countChip" @click="handleExpandClick">

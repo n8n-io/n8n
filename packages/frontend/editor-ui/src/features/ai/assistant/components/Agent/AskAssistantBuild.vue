@@ -65,6 +65,7 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
@@ -386,7 +387,9 @@ watch(currentRoute, () => {
 
 defineExpose({
 	focusInput: () => {
-		chatInputRef.value?.focusInput() ?? n8nChatRef.value?.focusInput();
+		suggestionsInputRef.value?.focusInput() ??
+			chatInputRef.value?.focusInput() ??
+			n8nChatRef.value?.focusInput();
 	},
 });
 </script>
@@ -434,6 +437,40 @@ defineExpose({
 				<N8nText :class="$style.topText"
 					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
 				</N8nText>
+			</template>
+			<template
+				#suggestions-input="{
+					modelValue,
+					onUpdateModelValue,
+					placeholder,
+					disabled: slotDisabled,
+					disabledTooltip: slotDisabledTooltip,
+					streaming: slotStreaming,
+					creditsQuota: slotCreditsQuota,
+					creditsRemaining: slotCreditsRemaining,
+					showAskOwnerTooltip: slotShowAskOwnerTooltip,
+					onSubmit,
+					onStop,
+					onUpgradeClick,
+					registerFocus,
+				}"
+			>
+				<ChatInputWithMention
+					ref="suggestionsInputRef"
+					:model-value="modelValue"
+					:placeholder="placeholder"
+					:disabled="slotDisabled"
+					:disabled-tooltip="slotDisabledTooltip"
+					:streaming="slotStreaming"
+					:credits-quota="slotCreditsQuota"
+					:credits-remaining="slotCreditsRemaining"
+					:show-ask-owner-tooltip="slotShowAskOwnerTooltip"
+					@update:model-value="onUpdateModelValue"
+					@submit="onSubmit"
+					@stop="onStop"
+					@upgrade-click="onUpgradeClick"
+					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
+				/>
 			</template>
 			<template #inputPlaceholder>
 				<ChatInputWithMention
