@@ -308,6 +308,19 @@ export interface SwitchNodeInstance extends NodeInstance<'n8n-nodes-base.switch'
 }
 
 /**
+ * Merge node instance with input targeting. Created by merge() factory.
+ *
+ * @example
+ * const mergeNode = merge({ version: 3.2, config: { name: 'Combine' } });
+ * branch1.to(mergeNode.input(0));  // Connect branch1 to input 0
+ * branch2.to(mergeNode.input(1));  // Connect branch2 to input 1
+ */
+export interface MergeNodeInstance extends NodeInstance<'n8n-nodes-base.merge', string, unknown> {
+	/** Connect to a specific merge input: branch.to(mergeNode.input(0)) */
+	input(index: number): InputTarget;
+}
+
+/**
  * A chain of connected nodes.
  * Created when you call .to() on a node.
  * Can be added to a workflow with .add().
@@ -520,6 +533,21 @@ export type PlaceholderFn = (hint: string) => string;
  */
 export type NewCredentialFn = (name: string) => CredentialReference;
 
+/**
+ * merge({ version, config? }) - Creates a merge node for combining multiple branches
+ *
+ * Use .input(n) to connect sources to specific input indices.
+ *
+ * @example
+ * const mergeNode = merge({
+ *   version: 3.2,
+ *   config: { name: 'Combine Results', parameters: { mode: 'combine' } }
+ * });
+ * branch1.to(mergeNode.input(0));  // Connect to input 0
+ * branch2.to(mergeNode.input(1));  // Connect to input 1
+ * mergeNode.to(downstream);        // Connect merge output to downstream
+ */
+export type MergeFn = (input: { version: number; config?: NodeConfig }) => MergeNodeInstance;
 
 /**
  * splitInBatches(config?) - Creates batch processing with loop
