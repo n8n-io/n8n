@@ -86,6 +86,8 @@ describe('DbConnectionOptions', () => {
 					schema: 'public',
 					poolSize: 2,
 					connectionTimeoutMs: 20000,
+					idleTimeoutMs: 30000,
+					statementTimeoutMs: 300000,
 					ssl: {
 						enabled: false,
 						ca: '',
@@ -93,7 +95,6 @@ describe('DbConnectionOptions', () => {
 						key: '',
 						rejectUnauthorized: true,
 					},
-					idleTimeoutMs: 30000,
 				};
 			});
 
@@ -115,6 +116,7 @@ describe('DbConnectionOptions', () => {
 					ssl: false,
 					extra: {
 						idleTimeoutMillis: 30000,
+						options: '-c statement_timeout=300000',
 					},
 				});
 			});

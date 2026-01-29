@@ -106,6 +106,8 @@ export class DbConnectionOptions {
 			};
 		}
 
+		const { statementTimeoutMs } = postgresConfig;
+
 		return {
 			type: 'postgres',
 			...this.getCommonOptions(),
@@ -117,6 +119,7 @@ export class DbConnectionOptions {
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
+				...(statementTimeoutMs > 0 && { options: `-c statement_timeout=${statementTimeoutMs}` }),
 			},
 		};
 	}
