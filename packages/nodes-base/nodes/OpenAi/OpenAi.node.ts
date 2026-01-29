@@ -21,6 +21,9 @@ export class OpenAi implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: ['n8n-nodes-langchain.lmChatOpenAi', 'n8n-nodes-langchain.agent'],
+		},
 		credentials: [
 			{
 				name: 'openAiApi',
