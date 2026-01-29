@@ -516,6 +516,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('input[type="text"]');
 	}
 
+	/**
+	 * Get the N8nInput container element for a parameter.
+	 * Use this for checking border styles since N8nInput has border on container, not input.
+	 */
+	getParameterInputContainer(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('input[type="text"]').locator('..');
+	}
+
 	getInlineExpressionEditorContent() {
 		return this.getInlineExpressionEditorInput().locator('.cm-content');
 	}
@@ -771,14 +779,20 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
