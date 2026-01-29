@@ -1556,7 +1556,7 @@ export type ResolveSchemaConfig = {
  *   - Returns optional schema if required=false
  *
  * When field is not visible (displayOptions don't match):
- *   - Returns z.unknown().optional() to accept any value without validation
+ *   - Returns z.undefined() to reject any non-undefined value
  */
 export function resolveSchema({
 	parameters,
@@ -1572,7 +1572,7 @@ export function resolveSchema({
 	if (isVisible) {
 		return required ? schema : schema.optional();
 	} else {
-		return z.unknown().optional();
+		return z.undefined();
 	}
 }
 `;

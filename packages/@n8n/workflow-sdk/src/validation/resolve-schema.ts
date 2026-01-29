@@ -48,6 +48,6 @@ export function resolveSchema({
 	if (isVisible) {
 		return required ? schema : schema.optional();
 	} else {
-		return z.unknown().optional();
+		return z.undefined();
 	}
 }

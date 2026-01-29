@@ -14,6 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseWorkflowCodeToBuilder } from '../src/parse-workflow-code';
+import { validateWorkflow } from '../src/validation/index';
 
 function main() {
 	const args = process.argv.slice(2);
@@ -54,11 +55,19 @@ function main() {
 
 	try {
 		const builder = parseWorkflowCodeToBuilder(code);
-		const result = builder.validate();
+		const builderResult = builder.validate();
 
-		if (result.errors.length > 0) {
+		// Also run schema validation on the JSON
+		const workflowJson = builder.toJSON();
+		const schemaResult = validateWorkflow(workflowJson);
+
+		// Merge results from both validations
+		const errors = [...builderResult.errors, ...schemaResult.errors];
+		const warnings = [...builderResult.warnings, ...schemaResult.warnings];
+
+		if (errors.length > 0) {
 			console.error('\n❌ Validation Errors:');
-			for (const error of result.errors) {
+			for (const error of errors) {
 				console.error(`  [${error.code}] ${error.message}`);
 				if (error.nodeName) {
 					console.error(`    Node: ${error.nodeName}`);
@@ -66,9 +75,9 @@ function main() {
 			}
 		}
 
-		if (result.warnings.length > 0) {
+		if (warnings.length > 0) {
 			console.warn('\n⚠️  Validation Warnings:');
-			for (const warning of result.warnings) {
+			for (const warning of warnings) {
 				console.warn(`  [${warning.code}] ${warning.message}`);
 				if (warning.nodeName) {
 					console.warn(`    Node: ${warning.nodeName}`);
@@ -76,20 +85,19 @@ function main() {
 			}
 		}
 
-		if (result.errors.length === 0 && result.warnings.length === 0) {
+		if (errors.length === 0 && warnings.length === 0) {
 			console.log('\n✅ Workflow is valid with no errors or warnings.');
 		}
 
 		// Output workflow JSON to file if requested
 		if (outputPath) {
-			const workflowJson = builder.toJSON();
 			const resolvedOutputPath = path.resolve(outputPath);
 			fs.writeFileSync(resolvedOutputPath, JSON.stringify(workflowJson, null, 2));
 			console.log(`\n📄 Workflow JSON written to: ${resolvedOutputPath}`);
 		}
 
 		// Exit with error code if there are errors
-		if (result.errors.length > 0) {
+		if (errors.length > 0) {
 			process.exit(1);
 		}
 	} catch (error) {

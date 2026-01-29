@@ -99,7 +99,7 @@ describe('resolveSchema', () => {
 		expect(result2.success).toBe(true);
 	});
 
-	it('returns z.unknown().optional() when conditions do not match', () => {
+	it('returns z.undefined() when conditions do not match', () => {
 		const schema = resolveSchema({
 			parameters: { authentication: 'none' },
 			schema: stringSchema,
@@ -111,9 +111,12 @@ describe('resolveSchema', () => {
 		const result = schema.safeParse(undefined);
 		expect(result.success).toBe(true);
 
-		// Should pass with any value (not validated)
+		// Should fail with any non-undefined value when field is not visible
 		const result2 = schema.safeParse(12345);
-		expect(result2.success).toBe(true);
+		expect(result2.success).toBe(false);
+
+		const result3 = schema.safeParse('some-string');
+		expect(result3.success).toBe(false);
 	});
 });
 
