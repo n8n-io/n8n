@@ -110,7 +110,7 @@ export class GmailTrigger implements INodeType {
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint:
-					'Set to False to return the full body of the email. Full output looks like this {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to: { value: [{ address, name }], html, text }, from: { value: [{ address, name }], html, text }, messageId, replyTo: { value: [{ address, name }], html, text } }',
+					'Set to false when the email body is needed for AI analysis, summarization, or content processing. When true, only returns snippet (preview text). When false, returns full email with {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to, from, messageId, replyTo}.',
 			},
 			{
 				displayName: 'Filters',
