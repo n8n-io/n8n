@@ -1,18 +1,20 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { SecretsProviderConnectionRepository } from '@n8n/db';
+import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsModule } from '@/modules/external-secrets.ee/external-secrets.module';
-import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service.ee';
-import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
 import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 
-import { DummyProvider, MockProviders } from '../../shared/external-secrets/utils';
+import {
+	AnotherDummyProvider,
+	DummyProvider,
+	MockProviders,
+} from '../../shared/external-secrets/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
@@ -20,30 +22,52 @@ mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 describe('ExternalSecretsModule', () => {
 	jest.useFakeTimers();
 
-	let module: ExternalSecretsModule;
-	let secretsCacheRefresh: SecretsCacheRefresh;
-	let providerRegistry: ExternalSecretsProviderRegistry;
-	let secretsCache: ExternalSecretsSecretsCache;
 	let config: ExternalSecretsConfig;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['external-secrets']);
 		await testDb.init();
+
+		Container.set(Logger, mockLogger());
+	});
+
+	afterEach(async () => {
+		// Cleanup will be handled per-test as needed
+		jest.clearAllTimers();
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 	});
 
+	describe('decorator verification', () => {
+		it('should have shutdown method decorated with @OnShutdown', () => {
+			const shutdownMetadata = Container.get(ShutdownMetadata);
+			const handlers = shutdownMetadata.getHandlersByPriority().flat();
+
+			const hasShutdownHandler = handlers.some(
+				(handler) =>
+					handler.serviceClass.name === 'ExternalSecretsModule' &&
+					handler.methodName === 'shutdown',
+			);
+
+			expect(hasShutdownHandler).toBe(true);
+		});
+	});
+
 	describe('using settings store', () => {
 		let settingsStore: ExternalSecretsSettingsStore;
+		let module: ExternalSecretsModule;
 
 		beforeAll(async () => {
-			Container.set(Logger, mockLogger());
-			mockProvidersInstance.setProviders({ dummy: DummyProvider });
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+				another_dummy: AnotherDummyProvider,
+			});
 
 			settingsStore = Container.get(ExternalSecretsSettingsStore);
 			config = Container.get(ExternalSecretsConfig);
+			module = Container.get(ExternalSecretsModule);
 
 			(config as any).externalSecretsForProjects = false;
 
@@ -53,73 +77,82 @@ describe('ExternalSecretsModule', () => {
 					connectedAt: new Date(),
 					settings: {},
 				},
+				another_dummy: {
+					connected: false,
+					connectedAt: new Date(),
+					settings: {},
+				},
 			});
-		});
-
-		beforeEach(() => {
-			module = Container.get(ExternalSecretsModule);
-			secretsCacheRefresh = Container.get(SecretsCacheRefresh);
-			providerRegistry = Container.get(ExternalSecretsProviderRegistry);
-			secretsCache = Container.get(ExternalSecretsSecretsCache);
-
-			for (const name of providerRegistry.getNames()) {
-				providerRegistry.remove(name);
-			}
-		});
-
-		afterEach(async () => {
-			await module.shutdown();
-			jest.clearAllTimers();
 		});
 
 		describe('init', () => {
-			it('should initialize and register providers', async () => {
-				await module.init();
-
-				expect(secretsCacheRefresh.initialized).toBe(true);
-				expect(providerRegistry.has('dummy')).toBe(true);
-				expect(providerRegistry.get('dummy')?.state).toBe('connected');
+			afterEach(async () => {
+				await module.shutdown();
 			});
 
-			it('should refresh secrets on init', async () => {
+			it('should load enabled providers', async () => {
+				const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
+				const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+
+				const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
+				const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
+				const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+
 				await module.init();
 
-				expect(secretsCache.getSecretNames('dummy')).toEqual(['test1', 'test2']);
+				expect(initSpy).toHaveBeenCalled();
+				expect(connectSpy).toHaveBeenCalled();
+				expect(updateSpy).toHaveBeenCalled();
+
+				expect(initDisabledSpy).toHaveBeenCalled();
+				expect(connectDisabledSpy).not.toHaveBeenCalled();
+				expect(updateDisabledSpy).not.toHaveBeenCalled();
+
+				initSpy.mockRestore();
+				connectSpy.mockRestore();
+				updateSpy.mockRestore();
+
+				initDisabledSpy.mockRestore();
+				connectDisabledSpy.mockRestore();
+				updateDisabledSpy.mockRestore();
 			});
 
 			it('should start secrets refresh interval', async () => {
 				await module.init();
 
-				const provider = providerRegistry.get('dummy') as DummyProvider;
-				const updateSpy = jest.spyOn(provider, 'update');
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				jest.advanceTimersByTime(config.updateInterval * 1000);
 
 				expect(updateSpy).toHaveBeenCalled();
+				updateSpy.mockRestore();
 			});
 		});
 
 		describe('shutdown', () => {
-			it('should reset state', async () => {
+			beforeEach(async () => {
 				await module.init();
-				expect(secretsCacheRefresh.initialized).toBe(true);
+			});
+
+			it('should disconnect providers after shutdown', async () => {
+				const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
 
 				await module.shutdown();
 
-				expect(secretsCacheRefresh.initialized).toBe(false);
+				expect(disconnectSpy).toHaveBeenCalled();
+				disconnectSpy.mockRestore();
 			});
 
-			it('should stop refresh interval', async () => {
-				await module.init();
-
-				const provider = providerRegistry.get('dummy') as DummyProvider;
-				const updateSpy = jest.spyOn(provider, 'update');
+			it('should stop refresh after shutdown', async () => {
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				await module.shutdown();
 
 				jest.advanceTimersByTime(config.updateInterval * 1000 * 2);
-
 				expect(updateSpy).not.toHaveBeenCalled();
+
+				updateSpy.mockRestore();
 			});
 		});
 	});
@@ -127,14 +160,18 @@ describe('ExternalSecretsModule', () => {
 	describe('using provider connections entities', () => {
 		let connectionRepository: SecretsProviderConnectionRepository;
 		let cipher: Cipher;
+		let module: ExternalSecretsModule;
 
 		beforeAll(async () => {
-			Container.set(Logger, mockLogger());
-			mockProvidersInstance.setProviders({ dummy: DummyProvider });
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+				another_dummy: AnotherDummyProvider,
+			});
 
 			connectionRepository = Container.get(SecretsProviderConnectionRepository);
 			cipher = Container.get(Cipher);
 			config = Container.get(ExternalSecretsConfig);
+			module = Container.get(ExternalSecretsModule);
 
 			(config as any).externalSecretsForProjects = true;
 
@@ -145,72 +182,83 @@ describe('ExternalSecretsModule', () => {
 				encryptedSettings,
 				isEnabled: true,
 			});
-		});
 
-		beforeEach(() => {
-			module = Container.get(ExternalSecretsModule);
-			secretsCacheRefresh = Container.get(SecretsCacheRefresh);
-			providerRegistry = Container.get(ExternalSecretsProviderRegistry);
-			secretsCache = Container.get(ExternalSecretsSecretsCache);
-
-			for (const name of providerRegistry.getNames()) {
-				providerRegistry.remove(name);
-			}
-		});
-
-		afterEach(async () => {
-			await module.shutdown();
-			jest.clearAllTimers();
+			await connectionRepository.save({
+				providerKey: 'another-vault',
+				type: 'another_dummy',
+				encryptedSettings,
+				isEnabled: false,
+			});
 		});
 
 		describe('init', () => {
-			it('should initialize and register providers from database', async () => {
-				await module.init();
-
-				expect(secretsCacheRefresh.initialized).toBe(true);
-				expect(providerRegistry.has('my-vault')).toBe(true);
-				expect(providerRegistry.get('my-vault')?.state).toBe('connected');
+			afterEach(async () => {
+				await module.shutdown();
 			});
 
-			it('should refresh secrets on init', async () => {
+			it('should load enabled providers', async () => {
+				const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
+				const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+
+				const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
+				const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
+				const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+
 				await module.init();
 
-				expect(secretsCache.getSecretNames('my-vault')).toEqual(['test1', 'test2']);
+				expect(initSpy).toHaveBeenCalled();
+				expect(connectSpy).toHaveBeenCalled();
+				expect(updateSpy).toHaveBeenCalled();
+
+				expect(initDisabledSpy).toHaveBeenCalled();
+				expect(connectDisabledSpy).not.toHaveBeenCalled();
+				expect(updateDisabledSpy).not.toHaveBeenCalled();
+
+				initSpy.mockRestore();
+				connectSpy.mockRestore();
+				updateSpy.mockRestore();
+
+				initDisabledSpy.mockRestore();
+				connectDisabledSpy.mockRestore();
+				updateDisabledSpy.mockRestore();
 			});
 
 			it('should start secrets refresh interval', async () => {
 				await module.init();
 
-				const provider = providerRegistry.get('my-vault') as DummyProvider;
-				const updateSpy = jest.spyOn(provider, 'update');
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				jest.advanceTimersByTime(config.updateInterval * 1000);
 
 				expect(updateSpy).toHaveBeenCalled();
+				updateSpy.mockRestore();
 			});
 		});
 
 		describe('shutdown', () => {
-			it('should reset state', async () => {
+			beforeEach(async () => {
 				await module.init();
-				expect(secretsCacheRefresh.initialized).toBe(true);
+			});
+
+			it('should disconnect providers after shutdown', async () => {
+				const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
 
 				await module.shutdown();
 
-				expect(secretsCacheRefresh.initialized).toBe(false);
+				expect(disconnectSpy).toHaveBeenCalled();
+				disconnectSpy.mockRestore();
 			});
 
-			it('should stop refresh interval', async () => {
-				await module.init();
-
-				const provider = providerRegistry.get('my-vault') as DummyProvider;
-				const updateSpy = jest.spyOn(provider, 'update');
+			it('should stop refresh after shutdown', async () => {
+				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				await module.shutdown();
 
 				jest.advanceTimersByTime(config.updateInterval * 1000 * 2);
-
 				expect(updateSpy).not.toHaveBeenCalled();
+
+				updateSpy.mockRestore();
 			});
 		});
 	});
