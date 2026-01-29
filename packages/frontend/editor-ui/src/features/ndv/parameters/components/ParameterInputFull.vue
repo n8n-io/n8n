@@ -130,6 +130,10 @@ const useInlineSwitchLayout = computed(
 		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
 );
 
+const parameterTooltipText = computed(() =>
+	i18n.nodeText(activeNode.value?.type).inputLabelDescription(props.parameter, props.path),
+);
+
 const showExpressionSelector = computed(() => {
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
@@ -347,6 +351,7 @@ function removeOverride(clearField = false) {
 			:disabled="isDropDisabled"
 			sticky
 			:sticky-offset="[3, 3]"
+			:class="$style.inlineSwitchToggle"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
@@ -372,13 +377,18 @@ function removeOverride(clearField = false) {
 				/>
 			</template>
 		</DraggableTarget>
-		<div :class="$style.inlineSwitchRight">
-			<div
-				:class="{
-					[$style.inlineSwitchOptions]: true,
-					[$style.visible]: menuExpanded || focused || wrapperHovered,
-				}"
-			>
+		<N8nInputLabel
+			:class="$style.inlineSwitchLabel"
+			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+			:tooltip-text="parameterTooltipText"
+			:show-tooltip="focused"
+			:show-options="menuExpanded || focused || wrapperHovered"
+			:bold="false"
+			:size="label.size"
+			:input-name="parameter.name"
+			color="text-dark"
+		>
+			<template #options>
 				<ParameterOptions
 					v-if="displayOptions"
 					:parameter="parameter"
@@ -392,9 +402,13 @@ function removeOverride(clearField = false) {
 					@update:model-value="optionSelected"
 					@menu-expanded="onMenuExpanded"
 				/>
-			</div>
-			<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
-		</div>
+			</template>
+		</N8nInputLabel>
+		<FromAiOverrideButton
+			v-if="showOverrideButton"
+			:class="$style.inlineAiButton"
+			@click="applyOverride"
+		/>
 	</div>
 	<N8nInputLabel
 		v-else
@@ -554,34 +568,41 @@ function removeOverride(clearField = false) {
 .inlineSwitchWrapper {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	position: relative;
 	min-height: 30px;
+	gap: 0;
 	line-height: 0;
-
-	&:hover {
-		.inlineSwitchOptions {
-			opacity: 1;
-		}
-	}
 }
 
-.inlineSwitchRight {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-}
-
-.inlineSwitchOptions {
-	display: flex;
-	align-items: center;
+.inlineSwitchToggle {
 	flex-shrink: 0;
-	opacity: 0;
-	transition: opacity 100ms ease-in;
+}
 
-	&.visible {
-		opacity: 1;
+/* When droppable, hide the external label and AI button */
+.inlineSwitchWrapper:has(:global(.switch-droppable-input)) {
+	.inlineSwitchLabel,
+	.inlineAiButton {
+		display: none;
 	}
+
+	.inlineSwitchToggle {
+		flex: 1;
+		width: 100%;
+	}
+}
+
+.inlineSwitchLabel {
+	flex: 1;
+	min-width: 0;
+	padding-left: var(--spacing--2xs);
+
+	:global(label.n8n-input-label) {
+		padding-bottom: 0;
+	}
+}
+
+.inlineAiButton {
+	flex-shrink: 0;
 }
 
 .overrideButtonInOptions {

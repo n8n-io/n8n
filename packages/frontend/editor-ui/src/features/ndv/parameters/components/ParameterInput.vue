@@ -594,6 +594,9 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
+		if (isCollectionOverhaulEnabled.value) {
+			classes['inline-switch-mode'] = true;
+		}
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -1896,7 +1899,6 @@ onUpdated(async () => {
 				ref="inputField"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:model-value="Boolean(displayValue)"
-				:label="switchLabel"
 				:disabled="isReadOnly"
 				size="small"
 				@update:model-value="valueChanged"
@@ -1955,6 +1957,11 @@ onUpdated(async () => {
 	align-self: flex-start;
 	justify-items: center;
 	gap: var(--spacing--xs);
+
+	&.inline-switch-mode {
+		width: 100%;
+		gap: 0;
+	}
 }
 
 .parameter-input {
@@ -2013,8 +2020,10 @@ onUpdated(async () => {
 	--input--border-color: var(--color--danger);
 }
 
-.switch-droppable-input .el-input__prefix {
-	left: 8px;
+.switch-droppable-input {
+	.el-input__prefix {
+		left: var(--spacing--2xs);
+	}
 }
 
 .el-dropdown {
