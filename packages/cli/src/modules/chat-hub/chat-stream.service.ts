@@ -55,7 +55,7 @@ export class ChatStreamService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly sessionStore: ChatStreamStateService,
+		private readonly streamStore: ChatStreamStateService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -64,8 +64,7 @@ export class ChatStreamService {
 	 * Start a chat execution (can contain multiple messages, e.g., with tool calls)
 	 */
 	async startExecution(userId: string, sessionId: ChatSessionId): Promise<void> {
-		// Register the execution in the session store
-		await this.sessionStore.startExecution({
+		await this.streamStore.startExecution({
 			sessionId,
 			userId,
 		});
@@ -129,7 +128,7 @@ export class ChatStreamService {
 		}
 
 		// Clean up the session state
-		await this.sessionStore.endExecution(sessionId);
+		await this.streamStore.endExecution(sessionId);
 	}
 
 	/**
@@ -139,14 +138,14 @@ export class ChatStreamService {
 		const { sessionId, messageId, previousMessageId, retryOfMessageId, executionId } = params;
 
 		// Update the current message ID in the session store
-		await this.sessionStore.setCurrentMessage(sessionId, messageId);
+		await this.streamStore.setCurrentMessage(sessionId, messageId);
 
 		const message: ChatHubStreamBegin = {
 			type: 'chatHubStreamBegin',
 			data: {
 				sessionId,
 				messageId,
-				sequenceNumber: await this.sessionStore.incrementSequence(sessionId),
+				sequenceNumber: await this.streamStore.incrementSequence(sessionId),
 				timestamp: Date.now(),
 				previousMessageId,
 				retryOfMessageId,
@@ -165,17 +164,16 @@ export class ChatStreamService {
 		messageId: ChatMessageId,
 		content: string,
 	): Promise<void> {
-		const streamState = await this.sessionStore.getStreamState(sessionId);
+		const streamState = await this.streamStore.getStreamState(sessionId);
 		if (!streamState) {
 			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
-		const sequenceNumber = await this.sessionStore.incrementSequence(sessionId);
+		const sequenceNumber = await this.streamStore.incrementSequence(sessionId);
 
 		// Buffer the chunk for reconnection replay
-		await this.sessionStore.bufferChunk(sessionId, { sequenceNumber, content });
-
+		await this.streamStore.bufferChunk(sessionId, { sequenceNumber, content });
 		const message: ChatHubStreamChunk = {
 			type: 'chatHubStreamChunk',
 			data: {
@@ -202,13 +200,13 @@ export class ChatStreamService {
 		messageId: ChatMessageId,
 		status: ChatHubMessageStatus,
 	): Promise<void> {
-		const streamState = await this.sessionStore.getStreamState(sessionId);
+		const streamState = await this.streamStore.getStreamState(sessionId);
 		if (!streamState) {
 			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
-		const sequenceNumber = await this.sessionStore.incrementSequence(sessionId);
+		const sequenceNumber = await this.streamStore.incrementSequence(sessionId);
 
 		const message: ChatHubStreamEnd = {
 			type: 'chatHubStreamEnd',
@@ -239,13 +237,13 @@ export class ChatStreamService {
 		messageId: ChatMessageId,
 		error: string,
 	): Promise<void> {
-		const streamState = await this.sessionStore.getStreamState(sessionId);
+		const streamState = await this.streamStore.getStreamState(sessionId);
 		if (!streamState) {
 			this.logger.debug(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
-		const sequenceNumber = await this.sessionStore.incrementSequence(sessionId);
+		const sequenceNumber = await this.streamStore.incrementSequence(sessionId);
 
 		const message: ChatHubStreamError = {
 			type: 'chatHubStreamError',
@@ -311,14 +309,14 @@ export class ChatStreamService {
 		sessionId: ChatSessionId,
 		lastReceivedSequence: number,
 	): Promise<Array<{ sequenceNumber: number; content: string }>> {
-		return await this.sessionStore.getChunksAfter(sessionId, lastReceivedSequence);
+		return await this.streamStore.getChunksAfter(sessionId, lastReceivedSequence);
 	}
 
 	/**
 	 * Check if there is an active stream for a session
 	 */
 	async hasActiveStream(sessionId: ChatSessionId): Promise<boolean> {
-		const streamState = await this.sessionStore.getStreamState(sessionId);
+		const streamState = await this.streamStore.getStreamState(sessionId);
 		return streamState !== null;
 	}
 
@@ -326,7 +324,7 @@ export class ChatStreamService {
 	 * Get the current message ID being streamed for a session
 	 */
 	async getCurrentMessageId(sessionId: ChatSessionId): Promise<ChatMessageId | null> {
-		const streamState = await this.sessionStore.getStreamState(sessionId);
+		const streamState = await this.streamStore.getStreamState(sessionId);
 		return streamState?.messageId ?? null;
 	}
 
