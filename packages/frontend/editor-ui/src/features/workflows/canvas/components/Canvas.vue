@@ -411,7 +411,7 @@ watch(selectedNodes, (nodes) => {
 
 // Sync canvas selection with focused nodes (unconfirmed badges) when chat panel is open
 watch(selectedNodeIds, (newIds) => {
-	if (chatPanelStore.isOpen) {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
@@ -419,7 +419,7 @@ watch(selectedNodeIds, (newIds) => {
 watch(
 	() => chatPanelStore.isOpen,
 	(isOpen) => {
-		if (isOpen && selectedNodeIds.value.length > 0) {
+		if (isOpen && selectedNodeIds.value.length > 0 && focusedNodesStore.isFeatureEnabled) {
 			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
 		}
 	},
@@ -542,6 +542,10 @@ function onAddToAi(id: string) {
 }
 
 function onAddSelectedNodesToAi(nodeIds: string[]) {
+	// Gate behind feature flag
+	if (!focusedNodesStore.isFeatureEnabled) {
+		return;
+	}
 	focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
 	void chatPanelStore.open({ mode: 'builder' });
 }

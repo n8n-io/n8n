@@ -26,7 +26,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
-	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	const overrides: Ref<Record<string, string | boolean>> = ref({
+		'064_focused_nodes': true,
+	});
 
 	const reset = () => {
 		window.posthog?.reset?.();
