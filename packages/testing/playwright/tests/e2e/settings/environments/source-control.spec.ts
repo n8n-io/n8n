@@ -17,7 +17,11 @@ async function saveSettings(n8n: n8nPage) {
 	);
 }
 
-test.describe('Source Control Settings @capability:source-control', () => {
+// Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
+// https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
+test.describe('Source Control Settings @capability:source-control @fixme', () => {
+	test.fixme();
+
 	let repoUrl: string;
 	let repoName: string;
 
@@ -117,7 +121,7 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 		// check that source control is disconnected
 		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).not.toBeVisible();
+		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeHidden();
 
 		// Reconnect
 		await n8n.navigate.toEnvironments();

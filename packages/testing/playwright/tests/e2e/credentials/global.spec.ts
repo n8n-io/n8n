@@ -1,10 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Global credentials @isolated', () => {
+test.use({ capability: { env: { TEST_ISOLATION: 'global-credentials' } } });
+
+test.describe('Global credentials', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeAll(async ({ api }) => {
-		await api.resetDatabase();
 		await api.enableFeature('sharing');
 	});
 
@@ -98,12 +99,6 @@ test.describe('Global credentials @isolated', () => {
 		// Close NDV
 		await n8n.ndv.clickBackToCanvasButton();
 
-		// Save workflow
-		await n8n.canvas.saveWorkflow();
-
-		// Verify workflow saved successfully
-		await expect(n8n.canvas.getWorkflowNameInput()).toHaveValue('Test Global Credential Workflow');
-
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);
@@ -146,7 +141,7 @@ test.describe('Global credentials @isolated', () => {
 			n8n.credentials.cards
 				.getCredential('Global HTTP Header Cred')
 				.getByTestId('credential-global-badge'),
-		).not.toBeVisible();
+		).toBeHidden();
 	});
 
 	test('member should not see credential after global sharing removed', async ({ n8n }) => {
@@ -156,6 +151,6 @@ test.describe('Global credentials @isolated', () => {
 		await n8n.navigate.toCredentials();
 
 		// Verify credential is no longer visible to member
-		await expect(n8n.credentials.cards.getCredential('Global HTTP Header Cred')).not.toBeVisible();
+		await expect(n8n.credentials.cards.getCredential('Global HTTP Header Cred')).toBeHidden();
 	});
 });

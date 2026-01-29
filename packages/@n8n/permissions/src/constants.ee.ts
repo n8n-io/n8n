@@ -19,7 +19,13 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
-	user: ['resetPassword', 'changeRole', 'enforceMfa', ...DEFAULT_OPERATIONS] as const,
+	user: [
+		'resetPassword',
+		'changeRole',
+		'enforceMfa',
+		'generateInviteLink',
+		...DEFAULT_OPERATIONS,
+	] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
 	projectVariable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
@@ -61,6 +67,8 @@ export const API_KEY_RESOURCES = {
 	credential: ['create', 'update', 'move', 'delete'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
+	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
+	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';

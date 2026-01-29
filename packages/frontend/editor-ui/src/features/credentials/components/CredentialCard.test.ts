@@ -7,6 +7,8 @@ import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import type { FrontendSettings } from '@n8n/api-types';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -24,11 +26,18 @@ const createCredential = (overrides = {}): CredentialsResource =>
 
 describe('CredentialCard', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		projectsStore = useProjectsStore();
+		settingsStore = useSettingsStore();
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+		} as unknown as FrontendSettings;
 	});
 
 	it('should render name and home project name', () => {
@@ -155,6 +164,46 @@ describe('CredentialCard', () => {
 			const globalBadge = getByTestId('credential-global-badge');
 			expect(globalBadge).toBeInTheDocument();
 			expect(globalBadge).toHaveTextContent('Global');
+		});
+	});
+
+	describe('resolvable credentials', () => {
+		it('should display dynamic icon when credential has isResolvable true', () => {
+			const data = createCredential({
+				isResolvable: true,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			expect(getByTestId('credential-card-dynamic')).toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when credential has isResolvable false', () => {
+			const data = createCredential({
+				isResolvable: false,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when isResolvable is undefined', () => {
+			const data = createCredential({
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
 		});
 	});
 });

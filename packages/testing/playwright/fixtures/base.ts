@@ -68,11 +68,22 @@ export const test = base.extend<
 			const config: N8NConfig = {
 				...base,
 				...override,
+				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
 				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
 			};
 
 			const container = await createN8NStack(config);
 			await use(container);
+
+			if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
+				console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+				console.log(`    URL: ${container.baseUrl}`);
+				console.log(`    Project: ${container.projectName}`);
+				console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+				console.log('=========================================================\n');
+				return;
+			}
+
 			await container.stop();
 		},
 		{ scope: 'worker', box: true },
@@ -124,6 +135,12 @@ export const test = base.extend<
 	n8n: async ({ context, backendUrl, frontendUrl }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
+
+		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
+		// Can be lowered (e.g. 0.5) to speed up tests, but avoid 0 as it causes race conditions
+		await page.addInitScript(() => {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
+		});
 
 		const useSeparateApiContext = backendUrl !== frontendUrl;
 

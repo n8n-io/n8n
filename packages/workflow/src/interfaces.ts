@@ -12,7 +12,14 @@ import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
+import type {
+	CODE_EXECUTION_MODES,
+	CODE_LANGUAGES,
+	LOG_LEVELS,
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+} from './constants';
+
 import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
@@ -61,7 +68,8 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	fileSize?: string; // TODO: change this to number and store the actual value
+	fileSize?: string;
+	bytes?: number;
 	id?: string;
 }
 
@@ -96,6 +104,8 @@ export type ExecutionError =
 	| ExecutionCancelledError
 	| NodeOperationError
 	| NodeApiError;
+
+export type ExecutionStorageLocation = 'db' | 'fs';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -486,6 +496,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -533,6 +548,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -927,6 +948,7 @@ export interface FunctionsBase {
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
+	getWorkflowSettings(): IWorkflowSettings;
 	getWorkflowStaticData(type: string): IDataObject;
 	getTimezone(): string;
 	getRestApiUrl(): string;
@@ -1310,6 +1332,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
+
+export type ChatNodeMessageWithButtons = {
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
+	text: string;
+	blockUserInput: boolean;
+	buttons: Array<{
+		text: string;
+		link: string;
+		type: ChatNodeMessageButtonType;
+	}>;
+};
+
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1338,7 +1379,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1446,18 +1487,12 @@ export interface CalloutActionBase {
 	icon?: string;
 }
 
-export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
-	type: 'openPreBuiltAgentsCollection';
-}
-
 export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
 	type: 'openSampleWorkflowTemplate';
 	templateId: string;
 }
 
-export type CalloutAction =
-	| CalloutActionOpenPreBuiltAgentsCollection
-	| CalloutActionOpenSampleWorkflowTemplate;
+export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1481,6 +1516,9 @@ export interface INodePropertyTypeOptions {
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
 	numberPrecision?: number; // Supported by: number
+	fixedCollection?: {
+		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1931,7 +1969,7 @@ export type ExecuteNodeResult<T = unknown> = {
  *
  * @template T - The type of metadata associated with this result
  */
-type EngineResult<T> = ExecuteNodeResult<T>;
+export type EngineResult<T> = ExecuteNodeResult<T>;
 
 /**
  * Response structure returned from the workflow engine after execution.
@@ -2199,7 +2237,7 @@ export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnec
 
 export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
-export interface INodeInputFilter {
+export interface INodeFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
@@ -2207,12 +2245,17 @@ export interface INodeInputFilter {
 	excludedNodes?: string[];
 }
 
+/**
+ * @deprecated Use INodeFilter instead
+ */
+export type INodeInputFilter = INodeFilter;
+
 export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: NodeConnectionType;
-	filter?: INodeInputFilter;
+	filter?: INodeFilter;
 	maxConnections?: number;
 }
 
@@ -2222,6 +2265,7 @@ export interface INodeOutputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	type: NodeConnectionType;
+	filter?: INodeFilter;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -2265,6 +2309,11 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	/**
+	 * When true, skip generating a name from resource/operation (e.g., "SendAndWait message in Slack")
+	 * and just use defaults.name. Useful for tool nodes that should keep a simple name like "Slack".
+	 */
+	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
 }
 
@@ -2374,7 +2423,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
-
+	$tool?: { name: string; parameters: string };
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */
@@ -2465,6 +2514,7 @@ export interface IRun {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
+	storedAt: ExecutionStorageLocation;
 	status: ExecutionStatus;
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
@@ -2530,6 +2580,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
@@ -2730,9 +2781,10 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
-	query: string | INodeParameters;
+	query: AgentRequestQuery;
 	tool: {
 		name: string;
 	};
@@ -2800,9 +2852,11 @@ export namespace WorkflowSettings {
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
 }
 
+export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
@@ -2811,6 +2865,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
@@ -2974,6 +3029,7 @@ export interface INodeGraphItem {
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
+	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 }
 
 export interface INodeNameIndex {
@@ -3123,6 +3179,7 @@ export type FieldTypeMap = {
 	url: string;
 	jwt: string;
 	'form-fields': FormFieldsParameter;
+	binary: string;
 };
 
 export type FieldType = keyof FieldTypeMap;

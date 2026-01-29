@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import router from '@/app/router';
+import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -147,5 +147,17 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {
+		const settingsRoute = routes.find((route) => route.path === '/settings');
+		const projectRolesRoute = settingsRoute?.children?.find(
+			(child) => child.path === 'project-roles',
+		);
+		const editRoleRoute = projectRolesRoute?.children?.find(
+			(child) => child.name === VIEWS.PROJECT_ROLE_SETTINGS,
+		);
+		expect(editRoleRoute?.props).toBe(true);
+		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
 	});
 });

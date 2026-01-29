@@ -32,7 +32,7 @@ const collaboratorsSorted = computed(() => {
 const currentUserEmail = computed(() => usersStore.currentUser?.email);
 
 onMounted(() => {
-	collaborationStore.initialize();
+	void collaborationStore.initialize();
 });
 
 onBeforeUnmount(() => {

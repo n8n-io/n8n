@@ -135,7 +135,6 @@ describe('useNodeCommands', () => {
 				activeNodeId: ref(null),
 			});
 
-			console.log('commands', commands.value);
 			const addCommand = commands.value.find((cmd) => cmd.id === 'add-node');
 			expect(addCommand).toBeDefined();
 		});

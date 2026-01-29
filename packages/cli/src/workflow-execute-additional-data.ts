@@ -37,7 +37,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
@@ -224,6 +224,14 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	Container.get(EventService).emit('workflow-executed', {
+		user: additionalData.userId ? { id: additionalData.userId } : undefined,
+		workflowId: workflowData.id,
+		workflowName: workflowData.name,
+		executionId,
+		source: 'integrated',
+	});
+
 	const executionPromise = startExecution(
 		additionalData,
 		options,
@@ -334,7 +342,7 @@ async function startExecution(
 		data = await execution;
 	} catch (error) {
 		const executionError = error as ExecutionError;
-		const fullRunData = Container.get(ExecutionDataService).generateFailedExecutionFromError(
+		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(
 			runData.executionMode,
 			executionError,
 			'node' in executionError ? executionError.node : undefined,

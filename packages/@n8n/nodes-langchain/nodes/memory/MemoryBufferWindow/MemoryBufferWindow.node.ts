@@ -106,6 +106,13 @@ export class MemoryBufferWindow implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
+				displayName:
+					'This node stores memory locally in the n8n instance. It is not compatible with Queue Mode or Multi-Main setups, as memory will not be shared across workers. For production use with scaling, consider using an external memory store such as Redis, Postgres, or another persistent memory node.',
+				name: 'scalingNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Session Key',
 				name: 'sessionKey',
 				type: 'string',

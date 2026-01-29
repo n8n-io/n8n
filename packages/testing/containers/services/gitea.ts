@@ -219,6 +219,28 @@ export class GiteaHelper {
 			`{"title":"${keyTitle}","key":"${publicKey}","read_only":false}`,
 		]);
 	}
+
+	async commitExists(
+		repoName: string,
+		commitHash: string,
+		username?: string,
+		password?: string,
+	): Promise<boolean> {
+		const result = await this.container.exec([
+			'curl',
+			'-s',
+			'-o',
+			'/dev/null',
+			'-w',
+			'%{http_code}',
+			`http://localhost:${HTTP_PORT}/api/v1/repos/${username ?? this.meta.adminUsername}/${repoName}/git/commits/${commitHash}`,
+			'-u',
+			`${username ?? this.meta.adminUsername}:${password ?? this.meta.adminPassword}`,
+		]);
+		// curl writes HTTP status code to stdout, 200 means commit exists
+		const statusCode = result.output.trim();
+		return statusCode === '200';
+	}
 }
 
 export function createGiteaHelper(ctx: HelperContext): GiteaHelper {

@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import {
 	VIEWS,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
@@ -21,7 +20,7 @@ import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -33,18 +32,11 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
-
-const enum WorkflowHistoryVersionRestoreModalActions {
-	restore = 'restore',
-	deactivateAndRestore = 'deactivateAndRestore',
-	cancel = 'cancel',
-}
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
@@ -66,7 +58,7 @@ const toast = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowActivate = useWorkflowActivate();
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -85,14 +77,13 @@ const editorRoute = computed(() => ({
 	},
 }));
 const workflowPermissions = computed(
-	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+	() =>
+		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 
 const workflowActiveVersionId = computed(() => {
-	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
+	return workflowsListStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
-
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes
@@ -108,7 +99,6 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
-const evaluatedPruneDays = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
@@ -127,7 +117,7 @@ onBeforeMount(async () => {
 	sendTelemetry('User opened workflow history');
 	try {
 		const [workflow] = await Promise.all([
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadMore({ take: requestNumberOfItems.value }),
 		]);
 		activeWorkflow.value = workflow;
@@ -165,57 +155,6 @@ const openInNewTab = (id: WorkflowVersionId) => {
 	window.open(href, '_blank');
 };
 
-const openRestorationModal = async (
-	isWorkflowActivated: boolean,
-	formattedCreatedAt: string,
-): Promise<WorkflowHistoryVersionRestoreModalActions> => {
-	return await new Promise((resolve, reject) => {
-		const buttons = [
-			{
-				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
-				},
-			},
-		];
-
-		if (isWorkflowActivated && !isDraftPublishEnabled) {
-			buttons.push({
-				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore);
-				},
-			});
-		}
-
-		buttons.push({
-			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
-			type: 'primary',
-			action: () => {
-				resolve(WorkflowHistoryVersionRestoreModalActions.restore);
-			},
-		});
-
-		try {
-			uiStore.openModalWithData({
-				name: WORKFLOW_HISTORY_VERSION_RESTORE,
-				data: {
-					beforeClose: () => {
-						resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
-					},
-					isWorkflowActivated,
-					formattedCreatedAt,
-					buttons,
-				},
-			});
-		} catch (error) {
-			reject(error);
-		}
-	});
-};
-
 const cloneWorkflowVersion = async (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string },
@@ -244,28 +183,11 @@ const cloneWorkflowVersion = async (
 	});
 };
 
-const restoreWorkflowVersion = async (
-	id: WorkflowVersionId,
-	data: { formattedCreatedAt: string },
-) => {
-	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
-	let deactivateAndRestore = false;
-
-	if (!isDraftPublishEnabled) {
-		const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
-		if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
-			return;
-		}
-		deactivateAndRestore =
-			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
-	}
+const restoreWorkflowVersion = async (id: WorkflowVersionId) => {
+	const workflow = await workflowsListStore.fetchWorkflow(workflowId.value);
 
 	const versionIdBeforeRestore = workflow.versionId;
-	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
-		workflowId.value,
-		id,
-		deactivateAndRestore,
-	);
+	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
 
 	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
 		toast.showMessage({
@@ -290,7 +212,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 
 	publishEventBus.once('publish', (publishData) => {
 		// Refresh the active workflow to get the updated activeVersion with workflowPublishHistory
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 		// Update the history list with the new name, description, and workflowPublishHistory
 		const historyItem = workflowHistory.value.find(
@@ -349,7 +271,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
@@ -384,7 +306,7 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User cloned version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await restoreWorkflowVersion(id, data);
+				await restoreWorkflowVersion(id);
 				sendTelemetry('User restored version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
@@ -434,7 +356,7 @@ watchEffect(async () => {
 		// Fetch both in parallel and update atomically to prevent double-render flicker
 		const [workflowVersion, workflow] = await Promise.all([
 			workflowHistoryStore.getWorkflowVersion(workflowId.value, versionId.value),
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 		]);
 
 		// Single atomic update - prevents double render of workflow preview
@@ -486,7 +408,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
-				:evaluated-prune-days="evaluatedPruneDays"
+				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
 				:active-version-id="workflowActiveVersionId"
 				@action="onAction"

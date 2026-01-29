@@ -207,7 +207,7 @@ const fileMessageProperties: INodeProperties[] = [
 
 export const messageOptions: INodePropertyCollection[] = [
 	{
-		displayName: 'Values',
+		displayName: 'Message',
 		name: 'values',
 		values: [
 			{

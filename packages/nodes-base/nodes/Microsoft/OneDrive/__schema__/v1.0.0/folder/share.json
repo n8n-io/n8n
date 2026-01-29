@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "hasPassword": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "link": {
+            "type": "object",
+            "properties": {
+                "preventsDownload": {
+                    "type": "boolean"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "webUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "shareId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

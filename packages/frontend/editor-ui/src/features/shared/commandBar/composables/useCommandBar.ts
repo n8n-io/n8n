@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
@@ -16,7 +16,6 @@ import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import type { CommandGroup } from '../types';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -34,15 +33,10 @@ export function useCommandBar() {
 	const workflowStore = useWorkflowsStore();
 	const router = useRouter();
 	const route = useRoute();
-	const postHog = usePostHog();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
 	const placeholder = i18n.baseText('commandBar.placeholder');
-
-	const isEnabled = computed(() =>
-		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
-	);
 
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
@@ -313,7 +307,6 @@ export function useCommandBar() {
 	}
 
 	return {
-		isEnabled,
 		items,
 		initialize,
 		onCommandBarChange,

@@ -3,7 +3,9 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
 	registerModuleModals,
@@ -163,9 +165,7 @@ export async function initializeAuthenticatedFeatures(
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
-							bannersStore.pushBannerToStack('TRIAL');
-						}
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
@@ -211,6 +211,13 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+
+	// Initialize run data worker and load node types
+	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+		const coordinator = await import('@/app/workers');
+		await coordinator.initialize({ version: settingsStore.settings.versionCli });
+		await coordinator.loadNodeTypes(rootStore.baseUrl);
+	}
 
 	authenticatedFeaturesInitialized = true;
 }

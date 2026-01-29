@@ -1,12 +1,29 @@
+import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import { expect } from '@playwright/test';
 import type { GiteaHelper } from 'n8n-containers';
 
 import type { n8nPage } from '../pages/n8nPage';
 
-/**
- * Wait for source control to be fully disconnected.
- * Polls the preferences endpoint until connected is false.
- */
+async function waitForCommitOnGitea(
+	gitea: GiteaHelper,
+	repoName: string,
+	commitHash: string,
+	timeout = 10000,
+	pollInterval = 500,
+): Promise<void> {
+	const startTime = Date.now();
+
+	while (Date.now() - startTime < timeout) {
+		const exists = await gitea.commitExists(repoName, commitHash);
+		if (exists) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, pollInterval));
+	}
+
+	throw new Error(`Commit ${commitHash} not found on Gitea repo ${repoName} after ${timeout}ms`);
+}
+
 const waitForDisconnected = async (n8n: n8nPage, timeout = 30000) => {
 	await expect(async () => {
 		const response = await n8n.page.request.get('/rest/source-control/preferences');
@@ -38,10 +55,6 @@ const initSourceControlSSHKey = async ({ n8n, gitea }: { n8n: n8nPage; gitea: Gi
 	}
 };
 
-/**
- * initialize source control preferences and SSH key
- * Will disconnect first if already connected to ensure clean state
- */
 export const initSourceControl = async ({ n8n, gitea }: { n8n: n8nPage; gitea: GiteaHelper }) => {
 	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
 	const preferences = await preferencesResponse.json();
@@ -64,10 +77,19 @@ export function buildRepoUrl(repoName: string): string {
 	return `ssh://git@gitea/giteaadmin/${repoName}.git`;
 }
 
-/**
- * Create unique repo in gitea with branches and connect via API
- */
-export async function setupGitRepo(n8n: n8nPage, gitea: GiteaHelper): Promise<string> {
+export interface GitRepoHelper {
+	repoName: string;
+	repoUrl: string;
+	pushAndWait(
+		n8n: n8nPage,
+		commitMessage: string,
+	): Promise<{
+		files: SourceControlledFile[];
+		commit: GitCommitInfo | null;
+	}>;
+}
+
+export async function setupGitRepo(n8n: n8nPage, gitea: GiteaHelper): Promise<GitRepoHelper> {
 	await initSourceControl({ n8n, gitea });
 	const repoName = generateUniqueRepoName();
 
@@ -76,5 +98,17 @@ export async function setupGitRepo(n8n: n8nPage, gitea: GiteaHelper): Promise<st
 	const repoUrl = buildRepoUrl(repoName);
 	await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
 
-	return repoUrl;
+	return {
+		repoName,
+		repoUrl,
+		async pushAndWait(n8nPage: n8nPage, commitMessage: string) {
+			const result = await n8nPage.sourceControlPushModal.push(commitMessage);
+
+			if (result.commit?.hash) {
+				await waitForCommitOnGitea(gitea, repoName, result.commit.hash);
+			}
+
+			return result;
+		},
+	};
 }
