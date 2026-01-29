@@ -848,7 +848,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					warnings.push(
 						new ValidationWarning(
 							'DISCONNECTED_NODE',
-							`Node ${this.formatNodeRef(displayName, origForWarning)} is not connected to any input. It will not receive data.`,
+							`${this.formatNodeRef(displayName, origForWarning, graphNode.instance.type)} is not connected to any input. It will not receive data.`,
 							displayName,
 							origForWarning,
 						),
@@ -923,13 +923,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Format a node reference for warning messages, including original name if renamed
+	 * Format a node reference for warning messages, including node type and original name if renamed
 	 */
-	private formatNodeRef(displayName: string, originalName?: string): string {
+	private formatNodeRef(displayName: string, originalName?: string, nodeType?: string): string {
+		const typeSuffix = nodeType ? ` [${nodeType}]` : '';
 		if (originalName && originalName !== displayName) {
-			return `'${displayName}' (originally '${originalName}')`;
+			return `'${displayName}' (originally '${originalName}')${typeSuffix}`;
 		}
-		return `'${displayName}'`;
+		return `'${displayName}'${typeSuffix}`;
 	}
 
 	/**
@@ -948,6 +949,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		const promptType = params.promptType as string | undefined;
 
@@ -967,7 +969,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					` Is input data required for Agent node ${this.formatNodeRef(displayName, origForWarning)}? If so, add an expression to the prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } to add dynamic data like input data.`,
+					` Is input data required for ${nodeRef}? If so, add an expression to the prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } to add dynamic data like input data.`,
 					displayName,
 					origForWarning,
 				),
@@ -984,7 +986,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_NO_SYSTEM_MESSAGE',
-					`Agent node ${this.formatNodeRef(displayName, origForWarning)} has no system message. System-level instructions should be in the system message field.`,
+					`${nodeRef} has no system message. System-level instructions should be in the system message field.`,
 					displayName,
 					origForWarning,
 				),
@@ -1008,6 +1010,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		const promptType = params.promptType as string | undefined;
 
@@ -1027,7 +1030,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`ChainLlm node ${this.formatNodeRef(displayName, origForWarning)} has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
+					`${nodeRef} has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
 					displayName,
 					origForWarning,
 				),
@@ -1071,6 +1074,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		// Check header parameters for sensitive headers
 		const headerParams = params.headerParameters as
@@ -1087,7 +1091,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					warnings.push(
 						new ValidationWarning(
 							'HARDCODED_CREDENTIALS',
-							`HTTP Request node ${this.formatNodeRef(displayName, origForWarning)} has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead.`,
+							`${nodeRef} has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead.`,
 							displayName,
 							origForWarning,
 						),
@@ -1111,7 +1115,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					warnings.push(
 						new ValidationWarning(
 							'HARDCODED_CREDENTIALS',
-							`HTTP Request node ${this.formatNodeRef(displayName, origForWarning)} has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead.`,
+							`${nodeRef} has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead.`,
 							displayName,
 							origForWarning,
 						),
@@ -1173,6 +1177,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		const assignments = params.assignments as
 			| { assignments?: Array<{ name?: string; value?: unknown; type?: string }> }
@@ -1184,7 +1189,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				warnings.push(
 					new ValidationWarning(
 						'SET_CREDENTIAL_FIELD',
-						`Set node ${this.formatNodeRef(displayName, origForWarning)} has a field named "${assignment.name}" which appears to be storing credentials. Use n8n's credential system instead.`,
+						`${nodeRef} has a field named "${assignment.name}" which appears to be storing credentials. Use n8n's credential system instead.`,
 						displayName,
 						origForWarning,
 					),
@@ -1207,6 +1212,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		// Track which distinct input indices have connections
 		const connectedInputIndices = new Set<number>();
@@ -1250,7 +1256,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'MERGE_SINGLE_INPUT',
-					`Merge node ${this.formatNodeRef(displayName, origForWarning)} has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
+					`${nodeRef} has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
 					displayName,
 					origForWarning,
 				),
@@ -1296,13 +1302,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		const params = instance.config?.parameters;
 		if (!params || Object.keys(params).length === 0) {
 			warnings.push(
 				new ValidationWarning(
 					'TOOL_NO_PARAMETERS',
-					`Tool node ${this.formatNodeRef(displayName, origForWarning)} has no parameters set.`,
+					`${nodeRef} has no parameters set.`,
 					displayName,
 					origForWarning,
 				),
@@ -1326,13 +1333,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		// Recursively search for $fromAI in all parameter values
 		if (this.containsFromAI(params)) {
 			warnings.push(
 				new ValidationWarning(
 					'FROM_AI_IN_NON_TOOL',
-					`Node ${this.formatNodeRef(displayName, origForWarning)} uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
+					`${nodeRef} uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
 					displayName,
 					origForWarning,
 				),
@@ -1385,6 +1393,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const isRenamed = this.isAutoRenamed(mapKey, originalName);
 		const displayName = isRenamed ? mapKey : originalName;
 		const origForWarning = isRenamed ? originalName : undefined;
+		const nodeRef = this.formatNodeRef(displayName, origForWarning, instance.type);
 
 		const issues = this.findMissingExpressionPrefixes(params);
 
@@ -1392,7 +1401,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'MISSING_EXPRESSION_PREFIX',
-					`Node ${this.formatNodeRef(displayName, origForWarning)} has parameter "${path}" containing {{ $... }} without '=' prefix. ` +
+					`${nodeRef} has parameter "${path}" containing {{ $... }} without '=' prefix. ` +
 						`n8n expressions must start with '=' like '={{ $json.field }}'.`,
 					displayName,
 					origForWarning,
