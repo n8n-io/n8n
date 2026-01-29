@@ -282,8 +282,72 @@ export interface JsonSchema {
 const schemaCache = new Map<string, OutputSchema[]>();
 
 /**
+ * Recursively search for a __schema__ directory matching one of the target names
+ *
+ * @param dir Directory to search in
+ * @param targetNames List of possible folder names to match (e.g., ['Gmail', 'gmail', 'GMAIL'])
+ * @returns Path to the __schema__ directory, or undefined if not found
+ */
+function findNestedSchemaDir(dir: string, targetNames: string[]): string | undefined {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return undefined;
+	}
+
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue;
+
+		const entryPath = path.join(dir, entry.name);
+
+		// Check if this directory matches our target and has __schema__
+		if (targetNames.includes(entry.name)) {
+			const schemaPath = path.join(entryPath, '__schema__');
+			if (fs.existsSync(schemaPath)) {
+				return schemaPath;
+			}
+		}
+
+		// Recurse into subdirectories (but skip __schema__ dirs and node_modules)
+		if (entry.name !== '__schema__' && entry.name !== 'node_modules') {
+			const found = findNestedSchemaDir(entryPath, targetNames);
+			if (found) return found;
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Find the schema directory for a node, searching both flat and nested paths
+ *
+ * @param baseName The base node name (e.g., 'gmail')
+ * @returns Path to the __schema__ directory, or undefined if not found
+ */
+function findSchemaDirectory(baseName: string): string | undefined {
+	const possibleNames = [
+		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Gmail
+		baseName, // gmail
+		baseName.toUpperCase(), // GMAIL
+	];
+
+	// Try flat paths first (most common case)
+	for (const folderName of possibleNames) {
+		const flatPath = path.join(NODES_BASE_DIST, folderName, '__schema__');
+		if (fs.existsSync(flatPath)) {
+			return flatPath;
+		}
+	}
+
+	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
+	return findNestedSchemaDir(NODES_BASE_DIST, possibleNames);
+}
+
+/**
  * Discover output schemas for a node from the __schema__ directory
  * Schema path pattern: dist/nodes/{NodeFolder}/__schema__/v{version}.0.0/{resource}/{operation}.json
+ * Also supports nested paths like: dist/nodes/{Parent}/{NodeFolder}/__schema__/...
  *
  * @param nodeName Full node name (e.g., 'n8n-nodes-base.freshservice')
  * @param version The node version number
@@ -298,63 +362,53 @@ export function discoverSchemasForNode(nodeName: string, version: number): Outpu
 	const schemas: OutputSchema[] = [];
 
 	// Extract node folder name from the node name
-	// n8n-nodes-base.freshservice -> Freshservice (capitalized)
+	// n8n-nodes-base.freshservice -> freshservice
 	const baseName = nodeName.split('.').pop() ?? '';
-	// Try various capitalizations since folder names vary
-	const possibleFolderNames = [
-		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Freshservice
-		baseName, // freshservice
-		baseName.toUpperCase(), // FRESHSERVICE
-	];
 
-	for (const folderName of possibleFolderNames) {
-		const schemaDir = path.join(NODES_BASE_DIST, folderName, '__schema__');
-		if (!fs.existsSync(schemaDir)) {
-			continue;
-		}
+	// Find schema directory (handles both flat and nested paths)
+	const schemaDir = findSchemaDirectory(baseName);
+	if (!schemaDir) {
+		schemaCache.set(cacheKey, schemas);
+		return schemas;
+	}
 
-		// Try to find version directory - try exact match first, then closest lower version
-		const versionDir = findVersionDirectory(schemaDir, version);
-		if (!versionDir) {
-			continue;
-		}
+	// Try to find version directory - try exact match first, then closest lower version
+	const versionDir = findVersionDirectory(schemaDir, version);
+	if (!versionDir) {
+		schemaCache.set(cacheKey, schemas);
+		return schemas;
+	}
 
-		// Scan resource directories
-		try {
-			const resources = fs.readdirSync(versionDir, { withFileTypes: true });
-			for (const resourceEntry of resources) {
-				if (!resourceEntry.isDirectory()) continue;
+	// Scan resource directories
+	try {
+		const resources = fs.readdirSync(versionDir, { withFileTypes: true });
+		for (const resourceEntry of resources) {
+			if (!resourceEntry.isDirectory()) continue;
 
-				const resourceDir = path.join(versionDir, resourceEntry.name);
-				const operations = fs.readdirSync(resourceDir, { withFileTypes: true });
+			const resourceDir = path.join(versionDir, resourceEntry.name);
+			const operations = fs.readdirSync(resourceDir, { withFileTypes: true });
 
-				for (const opEntry of operations) {
-					if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
+			for (const opEntry of operations) {
+				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
-					const operationName = opEntry.name.replace('.json', '');
-					const schemaPath = path.join(resourceDir, opEntry.name);
+				const operationName = opEntry.name.replace('.json', '');
+				const schemaPath = path.join(resourceDir, opEntry.name);
 
-					try {
-						const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
-						const schema = JSON.parse(schemaContent) as JsonSchema;
-						schemas.push({
-							resource: resourceEntry.name,
-							operation: operationName,
-							schema,
-						});
-					} catch {
-						// Skip invalid JSON files
-					}
+				try {
+					const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+					const schema = JSON.parse(schemaContent) as JsonSchema;
+					schemas.push({
+						resource: resourceEntry.name,
+						operation: operationName,
+						schema,
+					});
+				} catch {
+					// Skip invalid JSON files
 				}
 			}
-		} catch {
-			// Skip if directory can't be read
 		}
-
-		// Found schemas, no need to try other folder names
-		if (schemas.length > 0) {
-			break;
-		}
+	} catch {
+		// Skip if directory can't be read
 	}
 
 	schemaCache.set(cacheKey, schemas);
