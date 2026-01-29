@@ -20,6 +20,7 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -157,9 +158,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools = [createNodeSearchTool(config.parsedNodeTypes)];
 
-		// Conditionally add workflow examples tool if feature flag is enabled
+		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples
-			? [...baseTools, createGetWorkflowExamplesTool(config.logger)]
+			? [...baseTools, createGetDocumentationTool(), createGetWorkflowExamplesTool(config.logger)]
 			: baseTools;
 
 		this.toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));

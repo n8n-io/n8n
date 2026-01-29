@@ -57,7 +57,78 @@ Connection patterns:
 - Document Loader → Vector Store [ai_document]
 - Text Splitter → Document Loader [ai_textSplitter]
 
-Every AI Agent requires a Chat Model connection to function—include both nodes together when creating AI workflows.`;
+Every AI Agent requires a Chat Model connection to function—include both nodes together when creating AI workflows.
+
+## Connection Patterns
+
+**Pattern 1: Simple AI Agent**
+What: Basic conversational AI that responds to user input using only its language model capabilities.
+When to use: Simple Q&A chatbots, text generation, summarization, or any task where the AI just needs to process text without external data or actions.
+Example prompts: "Create a chatbot", "Summarize incoming emails", "Generate product descriptions"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[OpenAI Chat Model] -.ai_languageModel.-> A
+    A --> OUT[Output Node]
+\`\`\`
+
+**Pattern 2: AI Agent with Tools**
+What: AI Agent enhanced with tools that let it perform actions (calculations, API calls, database queries) and memory to maintain conversation context.
+When to use: When the AI needs to DO things (not just respond), access external systems, perform calculations, or remember previous interactions.
+Example prompts: "Create an assistant that can search the web and do math", "Build a bot that can create calendar events", "Assistant that remembers conversation history"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[Chat Model] -.ai_languageModel.-> A
+    TOOL1[Calculator Tool] -.ai_tool.-> A
+    TOOL2[HTTP Request Tool] -.ai_tool.-> A
+    MEM[Window Buffer Memory] -.ai_memory.-> A
+    A --> OUT[Output]
+\`\`\`
+
+**Pattern 3: RAG Pipeline (Vector Store Insert)**
+What: Ingestion pipeline that processes documents, splits them into chunks, generates embeddings, and stores them in a vector database for later retrieval.
+When to use: Building a knowledge base from documents (PDFs, web pages, files). This is the "indexing" or "loading" phase of RAG - run this BEFORE querying.
+Example prompts: "Index my company documents", "Load PDFs into a knowledge base", "Store website content for later search"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> VS[Vector Store<br/>mode: insert]
+    EMB[OpenAI Embeddings] -.ai_embedding.-> VS
+    DL[Default Data Loader] -.ai_document.-> VS
+    TS[Token Text Splitter] -.ai_textSplitter.-> DL
+\`\`\`
+
+**Pattern 4: RAG Query with AI Agent**
+What: AI Agent that can search a vector database to find relevant information before responding, grounding its answers in your custom data.
+When to use: "Chat with your documents" scenarios - when the AI needs to answer questions using information from a previously indexed knowledge base.
+Example prompts: "Answer questions about my documentation", "Chat with uploaded PDFs", "Search knowledge base and respond"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[Chat Model] -.ai_languageModel.-> A
+    VS[Vector Store<br/>mode: retrieve-as-tool] -.ai_tool.-> A
+    EMB[Embeddings] -.ai_embedding.-> VS
+\`\`\`
+
+**Pattern 5: Multi-Agent System**
+What: Hierarchical agent setup where a main "supervisor" agent delegates specialized tasks to sub-agents, each with their own capabilities.
+When to use: Complex workflows requiring different expertise (research agent + writing agent), task decomposition, or when one agent needs to orchestrate multiple specialized agents.
+Example prompts: "Create a team of agents", "Supervisor that delegates to specialists", "Research agent that calls a coding agent"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> MAIN[Main AI Agent]
+    CM1[Chat Model 1] -.ai_languageModel.-> MAIN
+    SUB[AI Agent Tool] -.ai_tool.-> MAIN
+    CM2[Chat Model 2] -.ai_languageModel.-> SUB
+\`\`\`
+
+## Validation Checklist
+1. Every AI Agent has a Chat Model connected via ai_languageModel
+2. Every Vector Store has Embeddings connected via ai_embedding
+3. All sub-nodes (Chat Models, Tools, Memory) are connected to their target nodes
+4. Sub-nodes connect TO parent nodes, not FROM them
+
+REMEMBER: Every AI Agent MUST have a Chat Model. Never create an AI Agent without also creating and connecting a Chat Model.`;
 
 const CONNECTION_TYPES = `Connection types:
 - main: Regular data flow (Trigger → Process → Output)
@@ -103,9 +174,42 @@ When configuring these nodes:
 3. If node has fallback/default option, it adds one extra output at the end
 
 BRANCH CONVERGENCE:
-- Merge: Use when ALL branches execute together (e.g., parallel API calls). Merge waits for all inputs.
-  For 3+ inputs: set mode="append" + numberInputs=N, OR mode="combine" + combineBy="combineByPosition" + numberInputs=N
-- Set: Use after IF/Switch where only ONE branch executes. Using Merge here would wait forever.
+
+**MERGE node** - When ALL branches execute (Merge WAITS for all inputs):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> A[API 1]
+    T --> B[API 2]
+    T --> C[API 3]
+    A --> M[Merge<br/>numberInputs: 3]
+    B --> M
+    C --> M
+    M --> Next[Next Step]
+\`\`\`
+Use cases: 3 Slack channels, 3 RSS feeds, multiple API calls that all need to complete.
+For 3+ inputs: set mode="append" + numberInputs=N, OR mode="combine" + combineBy="combineByPosition" + numberInputs=N
+
+**AGGREGATE node** - When combining items from a SINGLE branch:
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> G[Gmail<br/>returns 10 emails]
+    G --> A[Aggregate<br/>10 items → 1]
+    A --> Next[Next Step]
+\`\`\`
+Use cases: Gmail returning multiple emails, loop producing items to collect.
+
+**SET node** - When only ONE branch executes (conditional):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> IFNode{{IF}}
+    IFNode -->|true| A[Action A]
+    IFNode -->|false| B[Action B]
+    A --> S[Set]
+    B --> S
+    S --> Next[Next Step]
+\`\`\`
+Use cases: IF node with true/false paths converging. Merge would wait forever for the branch that didn't execute.
+
 - Multiple error branches: When error outputs from DIFFERENT nodes go to the same destination, connect them directly (no Merge). Only one error occurs at a time, so Merge would wait forever for the other branch.
 
 SHARED DESTINATION PATTERN:
@@ -176,19 +280,20 @@ const EXPRESSION_SYNTAX = `n8n field values have two modes:
    Example: "Hello World" → outputs literal "Hello World"
 
 2. EXPRESSION (= prefix): Evaluated JavaScript expression
-   Example: ={{ $json.name }} → outputs the value of the name field
-   Example: ={{ $json.count > 10 ? 'many' : 'few' }} → conditional logic
+   Example: ={{{{ $json.name }}}} → outputs the value of the name field
+   Example: ={{{{ $json.count > 10 ? 'many' : 'few' }}}} → conditional logic
+	 Example: =Hello my name is {{{{ $json.name }}}} → valid partial expression
 
 Rules:
 - Text fields with dynamic content MUST start with =
 - The = tells n8n to evaluate what follows as an expression
-- Without =, {{ $json.field }} is literal text, not a data reference
+- Without =, {{{{ $json.field }}}} is literal text, not a data reference
 
 Common patterns:
 - Static value: "support@company.com"
-- Dynamic value: ={{ $json.email }}
-- String concatenation: ={{ 'Hello ' + $json.name }}
-- Conditional: ={{ $json.status === 'active' ? 'Yes' : 'No' }}`;
+- Dynamic value: ={{{{ $json.email }}}}
+- String concatenation: =Hello {{{{ $json.name }}}}
+- Conditional: ={{{{ $json.status === 'active' ? 'Yes' : 'No' }}}}`;
 
 const TOOL_NODES = `Tool nodes (types ending in "Tool") use $fromAI for dynamic values that the AI Agent determines at runtime:
 - $fromAI('key', 'description', 'type', defaultValue)
@@ -212,15 +317,12 @@ const COMMON_SETTINGS = `Important node settings:
 - ResourceLocator fields: Use mode = "list" for dropdowns, "id" for direct input
 - Text Classifier: Set "When No Clear Match" = "Output on Extra, Other Branch"
 - AI classification nodes: Use low temperature (0-0.2) for consistent results
-- Switch: Always configure Default output for unmatched items
 
 Binary data expressions:
-- From previous node: {{{{ $binary.property_name }}}}
-- From specific node: {{{{ $('NodeName').item.binary.attachment_0 }}}}
+- From previous node: ={{{{ $binary.property_name }}}}
+- From specific node: ={{{{ $('NodeName').item.binary.attachment_0 }}}}
 
 Code node return format: Must return array with json property - return items; or return [{{{{ json: {{...}} }}}}]`;
-
-const WEBHOOK_CONFIGURATION = webhook.configuration;
 
 const CREDENTIAL_SECURITY =
 	'Leave credential fields (apiKey, token, password, secret) empty for users to configure in the n8n frontend. This ensures secure credential storage and allows users to manage their own API keys.';
@@ -296,7 +398,7 @@ Error output data structure: When a node errors with continueErrorOutput, the er
 - $json.error.name - Error type name (e.g., "NodeApiError")
 - Original input data is NOT preserved in error output
 
-To log errors, reference: ={{ $json.error.message }}
+To log errors, reference: ={{{{ $json.error.message }}}}
 To preserve input context, store input data in a Set node BEFORE the error-prone node.`;
 
 // === SHARED SECTIONS ===
@@ -353,7 +455,7 @@ export function buildBuilderPrompt(): string {
 			.section('tool_nodes', TOOL_NODES)
 			.section('critical_parameters', CRITICAL_PARAMETERS)
 			.section('common_settings', COMMON_SETTINGS)
-			.section('webhook_configuration', WEBHOOK_CONFIGURATION)
+			.section('webhook_configuration', webhook.configuration)
 			.section('credential_security', CREDENTIAL_SECURITY)
 			.section('placeholder_usage', PLACEHOLDER_USAGE)
 			.section('resource_locator_defaults', RESOURCE_LOCATOR_DEFAULTS)

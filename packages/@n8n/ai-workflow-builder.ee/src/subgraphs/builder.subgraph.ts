@@ -339,10 +339,14 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Discovery context (what nodes to use) - best practices now embedded in prompts
+		// 2. Discovery context (what nodes to use)
+		// Include best practices only when template examples feature flag is enabled
 		if (parentState.discoveryContext) {
+			const includeBestPractices = this.config?.featureFlags?.templateExamples === true;
 			contextParts.push('=== DISCOVERY CONTEXT ===');
-			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, false));
+			contextParts.push(
+				buildDiscoveryContextBlock(parentState.discoveryContext, includeBestPractices),
+			);
 		}
 
 		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
