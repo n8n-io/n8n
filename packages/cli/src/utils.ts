@@ -122,3 +122,19 @@ export const getAllKeyPaths = (
 	}
 	return paths;
 };
+
+/**
+ * Sets Microsoft 365 observability environment variables to their default values if not already set.
+ * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
+ */
+export function setMicrosoftObservabilityDefaults(): void {
+	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
+		process.env.ENABLE_OBSERVABILITY = 'true';
+	}
+	if (
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
+	) {
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+	}
+}
