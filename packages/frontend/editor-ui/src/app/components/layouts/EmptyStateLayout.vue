@@ -8,7 +8,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
-import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 
@@ -85,21 +84,13 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 				/>
 			</template>
 
-			<!-- State 2: Recommended Templates -->
-			<template v-else-if="showRecommendedTemplatesInline">
+			<!-- State 2: Two Square CTAs (Default Baseline) -->
+			<template v-else-if="canCreateWorkflow">
 				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
 					{{ emptyStateHeading }}
 				</N8nHeading>
 
 				<div :class="$style.templatesSection">
-					<RecommendedTemplatesSection />
-
-					<div :class="$style.orDivider">
-						<N8nText size="large">
-							{{ i18n.baseText('generic.or') }}
-						</N8nText>
-					</div>
-
 					<div :class="$style.actionButtons">
 						<ReadyToRunButton type="secondary" size="large" />
 						<N8nButton
@@ -115,7 +106,7 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 				</div>
 			</template>
 
-			<!-- State 3: Fallback -->
+			<!-- State 3: Fallback (No Permissions/Read-Only) -->
 			<template v-else>
 				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
 					{{ emptyStateHeading }}
