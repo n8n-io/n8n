@@ -84,6 +84,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,7 +94,6 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
