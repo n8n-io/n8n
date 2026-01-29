@@ -14,6 +14,7 @@ export class AwsS3 extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Sends data to AWS S3',
 			defaultVersion: 2,
+			schemaPath: 'Aws/S3',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

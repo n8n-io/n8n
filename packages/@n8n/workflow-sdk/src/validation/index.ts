@@ -1,5 +1,7 @@
+import type { INodeTypes } from 'n8n-workflow';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { validateNodeConfig } from './schema-validator';
+import { resolveMainInputCount } from './input-resolver';
 
 /**
  * Validation error codes
@@ -20,7 +22,8 @@ export type ValidationErrorCode =
 	| 'TOOL_NO_PARAMETERS'
 	| 'FROM_AI_IN_NON_TOOL'
 	| 'MISSING_EXPRESSION_PREFIX'
-	| 'INVALID_PARAMETER';
+	| 'INVALID_PARAMETER'
+	| 'INVALID_INPUT_INDEX';
 
 /**
  * Validation error class
@@ -90,6 +93,8 @@ export interface ValidationOptions {
 	allowNoTrigger?: boolean;
 	/** Enable/disable Zod schema validation (default: true) */
 	validateSchema?: boolean;
+	/** Optional node types provider for dynamic input index validation */
+	nodeTypesProvider?: INodeTypes;
 }
 
 /**
@@ -407,9 +412,81 @@ export function validateWorkflow(
 		}
 	}
 
+	// Input index validation (only if provider is given)
+	if (options.nodeTypesProvider) {
+		checkNodeInputIndices(json, options.nodeTypesProvider, warnings);
+	}
+
 	return {
 		valid: errors.length === 0,
 		errors,
 		warnings,
 	};
+}
+
+/**
+ * Check if connections use valid input indices for their target nodes.
+ * Reports warnings for connections to input indices that don't exist.
+ */
+function checkNodeInputIndices(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	// Build a map of node name -> node for quick lookup
+	const nodesByName = new Map<string, NodeJSON>();
+	for (const node of json.nodes) {
+		if (node.name) {
+			nodesByName.set(node.name, node);
+		}
+	}
+
+	// Track which (nodeName, inputIndex) pairs we've already warned about
+	// to avoid duplicate warnings when multiple sources connect to the same invalid input
+	const warnedInputs = new Set<string>();
+
+	// Scan all connections to check input indices
+	for (const [_sourceName, nodeConnections] of Object.entries(json.connections)) {
+		// Only check main connections (not AI connections)
+		const mainConnections = nodeConnections.main;
+		if (!mainConnections || !Array.isArray(mainConnections)) continue;
+
+		for (const outputs of mainConnections) {
+			if (!outputs) continue;
+			for (const conn of outputs) {
+				const targetNodeName = conn.node;
+				const targetInputIndex = conn.index;
+
+				const targetNode = nodesByName.get(targetNodeName);
+				if (!targetNode) continue;
+
+				// Get version number
+				const version =
+					typeof targetNode.typeVersion === 'string'
+						? parseFloat(targetNode.typeVersion)
+						: (targetNode.typeVersion ?? 1);
+
+				// Resolve the number of main inputs for this node type
+				const mainInputCount = resolveMainInputCount(nodeTypesProvider, targetNode.type, version);
+
+				// If we couldn't resolve (dynamic inputs or unknown node), skip validation
+				if (mainInputCount === undefined) continue;
+
+				// Check if the input index is valid
+				if (targetInputIndex >= mainInputCount) {
+					const warnKey = `${targetNodeName}:${targetInputIndex}`;
+					if (!warnedInputs.has(warnKey)) {
+						warnedInputs.add(warnKey);
+						warnings.push(
+							new ValidationWarning(
+								'INVALID_INPUT_INDEX',
+								`Connection to '${targetNodeName}' uses input index ${targetInputIndex}, but node only has ${mainInputCount} input(s) (indices 0-${mainInputCount - 1})`,
+								targetNodeName,
+							),
+						);
+					}
+				}
+			}
+		}
+	}
 }

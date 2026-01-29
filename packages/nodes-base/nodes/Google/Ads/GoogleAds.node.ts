@@ -11,6 +11,7 @@ export class GoogleAds implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Ads API',
+		schemaPath: 'Google/Ads',
 		defaults: {
 			name: 'Google Ads',
 		},

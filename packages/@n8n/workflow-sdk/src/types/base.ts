@@ -12,6 +12,10 @@
 export type {
 	// Data types
 	IDataObject,
+	// Item flow types
+	BinaryData,
+	Item,
+	Items,
 	// Credentials
 	CredentialReference,
 	NewCredentialValue,

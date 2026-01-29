@@ -13,6 +13,7 @@ export class MicrosoftTeams extends VersionedNodeType {
 			group: ['input'],
 			description: 'Consume Microsoft Teams API',
 			defaultVersion: 2,
+			schemaPath: 'Microsoft/Teams',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

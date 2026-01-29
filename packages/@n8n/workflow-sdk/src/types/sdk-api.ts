@@ -29,6 +29,45 @@ export interface IDataObject {
 }
 
 // =============================================================================
+// Item Flow Types
+// =============================================================================
+
+/**
+ * Binary data attached to an item.
+ */
+export interface BinaryData {
+	[key: string]: {
+		fileName?: string;
+		mimeType?: string;
+		fileExtension?: string;
+		fileSize?: string;
+		data?: string;
+	};
+}
+
+/**
+ * A single n8n item with JSON data and optional binary attachments.
+ * Every node receives and outputs arrays of items.
+ */
+export interface Item<T = IDataObject> {
+	json: T;
+	binary?: BinaryData;
+}
+
+/**
+ * An array of n8n items. Every node is a function: Items<TInput> → Items<TOutput>.
+ *
+ * CRITICAL FOR WORKFLOW DESIGN:
+ * - Sequential chains (A.to(B).to(C)) pass ALL items through each node
+ * - Parallel branches (trigger.to([A, B, C])) process items independently
+ *
+ * Example: Three Slack nodes fetching different channels
+ * - WRONG: channel1.to(channel2).to(channel3) - causes item multiplication (cartesian product)
+ * - RIGHT: trigger.to([channel1, channel2, channel3]) - independent parallel fetches
+ */
+export type Items<T = IDataObject> = Array<Item<T>>;
+
+// =============================================================================
 // Workflow Configuration
 // =============================================================================
 
@@ -307,14 +346,23 @@ export interface NodeInstance<
 	readonly _outputType?: TOutput;
 
 	/**
-	 * Connect this node's output 0 to another node.
-	 * Use .output(n).to() for other outputs.
-	 * Can pass an array for parallel targets: .to([nodeA, nodeB])
+	 * Connect this node's output to another node.
 	 *
-	 * @example
-	 * trigger.to(nodeA).to(nodeB)  // Linear chain
-	 * nodeA.to(mergeNode.input(0))   // Connect to specific input
-	 * nodeA.to([nodeB, nodeC])  // Fan-out to multiple parallel targets
+	 * ITEM FLOW: Every node is (Items<TInput>) => Items<TOutput>.
+	 * Chaining A.to(B) passes ALL of A's output items to B.
+	 * For independent data sources, use parallel branches:
+	 *   trigger.to([sourceA, sourceB, sourceC])
+	 *
+	 * @example Linear chain - items flow through each node sequentially
+	 * trigger.to(fetchData).to(transform).to(save)
+	 *
+	 * @example Parallel branches - each receives trigger's items independently
+	 * trigger.to([slackChannel1, slackChannel2, slackChannel3])
+	 *
+	 * @example Connect to specific input of multi-input node
+	 * nodeA.to(mergeNode.input(0))
+	 *
+	 * @param target - Node, array of nodes (parallel), or InputTarget
 	 */
 	to<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[] | InputTarget,
@@ -429,8 +477,11 @@ export interface NodeChain<
 
 	/**
 	 * Continue the chain by connecting to another node.
-	 * Use .output(n).to() to connect from a specific output.
-	 * Can pass an array for parallel targets: .to([nodeA, nodeB])
+	 *
+	 * ITEM FLOW: Chaining passes ALL items from previous node to next.
+	 * For independent parallel processing, pass an array: .to([nodeA, nodeB])
+	 *
+	 * @param target - Node, array of nodes (parallel), or InputTarget
 	 */
 	to<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[] | InputTarget,

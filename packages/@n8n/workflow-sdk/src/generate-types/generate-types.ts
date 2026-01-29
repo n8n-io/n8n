@@ -229,6 +229,8 @@ export interface NodeTypeDescription {
 	usableAsTool?: boolean;
 	hidden?: boolean;
 	documentationUrl?: string;
+	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
+	schemaPath?: string;
 }
 
 export interface DiscriminatorCombination {
@@ -325,7 +327,15 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findSchemaDirectory(baseName: string): string | undefined {
+function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+	// If explicit schemaPath is provided, use it directly
+	if (schemaPath) {
+		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
+		if (fs.existsSync(explicitPath)) {
+			return explicitPath;
+		}
+	}
+
 	const possibleNames = [
 		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Gmail
 		baseName, // gmail
@@ -351,9 +361,14 @@ function findSchemaDirectory(baseName: string): string | undefined {
  *
  * @param nodeName Full node name (e.g., 'n8n-nodes-base.freshservice')
  * @param version The node version number
+ * @param schemaPath Optional explicit path to schema directory relative to nodes-base/dist/nodes/
  * @returns Array of discovered output schemas
  */
-export function discoverSchemasForNode(nodeName: string, version: number): OutputSchema[] {
+export function discoverSchemasForNode(
+	nodeName: string,
+	version: number,
+	schemaPath?: string,
+): OutputSchema[] {
 	const cacheKey = `${nodeName}:${version}`;
 	if (schemaCache.has(cacheKey)) {
 		return schemaCache.get(cacheKey)!;
@@ -365,8 +380,8 @@ export function discoverSchemasForNode(nodeName: string, version: number): Outpu
 	// n8n-nodes-base.freshservice -> freshservice
 	const baseName = nodeName.split('.').pop() ?? '';
 
-	// Find schema directory (handles both flat and nested paths)
-	const schemaDir = findSchemaDirectory(baseName);
+	// Find schema directory (handles both flat and nested paths, or explicit schemaPath)
+	const schemaDir = findSchemaDirectory(baseName, schemaPath);
 	if (!schemaDir) {
 		schemaCache.set(cacheKey, schemas);
 		return schemas;
@@ -601,7 +616,10 @@ function generateResourceLocatorType(prop: NodeProperty): string {
  * Generate inline type for a nested property (used in fixedCollection)
  * This is a forward declaration - the actual function is defined below
  */
-function mapNestedPropertyType(prop: NodeProperty): string {
+function mapNestedPropertyType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	// Handle dynamic options (loadOptionsMethod)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		// Dynamic options fallback to string, but preserve complex types
@@ -672,9 +690,9 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'assignmentCollection':
 			return 'AssignmentCollectionValue';
 		case 'fixedCollection':
-			return generateFixedCollectionType(prop);
+			return generateFixedCollectionType(prop, discriminatorContext);
 		case 'collection':
-			return generateCollectionType(prop);
+			return generateCollectionType(prop, discriminatorContext);
 		case 'dateTime':
 			return 'string | Expression<string>';
 		case 'color':
@@ -714,7 +732,11 @@ function quotePropertyName(name: string): string {
  * Generate a compact JSDoc comment for a nested property (used in fixedCollections)
  * Returns a multi-line JSDoc that can be placed before property definitions
  */
-function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string {
+function generateNestedPropertyJSDoc(
+	prop: NodeProperty,
+	indent: string,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	const lines: string[] = [];
 
 	// Description
@@ -745,11 +767,22 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
 	}
 
 	// Display options - filter out @version since version is implicit from the file
+	// Also filter out conditions that match the current discriminator context (redundant)
 	if (prop.displayOptions) {
 		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const filteredShow = Object.entries(prop.displayOptions.show).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredShow = Object.entries(prop.displayOptions.show).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
+					const showValues = values as unknown[];
+					// If the discriminator value is in the show list, this is redundant
+					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
+				}
+				return true;
+			});
 			if (filteredShow.length > 0) {
 				const showConditions = filteredShow
 					.map(
@@ -761,9 +794,19 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
 			}
 		}
 		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const filteredHide = Object.entries(prop.displayOptions.hide).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredHide = Object.entries(prop.displayOptions.hide).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
+					const hideValues = values as unknown[];
+					// If the discriminator value is in the hide list, this is redundant
+					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
+				}
+				return true;
+			});
 			if (filteredHide.length > 0) {
 				const hideConditions = filteredHide
 					.map(
@@ -791,7 +834,10 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
  * Generate inline type for a fixedCollection property
  * This generates proper nested types instead of Record<string, unknown>
  */
-function generateFixedCollectionType(prop: NodeProperty): string {
+function generateFixedCollectionType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	if (!prop.options || prop.options.length === 0) {
 		return 'Record<string, unknown>';
 	}
@@ -814,11 +860,11 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 				continue;
 			}
 
-			const nestedType = mapNestedPropertyType(nestedProp);
+			const nestedType = mapNestedPropertyType(nestedProp, discriminatorContext);
 			if (nestedType) {
 				const quotedName = quotePropertyName(nestedProp.name);
 				// Generate JSDoc for the nested property
-				const jsDoc = generateNestedPropertyJSDoc(nestedProp, '\t\t\t');
+				const jsDoc = generateNestedPropertyJSDoc(nestedProp, '\t\t\t', discriminatorContext);
 				nestedProps.push(`${jsDoc}\n\t\t\t${quotedName}?: ${nestedType}`);
 			}
 		}
@@ -867,7 +913,10 @@ function generateFixedCollectionType(prop: NodeProperty): string {
  * Generate inline type for a collection property
  * Collections have a flat structure with optional nested properties
  */
-function generateCollectionType(prop: NodeProperty): string {
+function generateCollectionType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	if (!prop.options || prop.options.length === 0) {
 		return 'Record<string, unknown>';
 	}
@@ -886,11 +935,15 @@ function generateCollectionType(prop: NodeProperty): string {
 			continue;
 		}
 
-		const propType = mapNestedPropertyType(nestedProp as NodeProperty);
+		const propType = mapNestedPropertyType(nestedProp as NodeProperty, discriminatorContext);
 		if (propType) {
 			const quotedName = quotePropertyName(nestedProp.name);
 			// Generate JSDoc for the nested property
-			const jsDoc = generateNestedPropertyJSDoc(nestedProp as NodeProperty, '\t\t');
+			const jsDoc = generateNestedPropertyJSDoc(
+				nestedProp as NodeProperty,
+				'\t\t',
+				discriminatorContext,
+			);
 			nestedProps.push(`${jsDoc}\n\t\t${quotedName}?: ${propType}`);
 		}
 	}
@@ -905,7 +958,10 @@ function generateCollectionType(prop: NodeProperty): string {
 /**
  * Map n8n property types to TypeScript types with Expression wrappers
  */
-export function mapPropertyType(prop: NodeProperty): string {
+export function mapPropertyType(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	// Special handling for known credentialsSelect fields with fixed values
 	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType') {
 		const values = GENERIC_AUTH_TYPE_VALUES.map((v) => `'${v}'`).join(' | ');
@@ -992,10 +1048,10 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return 'AssignmentCollectionValue';
 
 		case 'fixedCollection':
-			return generateFixedCollectionType(prop);
+			return generateFixedCollectionType(prop, discriminatorContext);
 
 		case 'collection':
-			return generateCollectionType(prop);
+			return generateCollectionType(prop, discriminatorContext);
 
 		case 'dateTime':
 			return 'string | Expression<string>';
@@ -1393,10 +1449,12 @@ export function generatePropertyJSDoc(
 				// Filter out @version (existing behavior)
 				if (key === '@version') return false;
 				// Filter out conditions that match current discriminator context
-				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
 					const showValues = values as unknown[];
 					// If the discriminator value is in the show list, this is redundant
-					if (showValues.includes(discriminatorContext[key])) return false;
+					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
 				}
 				return true;
 			});
@@ -1415,10 +1473,12 @@ export function generatePropertyJSDoc(
 				// Filter out @version (existing behavior)
 				if (key === '@version') return false;
 				// Filter out conditions that match current discriminator context
-				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+				// Strip leading '/' from key for root-level property references
+				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+				if (discriminatorContext && discriminatorContext[normalizedKey] !== undefined) {
 					const hideValues = values as unknown[];
 					// If the discriminator value is in the hide list, this is redundant
-					if (hideValues.includes(discriminatorContext[key])) return false;
+					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
 				}
 				return true;
 			});
@@ -1476,7 +1536,7 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
-	const tsType = mapPropertyType(prop);
+	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property
 	}
@@ -2051,7 +2111,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		: `NodeConfig<${configName}>`;
 	lines.push(`\tconfig: ${configType};`);
 	if (schema) {
-		lines.push(`\toutput?: ${outputTypeName};`);
+		lines.push(`\toutput?: Items<${outputTypeName}>;`);
 	}
 	lines.push('};');
 
@@ -2223,6 +2283,9 @@ export function planSplitVersionFiles(
 	const combinations = extractDiscriminatorCombinations(node);
 	const tree = buildDiscriminatorTree(combinations);
 
+	// Discover output schemas for this node/version
+	const outputSchemas = discoverSchemasForNode(node.name, version, node.schemaPath);
+
 	// No _shared.ts - each discriminator file is self-contained
 
 	if (tree.type === 'resource_operation' && tree.resources) {
@@ -2240,8 +2303,18 @@ export function planSplitVersionFiles(
 				const fileName = `operation_${toSnakeCase(operation)}.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
+				// Find matching output schema for this resource/operation
+				const matchingSchema = findSchemaForOperation(outputSchemas, resource, operation);
+
 				// Import depth: 6 levels deep (node/version/resource_x/operation.ts -> base)
-				const content = generateDiscriminatorFile(node, version, combo, props, undefined, 6);
+				const content = generateDiscriminatorFile(
+					node,
+					version,
+					combo,
+					props,
+					matchingSchema?.schema,
+					6,
+				);
 				files.set(filePath, content);
 			}
 
@@ -2335,7 +2408,7 @@ export function generateSingleVersionTypeFile(
 	};
 
 	// Discover output schemas for this node/version
-	const outputSchemas = discoverSchemasForNode(node.name, specificVersion);
+	const outputSchemas = discoverSchemasForNode(node.name, specificVersion, node.schemaPath);
 
 	const lines: string[] = [];
 
@@ -2515,7 +2588,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 			lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
 		}
 		if (outputTypeName) {
-			lines.push(`\toutput?: ${outputTypeName};`);
+			lines.push(`\toutput?: Items<${outputTypeName}>;`);
 		}
 		lines.push('};');
 		lines.push('');
