@@ -444,6 +444,102 @@ describe('DirectoryLoader', () => {
 			expect(loader.types.nodes[0].name).toBe('node2');
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
 		});
+
+		it('should correctly parse scoped package with dot in org name for includeNodes', async () => {
+			const scopedPackageJson = JSON.stringify({
+				name: '@my.org/n8n-nodes-my-org',
+				n8n: {
+					credentials: [],
+					nodes: ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js'],
+				},
+			});
+			mockFs.readFileSync
+				.calledWith(`${directory}/package.json`)
+				.mockReturnValue(scopedPackageJson);
+
+			mockFsPromises.readFile.mockImplementation(async (path) => {
+				if (typeof path !== 'string') throw new Error('Invalid path');
+
+				if (path.endsWith('known/nodes.json')) {
+					return JSON.stringify({
+						node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
+						node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
+					});
+				}
+				if (path.endsWith('known/credentials.json')) {
+					return JSON.stringify({});
+				}
+				if (path.endsWith('types/nodes.json')) {
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
+				}
+				if (path.endsWith('types/credentials.json')) {
+					return JSON.stringify([]);
+				}
+				throw new Error('File not found');
+			});
+
+			// Package name has dot in org scope: @my.org/n8n-nodes-my-org
+			const loader = new LazyPackageDirectoryLoader(
+				directory,
+				[],
+				['@my.org/n8n-nodes-my-org.node1'],
+			);
+			await loader.loadAll();
+
+			expect(loader.isLazyLoaded).toBe(true);
+			expect(loader.packageName).toBe('@my.org/n8n-nodes-my-org');
+			expect(loader.known.nodes).toEqual({
+				node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
+			});
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0].name).toBe('node1');
+		});
+
+		it('should correctly parse scoped package with dot in org name for excludeNodes', async () => {
+			const scopedPackageJson = JSON.stringify({
+				name: '@my.org/n8n-nodes-my-org',
+				n8n: {
+					credentials: [],
+					nodes: ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js'],
+				},
+			});
+			mockFs.readFileSync
+				.calledWith(`${directory}/package.json`)
+				.mockReturnValue(scopedPackageJson);
+
+			mockFsPromises.readFile.mockImplementation(async (path) => {
+				if (typeof path !== 'string') throw new Error('Invalid path');
+
+				if (path.endsWith('known/nodes.json')) {
+					return JSON.stringify({
+						node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
+						node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
+					});
+				}
+				if (path.endsWith('known/credentials.json')) {
+					return JSON.stringify({});
+				}
+				if (path.endsWith('types/nodes.json')) {
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
+				}
+				if (path.endsWith('types/credentials.json')) {
+					return JSON.stringify([]);
+				}
+				throw new Error('File not found');
+			});
+
+			// Package name has dot in org scope: @my.org/n8n-nodes-my-org
+			const loader = new LazyPackageDirectoryLoader(directory, ['@my.org/n8n-nodes-my-org.node1']);
+			await loader.loadAll();
+
+			expect(loader.isLazyLoaded).toBe(true);
+			expect(loader.packageName).toBe('@my.org/n8n-nodes-my-org');
+			expect(loader.known.nodes).toEqual({
+				node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
+			});
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0].name).toBe('node2');
+		});
 	});
 
 	describe('constructor', () => {

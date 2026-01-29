@@ -96,9 +96,24 @@ describe('NodeTypes', () => {
 			supplyData: undefined,
 		},
 	};
+	// Test node with dot in scoped package name (e.g., @channel.io/n8n-nodes-channel-talk)
+	const scopedNodeWithDot: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: mock<INodeTypeDescription>({
+				name: '@my.org/n8n-nodes-my-org.myNode',
+				displayName: 'My Org Node',
+				usableAsTool: true,
+				properties: [],
+			}),
+			supplyData: undefined,
+		},
+	};
 
 	loadNodesAndCredentials.getNode.mockImplementation((fullNodeType) => {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		const packageName = fullNodeType.substring(0, lastDotIndex);
+		const nodeType = fullNodeType.substring(lastDotIndex + 1);
 		if (packageName === 'n8n-nodes-base') {
 			if (nodeType === 'nonVersioned') return nonVersionedNode;
 			if (nodeType === 'versioned') return versionedNode;
@@ -106,6 +121,9 @@ describe('NodeTypes', () => {
 			if (nodeType === 'declarativeNode') return declarativeNode;
 			if (nodeType === 'toolNode') return toolNode;
 		} else if (fullNodeType === 'n8n-nodes-community.testNode') return communityNode;
+		// Handle scoped package with dot in org name (e.g., @my.org/n8n-nodes-my-org.myNode)
+		else if (packageName === '@my.org/n8n-nodes-my-org' && nodeType === 'myNode')
+			return scopedNodeWithDot;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
 
@@ -171,6 +189,22 @@ describe('NodeTypes', () => {
 			expect(result).not.toEqual(toolSupportingNode.type);
 			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');
 			expect(result.description.displayName).toEqual('TestNode Tool');
+			expect(result.description.codex?.categories).toContain('AI');
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual(['ai_tool']);
+		});
+
+		it('should correctly parse scoped package with dot in org name', () => {
+			const result = nodeTypes.getByNameAndVersion('@my.org/n8n-nodes-my-org.myNode');
+			expect(result).toBe(scopedNodeWithDot.type);
+			expect(result.description.name).toEqual('@my.org/n8n-nodes-my-org.myNode');
+		});
+
+		it('should return a tool node-type from scoped package with dot in org name', () => {
+			const result = nodeTypes.getByNameAndVersion('@my.org/n8n-nodes-my-org.myNodeTool');
+			expect(result).not.toEqual(scopedNodeWithDot.type);
+			expect(result.description.name).toEqual('@my.org/n8n-nodes-my-org.myNodeTool');
+			expect(result.description.displayName).toEqual('My Org Node Tool');
 			expect(result.description.codex?.categories).toContain('AI');
 			expect(result.description.inputs).toEqual([]);
 			expect(result.description.outputs).toEqual(['ai_tool']);

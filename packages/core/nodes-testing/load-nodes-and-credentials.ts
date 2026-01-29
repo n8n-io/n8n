@@ -85,7 +85,9 @@ export class LoadNodesAndCredentials {
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		const packageName = fullNodeType.substring(0, lastDotIndex);
+		const nodeType = fullNodeType.substring(lastDotIndex + 1);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
