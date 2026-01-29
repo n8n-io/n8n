@@ -125,7 +125,6 @@ const isDropDisabled = computed(
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 
-// Use inline switch layout when feature flag is enabled (label is integrated into Switch component)
 const useInlineSwitchLayout = computed(
 	() =>
 		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,

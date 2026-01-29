@@ -59,7 +59,7 @@ const timeout = ref(true)
 <template>
   <!-- Small size for parameters panel -->
   <N8nSwitch2 v-model="sendBody" label="Send Body" size="small" />
-  
+
   <!-- Large size for settings -->
   <N8nSwitch2 v-model="timeout" label="Timeout Workflow" size="large" />
 </template>
@@ -80,16 +80,3 @@ const isAccepted = ref(false)
   </N8nSwitch2>
 </template>
 ```
-
-## Design Notes
-
-- **Layout:** Horizontal layout with the switch on the left and label on the right
-- **Sizes:** 
-  - `small` (32x16px track, 12px thumb) - for node parameters panel
-  - `large` (40x20px track, 16px thumb) - for settings pages
-- **Colors:**
-  - Off state: `--switch--color--background` (neutral gray)
-  - On state: `--switch--color--background--active` (green/mint)
-  - Thumb: `--switch--toggle--color` (white)
-- **Label truncation:** Labels support text-overflow ellipsis for long text
-- **Accessibility:** Full keyboard support (Space/Enter to toggle), proper ARIA attributes
