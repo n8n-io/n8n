@@ -625,3 +625,157 @@ describe('generateSingleVersionSchemaFile', () => {
 		expect(code).not.toContain('resolveSchema');
 	});
 });
+
+describe('generateSubnodeConfigSchemaCode', () => {
+	const { generateSubnodeConfigSchemaCode } = require('../generate-types/generate-zod-schemas');
+
+	it('generates static schema when AI inputs have no displayOptions', () => {
+		const aiInputTypes = [
+			{ type: 'ai_languageModel', required: true },
+			{ type: 'ai_tool', required: false },
+		];
+
+		const code = generateSubnodeConfigSchemaCode(aiInputTypes, 'TestNode');
+
+		expect(code).toContain('export const TestNodeSubnodeConfigSchema = z.object({');
+		expect(code).toContain('model:');
+		expect(code).toContain('tools:');
+		expect(code).not.toContain('export function get');
+		expect(code).not.toContain('resolveSchema');
+	});
+
+	it('generates factory function when AI inputs have displayOptions (conditional requirements)', () => {
+		const aiInputTypes = [
+			{
+				type: 'ai_languageModel',
+				required: true,
+				displayOptions: { show: { autoFix: [true] } },
+			},
+		];
+
+		const code = generateSubnodeConfigSchemaCode(aiInputTypes, 'TestNode');
+
+		// Should generate factory function, not static schema
+		expect(code).toContain('export function getTestNodeSubnodeConfigSchema(');
+		expect(code).toContain('{ parameters, resolveSchema }');
+		expect(code).toContain('return z.object({');
+		// Should use resolveSchema for conditional field
+		expect(code).toContain('resolveSchema({');
+		expect(code).toContain('"autoFix"'); // displayOptions preserved
+		expect(code).toContain('required: true');
+	});
+
+	it('makes subnodes optional when all required AI inputs have displayOptions', () => {
+		// This is the key test for the fix: when ai_languageModel has displayOptions,
+		// it's conditionally required, so subnodes should be optional
+		const aiInputTypes = [
+			{
+				type: 'ai_languageModel',
+				required: true, // required but conditional
+				displayOptions: { show: { autoFix: [true] } },
+			},
+		];
+
+		const code = generateSubnodeConfigSchemaCode(aiInputTypes, 'TestNode');
+
+		// Should use resolveSchema to make the field conditionally required
+		expect(code).toContain('resolveSchema({');
+		expect(code).toContain('required: true');
+		expect(code).toContain('displayOptions:');
+	});
+
+	it('generates static schema for unconditionally required fields without displayOptions', () => {
+		const aiInputTypes = [
+			{ type: 'ai_languageModel', required: true }, // no displayOptions = unconditionally required
+		];
+
+		const code = generateSubnodeConfigSchemaCode(aiInputTypes, 'TestNode');
+
+		// Should generate static schema
+		expect(code).toContain('export const TestNodeSubnodeConfigSchema');
+		expect(code).not.toContain('export function get');
+		// model should NOT be optional
+		expect(code).not.toMatch(/model:.*\.optional\(\)/);
+	});
+
+	it('handles mixed conditional and unconditional AI inputs', () => {
+		const aiInputTypes = [
+			{
+				type: 'ai_languageModel',
+				required: true,
+				displayOptions: { show: { autoFix: [true] } }, // conditional
+			},
+			{ type: 'ai_tool', required: false }, // unconditional
+		];
+
+		const code = generateSubnodeConfigSchemaCode(aiInputTypes, 'TestNode');
+
+		// Should generate factory function because of the conditional field
+		expect(code).toContain('export function getTestNodeSubnodeConfigSchema(');
+		// model uses resolveSchema
+		expect(code).toMatch(/model:.*resolveSchema/);
+		// tools is optional (static)
+		expect(code).toMatch(/tools:.*\.optional\(\)/);
+	});
+});
+
+describe('hasRequiredSubnodeFields behavior', () => {
+	const { generateDiscriminatorSchemaFile } = require('../generate-types/generate-zod-schemas');
+
+	const baseNodeProps = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('makes subnodes optional when all required AI inputs have displayOptions', () => {
+		const node = {
+			...baseNodeProps,
+			name: 'n8n-nodes-langchain.outputParserStructured',
+			displayName: 'Structured Output Parser',
+			version: 1.3,
+			properties: [],
+		};
+
+		// This simulates the OutputParserStructured node scenario
+		const aiInputTypes = [
+			{
+				type: 'ai_languageModel',
+				required: true, // required: true in builderHint
+				displayOptions: { show: { autoFix: [true] } }, // but only when autoFix is true
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(node, 1.3, {}, [], 5, aiInputTypes);
+
+		// The subnodes field should be optional because the model is conditionally required
+		expect(code).toMatch(/subnodes:.*\.optional\(\)/);
+	});
+
+	it('makes subnodes required when an AI input is unconditionally required', () => {
+		const node = {
+			...baseNodeProps,
+			name: 'n8n-nodes-langchain.agent',
+			displayName: 'AI Agent',
+			version: 1,
+			properties: [],
+		};
+
+		const aiInputTypes = [
+			{
+				type: 'ai_languageModel',
+				required: true, // unconditionally required (no displayOptions)
+			},
+			{
+				type: 'ai_tool',
+				required: false,
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(node, 1, {}, [], 5, aiInputTypes);
+
+		// The subnodes field should NOT be optional because model is unconditionally required
+		expect(code).toContain('subnodes:');
+		expect(code).not.toMatch(/subnodes:.*\.optional\(\)/);
+	});
+});
