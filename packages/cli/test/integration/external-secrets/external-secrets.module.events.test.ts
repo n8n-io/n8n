@@ -7,7 +7,7 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service';
+import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service.ee';
 import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
 import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 

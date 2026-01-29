@@ -16,7 +16,7 @@ import type { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsRetryManager } from '../retry-manager.service';
-import { SecretsCacheRefresh } from '../secrets-cache-refresh.service';
+import { SecretsCacheRefresh } from '../secrets-cache-refresh.service.ee';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { ExternalSecretsSettingsStore } from '../settings-store.service';
 

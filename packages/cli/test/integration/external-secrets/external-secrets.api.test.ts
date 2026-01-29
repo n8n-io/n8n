@@ -11,7 +11,7 @@ import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external
 import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
-import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service';
+import { SecretsCacheRefresh } from '@/modules/external-secrets.ee/secrets-cache-refresh.service.ee';
 import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
 import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 import type {
