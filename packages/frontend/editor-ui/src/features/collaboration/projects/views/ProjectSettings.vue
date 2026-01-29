@@ -94,8 +94,12 @@ const membersTableState = ref<TableOptions>({
 	],
 });
 
+const userSearchQuery = ref('');
+const userSearchResults = ref<typeof usersStore.allUsers>([]);
+const isLoadingUsers = ref(false);
+
 const usersList = computed(() =>
-	usersStore.allUsers.filter((user) => {
+	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
 		return !isAlreadySharedWithUser;
@@ -438,9 +442,9 @@ const relationUsers = computed(() =>
 			...user,
 			...relation,
 			role: safeRole,
-			firstName: user?.firstName ?? null,
-			lastName: user?.lastName ?? null,
-			email: user?.email ?? null,
+			firstName: relation?.firstName ?? user?.firstName ?? null,
+			lastName: relation?.lastName ?? user?.lastName ?? null,
+			email: relation?.email ?? user?.email ?? null,
 		};
 	}),
 );
@@ -486,8 +490,39 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 	membersTableState.value = options;
 };
 
+const searchUsers = async (query: string) => {
+	userSearchQuery.value = query;
+
+	if (!query.trim()) {
+		userSearchResults.value = [];
+		return;
+	}
+
+	isLoadingUsers.value = true;
+	try {
+		await usersStore.fetchUsers({
+			take: 50,
+			filter: { fullText: query },
+		});
+		// Get the search results from the store
+		userSearchResults.value = usersStore.allUsers.filter((user) => {
+			const searchLower = query.toLowerCase();
+			const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
+			const email = (user.email ?? '').toLowerCase();
+			return fullName.includes(searchLower) || email.includes(searchLower);
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
+	} finally {
+		isLoadingUsers.value = false;
+	}
+};
+
+const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
 onBeforeMount(async () => {
-	await usersStore.fetchUsers();
+	// No longer need to fetch all users upfront
+	// Users will be fetched on-demand when searching
 });
 
 const isProjectRoleProvisioningEnabled = computed(
@@ -587,6 +622,9 @@ onMounted(async () => {
 						:current-user-id="usersStore.currentUser?.id"
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
+						remote
+						:remote-method="debouncedUserSearch"
+						:loading="isLoadingUsers"
 						@update:model-value="onAddMember"
 						:disabled="isProjectRoleProvisioningEnabled"
 					>
