@@ -326,6 +326,9 @@ overrides:
   lodash-es: 4.17.23
 
 patchedDependencies:
+  '@lancedb/lancedb@0.23.0':
+    hash: 768b66d25b0a6259fc92f7297e571b0006dda431cb95badbca82b2ec9359722e
+    path: patches/@lancedb__lancedb@0.23.0.patch
   '@lezer/highlight':
     hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
     path: patches/@lezer__highlight.patch
@@ -1266,7 +1269,7 @@ importers:
         version: 4.0.5
       '@lancedb/lancedb':
         specifier: ^0.23.0
-        version: 0.23.0(apache-arrow@18.1.0)
+        version: 0.23.0(patch_hash=768b66d25b0a6259fc92f7297e571b0006dda431cb95badbca82b2ec9359722e)(apache-arrow@18.1.0)
       '@langchain/anthropic':
         specifier: 'catalog:'
         version: 1.1.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(zod@3.25.67)
@@ -1281,7 +1284,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.0.5(d729cd14735688ccf6e74413ef8ccd5c)
+        version: 1.0.5(9844308de08f5d703c62f9331060c8a2)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1686,6 +1689,9 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
+      '@lancedb/lancedb':
+        specifier: ^0.23.0
+        version: 0.23.0(patch_hash=768b66d25b0a6259fc92f7297e571b0006dda431cb95badbca82b2ec9359722e)(apache-arrow@18.1.0)
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
@@ -18344,8 +18350,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.2.3:
-    resolution: {integrity: sha512-lpJTa8a+12Cgy/n5OdlQTzQhSWOCu+6zQoNFbl3KYxwAoB95mYIgMLKEYMvQykPJ2ucBDjJJISdIBHc1d9Hd3w==}
+  vue-component-type-helpers@3.2.4:
+    resolution: {integrity: sha512-05lR16HeZDcDpB23ku5b5f1fBOoHqFnMiKRr2CiEvbG5Ux4Yi0McmQBOET0dR0nxDXosxyVqv67q6CzS3AK8rw==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -22681,7 +22687,7 @@ snapshots:
   '@lancedb/lancedb-win32-x64-msvc@0.23.0':
     optional: true
 
-  '@lancedb/lancedb@0.23.0(apache-arrow@18.1.0)':
+  '@lancedb/lancedb@0.23.0(patch_hash=768b66d25b0a6259fc92f7297e571b0006dda431cb95badbca82b2ec9359722e)(apache-arrow@18.1.0)':
     dependencies:
       apache-arrow: 18.1.0
       reflect-metadata: 0.2.2
@@ -22743,7 +22749,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.0.5(d729cd14735688ccf6e74413ef8ccd5c)':
+  '@langchain/community@1.0.5(9844308de08f5d703c62f9331060c8a2)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.57.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22769,7 +22775,7 @@ snapshots:
       '@getzep/zep-js': 0.9.0
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@huggingface/inference': 4.0.5
-      '@lancedb/lancedb': 0.23.0(apache-arrow@18.1.0)
+      '@lancedb/lancedb': 0.23.0(patch_hash=768b66d25b0a6259fc92f7297e571b0006dda431cb95badbca82b2ec9359722e)(apache-arrow@18.1.0)
       '@mozilla/readability': 0.6.0
       '@pinecone-database/pinecone': 5.1.2
       '@qdrant/js-client-rest': 1.16.2(typescript@5.9.2)
@@ -25337,7 +25343,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@5.9.2)
-      vue-component-type-helpers: 3.2.3
+      vue-component-type-helpers: 3.2.4
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -37664,7 +37670,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.2.3: {}
+  vue-component-type-helpers@3.2.4: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@5.9.2)):
     dependencies:

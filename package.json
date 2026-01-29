@@ -152,7 +152,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch",
-      "@n8n/typeorm": "patches/@n8n__typeorm.patch"
+      "@n8n/typeorm": "patches/@n8n__typeorm.patch",
+      "@lancedb/lancedb@0.23.0": "patches/@lancedb__lancedb@0.23.0.patch"
     }
   }
 }

@@ -1,0 +1,23 @@
+diff --git a/package.json b/package.json
+index bcb016df71451eaf3d9eb5fc501bd8aa87cb0037..2377ab357a096e7f619987009c4700ecd657af89 100644
+--- a/package.json
++++ b/package.json
+@@ -99,15 +99,15 @@
+     "version": "napi version"
+   },
+   "dependencies": {
+-    "reflect-metadata": "^0.2.2"
++    "reflect-metadata": "^0.2.2",
++    "@lancedb/lancedb-linux-x64-musl": "0.23.0",
++    "@lancedb/lancedb-linux-arm64-musl": "0.23.0"
+   },
+   "optionalDependencies": {
+     "@lancedb/lancedb-darwin-x64": "0.23.0",
+     "@lancedb/lancedb-darwin-arm64": "0.23.0",
+     "@lancedb/lancedb-linux-x64-gnu": "0.23.0",
+     "@lancedb/lancedb-linux-arm64-gnu": "0.23.0",
+-    "@lancedb/lancedb-linux-x64-musl": "0.23.0",
+-    "@lancedb/lancedb-linux-arm64-musl": "0.23.0",
+     "@lancedb/lancedb-win32-x64-msvc": "0.23.0",
+     "@lancedb/lancedb-win32-arm64-msvc": "0.23.0"
+   },
