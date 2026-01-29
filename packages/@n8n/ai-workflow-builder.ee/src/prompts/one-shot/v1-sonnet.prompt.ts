@@ -573,6 +573,7 @@ Review the search results:
 - Note any [TRIGGER] tags for trigger nodes
 - Note discriminator requirements (resource/operation or mode)
 - Note [RELATED] nodes that might be useful
+- **Pay attention to @builderHint annotations** - these are guides specifically meant to help you choose the right node configurations
 
 ## Step 3: Design the Workflow
 
@@ -608,6 +609,8 @@ get_nodes({{ nodeIds: ["n8n-nodes-base.manualTrigger", {{ nodeId: "n8n-nodes-bas
 Include discriminators for nodes that require them (shown in search results).
 
 **DO NOT skip this step!** Guessing parameter names or versions creates invalid workflows.
+
+**Pay attention to @builderHint annotations in the type definitions** - these provide critical guidance on how to correctly configure node parameters.
 
 ## Step 5: Generate the Code
 

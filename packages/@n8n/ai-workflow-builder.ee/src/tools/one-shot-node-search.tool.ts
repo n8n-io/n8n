@@ -100,7 +100,7 @@ function formatBuilderHint(
 	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
 	const hint = nodeType?.builderHint?.message;
 	if (!hint) return '';
-	return `  Builder Hint: ${hint}`;
+	return `  @builderHint ${hint}`;
 }
 
 /**
@@ -212,7 +212,7 @@ function formatModeForDisplay(mode: ModeInfo, showSdkMapping: boolean): string {
 
 	// Add builder hint if available
 	if (mode.builderHint) {
-		lines.push(`        Hint: ${mode.builderHint}`);
+		lines.push(`        @builderHint ${mode.builderHint}`);
 	}
 
 	return lines.join('\n');
@@ -283,7 +283,7 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 				lines.push(`          ${resource.description}`);
 			}
 			if (resource.builderHint) {
-				lines.push(`          Hint: ${resource.builderHint}`);
+				lines.push(`          @builderHint ${resource.builderHint}`);
 			}
 
 			// Format operations
@@ -294,7 +294,7 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 					lines.push(`              ${op.description}`);
 				}
 				if (op.builderHint) {
-					lines.push(`              Hint: ${op.builderHint}`);
+					lines.push(`              @builderHint ${op.builderHint}`);
 				}
 			}
 		}
