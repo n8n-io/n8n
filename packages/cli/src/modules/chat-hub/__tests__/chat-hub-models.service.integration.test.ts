@@ -6,8 +6,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import assert from 'assert';
-import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowDependencies, WorkflowDependencyRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -49,25 +48,6 @@ const emptyCredentialIds = {
 	mistralCloud: null,
 };
 
-/**
- * Add workflow dependencies (node types) for a workflow.
- * Required for workflows to be found by node type lookups.
- */
-async function addWorkflowDependencies(workflow: WorkflowEntity) {
-	const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
-	const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
-
-	for (const node of workflow.nodes) {
-		dependencies.add({
-			dependencyType: 'nodeType',
-			dependencyKey: node.type,
-			dependencyInfo: null,
-		});
-	}
-
-	await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
-}
-
 describe('ChatHubModelsService', () => {
 	let chatHubModelsService: ChatHubModelsService;
 	let member: User;
@@ -94,7 +74,7 @@ describe('ChatHubModelsService', () => {
 				const agentName = 'Custom Agent Name';
 				const agentDescription = 'This is a test agent';
 
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: workflowName,
 						nodes: [
@@ -115,7 +95,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -134,7 +113,7 @@ describe('ChatHubModelsService', () => {
 			it('should use workflow name when agentName is not provided', async () => {
 				const workflowName = 'Test Workflow';
 
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: workflowName,
 						nodes: [
@@ -153,7 +132,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -162,7 +140,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should not return workflow when it is not active', async () => {
-				const workflow = await createWorkflow(
+				await createWorkflow(
 					{
 						name: 'Inactive Workflow',
 						nodes: [
@@ -181,7 +159,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -189,7 +166,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should not return workflow when availableInChat is false', async () => {
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Not Available Workflow',
 						nodes: [
@@ -208,7 +185,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -216,7 +192,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should not return workflow without chat trigger node', async () => {
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Workflow Without Chat Trigger',
 						nodes: [
@@ -233,7 +209,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -241,7 +216,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should return multiple workflow agents', async () => {
-				const workflow1 = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent 1',
 						nodes: [
@@ -261,9 +236,8 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow1);
 
-				const workflow2 = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent 2',
 						nodes: [
@@ -283,7 +257,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow2);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -294,7 +267,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should parse input modalities from chat trigger options', async () => {
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent with specific mime types',
 						nodes: [
@@ -317,7 +290,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -327,7 +299,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should parse all input modalities when wildcard mime type is used', async () => {
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent with all file types',
 						nodes: [
@@ -350,7 +322,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -360,7 +331,7 @@ describe('ChatHubModelsService', () => {
 			});
 
 			it('should return only text modality when file uploads are disabled', async () => {
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent without file uploads',
 						nodes: [
@@ -382,7 +353,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
@@ -393,7 +363,7 @@ describe('ChatHubModelsService', () => {
 			it('should include agent icon from chat trigger in workflow model', async () => {
 				const agentIcon = { type: 'emoji' as const, value: '🤖' };
 
-				const workflow = await createActiveWorkflow(
+				await createActiveWorkflow(
 					{
 						name: 'Agent with icon',
 						nodes: [
@@ -414,7 +384,6 @@ describe('ChatHubModelsService', () => {
 					},
 					member,
 				);
-				await addWorkflowDependencies(workflow);
 
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 

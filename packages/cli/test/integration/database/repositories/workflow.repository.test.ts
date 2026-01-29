@@ -363,37 +363,48 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
 			// Workflow 1: Has chat trigger node type
-			const workflow1 = await createWorkflow({ versionCounter: 1 });
-			const dependencies1 = new WorkflowDependencies(workflow1.id, 1);
-			dependencies1.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.chatTrigger',
-				dependencyInfo: null,
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow1.id, dependencies1);
 
 			// Workflow 2: Has HTTP request node type (different)
-			const workflow2 = await createWorkflow({ versionCounter: 1 });
-			const dependencies2 = new WorkflowDependencies(workflow2.id, 1);
-			dependencies2.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
 			// Workflow 3: Also has chat trigger node type
-			const workflow3 = await createWorkflow({ versionCounter: 1 });
-			const dependencies3 = new WorkflowDependencies(workflow3.id, 1);
-			dependencies3.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.chatTrigger',
-				dependencyInfo: null,
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat 2',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
 
 			//
 			// ACT
@@ -417,37 +428,48 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
 			// Workflow 1: Has chat trigger
-			const workflow1 = await createWorkflow({ versionCounter: 1 });
-			const dependencies1 = new WorkflowDependencies(workflow1.id, 1);
-			dependencies1.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.chatTrigger',
-				dependencyInfo: null,
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow1.id, dependencies1);
 
 			// Workflow 2: Has webhook trigger
-			const workflow2 = await createWorkflow({ versionCounter: 1 });
-			const dependencies2 = new WorkflowDependencies(workflow2.id, 1);
-			dependencies2.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.webhook',
-				dependencyInfo: null,
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.webhook',
+						name: 'Webhook',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
-			// Workflow 3: Has neither
-			const workflow3 = await createWorkflow({ versionCounter: 1 });
-			const dependencies3 = new WorkflowDependencies(workflow3.id, 1);
-			dependencies3.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.set',
-				dependencyInfo: null,
+			// Workflow 3: Has neither (just set node)
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.set',
+						name: 'Set',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
 
 			//
 			// ACT
@@ -472,16 +494,19 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
-			const workflow = await createWorkflow({ versionCounter: 1 });
-			const dependencies = new WorkflowDependencies(workflow.id, 1);
-			dependencies.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
+			await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
 
 			//
 			// ACT
@@ -501,7 +526,8 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			await createWorkflow({ versionCounter: 1 });
+			// Create workflow with no nodes, so no dependencies are added
+			await createWorkflow({ nodes: [] });
 
 			//
 			// ACT
