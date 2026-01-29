@@ -14,6 +14,7 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -98,6 +99,7 @@ describe('WorkflowCard', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
@@ -107,6 +109,7 @@ describe('WorkflowCard', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
@@ -467,8 +470,8 @@ describe('WorkflowCard', () => {
 		await userEvent.click(getByTestId('action-delete'));
 
 		expect(message.confirm).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:deleted']).toHaveLength(1);
