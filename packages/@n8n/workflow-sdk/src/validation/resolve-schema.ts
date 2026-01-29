@@ -9,6 +9,37 @@ import {
 // Re-export types from display-options for backward compatibility
 export type { DisplayOptions, DisplayOptionsContext };
 
+/**
+ * Format a value for display in error messages.
+ * Booleans are shown without quotes, strings are quoted.
+ */
+function formatValue(val: unknown): string {
+	if (typeof val === 'boolean') return String(val);
+	if (typeof val === 'string') return `"${val}"`;
+	return String(val);
+}
+
+/**
+ * Format displayOptions conditions into a human-readable requirements string.
+ * Example: { show: { sendBody: [true], contentType: ["raw"] } }
+ * Returns: 'sendBody=true, contentType="raw"'
+ */
+function formatDisplayOptionsRequirements(displayOptions: DisplayOptions): string {
+	const requirements: string[] = [];
+
+	if (displayOptions.show) {
+		for (const [key, values] of Object.entries(displayOptions.show)) {
+			if (Array.isArray(values)) {
+				const valStr =
+					values.length === 1 ? formatValue(values[0]) : values.map(formatValue).join(' or ');
+				requirements.push(`${key}=${valStr}`);
+			}
+		}
+	}
+
+	return requirements.join(', ');
+}
+
 export type ResolveSchemaConfig = {
 	parameters: Record<string, unknown>;
 	schema: z.ZodTypeAny;
@@ -52,6 +83,12 @@ export function resolveSchema({
 	if (isVisible) {
 		return required ? schema : schema.optional();
 	} else {
-		return z.undefined();
+		// Use z.any().refine() instead of z.undefined() to provide a descriptive error message
+		const requirements = formatDisplayOptionsRequirements(displayOptions);
+		return z.any().refine((val) => val === undefined, {
+			message: requirements
+				? `This field requires: ${requirements}`
+				: 'This field is not applicable for the current configuration',
+		});
 	}
 }

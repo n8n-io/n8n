@@ -197,6 +197,83 @@ describe('Schema factory integration', () => {
 	});
 });
 
+describe('resolveSchema error messages for hidden fields', () => {
+	const stringSchema = z.string();
+
+	it('provides descriptive error message when field should be hidden due to show condition', () => {
+		const schema = resolveSchema({
+			parameters: { sendBody: false },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { show: { sendBody: [true] } },
+		});
+
+		// Field is hidden (sendBody=false, but show requires sendBody=true)
+		// Providing a value should fail with a descriptive message
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const errorMessage = result.error.issues[0].message;
+			expect(errorMessage).toContain('sendBody');
+			expect(errorMessage).toContain('true');
+		}
+	});
+
+	it('provides descriptive error message with multiple show conditions', () => {
+		const schema = resolveSchema({
+			parameters: { sendBody: false, contentType: 'json' },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { show: { sendBody: [true], contentType: ['json', 'form-urlencoded'] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const errorMessage = result.error.issues[0].message;
+			// Should mention the unmet condition (sendBody)
+			expect(errorMessage).toContain('sendBody');
+			expect(errorMessage).toContain('true');
+		}
+	});
+
+	it('provides descriptive error message showing multiple valid options', () => {
+		const schema = resolveSchema({
+			parameters: { contentType: 'raw' },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { show: { contentType: ['json', 'form-urlencoded'] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const errorMessage = result.error.issues[0].message;
+			expect(errorMessage).toContain('contentType');
+			expect(errorMessage).toMatch(/json|form-urlencoded/);
+		}
+	});
+
+	it('formats boolean values without quotes', () => {
+		const schema = resolveSchema({
+			parameters: { hasOutputParser: false },
+			schema: z.object({ name: z.string() }),
+			required: false,
+			displayOptions: { show: { hasOutputParser: [true] } },
+		});
+
+		const result = schema.safeParse({ name: 'parser' });
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const errorMessage = result.error.issues[0].message;
+			expect(errorMessage).toContain('hasOutputParser');
+			expect(errorMessage).toContain('true');
+			// Boolean should not be quoted as "true"
+			expect(errorMessage).not.toMatch(/hasOutputParser="true"/);
+		}
+	});
+});
+
 describe('resolveSchema with defaults', () => {
 	const stringSchema = z.string();
 
