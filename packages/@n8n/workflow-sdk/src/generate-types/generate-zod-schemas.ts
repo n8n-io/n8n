@@ -351,7 +351,12 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 		return '';
 	}
 
-	// Handle dynamic options
+	// Handle resourceLocator first - it has its own structure regardless of dynamic options
+	if (prop.type === 'resourceLocator') {
+		return generateResourceLocatorZodSchema(prop);
+	}
+
+	// Handle dynamic options (but not for resourceLocator which has specific structure)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		if (prop.type === 'multiOptions') {
 			return 'z.array(z.string())';
@@ -396,9 +401,6 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
-
-		case 'resourceLocator':
-			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
@@ -510,7 +512,12 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 		return `z.union([${literals.join(', ')}, expressionSchema])`;
 	}
 
-	// Handle dynamic options (loadOptionsMethod)
+	// Handle resourceLocator first - it has its own structure regardless of dynamic options
+	if (prop.type === 'resourceLocator') {
+		return generateResourceLocatorZodSchema(prop);
+	}
+
+	// Handle dynamic options (loadOptionsMethod) - but not for resourceLocator which has specific structure
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		switch (prop.type) {
 			case 'options':
@@ -556,9 +563,6 @@ export function mapPropertyToZodSchema(prop: NodeProperty): string {
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
-
-		case 'resourceLocator':
-			return generateResourceLocatorZodSchema(prop);
 
 		case 'filter':
 			return 'filterValueSchema';
