@@ -819,11 +819,13 @@ function generateNestedPropertyJSDoc(
 		}
 	}
 
-	// Default value
+	// Default value - skip multi-line strings to avoid breaking JSDoc comments
 	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {
 		const defaultStr =
 			typeof prop.default === 'object' ? JSON.stringify(prop.default) : String(prop.default);
-		lines.push(`${indent} * @default ${defaultStr}`);
+		if (!defaultStr.includes('\n')) {
+			lines.push(`${indent} * @default ${defaultStr}`);
+		}
 	}
 
 	lines.push(`${indent} */`);
@@ -1494,11 +1496,13 @@ export function generatePropertyJSDoc(
 		}
 	}
 
-	// Default value
+	// Default value - skip multi-line strings to avoid breaking JSDoc comments
 	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {
 		const defaultStr =
 			typeof prop.default === 'object' ? JSON.stringify(prop.default) : String(prop.default);
-		lines.push(` * @default ${defaultStr}`);
+		if (!defaultStr.includes('\n')) {
+			lines.push(` * @default ${defaultStr}`);
+		}
 	}
 
 	lines.push(' */');

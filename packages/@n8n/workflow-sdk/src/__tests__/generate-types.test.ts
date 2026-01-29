@@ -1052,6 +1052,40 @@ describe('generate-types', () => {
 			expect(result).toContain('@default 10000');
 		});
 
+		it('should skip @default annotation for multi-line string defaults', () => {
+			const multiLineCSS = `:root {
+  /* Colors */
+  --chat--color--primary: #e74266;
+  --chat--color--secondary: #20b69e;
+}`;
+			const prop: NodeProperty = {
+				name: 'customCss',
+				displayName: 'Custom CSS',
+				type: 'string',
+				description: 'Override default styling',
+				default: multiLineCSS,
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should NOT include @default for multi-line strings (they break JSDoc)
+			expect(result).not.toContain('@default');
+			// But should still have valid JSDoc structure
+			expect(result).toContain('/**');
+			expect(result).toContain('*/');
+			expect(result).toContain('Override default styling');
+		});
+
+		it('should include @default for single-line string defaults', () => {
+			const prop: NodeProperty = {
+				name: 'greeting',
+				displayName: 'Greeting',
+				type: 'string',
+				description: 'Default greeting message',
+				default: 'Hello, World!',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			expect(result).toContain('@default Hello, World!');
+		});
+
 		it('should handle undefined description', () => {
 			const prop: NodeProperty = {
 				name: 'field',
