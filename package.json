@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.123.17",
+  "version": "1.123.16",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -120,6 +120,11 @@
       "validator": "13.15.26",
       "zod": "3.25.67",
       "js-yaml": "4.1.1",
+      "tar": "7.5.7",
+      "lodash": "4.17.23",
+      "lodash-es": "4.17.23",
+      "undici@6": "6.23.0",
+      "undici@7": "7.18.2",
       "node-forge": "1.3.2",
       "body-parser": "2.2.1",
       "glob@10": "10.5.0",
@@ -127,7 +132,7 @@
       "jws@3": "3.2.3",
       "jws@4": "4.0.1",
       "qs@6": "6.14.1",
-      "@modelcontextprotocol/sdk": "1.25.1",
+      "@modelcontextprotocol/sdk": "1.25.2",
       "langchain": "1.2.3",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0"
     },

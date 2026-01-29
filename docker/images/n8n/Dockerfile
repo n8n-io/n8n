@@ -64,6 +64,19 @@ RUN cd /usr/local/lib/node_modules/n8n && \
 
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
 
+# Patch all npm bundled tar copies to 7.5.7 for CVE fixes (CVE-2026-23745, CVE-2026-23950, CVE-2026-24842)
+RUN set -e; \
+    TAR_TGZ=$(mktemp); \
+    wget -qO "$TAR_TGZ" https://registry.npmjs.org/tar/-/tar-7.5.7.tgz; \
+    for dir in \
+      /usr/local/lib/node_modules/npm/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/cacache/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/node-gyp/node_modules/tar; \
+    do \
+      [ -d "$dir" ] && rm -rf "$dir" && mkdir -p "$dir" && tar -xzf "$TAR_TGZ" --strip-components=1 -C "$dir"; \
+    done; \
+    rm -f "$TAR_TGZ"
+
 EXPOSE 5678/tcp
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
