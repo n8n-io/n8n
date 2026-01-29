@@ -3,6 +3,7 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -153,7 +154,7 @@ describe('RoleHoverPopover', () => {
 				props: { role: mockCustomRole },
 			});
 
-			await getByText('View and edit role').click();
+			await userEvent.click(getByText('View and edit role'));
 
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'ProjectRoleSettingsView',
@@ -169,7 +170,7 @@ describe('RoleHoverPopover', () => {
 				props: { role: mockCustomRole },
 			});
 
-			await getByText('View role details').click();
+			await userEvent.click(getByText('View role details'));
 
 			expect(emitted().viewDetails).toBeTruthy();
 			expect(emitted().viewDetails[0]).toEqual([mockCustomRole]);
@@ -183,7 +184,7 @@ describe('RoleHoverPopover', () => {
 				props: { role: mockSystemRole },
 			});
 
-			await getByText('View role details').click();
+			await userEvent.click(getByText('View role details'));
 
 			expect(emitted().viewDetails).toBeTruthy();
 			expect(emitted().viewDetails[0]).toEqual([mockSystemRole]);
