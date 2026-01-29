@@ -10,6 +10,7 @@ import * as path from 'path';
 import { generateWorkflowCode } from '../src/codegen/index';
 import { parseWorkflowCodeToBuilder } from '../src/parse-workflow-code';
 import type { WorkflowJSON } from '../src/types/base';
+import { isTriggerNodeType } from '../src/utils/trigger-detection';
 
 // Workflows that are completely skipped (not just validation-skipped)
 const SKIP_WORKFLOWS = new Set<string>(['5979']);
@@ -34,20 +35,6 @@ interface ValidationResult {
 	validWarnings: Warning[];
 	invalidWarnings: Warning[];
 	error?: string;
-}
-
-// Helper to check if a node type is a trigger
-function isTriggerNode(type: string): boolean {
-	return (
-		type.includes('Trigger') ||
-		type.includes('trigger') ||
-		type.includes('Webhook') ||
-		type.includes('webhook') ||
-		type.includes('Schedule') ||
-		type.includes('schedule') ||
-		type.includes('Poll') ||
-		type.includes('poll')
-	);
 }
 
 // AI connection types used by subnodes
@@ -119,7 +106,7 @@ function isNodeDisconnectedInOriginal(json: WorkflowJSON, nodeName: string): boo
 	if (!node) return false;
 
 	// Triggers don't need incoming connections
-	if (isTriggerNode(node.type)) return false;
+	if (isTriggerNodeType(node.type)) return false;
 
 	// Sticky notes are never "disconnected"
 	if (node.type === 'n8n-nodes-base.stickyNote') return false;
@@ -268,7 +255,7 @@ function isWarningValid(warning: Warning, originalJson: WorkflowJSON): boolean {
 
 		case 'MISSING_TRIGGER':
 			// Valid if original has no trigger node
-			return !originalJson.nodes.some((node) => isTriggerNode(node.type));
+			return !originalJson.nodes.some((node) => isTriggerNodeType(node.type));
 
 		default:
 			// Unknown warning type - assume it's valid
