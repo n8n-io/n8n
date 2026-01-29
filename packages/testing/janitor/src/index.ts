@@ -91,6 +91,7 @@ export {
 	DeduplicationRule,
 	TestDataHygieneRule,
 	DuplicateLogicRule,
+	NoDirectPageInstantiationRule,
 } from './rules/index.js';
 
 export {
@@ -172,6 +173,8 @@ export {
 	type HelperInfo,
 	type FactoryInfo,
 	type TestDataInfo,
+	type FacadeInfo,
+	type FacadePropertyInfo,
 	type InventoryReport,
 } from './core/inventory-analyzer.js';
 
@@ -196,6 +199,7 @@ import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
 import { DeadCodeRule } from './rules/dead-code.rule.js';
 import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { DuplicateLogicRule } from './rules/duplicate-logic.rule.js';
+import { NoDirectPageInstantiationRule } from './rules/no-direct-page-instantiation.rule.js';
 import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
@@ -213,6 +217,7 @@ export function createDefaultRunner(): RuleRunner {
 	runner.registerRule(new DeduplicationRule());
 	runner.registerRule(new TestDataHygieneRule());
 	runner.registerRule(new DuplicateLogicRule());
+	runner.registerRule(new NoDirectPageInstantiationRule());
 	return runner;
 }
 

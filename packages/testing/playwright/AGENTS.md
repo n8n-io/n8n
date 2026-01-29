@@ -366,6 +366,51 @@ test('API-only test', async ({ api }) => {
 });
 ```
 
+### Feature Flag Overrides
+
+To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
+
+```typescript
+import type { TestRequirements } from '../config/TestRequirements';
+
+const requirements: TestRequirements = {
+  storage: {
+    N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ 'your_experiment': true }),
+  },
+};
+
+test.use({ requirements });
+
+test('test with feature flag enabled', async ({ n8n }) => {
+  // Feature flag is now active for this test
+});
+```
+
+**Common patterns:**
+
+```typescript
+// Single experiment
+{ storage: { N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '025_new_canvas': true }) } }
+
+// Multiple experiments
+{ storage: { N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+  '025_new_canvas': true,
+  '026_another_feature': 'variant_a'
+}) } }
+
+// Combined with other requirements
+const requirements: TestRequirements = {
+  storage: {
+    N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ 'your_experiment': true }),
+  },
+  capability: {
+    env: { TEST_ISOLATION: 'my-test-suite' },
+  },
+};
+```
+
+**Reference:** `config/TestRequirements.ts` for full interface definition.
+
 ## Code Style
 
 - Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`

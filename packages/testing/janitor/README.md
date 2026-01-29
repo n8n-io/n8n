@@ -538,6 +538,15 @@ The janitor embodies these principles:
 
 The janitor includes tools for TCR-style development workflows, where changes are automatically committed if tests pass, or reverted if they fail.
 
+**Recommended Workflow:**
+
+1. Run `pnpm janitor` to identify violations
+2. Fix violations in your code
+3. **Debug and verify** - Run affected tests manually, check behavior
+4. **TCR as the last step** - Once confident, use TCR to safely commit
+
+> **Why TCR last?** Running TCR immediately after fixing violations doesn't give you time to debug if something breaks. The revert happens automatically, and you lose your work. Fix → verify → TCR ensures you only commit working code.
+
 ### Impact Analysis
 
 Determine which tests are affected by file changes:

@@ -17,6 +17,7 @@ import {
 } from 'ts-morph';
 
 import { getConfig } from '../config.js';
+import { FacadeResolver } from './facade-resolver.js';
 import { getSourceFiles } from './project-loader.js';
 import { getRootDir } from '../utils/paths.js';
 
@@ -98,6 +99,18 @@ export interface TestDataInfo {
 	sizeKb: number;
 }
 
+export interface FacadePropertyInfo {
+	property: string;
+	type: string;
+}
+
+export interface FacadeInfo {
+	file: string;
+	className: string;
+	exposedPages: FacadePropertyInfo[];
+	unexposedPages: string[];
+}
+
 export interface InventoryReport {
 	timestamp: string;
 	rootDir: string;
@@ -111,6 +124,7 @@ export interface InventoryReport {
 		factories: number;
 		testData: number;
 	};
+	facade: FacadeInfo | null;
 	pages: PageInfo[];
 	components: ComponentInfo[];
 	composables: ComposableInfo[];
@@ -123,9 +137,11 @@ export interface InventoryReport {
 
 export class InventoryAnalyzer {
 	private root: string;
+	private facade: FacadeResolver;
 
 	constructor(private project: Project) {
 		this.root = getRootDir();
+		this.facade = new FacadeResolver(project);
 	}
 
 	generate(): InventoryReport {
@@ -137,6 +153,7 @@ export class InventoryAnalyzer {
 		const helpers = this.analyzeHelpers();
 		const factories = this.analyzeFactories();
 		const testData = this.analyzeTestData();
+		const facade = this.analyzeFacade(pages);
 
 		return {
 			timestamp: new Date().toISOString(),
@@ -151,6 +168,7 @@ export class InventoryAnalyzer {
 				factories: factories.length,
 				testData: testData.length,
 			},
+			facade,
 			pages,
 			components,
 			composables,
@@ -557,6 +575,40 @@ export class InventoryAnalyzer {
 		}
 
 		return testData.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	private analyzeFacade(pages: PageInfo[]): FacadeInfo | null {
+		const config = getConfig();
+		const classToPropertyMap = this.facade.getClassToPropertyMap();
+
+		// No facade configured or found
+		if (classToPropertyMap.size === 0) {
+			return null;
+		}
+
+		// Build exposed pages from facade resolver
+		const exposedPages: FacadePropertyInfo[] = [];
+		const exposedTypes = new Set<string>();
+
+		for (const [className, properties] of classToPropertyMap) {
+			exposedTypes.add(className);
+			for (const property of properties) {
+				exposedPages.push({ property, type: className });
+			}
+		}
+
+		// Find pages not exposed on the facade
+		const unexposedPages = pages
+			.filter((page) => !exposedTypes.has(page.name))
+			.map((page) => page.name)
+			.sort();
+
+		return {
+			file: config.facade.file,
+			className: config.facade.className,
+			exposedPages: exposedPages.sort((a, b) => a.property.localeCompare(b.property)),
+			unexposedPages,
+		};
 	}
 
 	private extractMethods(classDecl: ClassDeclaration): MethodInfo[] {

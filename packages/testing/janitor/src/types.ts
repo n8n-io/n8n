@@ -24,7 +24,8 @@ export type BuiltInRuleId =
 	| 'dead-code'
 	| 'deduplication'
 	| 'test-data-hygiene'
-	| 'duplicate-logic';
+	| 'duplicate-logic'
+	| 'no-direct-page-instantiation';
 
 // Allow any string for custom rules, while BuiltInRuleId provides type-safe hints for built-in rules
 export type RuleId = string;

@@ -142,6 +142,9 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 		},
 		'api-purity': { enabled: true, severity: 'warning' },
 		'test-data-hygiene': { enabled: true, severity: 'warning' },
+		// Opt-in rule: enforces facade pattern for page object access
+		// Enable in projects that use a facade pattern (e.g., n8n.canvas instead of new CanvasPage())
+		'no-direct-page-instantiation': { enabled: false, severity: 'error' },
 	},
 
 	tcr: {

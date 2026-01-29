@@ -74,6 +74,8 @@ export default defineConfig({
 			],
 		},
 		'api-purity': { enabled: true, severity: 'warning' },
+		// Enforce facade pattern - access pages through n8n.* instead of new *Page()
+		'no-direct-page-instantiation': { enabled: true, severity: 'error' },
 	},
 
 	tcr: {
