@@ -35,6 +35,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
