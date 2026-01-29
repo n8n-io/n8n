@@ -19,7 +19,7 @@ import {
 import { getConfig } from '../config.js';
 import { FacadeResolver } from './facade-resolver.js';
 import { getSourceFiles } from './project-loader.js';
-import { getRootDir } from '../utils/paths.js';
+import { getRootDir, getRelativePath } from '../utils/paths.js';
 
 export interface ParameterInfo {
 	name: string;
@@ -186,7 +186,7 @@ export class InventoryAnalyzer {
 		const pages: PageInfo[] = [];
 
 		for (const file of files) {
-			const filePath = this.getRelativePath(file.getFilePath());
+			const filePath = getRelativePath(file.getFilePath());
 
 			if (filePath.includes('/components/')) continue;
 
@@ -206,7 +206,7 @@ export class InventoryAnalyzer {
 	private extractPageInfo(classDecl: ClassDeclaration, file: SourceFile): PageInfo {
 		return {
 			name: classDecl.getName() ?? 'Anonymous',
-			file: this.getRelativePath(file.getFilePath()),
+			file: getRelativePath(file.getFilePath()),
 			container: this.extractContainer(classDecl),
 			methods: this.extractMethods(classDecl),
 			properties: this.extractProperties(classDecl),
@@ -241,7 +241,7 @@ export class InventoryAnalyzer {
 		const components: ComponentInfo[] = [];
 
 		for (const file of files) {
-			const filePath = this.getRelativePath(file.getFilePath());
+			const filePath = getRelativePath(file.getFilePath());
 
 			if (filePath.endsWith('BaseModal.ts') || filePath.endsWith('BaseComponent.ts')) continue;
 
@@ -267,7 +267,7 @@ export class InventoryAnalyzer {
 		const pageFiles = getSourceFiles(this.project, config.patterns.pages);
 
 		for (const file of pageFiles) {
-			const filePath = this.getRelativePath(file.getFilePath());
+			const filePath = getRelativePath(file.getFilePath());
 			if (filePath.includes('/components/')) continue;
 
 			const content = file.getText();
@@ -305,7 +305,7 @@ export class InventoryAnalyzer {
 	private extractComposableInfo(classDecl: ClassDeclaration, file: SourceFile): ComposableInfo {
 		return {
 			name: classDecl.getName() ?? 'Anonymous',
-			file: this.getRelativePath(file.getFilePath()),
+			file: getRelativePath(file.getFilePath()),
 			methods: this.extractMethods(classDecl),
 			usesPages: this.findPageObjectUsage(classDecl),
 		};
@@ -354,7 +354,7 @@ export class InventoryAnalyzer {
 
 		return {
 			name: classDecl.getName() ?? 'Anonymous',
-			file: this.getRelativePath(file.getFilePath()),
+			file: getRelativePath(file.getFilePath()),
 			methods,
 		};
 	}
@@ -403,7 +403,7 @@ export class InventoryAnalyzer {
 		const fixtures: FixtureInfo[] = [];
 
 		for (const file of files) {
-			const filePath = this.getRelativePath(file.getFilePath());
+			const filePath = getRelativePath(file.getFilePath());
 			const extendCalls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
 
 			for (const call of extendCalls) {
@@ -443,7 +443,7 @@ export class InventoryAnalyzer {
 			}
 		}
 
-		return { name: 'test', file: this.getRelativePath(file.getFilePath()), provides };
+		return { name: 'test', file: getRelativePath(file.getFilePath()), provides };
 	}
 
 	private inferFixtureType(initializerText: string): string {
@@ -476,7 +476,7 @@ export class InventoryAnalyzer {
 			if (functions.length > 0) {
 				helpers.push({
 					name: this.getClassName(file) ?? path.basename(file.getFilePath(), '.ts'),
-					file: this.getRelativePath(file.getFilePath()),
+					file: getRelativePath(file.getFilePath()),
 					functions,
 				});
 			}
@@ -514,7 +514,7 @@ export class InventoryAnalyzer {
 					const name = classDecl.getName() ?? '';
 					factories.push({
 						name,
-						file: this.getRelativePath(file.getFilePath()),
+						file: getRelativePath(file.getFilePath()),
 						methods: this.extractMethods(classDecl),
 						builds: this.inferFactoryProduct(classDecl),
 					});
@@ -525,7 +525,7 @@ export class InventoryAnalyzer {
 				if (func.isExported() && func.getName()?.toLowerCase().includes('factory')) {
 					factories.push({
 						name: func.getName() ?? 'anonymous',
-						file: this.getRelativePath(file.getFilePath()),
+						file: getRelativePath(file.getFilePath()),
 						methods: [this.extractFunctionInfo(func)],
 						builds: this.simplifyType(func.getReturnType().getText()),
 					});
@@ -675,10 +675,6 @@ export class InventoryAnalyzer {
 		simplified = simplified.replace(/Promise<(.+)>/, '$1');
 		if (simplified.length > 50) simplified = simplified.slice(0, 47) + '...';
 		return simplified;
-	}
-
-	private getRelativePath(absolutePath: string): string {
-		return path.relative(this.root, absolutePath);
 	}
 }
 

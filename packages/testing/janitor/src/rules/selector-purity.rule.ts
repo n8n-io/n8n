@@ -4,6 +4,7 @@ import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS, PAGE_LEVEL_METHODS, truncateText } from '../utils/ast-helpers.js';
+import { matchesPatterns } from '../utils/paths.js';
 
 /**
  * Selector Purity Rule
@@ -45,11 +46,7 @@ export class SelectorPurityRule extends BaseRule {
 
 		for (const file of files) {
 			const filePath = file.getFilePath();
-			const isTestFile = config.patterns.tests.some((pattern) => {
-				// Simple glob match - check if file matches test pattern
-				const normalizedPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
-				return new RegExp(normalizedPattern).test(filePath);
-			});
+			const isTestFile = matchesPatterns(filePath, config.patterns.tests);
 
 			// Find all call expressions
 			const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);

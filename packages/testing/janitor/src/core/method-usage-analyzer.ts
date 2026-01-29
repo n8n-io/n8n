@@ -8,7 +8,7 @@ import { type Project } from 'ts-morph';
 
 import { getConfig } from '../config.js';
 import { FacadeResolver } from './facade-resolver.js';
-import { getRootDir, findFilesRecursive } from '../utils/paths.js';
+import { getRootDir, findFilesRecursive, getRelativePath } from '../utils/paths.js';
 
 export interface MethodUsage {
 	testFile: string;
@@ -108,7 +108,7 @@ export class MethodUsageAnalyzer {
 			fullCall: string;
 		}> = [];
 		const config = getConfig();
-		const relativePath = this.getRelativePath(testFilePath);
+		const relativePath = getRelativePath(testFilePath);
 
 		try {
 			const content = fs.readFileSync(testFilePath, 'utf-8');
@@ -175,10 +175,6 @@ export class MethodUsageAnalyzer {
 		throw new Error(
 			`Invalid format: "${input}". Expected "ClassName.methodName" (e.g., "CanvasPage.addNode")`,
 		);
-	}
-
-	private getRelativePath(absolutePath: string): string {
-		return path.relative(getRootDir(), absolutePath);
 	}
 }
 

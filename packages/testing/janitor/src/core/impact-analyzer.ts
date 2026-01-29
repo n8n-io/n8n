@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { type Project, type SourceFile } from 'ts-morph';
 
 import { FacadeResolver } from './facade-resolver.js';
-import { getRootDir, findFilesRecursive } from '../utils/paths.js';
+import { getRootDir, findFilesRecursive, getRelativePath, isTestFile } from '../utils/paths.js';
 
 export interface ImpactResult {
 	changedFiles: string[];
@@ -50,10 +50,10 @@ export class ImpactAnalyzer {
 				continue;
 			}
 
-			const relativePath = this.getRelativePath(filePath);
+			const relativePath = getRelativePath(filePath);
 
 			// If the changed file is itself a test, it's affected
-			if (this.isTestFile(relativePath)) {
+			if (isTestFile(relativePath)) {
 				affectedSet.add(filePath);
 			}
 
@@ -62,7 +62,7 @@ export class ImpactAnalyzer {
 
 			const dependents = this.findAllDependents(sourceFile, new Set(), propertyNames);
 
-			graph[relativePath] = dependents.map((f) => this.getRelativePath(f));
+			graph[relativePath] = dependents.map((f) => getRelativePath(f));
 
 			for (const dep of dependents) {
 				affectedSet.add(dep);
@@ -70,13 +70,13 @@ export class ImpactAnalyzer {
 		}
 
 		// Convert to relative paths and filter
-		const allAffected = Array.from(affectedSet).map((f) => this.getRelativePath(f));
+		const allAffected = Array.from(affectedSet).map((f) => getRelativePath(f));
 		const affectedTests = allAffected
-			.filter((f) => this.isTestFile(f))
+			.filter((f) => isTestFile(f))
 			.sort((a, b) => a.localeCompare(b));
 
 		return {
-			changedFiles: absolutePaths.map((f) => this.getRelativePath(f)),
+			changedFiles: absolutePaths.map((f) => getRelativePath(f)),
 			affectedFiles: allAffected.sort((a, b) => a.localeCompare(b)),
 			affectedTests,
 			graph,
@@ -189,23 +189,6 @@ export class ImpactAnalyzer {
 		}
 
 		return Array.from(matchingTests);
-	}
-
-	/**
-	 * Check if a file is a test file
-	 */
-	private isTestFile(relativePath: string): boolean {
-		return (
-			(relativePath.startsWith('tests/') || relativePath.includes('/tests/')) &&
-			relativePath.endsWith('.spec.ts')
-		);
-	}
-
-	/**
-	 * Get relative path from root
-	 */
-	private getRelativePath(absolutePath: string): string {
-		return path.relative(this.root, absolutePath);
 	}
 }
 

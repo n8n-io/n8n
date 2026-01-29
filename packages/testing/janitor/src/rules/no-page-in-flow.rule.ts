@@ -3,6 +3,7 @@ import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
+import { LOCATOR_METHODS } from '../utils/ast-helpers.js';
 
 /**
  * No Page In Flow Rule
@@ -110,7 +111,7 @@ export class NoPageInFlowRule extends BaseRule {
 		if (methodName.startsWith('waitFor')) {
 			return 'Use a page object method for waiting operations';
 		}
-		if (methodName === 'getByTestId' || methodName === 'locator' || methodName === 'getByRole') {
+		if (LOCATOR_METHODS.includes(methodName)) {
 			return 'Use page object methods instead of direct locators';
 		}
 		if (methodName === 'url') {

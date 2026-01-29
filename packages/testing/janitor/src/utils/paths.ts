@@ -42,11 +42,14 @@ export function isFlowFile(filePath: string): boolean {
 }
 
 /**
- * Check if a file path is within the tests directory
+ * Check if a file path is a test file (in tests directory with .spec.ts extension)
  */
 export function isTestFile(filePath: string): boolean {
 	const normalized = path.normalize(filePath).replaceAll('\\', '/');
-	return normalized.includes('/tests/');
+	return (
+		(normalized.startsWith('tests/') || normalized.includes('/tests/')) &&
+		normalized.endsWith('.spec.ts')
+	);
 }
 
 /**
