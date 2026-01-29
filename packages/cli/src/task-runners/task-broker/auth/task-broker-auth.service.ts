@@ -5,7 +5,7 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-const GRANT_TOKEN_TTL = 15 * Time.seconds.toMilliseconds;
+const DEFAULT_GRANT_TOKEN_TTL = 15 * Time.seconds.toMilliseconds;
 
 @Service()
 export class TaskBrokerAuthService {
@@ -15,8 +15,18 @@ export class TaskBrokerAuthService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly cacheService: CacheService,
 		// For unit testing purposes
-		private readonly grantTokenTtl = GRANT_TOKEN_TTL,
+		private readonly grantTokenTtl = globalConfig.taskRunners.grantTokenTtl
+			? globalConfig.taskRunners.grantTokenTtl * Time.seconds.toMilliseconds
+			: DEFAULT_GRANT_TOKEN_TTL,
 	) {}
+
+	/**
+	 * Returns the grant token TTL in milliseconds.
+	 * Useful for logging and debugging.
+	 */
+	getGrantTokenTtl() {
+		return this.grantTokenTtl;
+	}
 
 	isValidAuthToken(token: string) {
 		const tokenBuffer = Buffer.from(token);
