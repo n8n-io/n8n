@@ -56,7 +56,7 @@ exports[`ConnectionTracker > should render network error when both offline and p
             data-v-f4a2fe1d=""
           >
             
-            Connection lost, auto save paused
+            Offline
             
           </span>
         </span>
@@ -72,7 +72,7 @@ exports[`ConnectionTracker > should render network error when both offline and p
 </div>
 `;
 
-exports[`ConnectionTracker > should render network error when offline (priority 1) 1`] = `
+exports[`ConnectionTracker > should render network error when offline 1`] = `
 <div>
   <span
     data-v-f4a2fe1d=""
@@ -106,7 +106,7 @@ exports[`ConnectionTracker > should render network error when offline (priority 
             data-v-f4a2fe1d=""
           >
             
-            Connection lost, auto save paused
+            Offline
             
           </span>
         </span>

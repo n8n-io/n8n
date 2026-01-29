@@ -59,14 +59,14 @@ describe('ConnectionTracker', () => {
 		expect(container).toMatchSnapshot();
 	});
 
-	it('should render network error when offline (priority 1)', () => {
+	it('should render network error when offline', () => {
 		isConnected = true;
 		isConnectionRequested = true;
 		isOnline = false; // Offline takes priority
 		const { container } = render();
 
 		expect(container).toMatchSnapshot();
-		expect(container.textContent).toContain('Connection lost, auto save paused');
+		expect(container.textContent).toContain('Offline');
 	});
 
 	it('should render push error when push disconnected and online', () => {
@@ -77,7 +77,6 @@ describe('ConnectionTracker', () => {
 
 		expect(container).toMatchSnapshot();
 		expect(container.textContent).toContain('Connection lost');
-		expect(container.textContent).not.toContain('auto save paused');
 	});
 
 	it('should not render error when push connected and connection not requested', () => {
@@ -96,6 +95,6 @@ describe('ConnectionTracker', () => {
 		const { container } = render();
 
 		expect(container).toMatchSnapshot();
-		expect(container.textContent).toContain('Connection lost, auto save paused');
+		expect(container.textContent).toContain('Offline');
 	});
 });
