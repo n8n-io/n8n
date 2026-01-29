@@ -1,0 +1,10 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "integer"
+		}
+	},
+	"required": ["id"],
+	"version": 2
+}
