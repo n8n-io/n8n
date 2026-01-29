@@ -5,5 +5,6 @@ export {
 	showImpactHelp,
 	showInventoryHelp,
 	showMethodImpactHelp,
+	showRulesHelp,
 	showTcrHelp,
 } from './help.js';

@@ -21,6 +21,7 @@ import {
 	showImpactHelp,
 	showInventoryHelp,
 	showMethodImpactHelp,
+	showRulesHelp,
 	showTcrHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
@@ -318,6 +319,36 @@ function runBaseline(options: CliOptions): void {
 	console.log('  git commit -m "chore: add janitor baseline"');
 }
 
+function runRules(options: CliOptions): void {
+	const runner = createDefaultRunner();
+	const rules = runner.getRuleDetails();
+
+	if (options.json) {
+		console.log(JSON.stringify(rules, null, 2));
+	} else {
+		console.log('\nAvailable Rules\n' + '='.repeat(50) + '\n');
+
+		for (const rule of rules) {
+			const fixable = rule.fixable ? ' [fixable]' : '';
+			const enabled = rule.enabled ? '' : ' (disabled)';
+			const severity = rule.severity.toUpperCase();
+
+			console.log(`${rule.id}${fixable}${enabled}`);
+			console.log(`  Name: ${rule.name}`);
+			console.log(`  Severity: ${severity}`);
+			console.log(`  ${rule.description}`);
+
+			if (options.verbose) {
+				console.log(`  Targets: ${rule.targetGlobs.join(', ')}`);
+			}
+
+			console.log('');
+		}
+
+		console.log(`Total: ${rules.length} rules (${rules.filter((r) => r.enabled).length} enabled)`);
+	}
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -338,6 +369,9 @@ async function main(): Promise<void> {
 				break;
 			case 'method-impact':
 				showMethodImpactHelp();
+				break;
+			case 'rules':
+				showRulesHelp();
 				break;
 			default:
 				showHelp();
@@ -375,6 +409,9 @@ async function main(): Promise<void> {
 			break;
 		case 'method-impact':
 			runMethodImpact(options);
+			break;
+		case 'rules':
+			runRules(options);
 			break;
 		default:
 			runAnalyze(options);

@@ -2,7 +2,14 @@ import * as path from 'node:path';
 import type { Project, SourceFile } from 'ts-morph';
 
 import type { BaseRule } from '../rules/base-rule.js';
-import type { JanitorReport, RuleResult, Severity, RunOptions, RuleConfig } from '../types.js';
+import type {
+	JanitorReport,
+	RuleResult,
+	Severity,
+	RunOptions,
+	RuleConfig,
+	RuleInfo,
+} from '../types.js';
 import { getSourceFiles } from './project-loader.js';
 import { getConfig } from '../config.js';
 
@@ -73,6 +80,39 @@ export class RuleRunner {
 	 */
 	getDisabledRules(): string[] {
 		return Array.from(this.rules.keys()).filter((id) => !this.enabledRules.has(id));
+	}
+
+	/**
+	 * Get detailed information about all registered rules
+	 */
+	getRuleDetails(): RuleInfo[] {
+		return Array.from(this.rules.values()).map((rule) => ({
+			id: rule.id,
+			name: rule.name,
+			description: rule.description,
+			severity: rule.severity,
+			fixable: rule.fixable,
+			enabled: this.enabledRules.has(rule.id),
+			targetGlobs: rule.getTargetGlobs(),
+		}));
+	}
+
+	/**
+	 * Get detailed information about a specific rule
+	 */
+	getRuleInfo(ruleId: string): RuleInfo | undefined {
+		const rule = this.rules.get(ruleId);
+		if (!rule) return undefined;
+
+		return {
+			id: rule.id,
+			name: rule.name,
+			description: rule.description,
+			severity: rule.severity,
+			fixable: rule.fixable,
+			enabled: this.enabledRules.has(rule.id),
+			targetGlobs: rule.getTargetGlobs(),
+		};
 	}
 
 	/**

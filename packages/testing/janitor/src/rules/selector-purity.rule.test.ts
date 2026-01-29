@@ -102,4 +102,65 @@ export class TestComposer {
 
 		expect(violations.length).toBeGreaterThanOrEqual(3);
 	});
+
+	test('detects chained locator calls on variables in test files', ({ project, createFile }) => {
+		const file = createFile(
+			'/tests/e2e/my-test.spec.ts',
+			`
+test('my test', async ({ n8n }) => {
+  const category = n8n.settingsPage.getCategory('credentials');
+  const links = category.locator('a[href*="/workflow/"]');
+  await expect(links.first()).toBeVisible();
+});
+`,
+		);
+
+		const violations = rule.analyze(project, [file]);
+
+		expect(violations.length).toBeGreaterThan(0);
+		expect(violations[0].message).toContain('Chained locator call');
+	});
+
+	test('detects chained getByRole on variables in test files', ({ project, createFile }) => {
+		// Use a simpler test case that mirrors the working test more closely
+		const file = createFile(
+			'/tests/e2e/another-test.spec.ts',
+			`
+test('my test', async ({ n8n }) => {
+  const category = n8n.settingsPage.getCategory('credentials');
+  const button = category.getByRole('button');
+  await expect(button).toBeVisible();
+});
+`,
+		);
+
+		const violations = rule.analyze(project, [file]);
+
+		expect(violations.length).toBeGreaterThan(0);
+		expect(violations[0].message).toContain('Chained locator call');
+	});
+
+	test('allows this.container.locator in page objects (not test files)', ({
+		project,
+		createFile,
+	}) => {
+		// This is a composable file, not a test file, so chained locator detection doesn't apply
+		const file = createFile(
+			'/composables/TestComposer.ts',
+			`
+export class TestComposer {
+  constructor(private n8n: n8nPage) {}
+
+  async doSomething() {
+    // This uses page object methods, not direct locators
+    await this.n8n.modal.getSubmitButton();
+  }
+}
+`,
+		);
+
+		const violations = rule.analyze(project, [file]);
+
+		expect(violations).toHaveLength(0);
+	});
 });

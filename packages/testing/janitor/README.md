@@ -148,6 +148,23 @@ git commit -m "chore: update baseline after cleanup"
 
 **Baseline file format:** `.janitor-baseline.json` - tracks violations by file and content hash, so line number shifts don't cause false positives.
 
+### List Rules
+
+View all available rules with their descriptions:
+
+```bash
+# Human-readable list
+playwright-janitor rules
+
+# JSON output (for AI agents/automation)
+playwright-janitor rules --json
+
+# Verbose (includes target globs)
+playwright-janitor rules --verbose
+```
+
+The JSON output is useful for AI agents that need to understand the rules before writing code.
+
 ## Rules
 
 ### Architecture Rules
@@ -243,17 +260,32 @@ rules: {
 
 Raw Playwright locators (`getByTestId`, `locator`, etc.) should only appear in page objects, not in tests or flows.
 
+**Catches:**
+- Direct page locator calls: `page.getByTestId()`, `app.page.locator()`
+- Chained locator calls on variables: `someLocator.locator()`, `category.getByText()`
+
 **Note:** Selectors inside `expect()` calls are allowed by default (`allowInExpect: true`). This recognizes that assertions often need to check specific elements.
 
 ```typescript
-// Bad - Selector in test file
+// Bad - Direct page locator in test
 test('creates workflow', async ({ app }) => {
   await app.page.getByTestId('new-workflow-btn').click(); // Leaked selector
+});
+
+// Bad - Chained locator on returned Locator
+test('finds links', async ({ app }) => {
+  const category = app.settings.getCategory('nodes');
+  const links = category.locator('a[href*="/workflow/"]'); // Leaked selector
 });
 
 // Good - Selector encapsulated in page object
 test('creates workflow', async ({ app }) => {
   await app.workflows.create(); // Implementation hidden
+});
+
+// Good - Page object returns the specific element
+test('finds links', async ({ app }) => {
+  const links = app.settings.getWorkflowLinks('nodes'); // Selector in page object
 });
 ```
 

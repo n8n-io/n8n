@@ -55,7 +55,7 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 
 | Rule | What It Catches |
 |------|-----------------|
-| `selector-purity` | Raw `getByTestId` in tests/flows (should be in page objects) |
+| `selector-purity` | Raw locators in tests/flows: `page.getByTestId()`, `someLocator.locator()` |
 | `no-page-in-flow` | Flows accessing `page` directly (should use page objects) |
 | `boundary-protection` | Pages importing other pages (creates coupling) |
 | `scope-lockdown` | Unscoped locators that escape their container |
@@ -78,8 +78,11 @@ pnpm janitor --rule=dead-code
 # Auto-fix (dead-code only)
 pnpm janitor:fix --rule=dead-code
 
-# List all rules
+# List all rules (short)
 pnpm janitor --list
+
+# Show detailed rule info (for AI agents)
+pnpm janitor rules --json
 
 # JSON output
 pnpm janitor --json

@@ -51,6 +51,7 @@ export type {
 	ReportSummary,
 	JanitorReport,
 	Rule,
+	RuleInfo,
 	FilePatterns,
 	FacadeConfig,
 } from './types.js';

@@ -178,3 +178,13 @@ export interface FacadeConfig {
 	className: string;
 	excludeTypes: string[];
 }
+
+export interface RuleInfo {
+	id: string;
+	name: string;
+	description: string;
+	severity: Severity;
+	fixable: boolean;
+	enabled: boolean;
+	targetGlobs: string[];
+}

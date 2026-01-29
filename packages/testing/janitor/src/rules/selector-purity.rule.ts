@@ -14,6 +14,8 @@ import { LOCATOR_METHODS, PAGE_LEVEL_METHODS, truncateText } from '../utils/ast-
  * Violations:
  * - fixture.page.getByTestId(), this.fixture.page.locator(), etc.
  * - page.getByTestId() in test files
+ * - Chained locator calls: someLocator.locator(), someLocator.getByRole(), etc.
+ *   (where someLocator is a variable holding a Locator returned from a page object)
  *
  * Exceptions (legitimate page-level operations):
  * - page.keyboard.*
@@ -39,8 +41,16 @@ export class SelectorPurityRule extends BaseRule {
 
 	analyze(_project: Project, files: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
+		const config = getConfig();
 
 		for (const file of files) {
+			const filePath = file.getFilePath();
+			const isTestFile = config.patterns.tests.some((pattern) => {
+				// Simple glob match - check if file matches test pattern
+				const normalizedPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
+				return new RegExp(normalizedPattern).test(filePath);
+			});
+
 			// Find all call expressions
 			const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
 
@@ -82,6 +92,35 @@ export class SelectorPurityRule extends BaseRule {
 							startColumn,
 							`Direct page locator call: ${truncated}`,
 							suggestion,
+						),
+					);
+				}
+
+				// Check for chained locator calls in test files (e.g., someLocator.locator())
+				if (isTestFile && this.isChainedLocatorCallAST(call)) {
+					// Skip Playwright assertion methods
+					if (this.isPlaywrightAssertionCall(call)) {
+						continue;
+					}
+
+					// Skip violations inside expect() if allowInExpect is enabled
+					const ruleSettings = getConfig().rules?.[this.id];
+					const allowInExpect = this.config.allowInExpect ?? ruleSettings?.allowInExpect;
+					if (allowInExpect && this.isInsideExpect(call)) {
+						continue;
+					}
+
+					const startLine = call.getStartLineNumber();
+					const startColumn = call.getStart() - call.getStartLinePos();
+					const truncated = truncateText(call.getText(), 60);
+
+					violations.push(
+						this.createViolation(
+							file,
+							startLine,
+							startColumn,
+							`Chained locator call in test: ${truncated}`,
+							'Move selector to page object method instead of chaining .locator() in tests',
 						),
 					);
 				}
@@ -200,6 +239,64 @@ export class SelectorPurityRule extends BaseRule {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Check if a call expression is a chained locator call on a variable (not page/container)
+	 * e.g., someLocator.locator('...'), category.getByRole('...')
+	 *
+	 * Uses AST analysis to properly identify the call structure.
+	 */
+	private isChainedLocatorCallAST(call: CallExpression): boolean {
+		const expr = call.getExpression();
+
+		// Must be a property access (e.g., something.locator)
+		if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) {
+			return false;
+		}
+
+		const propAccess = expr.asKind(SyntaxKind.PropertyAccessExpression);
+		if (!propAccess) {
+			return false;
+		}
+
+		const methodName = propAccess.getName();
+
+		// Must be a locator method
+		if (!LOCATOR_METHODS.includes(methodName)) {
+			return false;
+		}
+
+		// Get the object the method is called on
+		const objectExpr = propAccess.getExpression();
+		const objectText = objectExpr.getText();
+
+		// Skip direct page access (handled by isDirectPageLocator)
+		if (objectText === 'page' || objectText === 'this.page') {
+			return false;
+		}
+
+		// Skip fixture.page access
+		const config = getConfig();
+		if (objectText === `${config.fixtureObjectName}.page`) {
+			return false;
+		}
+
+		// Skip container-based calls (legitimate in page objects)
+		if (objectText === 'container' || objectText === 'this.container') {
+			return false;
+		}
+
+		// Skip if object starts with 'this.' (page object internal method)
+		// e.g., this.getContainer().locator() is fine
+		if (objectText.startsWith('this.') && !objectText.includes('.page')) {
+			return false;
+		}
+
+		// At this point, we have a locator method called on something else
+		// This is a chained call on a variable holding a Locator
+		// e.g., const category = n8n.settingsPage.getCategory(); category.locator('...')
+		return true;
 	}
 
 	/**

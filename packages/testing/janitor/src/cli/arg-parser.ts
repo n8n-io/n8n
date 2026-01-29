@@ -5,7 +5,14 @@
  * Handles subcommands, flags, and options.
  */
 
-export type Command = 'analyze' | 'tcr' | 'inventory' | 'impact' | 'method-impact' | 'baseline';
+export type Command =
+	| 'analyze'
+	| 'tcr'
+	| 'inventory'
+	| 'impact'
+	| 'method-impact'
+	| 'baseline'
+	| 'rules';
 
 export interface CliOptions {
 	command: Command;
@@ -42,6 +49,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	impact: 'impact',
 	'method-impact': 'method-impact',
 	baseline: 'baseline',
+	rules: 'rules',
 };
 
 interface FlagHandler {

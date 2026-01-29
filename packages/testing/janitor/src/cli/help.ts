@@ -13,6 +13,7 @@ Usage:
 
 Commands:
   (default)          Run static analysis rules
+  rules              Show detailed information about all rules (for AI agents)
   baseline           Create/update baseline of known violations
   inventory          Show codebase inventory (pages, components, flows, tests)
   impact             Analyze impact of file changes (which tests to run)
@@ -41,6 +42,7 @@ Examples:
   playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
+  playwright-janitor rules --help
   playwright-janitor baseline --help
   playwright-janitor inventory --help
   playwright-janitor impact --help
@@ -115,5 +117,27 @@ Workflow:
 
 Example:
   playwright-janitor baseline && git add .janitor-baseline.json
+`);
+}
+
+export function showRulesHelp(): void {
+	console.log(`
+Rules - Show detailed information about available rules
+
+Usage:
+  playwright-janitor rules              # List all rules with descriptions
+  playwright-janitor rules --json       # Output as JSON (for AI agents)
+  playwright-janitor rules --verbose    # Include what each rule catches
+
+Output includes:
+  - Rule ID and name
+  - Description
+  - Severity (error/warning)
+  - Whether it's fixable
+  - What patterns it catches
+  - Exceptions/allowed patterns
+
+Example:
+  playwright-janitor rules --json | jq '.[] | select(.id == "selector-purity")'
 `);
 }
