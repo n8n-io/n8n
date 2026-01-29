@@ -1,4 +1,3 @@
-import { AuthService } from '@/auth/auth.service';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -12,6 +11,8 @@ import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { ensureError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { AuthService } from '@/auth/auth.service';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),
@@ -50,7 +51,9 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cipher: Cipher,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	hookDescription: HookDescription = {
 		name: CHATHUB_EXTRACTOR_NAME,
