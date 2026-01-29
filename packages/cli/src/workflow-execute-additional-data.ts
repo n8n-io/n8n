@@ -7,7 +7,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -483,6 +483,7 @@ export async function getBase({
 		userId,
 		setExecutionStatus,
 		variables,
+		hmacSignatureSecret: Container.get(InstanceSettings).hmacSignatureSecret,
 		workflowSettings,
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);

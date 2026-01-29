@@ -2373,6 +2373,9 @@ export class Github implements INodeType {
 				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 
+			// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
+			this.setMetadata({ resumeUrl });
+
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 			return [this.getInputData()];
 		}

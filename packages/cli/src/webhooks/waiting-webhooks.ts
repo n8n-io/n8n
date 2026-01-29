@@ -2,29 +2,21 @@ import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import crypto from 'crypto';
 import type express from 'express';
+import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
-	InstanceSettings,
-	WAITING_TOKEN_QUERY_PARAM,
-	prepareUrlForSigning,
-	generateUrlSignature,
-} from 'n8n-core';
-import {
-	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
-	IWebhookResponseCallbackData,
 	IWebhookManager,
+	IWebhookResponseCallbackData,
 	WaitingWebhookRequest,
 } from './webhook.types';
 
@@ -32,9 +24,9 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -50,7 +42,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
-		private readonly instanceSettings: InstanceSettings,
+		protected readonly instanceSettings: InstanceSettings,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -102,36 +94,71 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	validateSignatureInRequest(req: express.Request) {
-		try {
-			const actualToken = req.query[WAITING_TOKEN_QUERY_PARAM];
+	/**
+	 * Validates the HMAC signature in the request URL.
+	 * Uses timing-safe comparison to prevent timing attacks.
+	 *
+	 * Backwards compatibility note:
+	 * Before signatures were added, $execution.resumeUrl was just the base URL without query params.
+	 * Workflows could append a webhook suffix like: `$execution.resumeUrl + '/my-suffix'`
+	 *
+	 * Now that $execution.resumeUrl includes `?signature=token`, appending a suffix produces:
+	 *   `http://host/wait/123?signature=token/my-suffix` (malformed)
+	 * instead of the correct:
+	 *   `http://host/wait/123/my-suffix?signature=token`
+	 *
+	 * To maintain backwards compatibility, we detect when the signature contains a '/' and
+	 * extract the webhook path from it, allowing both URL formats to work.
+	 *
+	 * Additionally, when a suffix is provided in the URL path (e.g., /n8n-execution-status),
+	 * we strip it before validation since signatures are generated for the base URL only.
+	 *
+	 * @param req - The Express request object
+	 * @param suffix - Optional URL path suffix to strip before validation (e.g., 'n8n-execution-status')
+	 * @returns Object with validation result, optionally the webhook path, and the signature value
+	 */
+	protected validateSignature(
+		req: express.Request,
+		suffix?: string,
+	): { valid: boolean; webhookPath?: string } {
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		let providedSignature = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
+		let webhookPath: string | undefined;
 
-			if (typeof actualToken !== 'string') return false;
-
-			// req.host is set correctly even when n8n is behind a reverse proxy
-			// as long as N8N_PROXY_HOPS is set correctly
-			const parsedUrl = new URL(req.url, `http://${req.host}`);
-			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
-
-			const urlForSigning = prepareUrlForSigning(parsedUrl);
-
-			const expectedToken = generateUrlSignature(
-				urlForSigning,
-				this.instanceSettings.hmacSignatureSecret,
-			);
-
-			const valid = crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
-			return valid;
-		} catch (error) {
-			return false;
+		if (!providedSignature) {
+			return { valid: false };
 		}
+
+		// Handle backwards compat: extract webhook path if it was appended after the signature
+		// e.g., ?signature=abc123/my-suffix -> signature is "abc123", webhookPath is "my-suffix"
+		if (providedSignature.includes('/')) {
+			const slashIndex = providedSignature.indexOf('/');
+			webhookPath = providedSignature.slice(slashIndex + 1);
+			providedSignature = providedSignature.slice(0, slashIndex);
+			// Update URL for validation (remove the path suffix from signature param)
+			url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, providedSignature);
+		}
+
+		// Strip suffix from pathname if provided, since signatures are generated for the base URL only
+		// e.g., /form-waiting/123/n8n-execution-status -> /form-waiting/123
+		if (suffix && url.pathname.endsWith(`/${suffix}`)) {
+			url.pathname = url.pathname.slice(0, -(suffix.length + 1));
+		}
+
+		const valid = validateUrlSignature(
+			providedSignature,
+			url,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		return { valid, webhookPath };
 	}
 
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
+		const { path: executionId } = req.params;
+		let { suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -142,14 +169,23 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
+		// Only validate signature for executions that have validateSignature flag set
+		// This provides backwards compatibility for old executions created before signature validation
 		if (execution?.data.validateSignature) {
-			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
-			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
-
-			if (shouldValidate && !this.validateSignatureInRequest(req)) {
-				res.status(401).json({ error: 'Invalid token' });
+			const { valid, webhookPath } = this.validateSignature(req);
+			if (!valid) {
+				const { workflowData } = execution;
+				const { nodes } = this.createWorkflow(workflowData);
+				if (this.isSendAndWaitRequest(nodes, suffix)) {
+					res.status(401).render('form-invalid-token');
+				} else {
+					res.status(401).json({ error: 'Invalid signature' });
+				}
 				return { noWebhookResponse: true };
+			}
+			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
+			if (!suffix && webhookPath) {
+				suffix = webhookPath;
 			}
 		}
 
@@ -273,22 +309,6 @@ export class WaitingWebhooks implements IWebhookManager {
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
-			}
-
-			if (!execution.data.resultData.error && execution.status === 'waiting') {
-				const childNodes = workflow.getChildNodes(
-					execution.data.resultData.lastNodeExecuted as string,
-				);
-
-				const hasChildForms = childNodes.some(
-					(node) =>
-						workflow.nodes[node].type === FORM_NODE_TYPE ||
-						workflow.nodes[node].type === WAIT_NODE_TYPE,
-				);
-
-				if (hasChildForms) {
-					return { noWebhookResponse: true };
-				}
 			}
 
 			throw new NotFoundError(errorMessage);

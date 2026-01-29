@@ -1,22 +1,39 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
+import { getWebhookSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
+const TEST_HMAC_SECRET = 'test-hmac-secret-key';
+
 class TestWaitingForms extends WaitingForms {
 	exposeGetWorkflow(execution: IExecutionResponse): Workflow {
 		return this.getWorkflow(execution);
+	}
+
+	exposeValidateSignature(
+		req: express.Request,
+		suffix?: string,
+	): { valid: boolean; webhookPath?: string } {
+		return this.validateSignature(req, suffix);
 	}
 }
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingForms = new TestWaitingForms(mock(), mock(), executionRepository, mock(), mock());
+	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
+	const waitingForms = new TestWaitingForms(
+		mock(),
+		mock(),
+		executionRepository,
+		mock(),
+		mockInstanceSettings,
+	);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -302,6 +319,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -328,11 +346,12 @@ describe('WaitingForms', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
-				headers: { origin: 'null' },
+				headers: { origin: 'null', host: 'localhost:5678' },
 				params: {
 					path: '123',
 					suffix: undefined,
 				},
+				url: '/form-waiting/123',
 			});
 
 			const res = mock<express.Response>();
@@ -445,6 +464,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -471,11 +491,12 @@ describe('WaitingForms', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
-				headers: {},
+				headers: { host: 'localhost:5678' },
 				params: {
 					path: '123',
 					suffix: undefined,
 				},
+				url: '/form-waiting/123',
 			});
 
 			const res = mock<express.Response>();
@@ -501,6 +522,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -527,11 +549,12 @@ describe('WaitingForms', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
-				headers: {},
+				headers: { host: 'localhost:5678' },
 				params: {
 					path: '123',
 					suffix: undefined,
 				},
+				url: '/form-waiting/123',
 			});
 
 			const res = mock<express.Response>();
@@ -542,6 +565,159 @@ describe('WaitingForms', () => {
 				'Content-Security-Policy',
 				expect.stringContaining('sandbox'),
 			);
+		});
+	});
+
+	describe('executeWebhook - signature validation', () => {
+		it('should return 401 when validateSignature is true but request has no signature', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'FormNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: true, // Signature validation enabled
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: { host: 'localhost:5678' },
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				url: '/form-waiting/123', // No token in URL
+			});
+
+			const mockRender = jest.fn();
+			const mockStatus = jest.fn().mockReturnValue({ render: mockRender });
+			const res = mock<express.Response>({
+				status: mockStatus,
+			});
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should skip signature validation when validateSignature is undefined (backwards compat)', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: { host: 'localhost:5678' },
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				url: '/form-waiting/123', // No token, but validation is skipped
+			});
+
+			const res = mock<express.Response>();
+
+			// Should not throw or return 401 - should proceed to render completion page
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('validateSignature - backwards compat webhook path extraction', () => {
+		// Helper to generate proper HMAC signature for a URL
+		const generateTestSignature = (urlPath: string) => {
+			const crypto = require('crypto');
+			return crypto.createHmac('sha256', TEST_HMAC_SECRET).update(urlPath).digest('hex');
+		};
+
+		const createMockRequest = (opts: { host?: string; signature?: string; path?: string }) => {
+			const urlPath = opts.path ?? '/form-waiting/123';
+			const fullUrl = opts.signature
+				? `${urlPath}?${WAITING_TOKEN_QUERY_PARAM}=${opts.signature}`
+				: urlPath;
+			return mock<express.Request>({
+				url: fullUrl,
+				headers: { host: opts.host ?? 'localhost:5678' },
+			});
+		};
+
+		it('should extract webhook path from signature when appended (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/suffix */
+			const urlPath = '/form-waiting/123';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithSuffix = `${validSignature}/my-custom-suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingForms.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'my-custom-suffix' });
+		});
+
+		it('should handle nested suffix paths in signature (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/path/to/suffix */
+			const urlPath = '/form-waiting/123';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithNestedSuffix = `${validSignature}/path/to/suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithNestedSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingForms.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
 		});
 	});
 });

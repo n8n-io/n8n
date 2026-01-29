@@ -216,6 +216,7 @@ export class NodeTestHarness {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			executionId: '1',
 			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+			formWaitingBaseUrl: 'http://localhost/waiting-form',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
