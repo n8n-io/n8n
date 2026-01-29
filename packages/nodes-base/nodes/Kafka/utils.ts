@@ -257,13 +257,14 @@ export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
+	executionMode: string,
 ) {
 	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	// For manual mode, always use immediate emit (no donePromise)
-	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
+	if (executionMode === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: IDataObject[]) => {
 			ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
 			return { success: true };
@@ -332,7 +333,7 @@ export function getAutoCommitSettings(
 ) {
 	let shouldAutoCommit = true;
 
-	if (nodeVersion >= 1.2 && ctx.getMode() !== 'manual') {
+	if (nodeVersion >= 1.2) {
 		const resolveOffset = ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
 		if (resolveOffset !== 'immediately') {
 			const disableAutoResolveOffset = ctx.getNodeParameter(

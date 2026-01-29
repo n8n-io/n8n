@@ -25,7 +25,7 @@ import type {
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { SingleTriggerError } from '@/errors/single-trigger.error';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -325,7 +325,9 @@ export class TestWebhooks implements IWebhookManager {
 				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
 			);
 			if (singleWebhookTrigger) {
-				throw new SingleTriggerError(workflow.getNode(singleWebhookTrigger.node)?.name ?? '');
+				throw new SingleWebhookTriggerError(
+					workflow.getNode(singleWebhookTrigger.node)?.name ?? '',
+				);
 			}
 		}
 

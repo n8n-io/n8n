@@ -25,7 +25,6 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { SingleTriggerError } from '@/errors/single-trigger.error';
 import { EventService } from '@/events/event.service';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -35,11 +34,6 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-
-/**
- * Triggers that cannot run test executions while the workflow is active.
- */
-const PREVENT_TEST_WHILE_ACTIVE_TRIGGERS = ['n8n-nodes-base.kafkaTrigger'];
 
 @Service()
 export class WorkflowExecutionService {
@@ -104,47 +98,6 @@ export class WorkflowExecutionService {
 		return nodeType.description.group.includes('trigger');
 	}
 
-	/**
-	 * Check if the workflow contains triggers that cannot run test executions while active.
-	 * These are polling/streaming triggers (like Kafka) that maintain persistent connections
-	 * which would conflict with a test execution.
-	 *
-	 * @throws SingleTriggerError if the workflow is active and contains such a trigger
-	 */
-	private checkForPreventTestWhileActiveTriggers(
-		workflowData: IWorkflowBase,
-		workflowIsActive: boolean,
-		triggerToStartFrom?: { name: string },
-	): void {
-		if (!workflowIsActive) return;
-
-		const pinData = workflowData.pinData ?? {};
-
-		// Find all triggers that prevent test while active (excluding disabled and pinned ones)
-		const preventTestTriggers = workflowData.nodes.filter(
-			(node) =>
-				PREVENT_TEST_WHILE_ACTIVE_TRIGGERS.includes(node.type) &&
-				!node.disabled &&
-				!pinData[node.name],
-		);
-
-		if (preventTestTriggers.length === 0) return;
-
-		// If triggerToStartFrom is specified, only check that specific trigger
-		if (triggerToStartFrom) {
-			const trigger = preventTestTriggers.find((n) => n.name === triggerToStartFrom.name);
-			if (trigger) {
-				throw new SingleTriggerError(trigger.name);
-			}
-		} else {
-			// Check all triggers in the workflow
-			const trigger = preventTestTriggers[0];
-			if (trigger) {
-				throw new SingleTriggerError(trigger.name);
-			}
-		}
-	}
-
 	async executeManually(
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
@@ -152,13 +105,6 @@ export class WorkflowExecutionService {
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
-
-		// Check for polling/streaming triggers that cannot run test executions while active
-		this.checkForPreventTestWhileActiveTriggers(
-			payload.workflowData,
-			workflowIsActive,
-			'triggerToStartFrom' in payload ? payload.triggerToStartFrom : undefined,
-		);
 
 		// For manual testing always set to not active
 		payload.workflowData.active = false;

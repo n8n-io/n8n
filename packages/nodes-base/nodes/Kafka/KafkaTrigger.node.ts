@@ -383,6 +383,7 @@ export class KafkaTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const nodeVersion = this.getNode().typeVersion;
+		const executionMode = this.getMode();
 
 		const config = await createConfig(this);
 		const kafka = new apacheKafka(config);
@@ -399,7 +400,7 @@ export class KafkaTrigger implements INodeType {
 		const batchSize = options.batchSize ?? 1;
 		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 
-		const dataEmitter = configureDataEmitter(this, options, nodeVersion);
+		const dataEmitter = configureDataEmitter(this, options, nodeVersion, executionMode);
 
 		const startConsumer = async () => {
 			try {
@@ -472,7 +473,7 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		if (this.getMode() !== 'manual') {
+		if (executionMode !== 'manual') {
 			await startConsumer();
 			return { closeFunction };
 		} else {
