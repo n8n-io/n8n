@@ -9,7 +9,7 @@ import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
 import { trimWorkflowJSON } from '../utils/trim-workflow-context';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { getEffectiveWorkflow } from './helpers/state';
 
 const DISPLAY_TITLE = 'Getting workflow JSON';
 
@@ -141,9 +141,8 @@ export function createGetWorkflowJsonTool(logger?: Logger): BuilderTool {
 				// Report tool start
 				reporter.start(validatedInput);
 
-				// Get current state
-				const state = getWorkflowState();
-				const workflow = state.workflowJSON;
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 
 				if (!workflow || workflow.nodes.length === 0) {
 					const output: GetWorkflowJsonOutput = {

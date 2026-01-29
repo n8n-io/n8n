@@ -8,7 +8,7 @@ import { validateAgentPrompt, validateTools, validateFromAi } from '@/validation
 import { ToolExecutionError, ValidationError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { getEffectiveWorkflow } from './helpers/state';
 
 const validateConfigurationSchema = z.object({}).strict().default({});
 
@@ -36,12 +36,13 @@ export function createValidateConfigurationTool(
 				const validatedInput = validateConfigurationSchema.parse(input ?? {});
 				reporter.start(validatedInput);
 
-				const state = getWorkflowState();
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 				reportProgress(reporter, 'Validating configuration');
 
-				const agentViolations = validateAgentPrompt(state.workflowJSON);
-				const toolViolations = validateTools(state.workflowJSON, parsedNodeTypes);
-				const fromAiViolations = validateFromAi(state.workflowJSON, parsedNodeTypes);
+				const agentViolations = validateAgentPrompt(workflow);
+				const toolViolations = validateTools(workflow, parsedNodeTypes);
+				const fromAiViolations = validateFromAi(workflow, parsedNodeTypes);
 
 				const allViolations = [...agentViolations, ...toolViolations, ...fromAiViolations];
 

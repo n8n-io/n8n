@@ -9,7 +9,7 @@ import type { SimpleWorkflow } from '../types/workflow';
 import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { getEffectiveWorkflow, getWorkflowState } from './helpers/state';
 
 const DISPLAY_TITLE = 'Getting node context';
 
@@ -261,9 +261,10 @@ export function createGetNodeContextTool(logger?: Logger): BuilderTool {
 				// Report tool start
 				reporter.start(validatedInput);
 
-				// Get current state
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
+				// Get state for execution context (not affected by pending operations)
 				const state = getWorkflowState();
-				const workflow = state.workflowJSON;
 
 				// Find the node
 				const node = workflow.nodes.find((n) => n.name === nodeName);

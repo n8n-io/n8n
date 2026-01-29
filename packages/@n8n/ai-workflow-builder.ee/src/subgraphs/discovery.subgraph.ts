@@ -239,6 +239,35 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	/**
+	 * Baseline flow control nodes to always include.
+	 * These handle common data transformation needs and are available in every workflow.
+	 * Reasoning is kept neutral - describes what the node does, not when/how to use it.
+	 */
+	private readonly BASELINE_NODES = [
+		{ name: 'n8n-nodes-base.aggregate', reasoning: 'Combines multiple items into a single item' },
+		{
+			name: 'n8n-nodes-base.if',
+			reasoning: 'Routes items to different output paths based on true/false condition evaluation',
+		},
+		{
+			name: 'n8n-nodes-base.switch',
+			reasoning: 'Routes items to different output paths based on rules or expression evaluation',
+		},
+		{
+			name: 'n8n-nodes-base.splitOut',
+			reasoning: 'Converts a single item containing an array field into multiple separate items',
+		},
+		{
+			name: 'n8n-nodes-base.merge',
+			reasoning: 'Combines data from multiple parallel input branches into a single output',
+		},
+		{
+			name: 'n8n-nodes-base.set',
+			reasoning: 'Transforms data by adding, modifying, or removing fields from items',
+		},
+	];
+
+	/**
 	 * Format the output from the submit tool call
 	 * Hydrates availableResources for each node using node type definitions.
 	 */
@@ -285,6 +314,27 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				nodesFound: [],
 				templateIds: [],
 			};
+		}
+
+		// Add baseline flow control nodes if not already discovered
+		const discoveredNames = new Set(output.nodesFound.map((n) => n.nodeName));
+		const baselineNodesToAdd = this.BASELINE_NODES.filter((bn) => !discoveredNames.has(bn.name));
+
+		// Look up versions for baseline nodes
+		for (const baselineNode of baselineNodesToAdd) {
+			const nodeType = this.parsedNodeTypes.find((nt) => nt.name === baselineNode.name);
+			if (nodeType) {
+				const version = Array.isArray(nodeType.version)
+					? Math.max(...nodeType.version)
+					: nodeType.version;
+
+				output.nodesFound.push({
+					nodeName: baselineNode.name,
+					version,
+					reasoning: baselineNode.reasoning,
+					connectionChangingParameters: [],
+				});
+			}
 		}
 
 		// Build lookup map for resource hydration
