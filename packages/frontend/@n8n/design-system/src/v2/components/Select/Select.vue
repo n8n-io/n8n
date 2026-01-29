@@ -182,6 +182,8 @@ const groups = computed<SelectItemProps[]>(() => {
 					</SelectGroup>
 				</SelectViewport>
 
+				<slot name="footer" />
+
 				<SelectScrollDownButton :class="$style.selectScrollButton">
 					<Icon icon="chevron-down" />
 				</SelectScrollDownButton>

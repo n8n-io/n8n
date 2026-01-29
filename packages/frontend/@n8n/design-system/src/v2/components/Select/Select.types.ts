@@ -86,4 +86,5 @@ export type SelectSlots<
 	['item-leading']: SlotProps;
 	['item-label']: (props: { item: SelectItemProps }) => unknown;
 	['item-trailing']: SlotProps;
+	footer?: () => unknown;
 };
