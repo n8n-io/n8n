@@ -22,6 +22,7 @@ import {
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -103,6 +104,7 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
+import WorkflowHistoryNameVersionModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryNameVersionModal.vue';
 import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
@@ -313,6 +315,16 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			<template #default="{ modalName, data }">
 				<WorkflowHistoryVersionUnpublishModal
 					data-test-id="workflow-history-version-unpublish-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryNameVersionModal
+					data-test-id="workflow-history-name-version-modal"
 					:modal-name="modalName"
 					:data="data"
 				/>

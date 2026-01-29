@@ -6,6 +6,7 @@ import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -32,6 +33,7 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
+import type { WorkflowHistoryNameVersionModalEventBusEvents } from '../components/WorkflowHistoryNameVersionModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
@@ -45,6 +47,7 @@ const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'clone',
 	'open',
 	'download',
+	'name',
 ];
 const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
@@ -290,6 +293,50 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 	});
 };
 
+const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
+	const nameVersionEventBus = createEventBus<WorkflowHistoryNameVersionModalEventBusEvents>();
+
+	nameVersionEventBus.once('save', async (saveData) => {
+		await workflowHistoryStore.updateWorkflowHistoryVersion(workflowId.value, id, {
+			name: saveData.name,
+			description: saveData.description,
+		});
+
+		const historyItem = workflowHistory.value.find((item) => item.versionId === saveData.versionId);
+		if (historyItem) {
+			historyItem.name = saveData.name;
+			historyItem.description = saveData.description;
+		}
+
+		if (selectedWorkflowVersion.value?.versionId === saveData.versionId) {
+			selectedWorkflowVersion.value = {
+				...selectedWorkflowVersion.value,
+				name: saveData.name,
+				description: saveData.description,
+			};
+		}
+
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.nameVersion.success.title'),
+			type: 'success',
+		});
+
+		sendTelemetry('User named version from history');
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
+		data: {
+			versionId: id,
+			workflowId: workflowId.value,
+			formattedCreatedAt: data.formattedCreatedAt,
+			versionName: data.versionName,
+			description: data.description,
+			eventBus: nameVersionEventBus,
+		},
+	});
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -314,6 +361,9 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
 				unpublishWorkflowVersion(id, data);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.NAME:
+				await nameWorkflowVersion(id, data);
 				break;
 		}
 	} catch (error) {

@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
-import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -28,7 +28,7 @@ const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
 
-const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
+const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
 const description = ref('');
 const versionName = ref('');
@@ -237,7 +237,7 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
-				<WorkflowPublishForm
+				<WorkflowVersionForm
 					ref="publishForm"
 					v-model:version-name="versionName"
 					v-model:description="description"
