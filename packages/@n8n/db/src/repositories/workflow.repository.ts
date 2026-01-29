@@ -21,6 +21,7 @@ import {
 	WorkflowTagMapping,
 	WorkflowDependency,
 } from '../entities';
+import type { User } from '../entities';
 import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
@@ -31,6 +32,21 @@ import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
+
+/**
+ * Represents the user's access context for workflow queries.
+ * Used to apply JOIN-based access control instead of pre-fetching IDs.
+ */
+export interface WorkflowAccessContext {
+	/** The user requesting access */
+	user: User;
+	/** Project roles that grant access (e.g., 'project:owner', 'project:admin') */
+	projectRoles: string[];
+	/** Workflow sharing roles that grant access (e.g., 'workflow:owner', 'workflow:editor') */
+	workflowRoles: string[];
+	/** Whether the user has global workflow:read scope (admin/owner) */
+	isGlobalScope: boolean;
+}
 
 type WorkflowFolderUnionRow = {
 	id: string;
@@ -453,6 +469,277 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		];
 
 		return { workflows, count };
+	}
+
+	/**
+	 * Returns workflows and count using JOIN-based access control.
+	 * This method avoids fetching all workflow IDs first, making it scalable
+	 * for large numbers of accessible workflows.
+	 *
+	 * @param accessContext - User's access context with roles
+	 * @param options - Query options (filter, pagination, etc.)
+	 */
+	async getManyAndCountForUser(
+		accessContext: WorkflowAccessContext,
+		options: ListQuery.Options = {},
+	) {
+		const query = this.getManyQueryForUser(accessContext, options);
+
+		const [workflows, count] = (await query.getManyAndCount()) as [
+			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
+			number,
+		];
+
+		return { workflows, count };
+	}
+
+	/**
+	 * Returns workflows and folders with count using JOIN-based access control.
+	 * This is the scalable version of getWorkflowsAndFoldersWithCount.
+	 *
+	 * @param accessContext - User's access context with roles
+	 * @param options - Query options (filter, pagination, etc.)
+	 */
+	async getWorkflowsAndFoldersWithCountForUser(
+		accessContext: WorkflowAccessContext,
+		options: ListQuery.Options = {},
+	) {
+		if (
+			options.filter?.parentFolderId &&
+			typeof options.filter?.parentFolderId === 'string' &&
+			options.filter.parentFolderId !== PROJECT_ROOT &&
+			typeof options.filter?.projectId === 'string' &&
+			options.filter.query
+		) {
+			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+				options.filter.parentFolderId,
+				options.filter.projectId,
+			);
+
+			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
+			options.filter.folderIds = folderIds;
+			delete options.filter.parentFolderId;
+		}
+
+		const [workflowsAndFolders, count] = await Promise.all([
+			this.getWorkflowsAndFoldersUnionForUser(accessContext, options),
+			this.getWorkflowsAndFoldersCountForUser(accessContext, options),
+		]);
+
+		const isArchived =
+			typeof options.filter?.isArchived === 'boolean' ? options.filter.isArchived : undefined;
+
+		const { workflows, folders } = await this.fetchExtraDataForUser(
+			workflowsAndFolders,
+			accessContext,
+			isArchived,
+		);
+
+		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
+			workflows,
+			folders,
+		});
+
+		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	/**
+	 * Returns union of workflows and folders using JOIN-based access control.
+	 */
+	private async getWorkflowsAndFoldersUnionForUser(
+		accessContext: WorkflowAccessContext,
+		options: ListQuery.Options = {},
+	) {
+		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQueryForUser(
+			accessContext,
+			options,
+		);
+
+		const query = this.buildUnionQuery(baseQuery, {
+			sortByColumn,
+			sortByDirection,
+			pagination: {
+				take: options.take,
+				skip: options.skip ?? 0,
+			},
+		});
+
+		const workflowsAndFolders = await query.getRawMany<WorkflowFolderUnionRow>();
+		return this.removeNameLowerFromResults(workflowsAndFolders);
+	}
+
+	/**
+	 * Returns count of workflows and folders using JOIN-based access control.
+	 */
+	private async getWorkflowsAndFoldersCountForUser(
+		accessContext: WorkflowAccessContext,
+		options: ListQuery.Options = {},
+	) {
+		const { skip, take, ...baseQueryParameters } = options;
+
+		const { baseQuery } = this.buildBaseUnionQueryForUser(accessContext, baseQueryParameters);
+
+		const response = await baseQuery
+			.select(`COUNT(DISTINCT ${baseQuery.escape('RESULT')}.${baseQuery.escape('id')})`, 'count')
+			.from('RESULT_QUERY', 'RESULT')
+			.select('COUNT(*)', 'count')
+			.getRawOne<{ count: number | string }>();
+
+		return Number(response?.count) || 0;
+	}
+
+	/**
+	 * Builds the base union query for workflows and folders using JOIN-based access control.
+	 */
+	private buildBaseUnionQueryForUser(
+		accessContext: WorkflowAccessContext,
+		options: ListQuery.Options = {},
+	) {
+		// Common fields for both folders and workflows
+		const commonFields = {
+			updatedAt: true,
+			createdAt: true,
+			id: true,
+			name: true,
+		} as const;
+
+		// Transform `query` => `name` for folder repository
+		const folderFilter = options.filter ? { ...options.filter } : undefined;
+		if (folderFilter?.query) {
+			folderFilter.name = folderFilter.query;
+		}
+
+		const folderQueryParameters: ListQuery.Options = {
+			select: commonFields,
+			filter: folderFilter,
+		};
+
+		const workflowQueryParameters: ListQuery.Options = {
+			select: {
+				...commonFields,
+				description: true,
+				updatedAt: true,
+				createdAt: true,
+				id: true,
+				name: true,
+			},
+			filter: options.filter,
+		};
+
+		// For union, we need to have the same columns, so add NULL as description for folders
+		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
+
+		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+			options.sortBy ?? 'updatedAt:asc',
+		);
+
+		const foldersQuery = this.folderRepository
+			.getManyQuery(folderQueryParameters)
+			.addSelect('NULL', 'description')
+			.addSelect("'folder'", 'resource');
+
+		const workflowsQuery = this.getManyQueryForUser(
+			accessContext,
+			workflowQueryParameters,
+		).addSelect("'workflow'", 'resource');
+
+		const qb = this.manager.createQueryBuilder();
+
+		return {
+			baseQuery: qb
+				.createQueryBuilder()
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
+				.addCommonTableExpression(
+					`SELECT * FROM ${qb.escape('FOLDERS_QUERY')} UNION ALL SELECT * FROM ${qb.escape('WORKFLOWS_QUERY')}`,
+					'RESULT_QUERY',
+				),
+			sortByColumn,
+			sortByDirection,
+		};
+	}
+
+	/**
+	 * Fetches extra data (full workflow/folder objects) for the union results.
+	 * Note: accessContext is not used here since we already have the IDs from the
+	 * paginated union query - no need to apply access control again.
+	 */
+	private async fetchExtraDataForUser(
+		workflowsAndFolders: WorkflowFolderUnionRow[],
+		_accessContext: WorkflowAccessContext,
+		isArchived?: boolean,
+	) {
+		const workflowIds = this.getWorkflowsIds(workflowsAndFolders);
+		const folderIds = this.getFolderIds(workflowsAndFolders);
+
+		// For extra data, we can use the ID-based method since we already have the IDs
+		// from the paginated results
+		const [workflows, folders] = await Promise.all([
+			this.getMany(workflowIds),
+			this.folderRepository.getMany({ filter: { folderIds, isArchived } }),
+		]);
+
+		return { workflows, folders };
+	}
+
+	/**
+	 * Builds a query for workflows using JOIN-based access control.
+	 * This method should be used instead of getManyQuery when you don't have
+	 * pre-fetched workflow IDs.
+	 *
+	 * @param accessContext - User's access context with roles
+	 * @param options - Query options (filter, pagination, etc.)
+	 */
+	getManyQueryForUser(accessContext: WorkflowAccessContext, options: ListQuery.Options = {}) {
+		const qb = this.createQueryBuilder('workflow');
+
+		// Apply access control via JOINs instead of WHERE id IN (...)
+		this.applyAccessControlFilter(qb, accessContext);
+
+		this.applyFilters(qb, options.filter);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applySelect(qb, options.select);
+		this.applyRelations(qb, options.select);
+		this.applySorting(qb, options.sortBy);
+		this.applyPagination(qb, options);
+
+		return qb;
+	}
+
+	/**
+	 * Applies access control filter to a query using JOINs.
+	 * This replaces the pattern of fetching all IDs first and then using WHERE id IN (...).
+	 *
+	 * For users with global scope, no filter is applied (they can see all workflows).
+	 * For regular users, the query joins through shared_workflow -> project -> project_relation
+	 * to find workflows they have access to based on their roles.
+	 *
+	 * @param qb - The query builder to modify
+	 * @param accessContext - User's access context
+	 */
+	private applyAccessControlFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		accessContext: WorkflowAccessContext,
+	): void {
+		// Users with global scope can see all workflows
+		if (accessContext.isGlobalScope) {
+			return;
+		}
+
+		// For regular users, apply JOIN-based access control
+		// Use distinct alias names to avoid conflicts with existing joins (e.g., project filter)
+		qb.innerJoin('workflow.shared', 'accessShared')
+			.innerJoin('accessShared.project', 'accessProject')
+			.innerJoin('accessProject.projectRelations', 'accessProjectRelation')
+			.andWhere('accessProjectRelation.userId = :accessUserId', {
+				accessUserId: accessContext.user.id,
+			})
+			.andWhere('accessProjectRelation.role IN (:...accessProjectRoles)', {
+				accessProjectRoles: accessContext.projectRoles,
+			})
+			.andWhere('accessShared.role IN (:...accessWorkflowRoles)', {
+				accessWorkflowRoles: accessContext.workflowRoles,
+			});
 	}
 
 	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {

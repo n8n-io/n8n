@@ -474,6 +474,8 @@ describe('CredentialsService', () => {
 		beforeEach(() => {
 			// Mock ownershipService to return credentials as-is
 			ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
+			// Mock roleService.rolesWithScope for member user tests
+			roleService.rolesWithScope.mockResolvedValue(['project:owner', 'project:admin']);
 		});
 
 		describe('returnAll = true (owner user)', () => {
@@ -794,26 +796,30 @@ describe('CredentialsService', () => {
 				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
 			});
 
-			it('should fetch credentials by user and role', async () => {
+			it('should fetch credentials using findManyForUser with access context', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 
 				// ACT
 				await service.getMany(memberUser, {});
 
 				// ASSERT
-				expect(credentialsFinderService.getCredentialIdsByUserAndRole).toHaveBeenCalledWith(
-					[memberUser.id],
-					{ scopes: ['credential:read'] },
+				expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
+				expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
+				expect(credentialsRepository.findManyForUser).toHaveBeenCalledWith(
+					expect.objectContaining({
+						user: memberUser,
+						isGlobalScope: false,
+					}),
+					expect.anything(),
 				);
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith({}, ['cred-1']);
 			});
 
 			describe('with includeScopes', () => {
 				it('should add scopes to credentials when includeScopes is true', async () => {
 					// ARRANGE
 					const projectRelations = [{ projectId: 'proj-1', role: 'project:editor' }] as any;
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 					projectService.getProjectRelationsForUser.mockResolvedValue(projectRelations);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read'] }) as any,
@@ -846,7 +852,7 @@ describe('CredentialsService', () => {
 
 				it('should include decrypted data when user has credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -863,7 +869,7 @@ describe('CredentialsService', () => {
 
 				it('should not include decrypted data when user lacks credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read'] }) as any,
 					);
@@ -885,7 +891,7 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when filtering by shared.projectId', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.findManyForUser.mockResolvedValue([credWithShared]);
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -907,7 +913,7 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when onlySharedWithMe is true', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.findManyForUser.mockResolvedValue([credWithShared]);
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -928,7 +934,7 @@ describe('CredentialsService', () => {
 			describe('with custom select', () => {
 				it('should skip addOwnedByAndSharedWith when select is custom', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 
 					// ACT
 					await service.getMany(memberUser, {
@@ -948,8 +954,7 @@ describe('CredentialsService', () => {
 				// ARRANGE
 				const credWithShared = { ...regularCredential, shared: [] } as any;
 				const sharedRelation = { credentialsId: 'cred-1', projectId: 'proj-1' } as any;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+				credentialsRepository.findManyForUser.mockResolvedValue([credWithShared]);
 				sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 					sharedRelation,
 				]);
@@ -960,14 +965,14 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+				expect(credentialsRepository.findManyForUser).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.objectContaining({
 						filter: expect.objectContaining({
 							withRole: 'credential:user',
 							user: memberUser,
 						}),
 					}),
-					['cred-1'],
 				);
 				expect(sharedCredentialsRepository.getAllRelationsForCredentials).toHaveBeenCalledWith([
 					'cred-1',
@@ -978,8 +983,7 @@ describe('CredentialsService', () => {
 				// ARRANGE
 				const credWithShared = { ...regularCredential, shared: [] } as any;
 				const sharedRelation = { credentialsId: 'cred-1', projectId: 'proj-1' } as any;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+				credentialsRepository.findManyForUser.mockResolvedValue([credWithShared]);
 				sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 					sharedRelation,
 				]);
@@ -993,7 +997,8 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+				expect(credentialsRepository.findManyForUser).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.objectContaining({
 						filter: expect.objectContaining({
 							type: 'apiKey',
@@ -1001,7 +1006,6 @@ describe('CredentialsService', () => {
 							user: memberUser,
 						}),
 					}),
-					['cred-1'],
 				);
 			});
 		});
@@ -1031,8 +1035,7 @@ describe('CredentialsService', () => {
 
 			it('should include global credentials for member users', async () => {
 				// ARRANGE
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 
 				// ACT
@@ -1041,7 +1044,7 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalled();
+				expect(credentialsRepository.findManyForUser).toHaveBeenCalled();
 				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
@@ -1061,11 +1064,10 @@ describe('CredentialsService', () => {
 					isGlobal: true,
 					shared: [],
 				} as Partial<CredentialsEntity> as CredentialsEntity;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue([
-					'cred-1',
-					'cred-2',
+				credentialsRepository.findManyForUser.mockResolvedValue([
+					regularCredential,
+					sharedGlobalCred,
 				]);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential, sharedGlobalCred]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 
 				// ACT
@@ -1082,7 +1084,7 @@ describe('CredentialsService', () => {
 
 			it('should include data for global credentials when includeData is true', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 				projectService.getProjectRelationsForUser.mockResolvedValue([]);
 				roleService.addScopes.mockImplementation(
@@ -1119,8 +1121,7 @@ describe('CredentialsService', () => {
 
 			it('should exclude global credentials when includeGlobal is undefined', async () => {
 				// ARRANGE
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyForUser.mockResolvedValue([regularCredential]);
 
 				// ACT
 				const result = await service.getMany(memberUser, {
