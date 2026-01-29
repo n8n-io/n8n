@@ -4,7 +4,6 @@ import { mock } from 'jest-mock-extended';
 import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils';
 
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
-import type { ExternalSecretsConfig } from '../external-secrets.config';
 import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 import type { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import type { ExternalSecretsRetryManager } from '../retry-manager.service';
@@ -16,7 +15,6 @@ describe('ExternalSecretsManager', () => {
 	jest.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
-	let mockConfig: ExternalSecretsConfig;
 	let mockProvidersFactory: MockProviders;
 	let mockEventService: any;
 	let mockPublisher: any;
@@ -35,7 +33,6 @@ describe('ExternalSecretsManager', () => {
 	};
 
 	beforeEach(() => {
-		mockConfig = { updateInterval: 60 } as ExternalSecretsConfig;
 		mockProvidersFactory = new MockProviders();
 		mockProvidersFactory.setProviders({ dummy: DummyProvider });
 		mockEventService = { emit: jest.fn() };
@@ -89,7 +86,6 @@ describe('ExternalSecretsManager', () => {
 
 		manager = new ExternalSecretsManager(
 			mockLogger(),
-			mockConfig,
 			mockProvidersFactory,
 			mockEventService,
 			mockPublisher,
@@ -102,72 +98,8 @@ describe('ExternalSecretsManager', () => {
 	});
 
 	afterEach(() => {
-		manager?.shutdown();
 		jest.clearAllTimers();
 	});
-
-	describe('init', () => {
-		it('should initialize and load all providers', async () => {
-			await manager.init();
-
-			expect(mockSettingsStore.reload).toHaveBeenCalled();
-			expect(manager.initialized).toBe(true);
-		});
-
-		it('should start secrets refresh interval', async () => {
-			await manager.init();
-
-			// refreshAll is called once during init
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
-
-			jest.advanceTimersByTime(60000); // 60 seconds
-
-			// Should be called again after interval
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(2);
-		});
-
-		it('should not initialize twice', async () => {
-			await manager.init();
-			await manager.init();
-
-			expect(mockSettingsStore.reload).toHaveBeenCalledTimes(1);
-		});
-
-		it('should handle initialization errors', async () => {
-			mockSettingsStore.reload.mockRejectedValue(new Error('Database error'));
-
-			await expect(manager.init()).rejects.toThrow('Database error');
-			expect(manager.initialized).toBe(false);
-		});
-	});
-
-	describe('shutdown', () => {
-		it('should stop refresh interval and disconnect all providers', async () => {
-			await manager.init();
-
-			manager.shutdown();
-
-			expect(mockRetryManager.cancelAll).toHaveBeenCalled();
-			expect(mockProviderRegistry.disconnectAll).toHaveBeenCalled();
-			expect(manager.initialized).toBe(false);
-		});
-
-		it('should stop calling refresh after shutdown', async () => {
-			await manager.init();
-
-			// refreshAll called once during init
-			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
-
-			jest.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
-
-			manager.shutdown();
-
-			jest.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
-		});
-	});
-
 	describe('getProvider', () => {
 		it('should delegate to provider registry', () => {
 			const dummyProvider = new DummyProvider();
@@ -558,43 +490,6 @@ describe('ExternalSecretsManager', () => {
 		});
 	});
 
-	describe('reloadAllProviders', () => {
-		it('should reload settings and refresh secrets', async () => {
-			await manager.reloadAllProviders();
-
-			expect(mockSettingsStore.reload).toHaveBeenCalled();
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
-		});
-
-		it('should initialize new providers from settings', async () => {
-			const dummyProvider = new DummyProvider();
-			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
-
-			const newSettings = {
-				dummy: {
-					connected: true,
-					connectedAt: new Date(),
-					settings: {},
-				},
-			};
-
-			mockSettingsStore.reload.mockResolvedValue(newSettings);
-			mockSettingsStore.getProvider.mockResolvedValue(newSettings.dummy);
-			mockProviderLifecycle.initialize.mockResolvedValue({
-				success: true,
-				provider: dummyProvider,
-			});
-
-			await manager.reloadAllProviders();
-
-			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
-				connected: true,
-				connectedAt: expect.any(Date),
-				settings: {},
-			});
-		});
-	});
-
 	describe('integration scenarios', () => {
 		it('should handle provider connection retry on failure', async () => {
 			const failedProvider = new FailedProvider();
@@ -622,17 +517,6 @@ describe('ExternalSecretsManager', () => {
 			await manager.setProviderConnected('dummy', true);
 
 			expect(retryOperation).toBeDefined();
-		});
-
-		it('should handle full lifecycle: init -> update -> shutdown', async () => {
-			await manager.init();
-
-			expect(manager.initialized).toBe(true);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
-
-			manager.shutdown();
-
-			expect(manager.initialized).toBe(false);
 		});
 	});
 });
