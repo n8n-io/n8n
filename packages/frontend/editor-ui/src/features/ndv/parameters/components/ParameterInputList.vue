@@ -333,17 +333,19 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	const workflowObject =
 		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
-	const parentNodes = workflowObject?.getParentNodes(nodeName) ?? [];
+	if (!workflowObject) return parameters;
+
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject?.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 	if (!formTriggerName) return parameters;
 
-	const connectedNodes = workflowObject?.getChildNodes(formTriggerName) ?? [];
+	const connectedNodes = workflowObject.getChildNodes(formTriggerName);
 
 	const hasFormPage = connectedNodes.some((_nodeName) => {
-		const _node = workflowObject?.getNode(_nodeName);
+		const _node = workflowObject.getNode(_nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -373,10 +375,12 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
 	const workflowObject =
 		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
-	const parentNodes = workflowObject?.getParentNodes(nodeName) ?? [];
+	if (!workflowObject) return parameters;
+
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject?.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
