@@ -39,7 +39,7 @@ describe('useExecutionDebugging()', () => {
 		createTestingPinia();
 		toast = useToast();
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		executionDebugging = useExecutionDebugging();

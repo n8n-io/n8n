@@ -49,7 +49,7 @@ export type WorkflowStateBusEvents = {
 
 export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
-export function useWorkflowState(workflowId?: string) {
+export function useWorkflowState(workflowId: string) {
 	const ws = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
@@ -57,12 +57,7 @@ export function useWorkflowState(workflowId?: string) {
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	// If workflowId is provided, use the documents store
-	// Otherwise, use the workflows store directly for backward compatibility
-	const documentStore = workflowId ? useWorkflowDocumentsStore(workflowId) : null;
-
-	const workflow = documentStore?.workflow ?? ws.workflow;
-	const workflowObject = documentStore?.workflowObject ?? ws.workflowObject;
+	const { workflow, workflowObject } = useWorkflowDocumentsStore(workflowId);
 
 	////
 	// Workflow editing state
@@ -530,12 +525,10 @@ export function injectWorkflowState() {
 	return inject(
 		WorkflowStateKey,
 		() => {
-			// While we're migrating we're happy to fall back onto a separate instance since
-			// all data is still stored in the workflowsStore
-			// Once we're ready to move the actual refs to `useWorkflowState` we should error here
-			// to track down remaining usages that would break
-			// console.error('Attempted to inject workflowState outside of NodeView tree');
-			return useWorkflowState();
+			// Fallback for code paths that call injectWorkflowState outside of NodeView tree
+			// (e.g., useWorkflowHelpers called from useWorkflowsStore during store initialization)
+			// This uses a default workflow ID since the actual workflow data comes from workflowsStore
+			return useWorkflowState('default');
 		},
 		true,
 	);

@@ -224,7 +224,12 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 
-const workflowState = useWorkflowState();
+const workflowId = computed(() => {
+	const name = route.params.name;
+	return Array.isArray(name) ? name[0] : name;
+});
+
+const workflowState = useWorkflowState(workflowId.value ?? '');
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -300,10 +305,6 @@ const hideNodeIssues = ref(false);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
-const workflowId = computed(() => {
-	const name = route.params.name;
-	return Array.isArray(name) ? name[0] : name;
-});
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;

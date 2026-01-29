@@ -47,7 +47,7 @@ describe(useNodeDirtiness, () => {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
-				workflowState = useWorkflowState();
+				workflowState = useWorkflowState('test-workflow-id');
 				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 				canvasOperations = useCanvasOperations();
@@ -144,7 +144,7 @@ describe(useNodeDirtiness, () => {
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			const workflowState = useWorkflowState();
+			const workflowState = useWorkflowState('test-workflow-id');
 			workflowState.setWorkflowExecutionData({
 				id: workflowsStore.workflow.id,
 				finished: true,
@@ -453,7 +453,7 @@ describe(useNodeDirtiness, () => {
 			});
 		}
 
-		const workflowState = useWorkflowState();
+		const workflowState = useWorkflowState('test-workflow-id');
 		workflowState.setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,

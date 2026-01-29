@@ -196,7 +196,7 @@ describe('useCanvasOperations', () => {
 		const pinia = createTestingPinia({ initialState });
 		setActivePinia(pinia);
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 
