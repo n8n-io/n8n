@@ -2238,6 +2238,9 @@ export function planSplitVersionFiles(
 	const combinations = extractDiscriminatorCombinations(node);
 	const tree = buildDiscriminatorTree(combinations);
 
+	// Discover output schemas for this node/version
+	const outputSchemas = discoverSchemasForNode(node.name, version, node.schemaPath);
+
 	// No _shared.ts - each discriminator file is self-contained
 
 	if (tree.type === 'resource_operation' && tree.resources) {
@@ -2255,8 +2258,18 @@ export function planSplitVersionFiles(
 				const fileName = `operation_${toSnakeCase(operation)}.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
+				// Find matching output schema for this resource/operation
+				const matchingSchema = findSchemaForOperation(outputSchemas, resource, operation);
+
 				// Import depth: 6 levels deep (node/version/resource_x/operation.ts -> base)
-				const content = generateDiscriminatorFile(node, version, combo, props, undefined, 6);
+				const content = generateDiscriminatorFile(
+					node,
+					version,
+					combo,
+					props,
+					matchingSchema?.schema,
+					6,
+				);
 				files.set(filePath, content);
 			}
 

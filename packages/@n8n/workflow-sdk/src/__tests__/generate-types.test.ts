@@ -2655,8 +2655,8 @@ describe('generate-types', () => {
 				expect(content).toContain('id?:');
 				expect(content).toContain('subject?:');
 
-				// Node type should reference output
-				expect(content).toContain('output?: FreshserviceV1TicketGetOutput');
+				// Node type should reference output wrapped in Items
+				expect(content).toContain('output?: Items<FreshserviceV1TicketGetOutput>');
 			});
 
 			it('should inline credentials interface when node has credentials', () => {
