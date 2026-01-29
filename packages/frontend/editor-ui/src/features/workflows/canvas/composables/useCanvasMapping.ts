@@ -131,6 +131,7 @@ export function useCanvasMapping({
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
+				placeholder: node.placeholder,
 			},
 		};
 	}
