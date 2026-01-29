@@ -1247,7 +1247,7 @@ export class ChatHubService {
 				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
 			);
 
-			void this.resumeChatExecutionWs(
+			void this.resumeChatExecution(
 				execution,
 				message,
 				sessionId,
@@ -1725,7 +1725,7 @@ export class ChatHubService {
 					this.logger.debug(
 						`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
 					);
-					await this.resumeChatExecutionWs(
+					await this.resumeChatExecution(
 						execution,
 						'',
 						sessionId,
@@ -1762,7 +1762,7 @@ export class ChatHubService {
 	/**
 	 * Resume a chat execution (for responseNodes mode when execution is waiting)
 	 */
-	private async resumeChatExecutionWs(
+	private async resumeChatExecution(
 		execution: IExecutionResponse,
 		message: string,
 		sessionId: ChatSessionId,
