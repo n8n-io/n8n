@@ -15,13 +15,13 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { z } from 'zod';
 import { parseWorkflowCodeToBuilder, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 // TODO: Re-enable when we decide on TypeScript runtime strategy (adds 23MB + 17MB memory)
 // import { typeCheckCode } from './evaluators/code-typecheck/type-checker';
 
+import { extractWorkflowCode } from './utils/extract-code';
 import { NodeTypeParser } from './utils/node-type-parser';
 import {
 	PROMPT_VERSIONS,
@@ -85,15 +85,11 @@ function getSdkSourceCode(): string {
 }
 
 /**
- * Structured output schema for the LLM response
+ * Structured output type for the LLM response
  */
-const WorkflowCodeOutputSchema = z.object({
-	workflowCode: z
-		.string()
-		.describe("Complete TypeScript SDK code starting with 'return workflow(...)'"),
-});
-
-type WorkflowCodeOutput = z.infer<typeof WorkflowCodeOutputSchema>;
+interface WorkflowCodeOutput {
+	workflowCode: string;
+}
 
 /**
  * Result from parseAndValidate including workflow and any warnings
@@ -468,7 +464,7 @@ export class OneShotWorkflowCodeAgent {
 								// Send warnings back to agent for one correction attempt
 								messages.push(
 									new HumanMessage(
-										`The workflow code has validation warnings that should be addressed:\n\n${warningMessages}\n\nPlease fix these issues and provide the corrected version as a JSON object with a workflowCode field.`,
+										`The workflow code has validation warnings that should be addressed:\n\n${warningMessages}\n\nPlease fix these issues and provide the corrected version in a \`\`\`typescript code block.`,
 									),
 								);
 								workflow = null; // Reset so we continue the loop
@@ -506,7 +502,7 @@ export class OneShotWorkflowCodeAgent {
 							);
 							messages.push(
 								new HumanMessage(
-									`The workflow code you generated has a parsing error:\n\n${errorMessage}\n\nPlease fix the code and provide the corrected version as a JSON object with a workflowCode field.`,
+									`The workflow code you generated has a parsing error:\n\n${errorMessage}\n\nPlease fix the code and provide the corrected version in a \`\`\`typescript code block.`,
 								),
 							);
 							finalResult = null; // Reset so we can try again
@@ -521,7 +517,7 @@ export class OneShotWorkflowCodeAgent {
 						// Add a follow-up message with the error to help the LLM correct its response
 						messages.push(
 							new HumanMessage(
-								`Could not parse your response: ${parseResult.error}\n\nPlease provide your response as a JSON object with a workflowCode field containing the complete TypeScript SDK code.`,
+								`Could not parse your response: ${parseResult.error}\n\nPlease provide your workflow code in a \`\`\`typescript code block.`,
 							),
 						);
 					}
@@ -744,6 +740,7 @@ export class OneShotWorkflowCodeAgent {
 
 	/**
 	 * Parse structured output from an AI message
+	 * Extracts workflow code from TypeScript code blocks
 	 * Returns object with result or error information
 	 */
 	private parseStructuredOutput(message: AIMessage): {
@@ -756,45 +753,29 @@ export class OneShotWorkflowCodeAgent {
 			return { result: null, error: 'No text content found in response' };
 		}
 
-		this.debugLog('PARSE_OUTPUT', 'Attempting to parse structured output', {
+		this.debugLog('PARSE_OUTPUT', 'Attempting to extract workflow code', {
 			contentLength: content.length,
 			contentPreview: content.substring(0, 500),
 		});
 
-		// Try to extract JSON from the content
-		// Look for JSON in code blocks or raw JSON
-		const jsonMatch =
-			content.match(/```json\s*([\s\S]*?)\s*```/) ||
-			content.match(/```\s*([\s\S]*?)\s*```/) ||
-			content.match(/(\{[\s\S]*"workflowCode"[\s\S]*\})/);
+		// Extract code from TypeScript code blocks
+		const workflowCode = extractWorkflowCode(content);
 
-		if (!jsonMatch) {
-			this.debugLog('PARSE_OUTPUT', 'No JSON found in content');
+		// Check if we got valid code (should contain workflow-related keywords)
+		if (!workflowCode || !workflowCode.includes('workflow')) {
+			this.debugLog('PARSE_OUTPUT', 'No valid workflow code found in content');
 			return {
 				result: null,
 				error:
-					'No JSON object with workflowCode field found in response. Please wrap your response in a JSON code block.',
+					'No valid workflow code found in response. Please provide your code in a ```typescript code block.',
 			};
 		}
 
-		try {
-			const jsonStr = jsonMatch[1].trim();
-			const parsed = JSON.parse(jsonStr) as unknown;
+		this.debugLog('PARSE_OUTPUT', 'Successfully extracted workflow code', {
+			workflowCodeLength: workflowCode.length,
+		});
 
-			// Validate with Zod schema
-			const result = WorkflowCodeOutputSchema.parse(parsed);
-			this.debugLog('PARSE_OUTPUT', 'Successfully parsed structured output', {
-				workflowCodeLength: result.workflowCode.length,
-			});
-
-			return { result, error: null };
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.debugLog('PARSE_OUTPUT', 'Failed to parse JSON', {
-				error: errorMessage,
-			});
-			return { result: null, error: `Failed to parse JSON: ${errorMessage}` };
-		}
+		return { result: { workflowCode }, error: null };
 	}
 
 	/**

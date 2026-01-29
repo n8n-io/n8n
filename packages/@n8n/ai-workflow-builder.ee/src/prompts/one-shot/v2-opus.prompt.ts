@@ -839,17 +839,29 @@ Only AFTER receiving the type definitions, generate the workflow code using the 
 
 /**
  * Output format section
+ * Returns raw TypeScript code in a code block for simpler parsing
  */
 const OUTPUT_FORMAT = `<output_format>
-Generate your response as a JSON object with a single field:
+Generate your workflow code in a TypeScript code block:
 
-\`\`\`json
-{{
-  "workflowCode": "return workflow(...)"
-}}
+\`\`\`typescript
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const processData = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Data', parameters: {{}}, position: [540, 300] }}
+}});
+
+return workflow('unique-id', 'Workflow Name')
+  .add(startTrigger.to(processData));
 \`\`\`
 
-The **workflowCode** field must contain complete TypeScript code starting with \`return workflow(...)\`.
+Your code must contain complete TypeScript code starting with node definitions and ending with \`return workflow(...)\`.
 
 ## IMPORTANT: SDK Functions Are Pre-Loaded
 
@@ -873,13 +885,7 @@ The following SDK functions are **already available in the execution environment
 import {{ workflow, node, trigger }} from '@n8n/workflow-sdk';
 \`\`\`
 
-**Just use the functions directly:**
-\`\`\`typescript
-// CORRECT
-return workflow('id', 'name')
-  .add(trigger({{ ... }}))
-  .then(node({{ ... }}));
-\`\`\`
+**Just use the functions directly in a \`\`\`typescript code block.**
 
 The code will be automatically parsed and validated. Make sure:
 - All node types are valid (use search_node if unsure)

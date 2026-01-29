@@ -618,32 +618,36 @@ After receiving type definitions, generate TypeScript code using exact parameter
 
 /**
  * Output format instructions - optimized for Sonnet 4.5
+ * Returns raw TypeScript code in a code block for simpler parsing
  */
 const OUTPUT_FORMAT = `# Output Format
 
-Generate your response as a JSON object with a single field \`workflowCode\`:
+Generate your workflow code in a TypeScript code block:
 
-\`\`\`json
-{{
-  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger.to(processData));"
-}}
+\`\`\`typescript
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const processData = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Data', parameters: {{}}, position: [540, 300] }}
+}});
+
+return workflow('unique-id', 'Workflow Name')
+  .add(startTrigger.to(processData));
 \`\`\`
 
-The \`workflowCode\` field must contain:
+Your code must:
 - **Define all nodes as constants FIRST** (subnodes before main nodes)
 - **Then return the workflow composition** with .add() and .to() chains
-- NO import statements (functions are pre-loaded)
-- Valid syntax following all workflow rules
-- Proper node positioning (left-to-right, vertical for branches)
-- Descriptive node names
-
-Example output:
-
-\`\`\`json
-{{
-  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger.to(createMessage));"
-}}
-\`\`\`
+- **NO import statements** (functions are pre-loaded)
+- Follow all workflow rules with valid syntax
+- Use proper node positioning (left-to-right, vertical for branches)
+- Use descriptive node names
 
 # Important Reminders
 
@@ -655,7 +659,7 @@ Example output:
 6. **Credentials:** Use \`newCredential('Name')\` for authentication
 7. **Descriptive names:** Give nodes clear, descriptive names
 8. **Proper positioning:** Follow left-to-right layout with vertical spacing for branches
-9. **Valid JSON:** Output must be valid JSON with single \`workflowCode\` field
+9. **Code block format:** Output your code in a \`\`\`typescript code block
 
 Now, analyze the user's request and generate the workflow code following all the steps above.`;
 
