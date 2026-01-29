@@ -1,5 +1,6 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
+import type { GoogleAuthOptions } from 'google-auth-library';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import {
@@ -56,10 +57,43 @@ export class LmChatGoogleVertex implements INodeType {
 			{
 				name: 'googleApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			},
+			{
+				name: 'googleApiAdcApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['adc'],
+					},
+				},
 			},
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+						description: 'Use a Google Service Account JSON key',
+					},
+					{
+						name: 'Application Default Credentials (ADC)',
+						value: 'adc',
+						description:
+							'Use Application Default Credentials from gcloud CLI or environment variable',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
@@ -67,6 +101,11 @@ export class LmChatGoogleVertex implements INodeType {
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'Select or enter your Google Cloud project ID',
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'From List',
@@ -82,6 +121,19 @@ export class LmChatGoogleVertex implements INodeType {
 						type: 'string',
 					},
 				],
+			},
+			{
+				displayName: 'Project ID',
+				name: 'projectIdAdc',
+				type: 'string',
+				default: '',
+				description:
+					'Your Google Cloud project ID. If left empty, it will be auto-detected from ADC configuration.',
+				displayOptions: {
+					show: {
+						authentication: ['adc'],
+					},
+				},
 			},
 			{
 				displayName: 'Model Name',
@@ -128,16 +180,47 @@ export class LmChatGoogleVertex implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
-		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'serviceAccount') as
+			| 'serviceAccount'
+			| 'adc';
+
+		let authOptions: GoogleAuthOptions;
+		let region: string;
+		let projectId: string;
+
+		if (authentication === 'adc') {
+			const credentials = await this.getCredentials('googleApiAdcApi');
+			region = credentials.region as string;
+			projectId =
+				(this.getNodeParameter('projectIdAdc', itemIndex, '') as string) ||
+				(credentials.projectId as string) ||
+				'';
+
+			// For ADC, we don't pass explicit credentials - GoogleAuth will use ADC automatically
+			authOptions = {};
+			if (projectId) {
+				authOptions.projectId = projectId;
+			}
+		} else {
+			// Use Service Account credentials
+			const credentials = await this.getCredentials('googleApi');
+			const privateKey = formatPrivateKey(credentials.privateKey as string);
+			const email = (credentials.email as string).trim();
+			region = credentials.region as string;
+			projectId = this.getNodeParameter('projectId', itemIndex, '', {
+				extractValue: true,
+			}) as string;
+
+			authOptions = {
+				projectId,
+				credentials: {
+					client_email: email,
+					private_key: privateKey,
+				},
+			};
+		}
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
-
-		const projectId = this.getNodeParameter('projectId', itemIndex, '', {
-			extractValue: true,
-		}) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {
 			maxOutputTokens: 2048,
@@ -167,13 +250,7 @@ export class LmChatGoogleVertex implements INodeType {
 
 		try {
 			const modelConfig: ChatVertexAIInput = {
-				authOptions: {
-					projectId,
-					credentials: {
-						client_email: email,
-						private_key: privateKey,
-					},
-				},
+				authOptions,
 				location: region,
 				model: modelName,
 				topK: options.topK,
