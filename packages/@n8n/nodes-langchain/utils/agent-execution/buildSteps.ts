@@ -158,8 +158,146 @@ function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
 }
 
 /**
+ * Processed tool response data used during step building.
+ */
+interface ProcessedToolResponse {
+	tool: NonNullable<EngineResponse<RequestResponseMetadata>['actionResponses']>[number];
+	toolInput: IDataObject;
+	toolId: string;
+	toolName: string;
+	nodeName: string;
+	providerMetadata: ProviderMetadata;
+}
+
+/**
+ * Builds the additional_kwargs needed for Gemini thought signatures.
+ *
+ * The structure matches what @langchain/google-common expects:
+ * - `__gemini_function_call_thought_signatures__`: maps the first tool call ID to the signature
+ * - `tool_calls`: array of tool call descriptors
+ * - `signatures`: array aligned to parts [textPart, functionCall_1, ...], with the signature
+ *   only on the first function call (per Google's docs)
+ *
+ * @param toolCalls - Tool calls to include
+ * @param thoughtSignature - The Gemini thought signature
+ * @returns additional_kwargs object for AIMessage
+ */
+function buildGeminiAdditionalKwargs(
+	toolCalls: Array<{ id: string; name: string; args: IDataObject }>,
+	thoughtSignature: string,
+): Record<string, unknown> {
+	const signatures: string[] = ['', thoughtSignature];
+	for (let i = 2; i <= toolCalls.length; i++) {
+		signatures.push('');
+	}
+
+	return {
+		__gemini_function_call_thought_signatures__: {
+			[toolCalls[0].id]: thoughtSignature,
+		},
+		tool_calls: toolCalls.map((tc) => ({ id: tc.id, name: tc.name, args: tc.args })),
+		signatures,
+	};
+}
+
+/**
+ * Builds an AIMessage for a single tool call, handling provider-specific formats.
+ *
+ * For Anthropic thinking mode, content is an array of blocks (thinking + tool_use).
+ * For Gemini with thought signatures, additional_kwargs carries the signature.
+ * For other providers, content is a simple string with tool_calls set.
+ */
+function buildIndividualAIMessage(
+	toolId: string,
+	toolName: string,
+	toolInput: IDataObject,
+	providerMetadata: ProviderMetadata,
+): AIMessage {
+	const toolCall = {
+		id: toolId,
+		name: toolName,
+		args: toolInput,
+		type: 'tool_call' as const,
+	};
+
+	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
+
+	return new AIMessage({
+		content,
+		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
+		...(typeof content === 'string' && { tool_calls: [toolCall] }),
+		...(providerMetadata.thoughtSignature && {
+			additional_kwargs: buildGeminiAdditionalKwargs(
+				[{ id: toolId, name: toolName, args: toolInput }],
+				providerMetadata.thoughtSignature,
+			),
+		}),
+	});
+}
+
+/**
+ * Builds a shared AIMessage for parallel tool calls with Gemini thought signatures.
+ *
+ * For parallel function calls, Gemini requires ALL function calls in a single "model" turn
+ * with the thought_signature only on the first function call part. This matches the original
+ * model response structure and ensures the cryptographic signature validates correctly.
+ *
+ * LangChain's formatToToolMessages creates one ToolMessage per step. The @langchain/google-common
+ * package automatically merges consecutive "function" role messages, so the function responses
+ * will be correctly grouped.
+ *
+ * @param processedTools - Array of processed tool responses to include
+ * @param thoughtSignature - The shared thought signature from Gemini
+ * @returns AIMessage with all tool calls and proper signature format
+ */
+function buildSharedGeminiAIMessage(
+	processedTools: ProcessedToolResponse[],
+	thoughtSignature: string,
+): AIMessage {
+	const allToolCalls = processedTools.map((pt) => ({
+		id: pt.toolId,
+		name: pt.toolName,
+		args: pt.toolInput,
+		type: 'tool_call' as const,
+	}));
+
+	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
+
+	return new AIMessage({
+		content: `Calling tools: ${toolNames}`,
+		tool_calls: allToolCalls,
+		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
+	});
+}
+
+/**
+ * Builds the observation string from tool result data.
+ */
+function buildObservation(toolData: {
+	data?: { ai_tool?: Array<Array<{ json?: unknown }>> };
+	error?: { message?: string; name?: string };
+}): string {
+	const aiToolData = toolData?.data?.ai_tool?.[0]?.map((item) => item?.json);
+	if (aiToolData && aiToolData.length > 0) {
+		return JSON.stringify(aiToolData);
+	}
+	if (toolData?.error) {
+		const errorInfo = {
+			error: toolData.error.message ?? 'Unknown error',
+			...(toolData.error.name && { errorType: toolData.error.name }),
+		};
+		return JSON.stringify(errorInfo);
+	}
+	return JSON.stringify('');
+}
+
+/**
  * Rebuilds the agent steps from previous tool call responses.
  * This is used to continue agent execution after tool calls have been made.
+ *
+ * For parallel tool calls with Gemini thought signatures, all function calls are grouped
+ * into a single AIMessage to match the original model response structure. This is required
+ * because the thought_signature is cryptographically tied to the combined parallel call turn.
  *
  * This is a generalized version that can be used across different agent types
  * (Tools Agent, OpenAI Functions Agent, etc.).
@@ -174,111 +312,85 @@ export function buildSteps(
 ): ToolCallData[] {
 	const steps: ToolCallData[] = [];
 
-	if (response) {
-		const responses = response?.actionResponses ?? [];
+	if (!response) return steps;
 
-		if (response.metadata?.previousRequests) {
-			steps.push.apply(steps, response.metadata.previousRequests);
-		}
+	const responses = response.actionResponses ?? [];
 
-		for (const tool of responses) {
-			if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
-
-			const toolInput: IDataObject = {
-				...tool.action.input,
-				id: tool.action.id,
-			};
-			if (!toolInput || !tool.data) {
-				continue;
-			}
-
-			const step = steps.find((step) => step.action.toolCallId === toolInput.id);
-			if (step) {
-				continue;
-			}
-
-			// Extract provider-specific metadata (Gemini, Anthropic, etc.)
-			const providerMetadata = extractProviderMetadata(tool.action.metadata);
-
-			// Build tool ID and name for reuse
-			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
-			const toolName = resolveToolName(tool);
-
-			// Build the tool call object
-			const toolCall = {
-				id: toolId,
-				name: toolName,
-				args: toolInput,
-				type: 'tool_call' as const,
-			};
-
-			// Build message content using provider-specific logic
-			const messageContent = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
-
-			// Build AIMessage options, handling provider-specific requirements
-			// Note: tool_calls is only used when content is a string
-			// When content is an array (thinking mode), tool_use blocks are in the content array
-			const aiMessageOptions: {
-				content: typeof messageContent;
-				tool_calls?: Array<typeof toolCall>;
-				additional_kwargs?: Record<string, unknown>;
-			} = {
-				content: messageContent,
-			};
-
-			if (typeof messageContent === 'string') {
-				aiMessageOptions.tool_calls = [toolCall];
-			}
-
-			// Include additional_kwargs with Gemini thought signatures for LangChain to pass back
-			if (providerMetadata.thoughtSignature) {
-				aiMessageOptions.additional_kwargs = {
-					__gemini_function_call_thought_signatures__: {
-						[toolId]: providerMetadata.thoughtSignature,
-					},
-					tool_calls: [{ id: toolId, name: toolName, args: toolInput }],
-					signatures: ['', providerMetadata.thoughtSignature],
-				};
-			}
-
-			const syntheticAIMessage = new AIMessage(aiMessageOptions);
-
-			// Extract tool input arguments for the result
-			// Exclude metadata fields: id, log, type - always keep as object for type consistency
-			const { id, log, type, ...toolInputForResult } = toolInput;
-
-			// Build observation from tool result data or error information
-			// When tool execution fails, ai_tool may be missing but error info should be preserved
-			const aiToolData = tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json);
-			let observation: string;
-			if (aiToolData && aiToolData.length > 0) {
-				observation = JSON.stringify(aiToolData);
-			} else if (tool.data?.error) {
-				// Include error information in observation so the agent can see what went wrong
-				// tool.data is ITaskData which has error?: ExecutionError
-				const errorInfo = {
-					error: tool.data.error.message ?? 'Unknown error',
-					...(tool.data.error.name && { errorType: tool.data.error.name }),
-				};
-				observation = JSON.stringify(errorInfo);
-			} else {
-				observation = JSON.stringify('');
-			}
-
-			const toolResult = {
-				action: {
-					tool: resolveToolName(tool),
-					toolInput: toolInputForResult,
-					log: toolInput.log || syntheticAIMessage.content,
-					messageLog: [syntheticAIMessage],
-					toolCallId: toolInput?.id,
-					type: toolInput.type || 'tool_call',
-				},
-				observation,
-			};
-
-			steps.push(toolResult);
-		}
+	if (response.metadata?.previousRequests) {
+		steps.push(...response.metadata.previousRequests);
 	}
+
+	// First pass: collect all valid tool responses for this batch
+	const batchTools: ProcessedToolResponse[] = [];
+	for (const tool of responses) {
+		if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
+
+		const toolInput: IDataObject = {
+			...tool.action.input,
+			id: tool.action.id,
+		};
+		if (!tool.data) continue;
+
+		const existingStep = steps.find((s) => s.action.toolCallId === toolInput.id);
+		if (existingStep) continue;
+
+		const providerMetadata = extractProviderMetadata(tool.action.metadata);
+		const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
+		const toolName = resolveToolName(tool);
+
+		batchTools.push({
+			tool,
+			toolInput,
+			toolId,
+			toolName,
+			nodeName: tool.action.nodeName,
+			providerMetadata,
+		});
+	}
+
+	// Check if this batch has Gemini thought signatures and multiple parallel tool calls.
+	// If so, we must group them into a single AIMessage because:
+	// 1. The thought_signature is cryptographically tied to the combined parallel call turn
+	// 2. Splitting into separate model turns invalidates the signature
+	// 3. Google's API requires matching function response parts per function call turn
+	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
+		?.providerMetadata.thoughtSignature;
+
+	const sharedAIMessage =
+		sharedThoughtSignature && batchTools.length > 1
+			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature)
+			: undefined;
+
+	// Second pass: build steps
+	for (let i = 0; i < batchTools.length; i++) {
+		const { tool, toolInput, toolId, toolName, nodeName, providerMetadata } = batchTools[i];
+
+		const observation = buildObservation(tool.data);
+
+		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
+		const { id, log, type, ...toolInputForResult } = toolInput;
+
+		// Parallel Gemini tool calls: first step gets the shared AIMessage,
+		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
+		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
+		const messageLog = sharedAIMessage
+			? i === 0
+				? [sharedAIMessage]
+				: []
+			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
+
+		steps.push({
+			action: {
+				tool: toolName,
+				toolInput: toolInputForResult,
+				log: toolInput.log || (messageLog[0]?.content ?? `Calling ${nodeName}`),
+				messageLog,
+				toolCallId: toolInput?.id,
+				type: toolInput.type || 'tool_call',
+			},
+			observation,
+		});
+	}
+
 	return steps;
 }
