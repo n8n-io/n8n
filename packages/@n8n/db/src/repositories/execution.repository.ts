@@ -396,7 +396,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					status: 'running',
 					startedAt: () => 'COALESCE(startedAt, :startedAt)',
 				})
-				.setParameter('startedAt', DateUtils.mixedDateToUtcDatetimeString(startedAt))
+				.setParameter('startedAt', startedAt)
 				.where('id = :id', { id: executionId })
 				.execute();
 
