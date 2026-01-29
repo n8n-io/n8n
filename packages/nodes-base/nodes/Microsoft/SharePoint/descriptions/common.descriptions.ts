@@ -154,3 +154,8 @@ export const siteRLC: INodeProperties = {
 	required: true,
 	type: 'resourceLocator',
 };
+
+export const ignoreHttpStatusErrorsConfig = {
+	ignore: true as const,
+	except: [401],
+};

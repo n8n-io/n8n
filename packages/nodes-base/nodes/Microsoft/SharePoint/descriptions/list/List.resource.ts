@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import { handleErrorPostReceive, simplifyListPostReceive } from '../../helpers/utils';
+import { ignoreHttpStatusErrorsConfig } from '../common.descriptions';
 
 export const description: INodeProperties[] = [
 	{
@@ -22,7 +23,7 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve details of a single list',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}',
 					},
