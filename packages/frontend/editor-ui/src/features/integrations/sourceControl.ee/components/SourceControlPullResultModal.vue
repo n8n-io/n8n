@@ -36,13 +36,13 @@ const failedWorkflows = computed(() => {
 const activeTab = ref<TabType>(failedWorkflows.value.length > 0 ? 'failed' : 'published');
 
 const tabs = computed(() => {
-	const tabsList = [];
+	const tabsList: Array<{ label: string; value: TabType; total: number }> = [];
 
 	// Only show failed tab if there are failures
 	if (failedWorkflows.value.length > 0) {
 		tabsList.push({
 			label: i18n.baseText('settings.sourceControl.modals.pullResult.tabs.failed'),
-			value: 'failed' as TabType,
+			value: 'failed',
 			total: failedWorkflows.value.length,
 		});
 	}
@@ -50,7 +50,7 @@ const tabs = computed(() => {
 	// Always show published tab
 	tabsList.push({
 		label: i18n.baseText('settings.sourceControl.modals.pullResult.tabs.published'),
-		value: 'published' as TabType,
+		value: 'published',
 		total: publishedWorkflows.value.length,
 	});
 
@@ -126,6 +126,7 @@ function close() {
 											<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
 												<RouterLink
 													target="_blank"
+													rel="noopener noreferrer"
 													:to="{ name: VIEWS.WORKFLOW, params: { name: workflow.id } }"
 												>
 													{{ workflow.name }}

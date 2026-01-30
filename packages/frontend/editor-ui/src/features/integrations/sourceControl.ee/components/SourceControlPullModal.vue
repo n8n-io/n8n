@@ -437,6 +437,7 @@ onMounted(() => {
 														<RouterLink
 															v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
 															target="_blank"
+															rel="noopener noreferrer"
 															:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: file.id } }"
 														>
 															{{ file.name }}
@@ -444,6 +445,7 @@ onMounted(() => {
 														<RouterLink
 															v-else-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 															target="_blank"
+															rel="noopener noreferrer"
 															:to="{ name: VIEWS.WORKFLOW, params: { name: file.id } }"
 														>
 															{{ file.name }}
