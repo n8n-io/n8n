@@ -166,6 +166,16 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 // =============================================================================
 
 /**
+ * Determine if a property should be optional in the schema.
+ * A property is optional if it's not required OR if it has a default value.
+ * Properties with defaults can be omitted - the default will be used at runtime.
+ */
+function isPropertyOptional(prop: NodeProperty): boolean {
+	const hasDefault = 'default' in prop && prop.default !== undefined;
+	return !prop.required || hasDefault;
+}
+
+/**
  * Check if any AI input types are unconditionally required.
  * An input is unconditionally required if it has required: true AND no displayOptions.
  * Inputs with displayOptions are conditionally required and don't make subnodes mandatory.
@@ -1110,13 +1120,13 @@ function generateSchemasForNode(
 						}
 					} else {
 						// No remaining conditions after stripping @version - use static schema
-						const propLine = generateSchemaPropertyLine(prop, !prop.required);
+						const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 						if (propLine) {
 							lines.push(propLine);
 						}
 					}
 				} else {
-					const propLine = generateSchemaPropertyLine(prop, !prop.required);
+					const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 					if (propLine) {
 						lines.push(propLine);
 					}
@@ -1177,7 +1187,7 @@ function generateSchemasForNode(
 			const propsByName = mergePropertiesByName(node.properties);
 
 			for (const prop of propsByName.values()) {
-				const propLine = generateSchemaPropertyLine(prop, !prop.required);
+				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 				if (propLine) {
 					lines.push(propLine);
 				}
@@ -1301,7 +1311,7 @@ function generateSchemasForNode(
 		const propsByName = mergePropertiesByName(props);
 
 		for (const prop of propsByName.values()) {
-			const propLine = generateSchemaPropertyLine(prop, !prop.required);
+			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -2091,13 +2101,13 @@ export function generateDiscriminatorSchemaFile(
 					lines.push('\t\t' + propLine);
 				}
 			} else {
-				const propLine = generateSchemaPropertyLine(prop, !prop.required);
+				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 				if (propLine) {
 					lines.push('\t\t' + propLine);
 				}
 			}
 		} else {
-			const propLine = generateSchemaPropertyLine(prop, !prop.required);
+			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
 			if (propLine) {
 				lines.push('\t\t' + propLine);
 			}

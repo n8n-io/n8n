@@ -573,12 +573,14 @@ function isZodSchema(value: SchemaOrFactory): value is ZodSchema {
  * @param nodeType - Full node type string
  * @param version - Node version
  * @param config - Node configuration (parameters, subnodes, etc.)
+ * @param options - Optional validation options (e.g., isToolNode for tool subnodes)
  * @returns Validation result with errors if invalid
  */
 export function validateNodeConfig(
 	nodeType: string,
 	version: number,
 	config: { parameters?: unknown; subnodes?: unknown },
+	options?: { isToolNode?: boolean },
 ): SchemaValidationResult {
 	const schemaOrFactory = loadSchema(nodeType, version);
 
@@ -595,7 +597,11 @@ export function validateNodeConfig(
 	} else {
 		// Factory function - call it with parameters to get the schema
 		const parameters = (config.parameters ?? {}) as Record<string, unknown>;
-		schema = schemaOrFactory({ parameters, resolveSchema });
+		const isToolNode = options?.isToolNode ?? false;
+		schema = schemaOrFactory({
+			parameters,
+			resolveSchema: (cfg) => resolveSchema({ ...cfg, isToolNode }),
+		});
 	}
 
 	const result = schema.safeParse(config);

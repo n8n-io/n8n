@@ -168,6 +168,32 @@ describe('getPropertyValue', () => {
 		expect(result).toEqual([0]);
 	});
 
+	it('handles @tool meta-property when isToolNode is true', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+			isToolNode: true,
+		};
+		const result = getPropertyValue(context, '@tool');
+		expect(result).toEqual([true]);
+	});
+
+	it('handles @tool meta-property when isToolNode is false', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+			isToolNode: false,
+		};
+		const result = getPropertyValue(context, '@tool');
+		expect(result).toEqual([false]);
+	});
+
+	it('returns false for @tool when isToolNode is not specified', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+		};
+		const result = getPropertyValue(context, '@tool');
+		expect(result).toEqual([false]);
+	});
+
 	it('unwraps resource locator (__rl) values', () => {
 		const context: DisplayOptionsContext = {
 			parameters: {
@@ -343,6 +369,57 @@ describe('matchesDisplayOptions', () => {
 			},
 		});
 		expect(result).toBe(true);
+	});
+
+	it('works with @tool meta-property when isToolNode is true', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+			isToolNode: true,
+		};
+		const result = matchesDisplayOptions(context, {
+			show: {
+				'@tool': [true],
+			},
+		});
+		expect(result).toBe(true);
+	});
+
+	it('fails @tool: [true] condition when isToolNode is false', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+			isToolNode: false,
+		};
+		const result = matchesDisplayOptions(context, {
+			show: {
+				'@tool': [true],
+			},
+		});
+		expect(result).toBe(false);
+	});
+
+	it('works with @tool: [false] when isToolNode is false', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+			isToolNode: false,
+		};
+		const result = matchesDisplayOptions(context, {
+			show: {
+				'@tool': [false],
+			},
+		});
+		expect(result).toBe(true);
+	});
+
+	it('fails @tool: [true] when isToolNode is not specified (defaults to false)', () => {
+		const context: DisplayOptionsContext = {
+			parameters: {},
+		};
+		const result = matchesDisplayOptions(context, {
+			show: {
+				'@tool': [true],
+			},
+		});
+		expect(result).toBe(false);
 	});
 
 	it('works with root path references', () => {
