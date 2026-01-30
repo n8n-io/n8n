@@ -216,17 +216,6 @@ export class Orchestrator {
 
 			let planningResponse: PlanningAgentResponse | null = null;
 
-			// Stream planning agent output wrapped in tags
-			yield {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'message',
-						text: '<final_workflow_plan>\n',
-					} as AgentMessageChunk,
-				],
-			};
-
 			const planningGenerator = this.planningAgent.run(
 				fullUserMessage,
 				currentWorkflow,
@@ -245,16 +234,6 @@ export class Orchestrator {
 			}
 
 			// Close planning tags
-			yield {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'message',
-						text: '\n</final_workflow_plan>\n',
-					} as AgentMessageChunk,
-				],
-			};
-
 			if (!planningResponse) {
 				throw new Error('Planning agent did not return a response');
 			}
