@@ -5,7 +5,7 @@ import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '../constants';
 
 export function useSidebarLayout() {
 	const uiStore = useUIStore();
-	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
+	const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed ?? true);
 	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, isCollapsed.value ? 42 : 300);
 
 	const toggleCollapse = () => {
