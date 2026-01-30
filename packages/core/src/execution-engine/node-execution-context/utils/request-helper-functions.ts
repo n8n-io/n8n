@@ -1062,6 +1062,13 @@ export async function requestOAuth2(
 					});
 				}
 
+				// Preserve the abort signal from the original request to prevent timeout issues
+				// during token refresh. Without this, the original request's abort signal may
+				// fire during token refresh, causing the retry to fail with ECONNABORTED.
+				if (requestOptions.abortSignal) {
+					refreshedRequestOption.abortSignal = requestOptions.abortSignal;
+				}
+
 				return await this.helpers.httpRequest(refreshedRequestOption);
 			}
 			throw error;
