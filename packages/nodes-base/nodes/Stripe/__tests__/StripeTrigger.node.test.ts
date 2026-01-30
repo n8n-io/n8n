@@ -103,6 +103,53 @@ describe('Stripe Trigger Node', () => {
 		expect(requestBody).toHaveProperty('api_version', '2025-05-28.basil');
 	});
 
+	describe('webhook delete method', () => {
+		it('should skip deletion when activation mode is update', async () => {
+			(mockNodeFunctions.getActivationMode as jest.Mock).mockReturnValue('update');
+			const staticData = { webhookId: 'we_existing123' };
+			(mockNodeFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue(staticData);
+
+			const result = await node.webhookMethods.default.delete.call(mockNodeFunctions);
+
+			expect(result).toBe(true);
+			expect(mockedStripeApiRequest).not.toHaveBeenCalled();
+			expect(staticData.webhookId).toBe('we_existing123');
+		});
+
+		it('should delete webhook when activation mode is activate', async () => {
+			(mockNodeFunctions.getActivationMode as jest.Mock).mockReturnValue('activate');
+			const staticData: Record<string, unknown> = {
+				webhookId: 'we_existing123',
+				webhookEvents: ['*'],
+				webhookSecret: 'whsec_test',
+			};
+			(mockNodeFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue(staticData);
+			mockedStripeApiRequest.mockResolvedValue({});
+
+			const result = await node.webhookMethods.default.delete.call(mockNodeFunctions);
+
+			expect(result).toBe(true);
+			expect(mockedStripeApiRequest).toHaveBeenCalledWith(
+				'DELETE',
+				'/webhook_endpoints/we_existing123',
+				{},
+			);
+			expect(staticData.webhookId).toBeUndefined();
+			expect(staticData.webhookEvents).toBeUndefined();
+			expect(staticData.webhookSecret).toBeUndefined();
+		});
+
+		it('should return true when no webhook exists to delete', async () => {
+			(mockNodeFunctions.getActivationMode as jest.Mock).mockReturnValue('activate');
+			(mockNodeFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+
+			const result = await node.webhookMethods.default.delete.call(mockNodeFunctions);
+
+			expect(result).toBe(true);
+			expect(mockedStripeApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('webhook signature verification', () => {
 		let mockWebhookFunctions: IWebhookFunctions;
 		const testBody = { type: 'charge.succeeded', id: 'ch_123' };
