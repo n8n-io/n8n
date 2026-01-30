@@ -29,6 +29,8 @@ import {
  */
 @Service()
 export class NodeTypeGeneratorService {
+	private generationInProgress: Promise<void> | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -43,11 +45,19 @@ export class NodeTypeGeneratorService {
 
 	/**
 	 * Check if types need to be regenerated and generate if needed.
+	 * Uses a lock to prevent concurrent generation runs.
 	 *
 	 * @param nodesJsonPath Path to the nodes.json file
-	 * @returns true if types were generated, false if skipped (hash matched)
+	 * @returns true if types were generated, false if skipped (hash matched or already in progress)
 	 */
 	async generateIfNeeded(nodesJsonPath: string): Promise<boolean> {
+		// If generation is already in progress, wait for it and return false
+		if (this.generationInProgress) {
+			this.logger.debug('Node type generation already in progress, waiting...');
+			await this.generationInProgress;
+			return false;
+		}
+
 		const hashFilePath = path.join(this.instanceSettings.generatedTypesDir, 'nodes.json.hash');
 
 		// Read the nodes.json content
@@ -59,7 +69,7 @@ export class NodeTypeGeneratorService {
 			try {
 				const storedHash = await fs.promises.readFile(hashFilePath, 'utf-8');
 				if (storedHash.trim() === currentHash) {
-					this.logger.debug('Node types hash matches, skipping regeneration');
+					this.logger.debug('Node types up to date, skipping generation');
 					return false;
 				}
 			} catch {
@@ -67,9 +77,14 @@ export class NodeTypeGeneratorService {
 			}
 		}
 
-		// Generate types
-		await this.generate(nodesJsonPath);
-		return true;
+		// Generate types with lock
+		this.generationInProgress = this.generate(nodesJsonPath);
+		try {
+			await this.generationInProgress;
+			return true;
+		} finally {
+			this.generationInProgress = null;
+		}
 	}
 
 	/**
@@ -81,7 +96,7 @@ export class NodeTypeGeneratorService {
 		const outputDir = this.instanceSettings.generatedTypesDir;
 		const hashFilePath = path.join(outputDir, 'nodes.json.hash');
 
-		this.logger.info('Generating node types from nodes.json...');
+		this.logger.info('Generating node types and schemas from nodes.json...');
 
 		// Ensure output directory exists
 		await fs.promises.mkdir(outputDir, { recursive: true });
@@ -187,7 +202,7 @@ export class NodeTypeGeneratorService {
 		const hash = this.computeHash(content);
 		await fs.promises.writeFile(hashFilePath, hash, 'utf-8');
 
-		this.logger.info(`Generated types for ${allNodes.length} nodes in ${outputDir}`);
+		this.logger.info(`Generated types and schemas for ${allNodes.length} nodes`);
 	}
 
 	/**
