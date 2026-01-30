@@ -14,6 +14,9 @@ type RedisEventMap = {
 	'connection-recovered': never;
 };
 
+const RECONNECT_AND_RETRY = 2;
+const DO_NOT_RECONNECT = false;
+
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	private readonly clients = new Set<ioRedis | Cluster>();
@@ -178,9 +181,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				const targetError = 'READONLY';
 				if (redisErr.message.includes(targetError)) {
 					this.logger.warn('Reconnecting to Redis due to READONLY error (possible failover event)');
-					return true;
+					return RECONNECT_AND_RETRY;
 				}
-				return false;
+				return DO_NOT_RECONNECT;
 			};
 		}
 

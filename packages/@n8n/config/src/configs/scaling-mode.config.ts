@@ -91,7 +91,7 @@ class RedisConfig {
 
 	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
 	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
-	reconnectOnFailover: boolean = false;
+	reconnectOnFailover: boolean = true;
 }
 
 @Config
