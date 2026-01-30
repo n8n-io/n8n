@@ -109,7 +109,7 @@ export class ActiveExecutions {
 				const updateSucceeded = await this.executionRepository.updateExistingExecution(
 					maybeExecutionId,
 					execution,
-					'waiting', // Only update if status is 'waiting'
+					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'
 				);
 
 				if (!updateSucceeded) {
