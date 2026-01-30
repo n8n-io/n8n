@@ -15,7 +15,7 @@ test.describe('Chat session ID reset', () => {
 
 		const initialSessionId = await n8n.canvas.logsPanel.getSessionId(n8n.clipboard);
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(0);
-		await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 0)).toContainText(
+		await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 1)).toContainText(
 			initialSessionId,
 		);
 
