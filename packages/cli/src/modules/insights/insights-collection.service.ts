@@ -162,16 +162,22 @@ export class InsightsCollectionService {
 
 		// run time event
 		if (ctx.runData.stoppedAt) {
-			const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
-			if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
-				this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
+			if (!ctx.runData.startedAt) {
+				this.logger.warn(
+					`Execution with ID ${ctx.workflow.id} has a stoppedAt timestamp but no startedAt timestamp. Skipping runtime calculation.`,
+				);
+			} else {
+				const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
+				if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
+					this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
+				}
+				const value = Math.min(Math.max(runtimeMs, MIN_RUNTIME), MAX_RUNTIME);
+				this.bufferedInsights.add({
+					...commonWorkflowData,
+					type: 'runtime_ms',
+					value,
+				});
 			}
-			const value = Math.min(Math.max(runtimeMs, MIN_RUNTIME), MAX_RUNTIME);
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'runtime_ms',
-				value,
-			});
 		}
 
 		// time saved event
