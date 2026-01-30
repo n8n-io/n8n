@@ -256,23 +256,32 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
+	const telegramOptions = context.getNodeParameter('telegramOptions', 0, {}) as {
+		message_thread_id?: number;
+		parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML';
+	};
 
 	const config = getSendAndWaitConfig(context);
+	const parseMode = telegramOptions.parse_mode || 'Markdown';
 	let text = config.message;
 
 	if (config.appendAttribution !== false) {
 		const instanceId = context.getInstanceId();
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
-		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+
+		if (parseMode === 'HTML') {
+			text = `${text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+		} else {
+			text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+		}
 	}
 
-	const body = {
+	const body: IDataObject = {
 		chat_id,
 		text,
-
 		disable_web_page_preview: true,
-		parse_mode: 'Markdown',
+		parse_mode: parseMode,
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
@@ -284,6 +293,11 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			],
 		},
 	};
+
+	// Add message_thread_id if provided (for forum topics)
+	if (telegramOptions.message_thread_id) {
+		body.message_thread_id = telegramOptions.message_thread_id;
+	}
 
 	return body;
 }

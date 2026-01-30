@@ -1799,7 +1799,45 @@ export class Telegram implements INodeType {
 					},
 				],
 				'message',
-				undefined,
+				[
+					{
+						displayName: 'Telegram Options',
+						name: 'telegramOptions',
+						type: 'collection',
+						placeholder: 'Add option',
+						default: {},
+						options: [
+							{
+								displayName: 'Message Thread ID',
+								name: 'message_thread_id',
+								type: 'number',
+								default: 0,
+								description: 'Unique identifier for the target message thread (topic) of the forum',
+							},
+							{
+								displayName: 'Parse Mode',
+								name: 'parse_mode',
+								type: 'options',
+								options: [
+									{
+										name: 'Markdown (Legacy)',
+										value: 'Markdown',
+									},
+									{
+										name: 'MarkdownV2',
+										value: 'MarkdownV2',
+									},
+									{
+										name: 'HTML',
+										value: 'HTML',
+									},
+								],
+								default: 'Markdown',
+								description: 'How to parse the text',
+							},
+						],
+					},
+				],
 				{
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',
