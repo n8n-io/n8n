@@ -4,6 +4,7 @@ import { Z } from 'zod-class';
 import { z } from 'zod';
 import { ICredentialContext } from 'n8n-workflow';
 import { Request } from 'express';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 class AuthSourceQuerySchema extends Z.class({
 	authSource: z.enum(['bearer', 'cookie']).optional(),
@@ -35,7 +36,7 @@ export class DynamicCredentialWebService {
 	private buildCookieCredentialContext(req: Request): ICredentialContext {
 		const sessionCookie = this.authService.getCookieToken(req);
 		if (sessionCookie === undefined) {
-			throw new Error('Session cookie is missing');
+			throw new UnauthenticatedError('Session cookie is missing');
 		}
 		return {
 			identity: sessionCookie,
@@ -57,7 +58,7 @@ export class DynamicCredentialWebService {
 			if (authSource === 'bearer') {
 				const token = getBearerToken(req);
 				if (token === null) {
-					throw new Error('Bearer token is missing');
+					throw new UnauthenticatedError('Bearer token is missing');
 				}
 				return {
 					identity: token,
@@ -67,7 +68,7 @@ export class DynamicCredentialWebService {
 			} else if (authSource === 'cookie') {
 				return this.buildCookieCredentialContext(req);
 			} else {
-				throw new Error('Invalid auth source');
+				throw new UnauthenticatedError('Invalid auth source');
 			}
 		}
 
