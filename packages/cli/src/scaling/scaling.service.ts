@@ -30,6 +30,7 @@ import type {
 	JobOptions,
 	JobStatus,
 	JobId,
+	JobFinishedProps,
 	QueueRecoveryContext,
 	JobMessage,
 	JobFailedMessage,
@@ -38,6 +39,8 @@ import type {
 @Service()
 export class ScalingService {
 	private queue: JobQueue;
+
+	private jobResults = new Map<string, JobFinishedProps>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -175,6 +178,13 @@ export class ScalingService {
 	// #endregion
 
 	// #region Jobs
+
+	/** Get and remove the result for a completed job. */
+	popJobResult(executionId: string): JobFinishedProps | undefined {
+		const result = this.jobResults.get(executionId);
+		this.jobResults.delete(executionId);
+		return result;
+	}
 
 	async getPendingJobCounts() {
 		const { active, waiting } = await this.queue.getJobCounts();
@@ -332,6 +342,24 @@ export class ScalingService {
 								message: 'Workflow execution failed',
 							},
 							statusCode: 500,
+						});
+					}
+
+					/**
+					 * We track the result received via `job-finished` message,
+					 * because `removeOnComplete: true` prevents `job.finished()`
+					 * from returning a value that is no longer in Redis.
+					 */
+					if (msg.version === 2) {
+						this.jobResults.set(msg.executionId, {
+							success: msg.success,
+							error: msg.error,
+							status: msg.status,
+							lastNodeExecuted: msg.lastNodeExecuted,
+							usedDynamicCredentials: msg.usedDynamicCredentials,
+							metadata: msg.metadata,
+							startedAt: new Date(msg.startedAt),
+							stoppedAt: new Date(msg.stoppedAt),
 						});
 					}
 

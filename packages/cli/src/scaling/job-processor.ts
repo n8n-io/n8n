@@ -14,22 +14,23 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import type {
-	Job,
-	JobFinishedMessage,
-	JobId,
-	JobResult,
-	RespondToWebhookMessage,
-	RunningJob,
-	SendChunkMessage,
-} from './scaling.types';
-
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import type {
+	Job,
+	JobFinishedMessage,
+	JobFinishedProps,
+	JobId,
+	JobResult,
+	RespondToWebhookMessage,
+	RunningJob,
+	SendChunkMessage,
+} from './scaling.types';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -246,23 +247,27 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
-		await workflowRun;
+		const run = await workflowRun;
 
 		delete this.runningJobs[job.id];
 
-		const hasErrors = await this.executionHasErrors(executionId);
+		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
+			? this.deriveJobFinishedProps(run, startedAt)
+			: await this.fetchJobFinishedResult(executionId);
+
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
 			jobId: job.id,
-			success: !hasErrors,
+			success: props.success,
 		});
 
 		const msg: JobFinishedMessage = {
 			kind: 'job-finished',
+			version: 2,
 			executionId,
 			workerId: this.instanceSettings.hostId,
-			success: !hasErrors,
+			...props,
 		};
 
 		await job.progress(msg);
@@ -275,13 +280,41 @@ export class JobProcessor {
 		return { success: true };
 	}
 
-	private async executionHasErrors(executionId: string): Promise<boolean> {
+	private deriveJobFinishedProps(run: IRun, startedAt: Date): JobFinishedProps {
+		return {
+			success: run.status !== 'error' && run.data.resultData.error === undefined,
+			status: run.status,
+			error: run.data.resultData.error,
+			startedAt,
+			stoppedAt: run.stoppedAt!,
+			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
+			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
+			metadata: run.data.resultData.metadata,
+		};
+	}
+
+	private async fetchJobFinishedResult(executionId: string): Promise<JobFinishedProps> {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
 
-		return execution?.status === 'error' || execution?.data?.resultData?.error !== undefined;
+		if (!execution) {
+			throw new UnexpectedError(
+				`Worker failed to find execution ${executionId} immediately after workflow completed`,
+			);
+		}
+
+		return {
+			success: execution.status !== 'error' && execution.data?.resultData?.error === undefined,
+			status: execution.status,
+			error: execution.data?.resultData?.error,
+			startedAt: execution.startedAt,
+			stoppedAt: execution.stoppedAt!,
+			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
+			metadata: execution.data?.resultData?.metadata,
+		};
 	}
 
 	stopJob(jobId: JobId) {
