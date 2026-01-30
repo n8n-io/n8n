@@ -18,9 +18,15 @@ import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent'
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
+import { createGetWorkflowJsonTool } from '../tools/get-workflow-json.tool';
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -31,8 +37,8 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
-	buildWorkflowJsonBlock,
-	buildExecutionContextBlock,
+	buildConversationContext,
+	buildWorkflowIndicator,
 	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
@@ -160,6 +166,14 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Execution data tools - fetch on-demand instead of context injection
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
+			createGetWorkflowJsonTool(config.logger),
 			// Conditionally add resource locator tool if callback is provided
 			...(config.resourceLocatorCallback
 				? [
@@ -297,10 +311,15 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		// Build context parts for Configurator
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		if (userRequest) {
-			contextParts.push('=== USER REQUEST ===');
-			contextParts.push(userRequest);
+		// 1. Conversation context (history, original request, previous actions)
+		const conversationContext = buildConversationContext(
+			parentState.messages,
+			parentState.coordinationLog,
+			parentState.previousSummary,
+		);
+		if (conversationContext) {
+			contextParts.push('=== CONVERSATION CONTEXT ===');
+			contextParts.push(conversationContext);
 		}
 
 		// 2. Discovery context - includes available resources/operations for each node type
@@ -328,15 +347,11 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
 
-		// 4. Full workflow JSON (nodes to configure)
+		// 4. Workflow indicator (lightweight summary pointing to tools for details)
 		// Note: resource/operation are already set by Builder via initialParameters
 		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
-		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-
-		// 5. Full execution context (data + schema for parameter values)
-		contextParts.push('=== EXECUTION CONTEXT ===');
-		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
+		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);

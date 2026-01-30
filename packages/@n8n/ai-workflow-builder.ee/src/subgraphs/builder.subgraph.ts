@@ -16,7 +16,13 @@ import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
+import { createGetWorkflowJsonTool } from '../tools/get-workflow-json.tool';
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
@@ -28,9 +34,9 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
+	buildConversationContext,
 	buildDiscoveryContextBlock,
-	buildWorkflowJsonBlock,
-	buildExecutionSchemaBlock,
+	buildWorkflowIndicator,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -122,6 +128,13 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createRemoveConnectionTool(config.logger),
 			createRenameNodeTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
+			createGetWorkflowJsonTool(config.logger),
 		];
 
 		// Conditionally add node connection examples tool if feature flag is enabled
@@ -191,9 +204,16 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build context parts for Builder
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		contextParts.push('=== USER REQUEST ===');
-		contextParts.push(userRequest);
+		// 1. Conversation context (history, original request, previous actions)
+		const conversationContext = buildConversationContext(
+			parentState.messages,
+			parentState.coordinationLog,
+			parentState.previousSummary,
+		);
+		if (conversationContext) {
+			contextParts.push('=== CONVERSATION CONTEXT ===');
+			contextParts.push(conversationContext);
+		}
 
 		// 2. Discovery context (what nodes to use)
 		if (parentState.discoveryContext) {
@@ -201,20 +221,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
-		// 3. Current workflow JSON (to add nodes to)
+		// 3. Current workflow indicator (lightweight summary pointing to tools for details)
 		contextParts.push('=== CURRENT WORKFLOW ===');
-		if (parentState.workflowJSON.nodes.length > 0) {
-			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-		} else {
-			contextParts.push('Empty workflow - ready to build');
-		}
-
-		// 4. Execution schema (data types available, NOT full data)
-		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
-		if (schemaBlock) {
-			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
-			contextParts.push(schemaBlock);
-		}
+		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);

@@ -229,6 +229,54 @@ NEVER set these parameters:
 
 Credentials are automatically handled by n8n's credential system when users configure the workflow after generation.`;
 
+const UNDERSTANDING_CONTEXT = `You receive CONVERSATION CONTEXT showing:
+- Original request: What the user initially asked for
+- Previous actions: What Discovery/Builder/Configurator did before
+- Current request: What the user is asking now
+
+When the current request is vague (e.g., "fix it", "it's not working", "help"), you MUST investigate before acting:
+1. Review the conversation context to understand what was configured and why
+2. Use execution data tools to understand what went wrong
+3. Then make targeted changes based on your findings
+
+Do NOT blindly re-configure all nodes. Understand the problem first.`;
+
+const WORKFLOW_CONTEXT_TOOLS = `Tools for understanding workflow state and configuring expressions:
+
+**WORKFLOW CONTEXT TOOLS - Use these to understand the workflow:**
+
+**get_workflow_overview** (RECOMMENDED for understanding workflow structure)
+Returns a Mermaid flowchart diagram, node IDs, and summary of the workflow.
+Use this to visualize the overall workflow structure.
+Options: format ('mermaid' or 'summary'), includeParameters (true/false)
+IMPORTANT: All tools return node IDs which you need for referencing nodes.
+
+**get_node_context**
+Returns full context for a specific node: ID, parameters, parent/child nodes, classification, and execution data.
+Use this BEFORE configuring a node to understand its connections and current state.
+Parameters: nodeName (required), includeExecutionData (default: true)
+
+**get_workflow_json**
+Returns raw workflow JSON, optionally filtered to specific nodes.
+Use when you need the actual JSON structure for specific nodes.
+Options: nodeNames (array to filter), includeConnections (true/false)
+
+**EXECUTION DATA TOOLS - For configuring based on real execution data:**
+
+**get_execution_schema**
+Returns data structure/types from each node's output (field names and types).
+Use this to understand what fields are available when setting up expressions.
+
+**get_execution_logs**
+Returns full execution data: runData for each node (actual values), errors, and failures.
+Use this to see what data flowed through and identify problems.
+
+**get_expression_data_mapping**
+Returns resolved expression values - what {{ $json.field }} evaluated to.
+Use this to verify expressions work correctly or debug issues.
+
+These tools show execution state from BEFORE your session - they help you configure based on real data.`;
+
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
 - Add commentary between tool calls - execute tools silently
@@ -271,6 +319,7 @@ export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[])
 export function buildConfiguratorPrompt(): string {
 	return prompt()
 		.section('role', CONFIGURATOR_ROLE)
+		.section('understanding_context', UNDERSTANDING_CONTEXT)
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
@@ -284,6 +333,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
+		.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)

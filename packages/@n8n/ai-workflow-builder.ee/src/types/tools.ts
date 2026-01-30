@@ -201,3 +201,31 @@ export interface GetNodeConfigurationExamplesOutput {
 	totalFound: number;
 	message: string;
 }
+
+/**
+ * Output type for get execution schema tool
+ */
+export interface GetExecutionSchemaOutput {
+	found: boolean;
+	count: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution logs tool
+ */
+export interface GetExecutionLogsOutput {
+	hasError: boolean;
+	lastNodeExecuted?: string;
+	nodesWithData: number;
+	message: string;
+}
+
+/**
+ * Output type for get expression data mapping tool
+ */
+export interface GetExpressionDataMappingOutput {
+	found: boolean;
+	nodesWithExpressions: number;
+	message: string;
+}

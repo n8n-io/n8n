@@ -9,8 +9,9 @@ import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
-import { buildWorkflowSummary } from '../utils/context-builders';
+import { buildWorkflowSummary, buildSimplifiedExecutionContext } from '../utils/context-builders';
 import { summarizeCoordinationLog } from '../utils/coordination-log';
+import type { ChatPayload } from '../workflow-builder-agent';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -54,6 +55,8 @@ export interface SupervisorContext {
 	coordinationLog: CoordinationLogEntry[];
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+	/** Workflow context with execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
@@ -94,6 +97,13 @@ export class SupervisorAgent {
 			contextParts.push('<completed_phases>');
 			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
 			contextParts.push('</completed_phases>');
+		}
+
+		// 4. Execution status (simplified error info for routing decisions)
+		if (context.workflowContext) {
+			contextParts.push(
+				buildSimplifiedExecutionContext(context.workflowContext, context.workflowJSON.nodes),
+			);
 		}
 
 		if (contextParts.length === 0) {
