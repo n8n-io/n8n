@@ -94,7 +94,7 @@ const handleClick = (event: MouseEvent) => {
 	>
 		<Transition name="n8n-button-fade">
 			<div v-if="loading" :class="$style['loading-container']">
-				<div :class="$style['loading-spinner']">
+				<div :class="$style[('loading-spinner', 'n8n-spinner')]">
 					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
 				</div>
 			</div>
