@@ -23,7 +23,7 @@ describe('ChatStreamService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		(instanceSettings as any).isMultiMain = false;
+		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		executionsConfig.mode = 'regular';
 
 		chatStreamService = new ChatStreamService(
@@ -58,7 +58,7 @@ describe('ChatStreamService', () => {
 		});
 
 		it('should relay via pub/sub in multi-main mode', async () => {
-			(instanceSettings as any).isMultiMain = true;
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
 
 			await chatStreamService.startExecution('user-123', 'session-456');
 
@@ -129,7 +129,7 @@ describe('ChatStreamService', () => {
 		});
 
 		it('should relay via pub/sub in multi-main mode', async () => {
-			(instanceSettings as any).isMultiMain = true;
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
 
 			await chatStreamService.endExecution('user-123', 'session-456', 'success');
 
@@ -335,7 +335,7 @@ describe('ChatStreamService', () => {
 		});
 
 		it('should relay via pub/sub in multi-main mode', async () => {
-			(instanceSettings as any).isMultiMain = true;
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
 
 			await chatStreamService.sendErrorDirect(
 				'user-123',
@@ -445,7 +445,7 @@ describe('ChatStreamService', () => {
 		});
 
 		it('should relay via pub/sub in multi-main mode', async () => {
-			(instanceSettings as any).isMultiMain = true;
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
 
 			await chatStreamService.sendHumanMessage({
 				userId: 'user-123',
@@ -497,7 +497,7 @@ describe('ChatStreamService', () => {
 		});
 
 		it('should relay via pub/sub in multi-main mode', async () => {
-			(instanceSettings as any).isMultiMain = true;
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
 
 			await chatStreamService.sendMessageEdit({
 				userId: 'user-123',
