@@ -16,7 +16,12 @@ import type {
 	IBinaryKeyData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { ensureError, jsonParse, NodeOperationError } from 'n8n-workflow';
+
+import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+
+// Default delay in milliseconds before retrying after a failed offset resolution.
+// This prevents rapid retry loops that could overwhelm the Kafka broker
+const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -331,6 +336,9 @@ export function configureDataEmitter(
 		};
 	}
 
+	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
+	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
+
 	const allowedStatuses: string[] = [];
 	if (resolveOffsetMode === 'onSuccess') {
 		allowedStatuses.push('success');
@@ -348,10 +356,25 @@ export function configureDataEmitter(
 	}
 
 	return async (dataArray: INodeExecutionData[]) => {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([dataArray], undefined, responsePromise);
-			const run = await responsePromise.promise;
+
+			const timeoutPromise = new Promise<IRun>((_, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(
+						new NodeOperationError(
+							ctx.getNode(),
+							`Execution took longer than the configured workflow timeout of ${executionTimeoutInSeconds} seconds to complete, offsets not resolved.`,
+						),
+					);
+				}, executionTimeoutInSeconds * 1000);
+			});
+
+			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+
+			if (timeoutId) clearTimeout(timeoutId);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -362,6 +385,8 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
+			if (timeoutId) clearTimeout(timeoutId);
+			await sleep(errorRetryDelay);
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
