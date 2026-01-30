@@ -132,6 +132,7 @@ import { AddStoredAtToExecutionEntity1768557000000 } from '../common/17685570000
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
 import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
+import { AddTokensValidAfterColumnToUser1769500000000 } from '../common/1769500000000-AddTokensValidAfterColumnToUser';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -269,6 +270,7 @@ const sqliteMigrations: Migration[] = [
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
 	CreateSecretsProviderConnectionTables1769433700000,
+	AddTokensValidAfterColumnToUser1769500000000,
 ];
 
 export { sqliteMigrations };

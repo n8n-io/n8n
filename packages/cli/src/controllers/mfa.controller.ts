@@ -118,6 +118,10 @@ export class MFAController {
 
 		const updatedUser = await this.mfaService.enableMfa(id);
 
+		// Invalidate all existing sessions for security
+		// This ensures sessions created without MFA are terminated
+		await this.authService.invalidateAllUserSessions(id);
+
 		this.eventService.emit('user-mfa-enabled', {
 			user: {
 				id: req.user.id,
@@ -155,6 +159,10 @@ export class MFAController {
 		} else if (mfaRecoveryCodeDefined) {
 			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 		}
+
+		// Invalidate all existing sessions for security
+		// This ensures any potentially compromised sessions are terminated
+		await this.authService.invalidateAllUserSessions(userId);
 
 		this.eventService.emit('user-mfa-disabled', {
 			user: {

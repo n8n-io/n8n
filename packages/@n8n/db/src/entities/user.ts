@@ -106,6 +106,22 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	lastActiveAt?: Date | null;
 
 	/**
+	 * Timestamp (in seconds) indicating when all user tokens issued before this time
+	 * should be considered invalid. Any JWT with an `iat` (issued at) before this
+	 * timestamp will be rejected during validation.
+	 * This is updated when security-sensitive changes occur (e.g., MFA disabled, SSO changes).
+	 */
+	@Column({
+		type: 'bigint',
+		nullable: true,
+		transformer: {
+			from: (value: string | null): number | null => (value === null ? null : Number(value)),
+			to: (value: number | null): number | null => value,
+		},
+	})
+	tokensValidAfter: number | null = null;
+
+	/**
 	 * Whether the user is pending setup completion.
 	 */
 	isPending: boolean;
