@@ -25,8 +25,33 @@ To auto-approve Linear MCP tools, add to your global settings:
 {
   "permissions": {
     "allow": [
-      "mcp__linear__*"
+      "mcp__linear-server__*",
+      "mcp__github-mcp__*"
     ]
   }
 }
 ```
+
+## Available Commands
+
+- `/n8n-conventions` - Load n8n codebase conventions and patterns
+- `/n8n-triage PAY-XXX` - Analyze and triage a Linear issue
+- `/n8n-plan PAY-XXX` - Create implementation plan
+
+## Workflow
+
+**Recommended approach:**
+1. `/n8n-triage PAY-123` → Investigate root cause and severity (optional)
+2. `/n8n-plan PAY-123` → Create detailed implementation plan
+3. Review the plan in chat
+4. Say "implement it" or "go ahead" → I'll launch n8n-developer agent
+5. Implementation proceeds with full context from the plan
+
+## Agents
+
+- **n8n-developer** - Full-stack n8n development (frontend/backend/nodes)
+- **n8n-linear-issue-triager** - Issue investigation and analysis
+
+## Skills
+
+- **n8n-conventions** - Comprehensive n8n patterns and standards

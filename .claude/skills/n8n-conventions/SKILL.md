@@ -1,5 +1,5 @@
 ---
-name: n8n
+name: n8n-conventions
 description: n8n codebase conventions, architecture patterns, and coding standards. Use when working with n8n code, answering questions about n8n patterns, or making edits to n8n projects. Covers TypeScript standards, Vue 3 frontend, Node.js backend, and monorepo structure.
 ---
 
