@@ -89,8 +89,8 @@ Valid Connection Methods:
    - Tools provide indirect connections between workflow components
 
 7. **Loop Patterns (Split In Batches)**: Intentional cycles for batch processing
-   - Output 0 ("done"): Fires once after ALL iterations complete - connect final processing here
-   - Output 1 ("loop"): Fires for EACH batch - connect batch processing here
+   - Output 0 ("loop"): Fires for EACH batch - connect batch processing here
+   - Output 1 ("done"): Fires once after ALL iterations complete - connect final processing here
    - Processing nodes loop BACK to Split In Batches input to continue the loop
    - This circular connection is CORRECT and INTENTIONAL - it creates the batch processing loop
 
