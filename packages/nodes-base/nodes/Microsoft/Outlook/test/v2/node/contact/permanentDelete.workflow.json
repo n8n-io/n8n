@@ -11,13 +11,16 @@
 		},
 		{
 			"parameters": {
-				"resource": "calendar",
+				"resource": "contact",
 				"operation": "delete",
-				"calendarId": {
+				"contactId": {
 					"__rl": true,
-					"value": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAAFXBBZ_AAA=",
+					"value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEOAABZf4De-LkrSqpPI8eyjUmAAAFXBCQuAAA=",
 					"mode": "list",
-					"cachedResultName": "New Calendar"
+					"cachedResultName": "User Name"
+				},
+				"options": {
+					"permanentDelete": true
 				}
 			},
 			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
@@ -59,7 +62,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "888e5578-c726-4a84-9658-321ba04fd0c7",
+	"versionId": "cbbe80a7-aea5-4974-93b2-45a91cfe613b",
 	"id": "1CYHzBXQw1nfPGtB",
 	"meta": {
 		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
