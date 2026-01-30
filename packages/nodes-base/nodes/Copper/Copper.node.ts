@@ -422,6 +422,23 @@ export class Copper implements INodeType {
 						const personId = this.getNodeParameter('personId', i);
 
 						responseData = await copperApiRequest.call(this, 'GET', `/people/${personId}`);
+					} else if (operation === 'getByEmail') {
+						// ----------------------------------------
+						//               person: getByEmail
+						// ----------------------------------------
+
+						// https://developer.copper.com/people/fetch-a-person-by-email.html
+
+						const body: IDataObject = {
+							email: this.getNodeParameter('personEmail', i),
+						};
+
+						responseData = await copperApiRequest.call(
+							this,
+							'POST',
+							'/people/fetch_by_email',
+							body,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//              person: getAll
