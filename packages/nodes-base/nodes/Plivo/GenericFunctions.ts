@@ -1,6 +1,7 @@
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
@@ -13,7 +14,7 @@ import { NodeApiError } from 'n8n-workflow';
  *
  */
 export async function plivoApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
