@@ -58,11 +58,13 @@ export class WorkflowIndexService {
 	async buildIndex() {
 		const draftCount = await this.buildIndexInternal(
 			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
+			'draft',
 		);
 
 		const publishedCount = await this.buildIndexInternal(
 			async (batchSize) =>
 				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
+			'published',
 		);
 
 		this.logger.info(
@@ -72,6 +74,7 @@ export class WorkflowIndexService {
 
 	private async buildIndexInternal(
 		unindexedWorkflowFinder: (batchSize: number) => Promise<IWorkflowDb[]>,
+		dependencyType: 'draft' | 'published',
 	): Promise<number> {
 		const batchSize = this.batchSize;
 		let processedCount = 0;
@@ -85,11 +88,17 @@ export class WorkflowIndexService {
 
 			// Build the index for each workflow in the batch.
 			for (const workflow of workflows) {
-				await this.updateIndexForDraft(workflow);
+				if (dependencyType === 'draft') {
+					await this.updateIndexForDraft(workflow);
+				} else {
+					// We know activeVersionId is not null here because the finder only returns workflows
+					// that have a published version.
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+				}
 			}
 
 			processedCount += workflows.length;
-			this.logger.debug(`Indexed ${processedCount} draft workflows so far`);
+			this.logger.debug(`Indexed ${processedCount} ${dependencyType} workflows so far`);
 
 			// If we got fewer workflows than the batch size, we're done.
 			if (workflows.length < batchSize) {
@@ -98,7 +107,7 @@ export class WorkflowIndexService {
 		}
 
 		if (processedCount >= LOOP_LIMIT) {
-			const message = `Stopping draft workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
+			const message = `Stopping ${dependencyType} workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
 			this.logger.warn(message);
 			this.errorReporter.warn(new Error(message));
 		}
@@ -159,13 +168,13 @@ export class WorkflowIndexService {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(
-				`Failed to update workflow draft dependency index for workflow ${workflow.id}: ${error.message}`,
+				`Failed to update workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index for workflow ${workflow.id}: ${error.message}`,
 			);
 			this.errorReporter.error(error);
 			return;
 		}
 		this.logger.debug(
-			`Workflow draft dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+			`Workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
 		);
 	}
 

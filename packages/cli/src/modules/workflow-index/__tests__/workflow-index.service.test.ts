@@ -88,7 +88,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -159,7 +159,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
 				'Failed to update workflow draft dependency index for workflow workflow-123: Database error',
@@ -188,7 +188,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -217,7 +217,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -258,7 +258,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -298,7 +298,7 @@ describe('WorkflowIndexService', () => {
 				} as INode,
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -329,7 +329,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -361,7 +361,7 @@ describe('WorkflowIndexService', () => {
 
 			const workflow = createWorkflow([]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -396,7 +396,7 @@ describe('WorkflowIndexService', () => {
 				} as INode,
 			]);
 
-			await service.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -414,6 +414,47 @@ describe('WorkflowIndexService', () => {
 			// Verify only the placeholder exists (exactly 1 dependency)
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			expect(call[1].dependencies).toHaveLength(1);
+		});
+
+		it('should pass publishedVersionId when calling updateIndexForPublished', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			]);
+
+			const publishedVersionId = 'published-version-123';
+			await service.updateIndexForPublished(workflow, publishedVersionId);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					publishedVersionId: 'published-version-123',
+				}),
+			);
+		});
+
+		it('should pass null publishedVersionId when calling updateIndexForDraft', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					publishedVersionId: null,
+				}),
+			);
 		});
 	});
 
