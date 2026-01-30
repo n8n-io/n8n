@@ -22,7 +22,7 @@ jest.mock('node:util', () => {
 });
 
 import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
-import { NPM_COMMAND_TOKENS } from '@/constants';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 describe('executeNpmCommand', () => {
 	beforeEach(() => {
@@ -78,7 +78,7 @@ describe('executeNpmCommand', () => {
 			);
 
 			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
-				new UnexpectedError('Package not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
 			);
 		});
 
@@ -90,7 +90,7 @@ describe('executeNpmCommand', () => {
 			);
 
 			await expect(executeNpmCommand(['view', 'nonexistent-package'])).rejects.toThrow(
-				new UnexpectedError('Package not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
 			);
 		});
 
@@ -98,7 +98,7 @@ describe('executeNpmCommand', () => {
 			mockAsyncExec.mockRejectedValue(new Error('404 Not Found - package does not exist'));
 
 			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
-				new UnexpectedError('Package not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
 			);
 		});
 
@@ -106,7 +106,7 @@ describe('executeNpmCommand', () => {
 			mockAsyncExec.mockRejectedValue(new Error('No valid versions available for package'));
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
-				new UnexpectedError('Package not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
 			);
 		});
 
@@ -116,7 +116,7 @@ describe('executeNpmCommand', () => {
 			);
 
 			await expect(executeNpmCommand(['install', 'package@1.2.3'])).rejects.toThrow(
-				new UnexpectedError('Package version not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND),
 			);
 		});
 
@@ -126,7 +126,7 @@ describe('executeNpmCommand', () => {
 			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
-				new UnexpectedError('Disk is full - insufficient space to install package'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL),
 			);
 		});
 
@@ -134,7 +134,7 @@ describe('executeNpmCommand', () => {
 			mockAsyncExec.mockRejectedValue(new Error('Error: insufficient space on device'));
 
 			await expect(executeNpmCommand(['install', 'large-package'])).rejects.toThrow(
-				new UnexpectedError('Disk is full - insufficient space to install package'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL),
 			);
 		});
 
@@ -208,14 +208,14 @@ describe('executeNpmCommand', () => {
 
 			await expect(
 				executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: false }),
-			).rejects.toThrow(new UnexpectedError('Package not found in npm registry'));
+			).rejects.toThrow(new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND));
 		});
 
 		it('should handle errors normally when doNotHandleError is undefined (default)', async () => {
 			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 404 Not Found'));
 
 			await expect(executeNpmCommand(['install', 'nonexistent'])).rejects.toThrow(
-				new UnexpectedError('Package not found in npm registry'),
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
 			);
 		});
 	});

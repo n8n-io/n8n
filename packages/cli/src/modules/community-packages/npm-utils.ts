@@ -1,4 +1,4 @@
-import { NPM_COMMAND_TOKENS } from '@/constants';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
@@ -71,22 +71,22 @@ export async function executeNpmCommand(
 
 		// Check for specific error patterns
 		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_NOT_FOUND)) {
-			throw new UnexpectedError('Package not found in npm registry');
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 		}
 
 		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.NO_VERSION_AVAILABLE)) {
-			throw new UnexpectedError('Package not found in npm registry');
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 		}
 
 		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_VERSION_NOT_FOUND)) {
-			throw new UnexpectedError('Package version not found in npm registry');
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND);
 		}
 
 		if (
 			matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.DISK_NO_SPACE) ||
 			matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.DISK_INSUFFICIENT_SPACE)
 		) {
-			throw new UnexpectedError('Disk is full - insufficient space to install package');
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL);
 		}
 
 		if (isDnsError(error)) {

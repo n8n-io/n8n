@@ -17,6 +17,7 @@ import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { executeNpmCommand } from './npm-utils';
+import { InstanceSettings } from 'n8n-core';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -42,6 +43,7 @@ export class CommunityPackagesController {
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	@Post('/')
@@ -170,7 +172,10 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
-			await executeNpmCommand(['outdated', '--json'], { doNotHandleError: true });
+			await executeNpmCommand(['outdated', '--json'], {
+				doNotHandleError: true,
+				cwd: this.instanceSettings.nodesDownloadDir,
+			});
 		} catch (error) {
 			// when there are updates, npm exits with code 1
 			// when there are no updates, command succeeds
