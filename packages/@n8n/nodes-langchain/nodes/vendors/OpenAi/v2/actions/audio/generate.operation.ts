@@ -8,6 +8,23 @@ import { updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
+const commonVoices = [
+	{ name: 'Alloy', value: 'alloy' },
+	{ name: 'Ash', value: 'ash' },
+	{ name: 'Coral', value: 'coral' },
+	{ name: 'Echo', value: 'echo' },
+	{ name: 'Fable', value: 'fable' },
+	{ name: 'Nova', value: 'nova' },
+	{ name: 'Onyx', value: 'onyx' },
+	{ name: 'Sage', value: 'sage' },
+	{ name: 'Shimmer', value: 'shimmer' },
+];
+
+const gpt4oMiniVoices = [
+	{ name: 'Ballad', value: 'ballad' },
+	{ name: 'Verse', value: 'verse' },
+];
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
@@ -15,6 +32,10 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		default: 'tts-1',
 		options: [
+			{
+				name: 'GPT-4o Mini TTS',
+				value: 'gpt-4o-mini-tts',
+			},
 			{
 				name: 'TTS-1',
 				value: 'tts-1',
@@ -42,32 +63,25 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		default: 'alloy',
 		description: 'The voice to use when generating the audio',
-		options: [
-			{
-				name: 'Alloy',
-				value: 'alloy',
+		displayOptions: {
+			show: {
+				model: ['tts-1', 'tts-1-hd'],
 			},
-			{
-				name: 'Echo',
-				value: 'echo',
+		},
+		options: commonVoices,
+	},
+	{
+		displayName: 'Voice',
+		name: 'voice',
+		type: 'options',
+		default: 'alloy',
+		description: 'The voice to use when generating the audio',
+		displayOptions: {
+			show: {
+				model: ['gpt-4o-mini-tts'],
 			},
-			{
-				name: 'Fable',
-				value: 'fable',
-			},
-			{
-				name: 'Nova',
-				value: 'nova',
-			},
-			{
-				name: 'Onyx',
-				value: 'onyx',
-			},
-			{
-				name: 'Shimmer',
-				value: 'shimmer',
-			},
-		],
+		},
+		options: [...commonVoices, ...gpt4oMiniVoices].sort((a, b) => a.name.localeCompare(b.name)),
 	},
 	{
 		displayName: 'Options',
@@ -83,6 +97,14 @@ const properties: INodeProperties[] = [
 				default: 'mp3',
 				options: [
 					{
+						name: 'AAC',
+						value: 'aac',
+					},
+					{
+						name: 'FLAC',
+						value: 'flac',
+					},
+					{
 						name: 'MP3',
 						value: 'mp3',
 					},
@@ -91,12 +113,12 @@ const properties: INodeProperties[] = [
 						value: 'opus',
 					},
 					{
-						name: 'AAC',
-						value: 'aac',
+						name: 'PCM',
+						value: 'pcm',
 					},
 					{
-						name: 'FLAC',
-						value: 'flac',
+						name: 'WAV',
+						value: 'wav',
 					},
 				],
 			},
@@ -110,6 +132,46 @@ const properties: INodeProperties[] = [
 					maxValue: 4,
 					numberPrecision: 1,
 				},
+			},
+			{
+				displayName: 'Instructions',
+				name: 'instructions',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. Speak like a friendly customer service agent',
+				description:
+					'Additional instructions to control the voice of the generated audio. Only works with gpt-4o-mini-tts model.',
+				displayOptions: {
+					show: {
+						'/model': ['gpt-4o-mini-tts'],
+					},
+				},
+				typeOptions: {
+					rows: 2,
+				},
+			},
+			{
+				displayName: 'Stream Format',
+				name: 'stream_format',
+				type: 'options',
+				default: 'audio',
+				description: 'The format to stream the audio in',
+				displayOptions: {
+					show: {
+						'/model': ['gpt-4o-mini-tts'],
+					},
+				},
+				options: [
+					{
+						name: 'Audio',
+						value: 'audio',
+					},
+					{
+						name: 'SSE',
+						value: 'sse',
+						description: 'Server-Sent Events format',
+					},
+				],
 			},
 			{
 				displayName: 'Put Output in Field',
@@ -155,6 +217,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response_format,
 		speed,
 	};
+
+	if (options.instructions) {
+		body.instructions = options.instructions as string;
+	}
+
+	if (options.stream_format) {
+		body.stream_format = options.stream_format as string;
+	}
 
 	const option = {
 		useStream: true,
