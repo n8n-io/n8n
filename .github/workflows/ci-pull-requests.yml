@@ -11,7 +11,7 @@ concurrency:
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -60,11 +60,14 @@ jobs:
       collectCoverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
 
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

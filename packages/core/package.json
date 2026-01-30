@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -48,7 +48,7 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@sentry/node": "catalog:",
-    "@sentry/node-native": "^9.42.1",
+    "@sentry/node-native": "^10.36.0",
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",

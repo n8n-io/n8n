@@ -1,49 +1,25 @@
 name: 'Util: Cleanup PR Docker Images'
 
 on:
-  pull_request:
-    types: [closed]
+  schedule:
+    # Weekly cleanup: Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
 
 jobs:
   cleanup:
-    name: 'Delete PR images'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
+    name: 'Delete stale PR images'
+    runs-on: ubuntu-slim
     permissions:
       packages: write
+      contents: read
     steps:
-      - name: Delete all images for this PR
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Delete stale PR images
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-
-          echo "Cleaning up images for PR #$PR_NUMBER..."
-
-          for PACKAGE in n8n runners; do
-            echo "Checking $PACKAGE package..."
-
-            # Fetch all versions with pr-{number}-* tags
-            VERSIONS=$(gh api "/orgs/n8n-io/packages/container/$PACKAGE/versions" \
-              --paginate \
-              --jq ".[] | select(.metadata.container.tags | any(startswith(\"pr-${PR_NUMBER}-\"))) | {id, tags: .metadata.container.tags}" \
-            ) || { echo "  No images found or API error"; continue; }
-
-            if [ -z "$VERSIONS" ]; then
-              echo "  No images found"
-              continue
-            fi
-
-            while IFS= read -r version; do
-              [ -z "$version" ] && continue
-
-              ID=$(echo "$version" | jq -r '.id')
-              TAGS=$(echo "$version" | jq -r '.tags | join(", ")')
-
-              echo "  Deleting: $TAGS"
-              gh api --method DELETE "/orgs/n8n-io/packages/container/$PACKAGE/versions/$ID" || echo "    Failed"
-            done <<< "$VERSIONS"
-          done
-
-          echo "Cleanup complete"
+        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 7

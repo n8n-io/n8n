@@ -24,7 +24,6 @@ import {
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
 import os from 'node:os';
-import { get as pslGet } from 'psl';
 
 import { Telemetry } from '../../telemetry';
 import { EventRelay } from './event-relay';
@@ -916,15 +915,16 @@ export class TelemetryEventRelay extends EventRelay {
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);
 				} else {
-					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+					for (const name of nodeGraphResult.webhookNodeNames) {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
 							?.json as { headers?: { origin?: string } };
 						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							const { get: pslGet } = await import('psl');
 							manualExecEventProperties.webhook_domain = pslGet(
 								execJson.headers.origin.replace(/^https?:\/\//, ''),
 							);
 						}
-					});
+					}
 
 					this.telemetry.track('Manual workflow exec finished', manualExecEventProperties);
 				}

@@ -725,7 +725,7 @@ export class LoadNodesAndCredentials {
 						description: 'Block all requests when used in the HTTP Request node',
 					},
 				],
-				default: 'none',
+				default: 'all',
 				description: 'Control which domains this credential can be used with in HTTP Request nodes',
 			},
 			{

@@ -105,6 +105,8 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
+export type ExecutionStorageLocation = 'db' | 'fs';
+
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
@@ -2505,6 +2507,7 @@ export interface IRun {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
+	storedAt: ExecutionStorageLocation;
 	status: ExecutionStatus;
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
@@ -3019,6 +3022,7 @@ export interface INodeGraphItem {
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
+	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 }
 
 export interface INodeNameIndex {

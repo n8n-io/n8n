@@ -261,6 +261,7 @@ describe('WorkflowDataProxy', () => {
 			mode: 'manual',
 			startedAt: new Date(),
 			status: 'success',
+			storedAt: 'db',
 		});
 
 		describe('Default behavior (no binaryMode or separate mode)', () => {
@@ -1171,6 +1172,7 @@ describe('WorkflowDataProxy', () => {
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
+					storedAt: 'db',
 				},
 				'Execute Workflow',
 				'manual',
@@ -1499,6 +1501,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Send a text message');
@@ -1561,6 +1564,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Process Data');
@@ -1619,6 +1623,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'End Node');
@@ -1706,6 +1711,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Real Node');
