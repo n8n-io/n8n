@@ -110,6 +110,10 @@ export class ChatHubModelsService {
 				const rawModels = await this.fetchAnthropicModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'anthropic') };
 			}
+			case 'atlasCloud': {
+				const rawModels = await this.fetchAtlasCloudModels(credentials, additionalData);
+				return { models: this.transformAndFilterModels(rawModels, 'atlasCloud') };
+			}
 			case 'google': {
 				const rawModels = await this.fetchGoogleModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'google') };
@@ -195,6 +199,36 @@ export class ChatHubModelsService {
 		);
 
 		return resourceLocatorResults.results;
+	}
+
+	private async fetchAtlasCloudModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{ type: 'rootProperty', properties: { property: 'data' } },
+							{
+								type: 'setKeyValue',
+								properties: { name: '={{$responseItem.id}}', value: '={{$responseItem.id}}' },
+							},
+							{ type: 'sort', properties: { key: 'name' } },
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.atlasCloud,
+			{},
+			credentials,
+		);
 	}
 
 	private async fetchGoogleModels(

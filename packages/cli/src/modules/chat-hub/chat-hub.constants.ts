@@ -25,6 +25,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
 		version: 1.3,
 	},
+	atlasCloud: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAtlasCloud',
+		version: 1,
+	},
 	google: {
 		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 		version: 1.2,

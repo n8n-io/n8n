@@ -102,6 +102,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'claude-3-5-haiku-20241022': 200000,
 		'claude-3-haiku-20240307': 200000,
 	},
+	atlasCloud: {},
 	google: {
 		'models/aqa': 0,
 		'models/gemini-2.0-flash': 1048576,
