@@ -17,14 +17,14 @@ test.describe('Demo', () => {
 	});
 
 	test('can import template', async ({ n8n }) => {
-		await n8n.demo.visitDemoPage();
+		await n8n.demo.goto();
 		expect(await n8n.notifications.getAllNotificationTexts()).toHaveLength(0);
 		await n8n.demo.importWorkflow(simpleWorkflow);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 	});
 
 	test('can import workflow with pin data', async ({ n8n }) => {
-		await n8n.demo.visitDemoPage();
+		await n8n.demo.goto();
 		await expect(n8n.canvas.canvasPane()).toBeVisible();
 		await n8n.demo.importWorkflow(workflowWithPinned);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -34,13 +34,13 @@ test.describe('Demo', () => {
 	});
 
 	test('can override theme to dark', async ({ n8n }) => {
-		await n8n.demo.visitDemoPage('dark');
+		await n8n.demo.goto('dark');
 		await expect(n8n.demo.getBody()).toHaveAttribute('data-theme', 'dark');
 		expect(await n8n.notifications.getAllNotificationTexts()).toHaveLength(0);
 	});
 
 	test('can override theme to light', async ({ n8n }) => {
-		await n8n.demo.visitDemoPage('light');
+		await n8n.demo.goto('light');
 		await expect(n8n.demo.getBody()).toHaveAttribute('data-theme', 'light');
 		expect(await n8n.notifications.getAllNotificationTexts()).toHaveLength(0);
 	});
