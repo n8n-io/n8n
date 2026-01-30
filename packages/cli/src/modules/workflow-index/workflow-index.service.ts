@@ -36,21 +36,26 @@ export class WorkflowIndexService {
 			await this.buildIndex().catch((e) => this.errorReporter.error(e));
 		});
 		this.eventService.on('workflow-created', async ({ workflow }) => {
-			await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
-			await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
+			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-activated', async ({ workflow }) => {
-			await this.updateIndexFor(workflow, workflow.activeVersionId);
+			if (workflow.activeVersionId === null) {
+				this.logger.warn(
+					`Workflow ${workflow.id} activated with null activeVersionId. Skipping index update.`,
+				);
+				return;
+			}
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
 		});
 	}
 
 	async buildIndex() {
-		// Build draft index
 		const draftCount = await this.buildIndexInternal(
 			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
 		);
@@ -72,7 +77,6 @@ export class WorkflowIndexService {
 		let processedCount = 0;
 
 		while (processedCount < LOOP_LIMIT) {
-			// Get only workflows that need draft indexing (unindexed or outdated).
 			const workflows = await unindexedWorkflowFinder(batchSize);
 
 			if (workflows.length === 0) {
@@ -81,7 +85,7 @@ export class WorkflowIndexService {
 
 			// Build the index for each workflow in the batch.
 			for (const workflow of workflows) {
-				await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
+				await this.updateIndexForDraft(workflow);
 			}
 
 			processedCount += workflows.length;
@@ -102,6 +106,23 @@ export class WorkflowIndexService {
 		return processedCount;
 	}
 
+	async updateIndexForDraft(workflow: IWorkflowBase) {
+		const dependencyUpdates = new WorkflowDependencies(
+			workflow.id,
+			workflow.versionCounter,
+			/*publishedVersionId=*/ null,
+		);
+		return await this.updateIndexInternal(workflow, dependencyUpdates);
+	}
+
+	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+		const dependencyUpdates = new WorkflowDependencies(
+			workflow.id,
+			workflow.versionCounter,
+			publishedVersionId,
+		);
+		return await this.updateIndexInternal(workflow, dependencyUpdates);
+	}
 	/**
 	 * Update the dependency index for a given workflow.
 	 *
@@ -109,15 +130,10 @@ export class WorkflowIndexService {
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
 	 */
-	async updateIndexFor(workflow: IWorkflowBase, publishedVersionId: string | null) {
-		// TODO: input validation.
-		// Generate the dependency updates for the given workflow draft (publishedVersionId = null).
-		const dependencyUpdates = new WorkflowDependencies(
-			workflow.id,
-			workflow.versionCounter,
-			publishedVersionId,
-		);
-
+	private async updateIndexInternal(
+		workflow: IWorkflowBase,
+		dependencyUpdates: WorkflowDependencies,
+	) {
 		workflow.nodes.forEach((node) => {
 			this.addNodeTypeDependencies(node, dependencyUpdates);
 			this.addCredentialDependencies(node, dependencyUpdates);
