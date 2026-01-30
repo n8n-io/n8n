@@ -1,0 +1,28 @@
+{
+  "name": "personal-vault",
+  "version": "1.0.0",
+  "description": "Secure personal vault with end-to-end encryption",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "docker:dev": "docker-compose -f docker-compose.yml up --build",
+    "docker:prod": "docker-compose -f docker-compose.prod.yml up --build -d"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

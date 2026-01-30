@@ -1,0 +1,97 @@
+// Personal Vault Database Schema
+// Using SQLite for simplicity, can be changed to PostgreSQL for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  authHash              String   @map("auth_hash") // Argon2id hash of auth_key
+  salt                  String   // Base64 encoded salt for client-side key derivation
+  encryptedRecoveryBlob String?  @map("encrypted_recovery_blob") // For password recovery
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  vaultEntries  VaultEntry[]
+  folders       Folder[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model VaultEntry {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  type          String   // password, secure_note, credit_card, identity, bank_account
+  encryptedData String   @map("encrypted_data") // Base64 encoded: IV + ciphertext + authTag
+  folderId      String?  @map("folder_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([folderId])
+  @@map("vault_entries")
+}
+
+model Folder {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  encryptedName String   @map("encrypted_name") // Encrypted folder name
+  parentId      String?  @map("parent_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Folder?      @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Folder[]     @relation("FolderHierarchy")
+  vaultEntries VaultEntry[]
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("folders")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash") // SHA256 hash of refresh token
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// Audit log for security monitoring (optional but recommended)
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String   // login, logout, create_entry, delete_entry, etc.
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  success   Boolean
+  metadata  String?  // JSON string for additional context
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
