@@ -29,9 +29,10 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 		workflow: WorkflowEntity,
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
-		// If N8N_BLOCK_ENV_ACCESS_IN_NODE is explicitly set, then the instance is not affected
-		// because the user has already made a choice
-		if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE) {
+		// If N8N_BLOCK_ENV_ACCESS_IN_NODE is explicitly set (to any value), then the instance is not affected
+		// because the user has already made a choice. The default value in @n8n/config is `true`,
+		// but we only skip detection if the user has explicitly set the env var.
+		if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== undefined) {
 			return {
 				isAffected: false,
 				issues: [],

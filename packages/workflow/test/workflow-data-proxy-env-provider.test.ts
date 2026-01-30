@@ -49,6 +49,38 @@ describe('createEnvProviderState', () => {
 			global.process = originalProcess;
 		}
 	});
+
+	it('should block env access when isEnvAccessBlocked parameter is true', () => {
+		// Even if env var says false, explicit parameter should take precedence
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
+		expect(createEnvProviderState(true)).toEqual({
+			isProcessAvailable: true,
+			isEnvAccessBlocked: true,
+			env: {},
+		});
+	});
+
+	it('should allow env access when isEnvAccessBlocked parameter is false', () => {
+		// Even if env var says true, explicit parameter should take precedence
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
+
+		expect(createEnvProviderState(false)).toEqual({
+			isProcessAvailable: true,
+			isEnvAccessBlocked: false,
+			env: process.env,
+		});
+	});
+
+	it('should fallback to env var when isEnvAccessBlocked parameter is undefined', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
+		expect(createEnvProviderState(undefined)).toEqual({
+			isProcessAvailable: true,
+			isEnvAccessBlocked: false,
+			env: process.env,
+		});
+	});
 });
 
 describe('createEnvProvider', () => {
