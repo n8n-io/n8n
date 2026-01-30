@@ -21,28 +21,28 @@ export const description: INodeProperties[] = [
 				value: 'append',
 				description: 'Output items of each input, one after the other',
 				builderHint:
-					'Does NOT wait for all inputs to receive data. Use when you need to concatenate all items from multiple inputs into a single output stream. Items are not modified, just combined sequentially.',
+					'Do you need to collect items from multiple sources into a single list without modifying them? Use Append to concatenate items sequentially. Does NOT wait for all inputs. Supports any number of inputs.',
 			},
 			{
 				name: 'Combine',
 				value: 'combine',
 				description: 'Merge matching items together',
 				builderHint:
-					'Waits for both inputs to receive data. Only accepts two inputs. Use when you need to join/merge data from two inputs based on matching field values (like a database JOIN). Set combineBy to specify matching strategy.',
+					'Do you need to JOIN items from exactly 2 inputs based on matching field values (like linking user IDs to user details)? Use Combine for database-style JOINs. Only accepts 2 inputs. Waits for both.',
 			},
 			{
 				name: 'SQL Query',
 				value: 'combineBySql',
 				description: 'Write a query to do the merge',
 				builderHint:
-					'Waits for all connected inputs to receive data. Use when you need complex merge logic with SQL-like syntax. Allows filtering, joining, and transforming data using SQL queries.',
+					'Do you need complex merge logic using SQL syntax to filter, join, or transform data? Use SQL Query for advanced operations. Waits for all inputs.',
 			},
 			{
 				name: 'Choose Branch',
 				value: 'chooseBranch',
 				description: 'Output data from a specific branch, without modifying it',
 				builderHint:
-					'Waits for all connected inputs to receive data. Use when you need to select data from only one specific input branch and discard the others. Useful after conditional nodes.',
+					'Do you need to select data from only ONE specific input and discard the others? Use Choose Branch after conditional nodes to pick which path to continue. Waits for all inputs.',
 			},
 		],
 		default: 'append',
