@@ -38,7 +38,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			'GET',
 			`/v1.0/chats/${chatId}/messages`,
 			{},
+			{
+				$top: limit,
+			},
 		);
-		return responseData.splice(0, limit);
+		return responseData;
 	}
 }
