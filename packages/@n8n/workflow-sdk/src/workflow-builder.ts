@@ -857,6 +857,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		}
 
+		// Check: Multiple ManualTrigger nodes
+		const manualTriggerNodes = Array.from(this._nodes.values()).filter(
+			(graphNode) => graphNode.instance.type === 'n8n-nodes-base.manualTrigger',
+		);
+		if (manualTriggerNodes.length > 1) {
+			errors.push(
+				new ValidationError(
+					'MULTIPLE_MANUAL_TRIGGERS',
+					`Workflow has ${manualTriggerNodes.length} ManualTrigger nodes. Only one is allowed per workflow.`,
+				),
+			);
+		}
+
 		// Node-specific checks
 		for (const [mapKey, graphNode] of this._nodes) {
 			const nodeType = graphNode.instance.type;

@@ -11,12 +11,80 @@ export type { DisplayOptions, DisplayOptionsContext };
 
 /**
  * Format a value for display in error messages.
- * Booleans are shown without quotes, strings are quoted.
+ * Booleans are shown without quotes, strings are quoted,
+ * _cnd conditions are formatted as readable operators.
  */
 function formatValue(val: unknown): string {
 	if (typeof val === 'boolean') return String(val);
 	if (typeof val === 'string') return `"${val}"`;
-	return String(val);
+	if (typeof val === 'number') return String(val);
+
+	// Handle _cnd conditions
+	if (val !== null && typeof val === 'object' && '_cnd' in val) {
+		const cnd = (val as { _cnd: Record<string, unknown> })._cnd;
+		const [operator, operand] = Object.entries(cnd)[0];
+		switch (operator) {
+			case 'exists':
+				return 'exists';
+			case 'eq':
+				return `equals ${formatValue(operand)}`;
+			case 'not':
+				return `not ${formatValue(operand)}`;
+			case 'gte':
+				return `>= ${operand}`;
+			case 'lte':
+				return `<= ${operand}`;
+			case 'gt':
+				return `> ${operand}`;
+			case 'lt':
+				return `< ${operand}`;
+			case 'includes':
+				return `includes "${operand}"`;
+			case 'startsWith':
+				return `starts with "${operand}"`;
+			case 'endsWith':
+				return `ends with "${operand}"`;
+			case 'regex':
+				return `matches /${operand}/`;
+			case 'between': {
+				const { from, to } = operand as { from: number; to: number };
+				return `between ${from} and ${to}`;
+			}
+			default:
+				return JSON.stringify(val);
+		}
+	}
+
+	return JSON.stringify(val);
+}
+
+/**
+ * Format a regex path pattern into a human-readable string.
+ * Example: '/guardrails.(jailbreak|nsfw|custom)' becomes 'guardrails.jailbreak, guardrails.nsfw, or guardrails.custom'
+ */
+function formatRegexPath(path: string): string {
+	// Remove leading /
+	const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+	// Check if it contains alternation pattern like (a|b|c)
+	const match = cleanPath.match(/^(.+)\.\(([^)]+)\)$/);
+	if (match) {
+		const prefix = match[1];
+		const alternatives = match[2].split('|');
+		const paths = alternatives.map((alt) => `${prefix}.${alt}`);
+		if (paths.length === 1) return paths[0];
+		if (paths.length === 2) return `${paths[0]} or ${paths[1]}`;
+		return paths.slice(0, -1).join(', ') + ', or ' + paths[paths.length - 1];
+	}
+
+	return cleanPath;
+}
+
+/**
+ * Check if a property path contains regex metacharacters.
+ */
+function isRegexPath(path: string): boolean {
+	return path.includes('|') || path.includes('(');
 }
 
 /**
@@ -32,7 +100,14 @@ function formatDisplayOptionsRequirements(displayOptions: DisplayOptions): strin
 			if (Array.isArray(values)) {
 				const valStr =
 					values.length === 1 ? formatValue(values[0]) : values.map(formatValue).join(' or ');
-				requirements.push(`${key}=${valStr}`);
+
+				// Format regex paths more readably
+				if (isRegexPath(key)) {
+					const formattedPath = formatRegexPath(key);
+					requirements.push(`one of ${formattedPath} ${valStr}`);
+				} else {
+					requirements.push(`${key}=${valStr}`);
+				}
 			}
 		}
 	}
@@ -87,7 +162,7 @@ export function resolveSchema({
 		const requirements = formatDisplayOptionsRequirements(displayOptions);
 		return z.any().refine((val) => val === undefined, {
 			message: requirements
-				? `This field requires: ${requirements}`
+				? `This field is only allowed when: ${requirements}`
 				: 'This field is not applicable for the current configuration',
 		});
 	}

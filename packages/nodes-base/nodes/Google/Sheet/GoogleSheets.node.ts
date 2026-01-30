@@ -14,6 +14,11 @@ export class GoogleSheets extends VersionedNodeType {
 			defaultVersion: 4.7,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Read, update and write data to Google Sheets',
+			builderHint: {
+				message:
+					'For storing workflow data (e.g., job leads, records), prefer n8n-nodes-base.dataTable with upsert operation to avoid duplicates. Use Google Sheets only when user explicitly needs spreadsheet integration.',
+				relatedNodes: ['n8n-nodes-base.dataTable'],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

@@ -692,10 +692,7 @@ export class OneShotWorkflowCodeAgent {
 			this.debugLog('TOOL_CALL', `Tool ${toolCall.name} completed`, {
 				toolDurationMs: toolDuration,
 				resultLength: typeof result === 'string' ? result.length : JSON.stringify(result).length,
-				resultPreview:
-					typeof result === 'string'
-						? result.substring(0, 200)
-						: JSON.stringify(result).substring(0, 200),
+				result: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
 			});
 
 			// Add tool result to messages
@@ -957,6 +954,14 @@ export class OneShotWorkflowCodeAgent {
 				this.logger?.info('Workflow validation warnings', {
 					warnings: validationResult.warnings.map((w: { message: string }) => w.message),
 				});
+				// Add JSON validation warnings to allWarnings for agent self-correction
+				for (const w of validationResult.warnings) {
+					allWarnings.push({
+						code: w.code,
+						message: w.message,
+						nodeName: w.nodeName,
+					});
+				}
 			}
 
 			// Log full workflow JSON

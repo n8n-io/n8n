@@ -80,6 +80,60 @@ function isDisplayCondition(value: unknown): value is DisplayCondition {
 	);
 }
 
+/**
+ * Check if a property path contains regex metacharacters (for OR matching).
+ * Regex paths use | for alternation, e.g., '/guardrails.(jailbreak|nsfw|custom)'
+ */
+function isRegexPath(path: string): boolean {
+	return path.includes('|') || path.includes('(');
+}
+
+/**
+ * Get all dot-separated paths from an object recursively.
+ * E.g., { guardrails: { jailbreak: { value: 1 } } } => ['guardrails', 'guardrails.jailbreak', 'guardrails.jailbreak.value']
+ */
+function getAllPaths(obj: unknown, prefix = ''): string[] {
+	if (obj === null || obj === undefined || typeof obj !== 'object') {
+		return prefix ? [prefix] : [];
+	}
+	const paths: string[] = [];
+	if (prefix) paths.push(prefix);
+	for (const key of Object.keys(obj as Record<string, unknown>)) {
+		const newPrefix = prefix ? `${prefix}.${key}` : key;
+		paths.push(...getAllPaths((obj as Record<string, unknown>)[key], newPrefix));
+	}
+	return paths;
+}
+
+/**
+ * Find all property paths that match a regex pattern.
+ * Returns the values at those paths.
+ */
+function getMatchingPathValues(context: DisplayOptionsContext, regexPath: string): unknown[][] {
+	const rootParams = context.rootParameters ?? context.parameters;
+	// Remove leading / for root paths
+	const pattern = regexPath.startsWith('/') ? regexPath.slice(1) : regexPath;
+
+	// Convert the path pattern to a regex (escape dots, keep | and () for alternation)
+	// Pattern like 'guardrails.(jailbreak|nsfw)' becomes regex /^guardrails\.(jailbreak|nsfw)$/
+	const regexPattern = '^' + pattern.replace(/\./g, '\\.').replace(/\\\.\(/g, '.(') + '$';
+	const regex = new RegExp(regexPattern);
+
+	const allPaths = getAllPaths(rootParams);
+	const matchingValues: unknown[][] = [];
+
+	for (const path of allPaths) {
+		if (regex.test(path)) {
+			const value = get(rootParams, path);
+			if (value !== undefined) {
+				matchingValues.push(Array.isArray(value) ? value : [value]);
+			}
+		}
+	}
+
+	return matchingValues;
+}
+
 // =============================================================================
 // Core Functions
 // =============================================================================
@@ -214,6 +268,7 @@ export function getPropertyValue(context: DisplayOptionsContext, propertyName: s
  * - All show conditions must match (AND)
  * - Any hide condition matching returns false
  * - Expression values (starting with =) cause show to return true (can't statically evaluate)
+ * - Regex paths (containing | or ()) match if ANY matching path satisfies the condition
  *
  * @param context - The context with parameters and metadata
  * @param displayOptions - The show/hide conditions
@@ -228,6 +283,32 @@ export function matchesDisplayOptions(
 	if (show) {
 		// All show conditions must match
 		for (const propertyName of Object.keys(show)) {
+			const conditions = show[propertyName];
+
+			// Handle regex paths - check if ANY matching path satisfies the conditions
+			if (isRegexPath(propertyName)) {
+				const matchingPathValues = getMatchingPathValues(context, propertyName);
+
+				// If no paths match the pattern, the condition fails
+				if (matchingPathValues.length === 0) {
+					return false;
+				}
+
+				// Check if ANY of the matching paths satisfies the conditions
+				const anyMatch = matchingPathValues.some((values) => {
+					if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
+						return true; // Expression - treat as matching
+					}
+					return checkConditions(conditions, values);
+				});
+
+				if (!anyMatch) {
+					return false;
+				}
+				continue;
+			}
+
+			// Regular path handling
 			const values = getPropertyValue(context, propertyName);
 
 			// If any value is an expression, we can't evaluate it statically - show the field
@@ -235,7 +316,7 @@ export function matchesDisplayOptions(
 				return true;
 			}
 
-			if (!checkConditions(show[propertyName], values)) {
+			if (!checkConditions(conditions, values)) {
 				return false;
 			}
 		}

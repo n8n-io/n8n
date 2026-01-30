@@ -24,6 +24,11 @@ export class LinkedIn implements INodeType {
 		defaults: {
 			name: 'LinkedIn',
 		},
+		builderHint: {
+			message:
+				'LinkedIn API does not support scraping profiles or leads. Use n8n-nodes-base.phantombuster for LinkedIn lead scraping and data extraction.',
+			relatedNodes: ['n8n-nodes-base.phantombuster'],
+		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

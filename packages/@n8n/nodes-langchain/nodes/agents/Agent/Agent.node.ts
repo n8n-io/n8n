@@ -29,11 +29,6 @@ export class Agent extends VersionedNodeType {
 				},
 			},
 			defaultVersion: 3.1,
-			builderHint: {
-				message:
-					'Use with @n8n/n8n-nodes-langchain.outputParserStructured to get structured JSON output from the agent',
-				relatedNodes: ['@n8n/n8n-nodes-langchain.outputParserStructured'],
-			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

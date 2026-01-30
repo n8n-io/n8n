@@ -7,8 +7,12 @@ import { InstanceSettings } from 'n8n-core';
 
 import {
 	generateSingleVersionTypeFile,
+	generateSingleVersionSchemaFile,
 	generateVersionIndexFile,
 	generateIndexFile,
+	generateBaseSchemaFile,
+	hasDiscriminatorPattern,
+	planSplitVersionFiles,
 	versionToFileName,
 	nodeNameToFileName,
 	getPackageName,
@@ -25,6 +29,8 @@ import {
  */
 @Service()
 export class NodeTypeGeneratorService {
+	private generationInProgress: Promise<void> | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -39,11 +45,19 @@ export class NodeTypeGeneratorService {
 
 	/**
 	 * Check if types need to be regenerated and generate if needed.
+	 * Uses a lock to prevent concurrent generation runs.
 	 *
 	 * @param nodesJsonPath Path to the nodes.json file
-	 * @returns true if types were generated, false if skipped (hash matched)
+	 * @returns true if types were generated, false if skipped (hash matched or already in progress)
 	 */
 	async generateIfNeeded(nodesJsonPath: string): Promise<boolean> {
+		// If generation is already in progress, wait for it and return false
+		if (this.generationInProgress) {
+			this.logger.debug('Node type generation already in progress, waiting...');
+			await this.generationInProgress;
+			return false;
+		}
+
 		const hashFilePath = path.join(this.instanceSettings.generatedTypesDir, 'nodes.json.hash');
 
 		// Read the nodes.json content
@@ -55,7 +69,7 @@ export class NodeTypeGeneratorService {
 			try {
 				const storedHash = await fs.promises.readFile(hashFilePath, 'utf-8');
 				if (storedHash.trim() === currentHash) {
-					this.logger.debug('Node types hash matches, skipping regeneration');
+					this.logger.debug('Node types up to date, skipping generation');
 					return false;
 				}
 			} catch {
@@ -63,9 +77,14 @@ export class NodeTypeGeneratorService {
 			}
 		}
 
-		// Generate types
-		await this.generate(nodesJsonPath);
-		return true;
+		// Generate types with lock
+		this.generationInProgress = this.generate(nodesJsonPath);
+		try {
+			await this.generationInProgress;
+			return true;
+		} finally {
+			this.generationInProgress = null;
+		}
 	}
 
 	/**
@@ -77,10 +96,14 @@ export class NodeTypeGeneratorService {
 		const outputDir = this.instanceSettings.generatedTypesDir;
 		const hashFilePath = path.join(outputDir, 'nodes.json.hash');
 
-		this.logger.info('Generating node types from nodes.json...');
+		this.logger.info('Generating node types and schemas from nodes.json...');
 
 		// Ensure output directory exists
 		await fs.promises.mkdir(outputDir, { recursive: true });
+
+		// Generate base.schema.ts with common Zod helpers
+		const baseSchemaContent = generateBaseSchemaFile();
+		await fs.promises.writeFile(path.join(outputDir, 'base.schema.ts'), baseSchemaContent, 'utf-8');
 
 		// Read and parse nodes.json
 		const content = await fs.promises.readFile(nodesJsonPath, 'utf-8');
@@ -132,13 +155,29 @@ export class NodeTypeGeneratorService {
 						}
 					}
 
-					// Generate a file for each version
+					// Generate files for each version
 					for (const version of allVersions) {
 						const sourceNode = versionToNode.get(version)!;
 						const fileName = versionToFileName(version);
-						const typeContent = generateSingleVersionTypeFile(sourceNode, version);
-						const filePath = path.join(nodeDir, `${fileName}.ts`);
-						await fs.promises.writeFile(filePath, typeContent, 'utf-8');
+
+						if (hasDiscriminatorPattern(sourceNode)) {
+							// Generate split structure for nodes with resource/operation or mode patterns
+							// planSplitVersionFiles returns both type files AND schema files
+							const versionDir = path.join(nodeDir, fileName);
+							await fs.promises.mkdir(versionDir, { recursive: true });
+							const files = planSplitVersionFiles(sourceNode, version);
+							await this.writePlanToDisk(versionDir, files);
+						} else {
+							// Generate flat type file
+							const typeContent = generateSingleVersionTypeFile(sourceNode, version);
+							const filePath = path.join(nodeDir, `${fileName}.ts`);
+							await fs.promises.writeFile(filePath, typeContent, 'utf-8');
+
+							// Generate flat schema file
+							const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
+							const schemaFilePath = path.join(nodeDir, `${fileName}.schema.ts`);
+							await fs.promises.writeFile(schemaFilePath, schemaContent, 'utf-8');
+						}
 					}
 
 					// Generate index.ts
@@ -163,6 +202,21 @@ export class NodeTypeGeneratorService {
 		const hash = this.computeHash(content);
 		await fs.promises.writeFile(hashFilePath, hash, 'utf-8');
 
-		this.logger.info(`Generated types for ${allNodes.length} nodes in ${outputDir}`);
+		this.logger.info(`Generated types and schemas for ${allNodes.length} nodes`);
+	}
+
+	/**
+	 * Write a plan (Map of relative paths to content) to disk
+	 *
+	 * @param baseDir Base directory for the files
+	 * @param plan Map of relative path -> file content
+	 */
+	private async writePlanToDisk(baseDir: string, plan: Map<string, string>): Promise<void> {
+		for (const [relativePath, content] of plan) {
+			const fullPath = path.join(baseDir, relativePath);
+			const dir = path.dirname(fullPath);
+			await fs.promises.mkdir(dir, { recursive: true });
+			await fs.promises.writeFile(fullPath, content, 'utf-8');
+		}
 	}
 }
