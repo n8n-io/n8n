@@ -10,7 +10,7 @@ describe('User Entity', () => {
 				password: '123456789',
 			});
 			expect(JSON.stringify(user)).toEqual(
-				'{"email":"test@example.com","firstName":"Don","lastName":"Joe"}',
+				'{"tokensValidAfter":null,"email":"test@example.com","firstName":"Don","lastName":"Joe"}',
 			);
 		});
 	});
