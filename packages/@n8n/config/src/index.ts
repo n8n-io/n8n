@@ -43,6 +43,7 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
