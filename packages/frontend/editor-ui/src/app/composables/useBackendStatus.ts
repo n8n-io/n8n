@@ -1,12 +1,12 @@
 import { onMounted, onUnmounted, ref } from 'vue';
-import { useNetworkStore } from '@/app/stores/network.store';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useHeartbeat } from '@/app/push-connection/useHeartbeat';
 
 const HEALTH_CHECK_INTERVAL = 10000;
 const HEALTH_CHECK_TIMEOUT = 5000;
 
-export function useNetworkStatus() {
-	const networkStore = useNetworkStore();
+export function useBackendStatus() {
+	const backendConnectionStore = useBackendConnectionStore();
 	const checking = ref(false);
 
 	/**
@@ -34,7 +34,7 @@ export function useNetworkStatus() {
 		checking.value = true;
 		try {
 			const isConnected = await checkBackendConnection();
-			networkStore.setOnline(isConnected);
+			backendConnectionStore.setOnline(isConnected);
 		} finally {
 			checking.value = false;
 		}
@@ -63,6 +63,6 @@ export function useNetworkStatus() {
 	});
 
 	return {
-		isOnline: networkStore.isOnline,
+		isOnline: backendConnectionStore.isOnline,
 	};
 }

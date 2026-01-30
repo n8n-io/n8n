@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useNetworkStore } from '@/app/stores/network.store';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -8,7 +8,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
 const pushConnectionStore = usePushConnectionStore();
-const networkStore = useNetworkStore();
+const backendConnectionStore = useBackendConnectionStore();
 const i18n = useI18n();
 
 type ConnectionStatus =
@@ -24,8 +24,8 @@ type ConnectionStatus =
 	  };
 
 const connectionStatus = computed<ConnectionStatus>(() => {
-	// Priority 1: Check if browser is offline
-	if (!networkStore.isOnline) {
+	// Priority 1: Check if backend is unreachable
+	if (!backendConnectionStore.isOnline) {
 		return {
 			hasError: true,
 			message: 'network.error.message',

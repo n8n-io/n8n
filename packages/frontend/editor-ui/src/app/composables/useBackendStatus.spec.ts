@@ -2,8 +2,8 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent } from 'vue';
 import { mount } from '@vue/test-utils';
-import { useNetworkStatus } from './useNetworkStatus';
-import { useNetworkStore } from '@/app/stores/network.store';
+import { useBackendStatus } from './useBackendStatus';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 
 const mockStartHeartbeat = vi.fn();
 const mockStopHeartbeat = vi.fn();
@@ -15,13 +15,13 @@ vi.mock('@/app/push-connection/useHeartbeat', () => ({
 	})),
 }));
 
-describe('useNetworkStatus', () => {
-	let networkStore: ReturnType<typeof useNetworkStore>;
+describe('useBackendStatus', () => {
+	let backendConnectionStore: ReturnType<typeof useBackendConnectionStore>;
 	let mockFetch: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		networkStore = useNetworkStore();
+		backendConnectionStore = useBackendConnectionStore();
 
 		mockFetch = vi.fn();
 		vi.stubGlobal('fetch', mockFetch);
@@ -38,7 +38,7 @@ describe('useNetworkStatus', () => {
 	const createWrapper = () => {
 		const TestComponent = defineComponent({
 			setup() {
-				return useNetworkStatus();
+				return useBackendStatus();
 			},
 			template: '<div></div>',
 		});
@@ -58,7 +58,7 @@ describe('useNetworkStatus', () => {
 			});
 		});
 
-		expect(networkStore.isOnline).toBe(true);
+		expect(backendConnectionStore.isOnline).toBe(true);
 		expect(mockStartHeartbeat).toHaveBeenCalled();
 
 		wrapper.unmount();
@@ -70,7 +70,7 @@ describe('useNetworkStatus', () => {
 		const wrapper = createWrapper();
 
 		await vi.waitFor(() => {
-			expect(networkStore.isOnline).toBe(false);
+			expect(backendConnectionStore.isOnline).toBe(false);
 		});
 
 		wrapper.unmount();

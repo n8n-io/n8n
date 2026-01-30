@@ -17,9 +17,9 @@ vi.mock('@/app/stores/pushConnection.store', () => {
 	};
 });
 
-vi.mock('@/app/stores/network.store', () => {
+vi.mock('@/app/stores/backendConnection.store', () => {
 	return {
-		useNetworkStore: vi.fn(() => ({
+		useBackendConnectionStore: vi.fn(() => ({
 			isOnline,
 		})),
 	};

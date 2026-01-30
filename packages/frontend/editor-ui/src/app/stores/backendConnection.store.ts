@@ -2,10 +2,10 @@ import { defineStore } from 'pinia';
 import { readonly, ref } from 'vue';
 
 /**
- * Store for tracking app-wide network connectivity status.
+ * Store for tracking app-wide backend connectivity status.
  */
-export const useNetworkStore = defineStore('network', () => {
-	const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true);
+export const useBackendConnectionStore = defineStore('backendConnection', () => {
+	const isOnline = ref(true);
 
 	function setOnline(value: boolean) {
 		isOnline.value = value;
