@@ -7,6 +7,8 @@ import {
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowDependencies,
+	WorkflowDependencyRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -39,6 +41,27 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 	});
 
 	return workflowEntity;
+}
+
+async function populateWorkflowDependencies(workflow: IWorkflowDb) {
+	const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+
+	for (const node of workflow.nodes) {
+		if (node.type) {
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: node.type,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
+	}
+
+	if (dependencies.dependencies.length > 0) {
+		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
+			workflow.id,
+			dependencies,
+		);
+	}
 }
 
 /**
@@ -74,6 +97,8 @@ export async function createWorkflow(
 			}),
 		);
 	}
+
+	await populateWorkflowDependencies(workflow);
 
 	return workflow;
 }
