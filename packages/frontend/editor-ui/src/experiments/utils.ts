@@ -2,7 +2,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 /*
  * Extra template links
@@ -56,7 +56,7 @@ export const getTemplatePathByRole = (role: string | null | undefined) => {
 export const trackTemplatesClick = (source: TemplateClickSource) => {
 	useTelemetry().track('User clicked on templates', {
 		role: useCloudPlanStore().currentUserCloudInfo?.role,
-		active_workflow_count: useWorkflowsStore().activeWorkflows.length,
+		active_workflow_count: useWorkflowsListStore().activeWorkflows.length,
 		source,
 	});
 };

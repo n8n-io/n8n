@@ -70,7 +70,7 @@ export const NPM_COMMAND_TOKENS = {
 	NPM_NO_VERSION_AVAILABLE: 'No valid versions available',
 	NPM_DISK_NO_SPACE: 'ENOSPC',
 	NPM_DISK_INSUFFICIENT_SPACE: 'insufficient space',
-};
+} as const;
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 

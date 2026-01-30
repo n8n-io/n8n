@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { EVALUATIONS_DOCS_URL } from '@/app/constants';
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -98,9 +100,9 @@ const { isReady } = useAsyncState(async () => {
 	}
 
 	// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-	if (!workflowsStore.workflowsById[workflowId]) {
+	if (!workflowsListStore.workflowsById[workflowId]) {
 		try {
-			const data = await workflowsStore.fetchWorkflow(workflowId);
+			const data = await workflowsListStore.fetchWorkflow(workflowId);
 
 			// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
 			if (nodeTypesStore.allNodeTypes.length === 0) {
