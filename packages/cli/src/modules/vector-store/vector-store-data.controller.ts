@@ -7,14 +7,14 @@ import { VectorStoreDataRepository } from './vector-store-data.repository';
 @RestController('/vector-store')
 export class VectorStoreDataController {
 	constructor(
-		private readonly lancedbService: VectorStoreDataRepository,
+		private readonly vectorStoreRepository: VectorStoreDataRepository,
 		private readonly vectorStoreConfig: VectorStoreConfig,
 	) {}
 
 	@Get('/usage')
 	@GlobalScope('chatHub:manage') // TODO
 	async getUsage(_req: AuthenticatedRequest, _res: Response): Promise<VectorStoreUsageDto> {
-		const currentSize = await this.lancedbService.getTotalSize();
+		const currentSize = await this.vectorStoreRepository.getTotalSize();
 		const maxSize = this.vectorStoreConfig.maxSize;
 
 		return {
