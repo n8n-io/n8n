@@ -7,10 +7,10 @@ const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';
 const i18n = useI18n();
 const googleAuthButtons = {
-	'--google-auth-btn--color--background--normal': `url(${baseUrl}static/google-auth/normal${type}`,
-	'--google-auth-btn--color--background--focus': `url(${baseUrl}static/google-auth/focus${type}`,
-	'--google-auth-btn--color--background--pressed': `url(${baseUrl}static/google-auth/pressed${type}`,
-	'--google-auth-btn--color--background--disabled': `url(${baseUrl}static/google-auth/disabled${type}`,
+	'--google-auth-btn--color--background--normal': `url(${baseUrl}static/google-auth/normal${type})`,
+	'--google-auth-btn--color--background--focus': `url(${baseUrl}static/google-auth/focus${type})`,
+	'--google-auth-btn--color--background--pressed': `url(${baseUrl}static/google-auth/pressed${type})`,
+	'--google-auth-btn--color--background--disabled': `url(${baseUrl}static/google-auth/disabled${type})`,
 };
 </script>
 
