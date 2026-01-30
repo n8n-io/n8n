@@ -2,8 +2,9 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.use({ capability: 'kafka' });
-
+test.use({
+	capability: { services: ['kafka', 'proxy', 'victoriaLogs', 'victoriaMetrics', 'vector'] },
+});
 test.describe('Kafka Nodes', () => {
 	test('Kafka node publishes messages to topic @capability:kafka', async ({
 		api,
@@ -171,5 +172,128 @@ test.describe('Kafka Nodes', () => {
 
 		const execution = await api.workflows.waitForExecution(workflowId, 10000, 'trigger');
 		expect(execution.status).toBe('success');
+	});
+
+	/**
+	 * NODE-4053: Sequential processing blocks when HTTP request hangs.
+	 * Without fix: consumer blocks on responsePromise, misses heartbeats, gets kicked.
+	 */
+	test('NODE-4053: sequential processing blocks on hanging HTTP request @capability:kafka @capability:proxy', async ({
+		api,
+		n8nContainer,
+		proxyServer,
+	}) => {
+		const kafka = n8nContainer.services.kafka;
+		const topic = `node-4053-${nanoid()}`;
+		const groupId = `n8n-node-4053-${nanoid()}`;
+
+		await kafka.createTopic(topic, 1);
+		await proxyServer.clearAllExpectations();
+
+		await proxyServer.createExpectation({
+			httpRequest: {
+				method: 'GET',
+				path: '/hang',
+			},
+			httpResponse: {
+				statusCode: 200,
+				body: JSON.stringify({ status: 'finally responded' }),
+				delay: {
+					timeUnit: 'MINUTES',
+					value: 5,
+				},
+			},
+		});
+
+		const kafkaCredential = await api.credentials.createCredential({
+			name: 'Kafka NODE-4053',
+			type: 'kafka',
+			data: {
+				brokers: 'kafka:9092',
+				clientId: 'n8n-node-4053',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const workflowDefinition = {
+			name: 'NODE-4053 Bug Reproduction',
+			nodes: [
+				{
+					id: '1',
+					name: 'Kafka Trigger',
+					type: 'n8n-nodes-base.kafkaTrigger',
+					typeVersion: 1.1,
+					position: [0, 0] as [number, number],
+					parameters: {
+						topic,
+						groupId,
+						options: {
+							fromBeginning: true,
+							jsonParseMessage: true,
+							parallelProcessing: false,
+							sessionTimeout: 10000,
+							heartbeatInterval: 1000,
+						},
+					},
+					credentials: {
+						kafka: {
+							id: kafkaCredential.id,
+							name: kafkaCredential.name,
+						},
+					},
+				},
+				{
+					id: '2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0] as [number, number],
+					parameters: {
+						url: 'http://mock-api.com/hang',
+						options: { allowUnauthorizedCerts: true },
+					},
+				},
+				{
+					id: '3',
+					name: 'No Operation',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 0] as [number, number],
+				},
+			],
+			connections: {
+				'Kafka Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+				'HTTP Request': {
+					main: [[{ node: 'No Operation', type: 'main', index: 0 }]],
+				},
+			},
+			active: false,
+		};
+
+		const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			workflowDefinition as any,
+			{ makeUnique: true },
+		);
+
+		await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+		await kafka.waitForConsumerGroup(groupId);
+
+		await kafka.publish(topic, { message: 1 });
+		await new Promise((r) => setTimeout(r, 2000));
+		await kafka.publish(topic, { message: 2 });
+		await kafka.publish(topic, { message: 3 });
+
+		// Wait for session timeout (10s) + buffer
+		await new Promise((r) => setTimeout(r, 15000));
+
+		const executions = await api.workflows.getExecutions(workflowId, 50);
+		const triggerExecutions = executions.filter((e) => e.mode === 'trigger');
+
+		// With fix: consumer times out and processes subsequent messages
+		expect(triggerExecutions.length).toBeGreaterThanOrEqual(2);
 	});
 });

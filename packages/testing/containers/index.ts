@@ -20,4 +20,4 @@ export * from './performance-plans';
 // Types used externally by tests
 export { type LogEntry, type MetricsHelper } from './services/observability';
 export { type GiteaHelper } from './services/gitea';
-export { KafkaHelper } from './services/kafka';
+export { KafkaHelper, createKafkaHelper } from './services/kafka';
