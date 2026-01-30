@@ -153,7 +153,7 @@ describe('useChatState', () => {
 		});
 
 		it('should use provided sessionId parameter over logsStore', () => {
-			const chatState = useChatState(false, 'custom-session-789');
+			const chatState = useChatState(false, () => 'custom-session-789');
 
 			expect(chatState.webhookUrl.value).toContain('custom-session-789');
 		});
@@ -288,7 +288,7 @@ describe('useChatState', () => {
 		});
 
 		it('should use custom sessionId in webhook URL when provided', () => {
-			const chatState = useChatState(false, 'custom-session');
+			const chatState = useChatState(false, () => 'custom-session');
 
 			expect(chatState.webhookUrl.value).toBe(
 				'https://test.n8n.io/webhook-test/workflow-123/custom-session',
@@ -393,7 +393,7 @@ describe('useChatState', () => {
 		});
 
 		it('should use custom sessionId when provided', async () => {
-			const chatState = useChatState(false, 'custom-session');
+			const chatState = useChatState(false, () => 'custom-session');
 
 			await chatState.registerChatWebhook();
 
