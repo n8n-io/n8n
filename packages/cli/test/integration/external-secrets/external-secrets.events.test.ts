@@ -112,8 +112,6 @@ describe('External Secrets Event Handling', () => {
 			await module.init();
 
 			// IMPORTANT: Initialize PubSubRegistry AFTER module.init() to wire up decorators
-			// The SecretsCacheRefresh class is imported during module.init(), which is when
-			// the @OnPubSubEvent decorator gets registered in the metadata
 			pubSubRegistry.init();
 		});
 
@@ -159,8 +157,6 @@ describe('External Secrets Event Handling', () => {
 			await module.init();
 
 			// IMPORTANT: Initialize PubSubRegistry AFTER module.init() to wire up decorators
-			// The SecretsCacheRefresh class is imported during module.init(), which is when
-			// the @OnPubSubEvent decorator gets registered in the metadata
 			pubSubRegistry.init();
 		});
 

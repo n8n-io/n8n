@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { type IExternalSecretsManager } from 'n8n-core';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
@@ -8,9 +10,10 @@ import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
+import { ExternalSecretsConfig } from './external-secrets.config';
 import {
-	ExternalSecretsProviderLifecycle,
 	ProviderConnectResult,
+	ExternalSecretsProviderLifecycle,
 } from './provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
@@ -24,8 +27,15 @@ import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings 
  */
 @Service()
 export class ExternalSecretsManager implements IExternalSecretsManager {
+	initialized = false;
+
+	private refreshInterval?: NodeJS.Timeout;
+
+	private initializingPromise?: Promise<void>;
+
 	constructor(
 		private readonly logger: Logger,
+		private readonly config: ExternalSecretsConfig,
 		private readonly providersFactory: ExternalSecretsProviders,
 		private readonly eventService: EventService,
 		private readonly publisher: Publisher,
@@ -37,6 +47,42 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
+
+	// ========================================
+	// Lifecycle
+	// ========================================
+
+	async init(): Promise<void> {
+		if (this.initialized) return;
+
+		this.initializingPromise ??= (async () => {
+			try {
+				await this.reloadAllProviders();
+
+				// Start periodic secrets refresh
+				this.startSecretsRefresh();
+
+				this.initialized = true;
+				this.logger.debug('External secrets manager initialized');
+			} catch (error) {
+				this.logger.error('External secrets manager failed to initialize', { error });
+				throw error;
+			} finally {
+				this.initializingPromise = undefined;
+			}
+		})();
+
+		await this.initializingPromise;
+	}
+
+	shutdown(): void {
+		this.stopSecretsRefresh();
+		this.retryManager.cancelAll();
+		void this.providerRegistry.disconnectAll();
+		this.initialized = false;
+		this.logger.debug('External secrets manager shut down');
+	}
+
 	// ========================================
 	// Public API - Providers
 	// ========================================
@@ -193,6 +239,25 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	// ========================================
+	// Event Handlers
+	// ========================================
+
+	@OnPubSubEvent('reload-external-secrets-providers')
+	async reloadAllProviders(): Promise<void> {
+		this.logger.debug('Reloading all external secrets providers');
+
+		const newSettings = await this.settingsStore.reload();
+
+		// Reload/add providers from new settings
+		for (const name of Object.keys(newSettings)) {
+			await this.reloadProvider(name);
+		}
+
+		await this.secretsCache.refreshAll();
+		this.logger.debug('Reloaded all external secrets providers');
+	}
+
+	// ========================================
 	// Private - Provider Management
 	// ========================================
 
@@ -240,6 +305,33 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		// Re-add provider with new settings
 		await this.addProvider(name, config);
+	}
+
+	// ========================================
+	// Public API - Secrets Refresh
+	// ========================================
+
+	async updateSecrets(): Promise<void> {
+		await this.secretsCache.refreshAll();
+	}
+
+	// ========================================
+	// Private - Secrets Refresh
+	// ========================================
+
+	private startSecretsRefresh(): void {
+		this.refreshInterval = setInterval(
+			async () => await this.secretsCache.refreshAll(),
+			this.config.updateInterval * Time.seconds.toMilliseconds,
+		);
+		this.logger.debug('Started secrets refresh interval');
+	}
+
+	private stopSecretsRefresh(): void {
+		if (this.refreshInterval) {
+			clearInterval(this.refreshInterval);
+			this.refreshInterval = undefined;
+		}
 	}
 
 	// ========================================
