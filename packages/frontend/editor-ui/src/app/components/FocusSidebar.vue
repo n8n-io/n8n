@@ -14,7 +14,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import type { INodeUi, ResizeData } from '@/Interface';
 import { N8nResizeWrapper } from '@n8n/design-system';
-import SetupPanelTabs from '@/features/setupPanel/components/SetupPanelTabs.vue';
+import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
 
@@ -148,7 +148,7 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		>
 			<div :class="$style.container">
 				<div v-if="isSetupPanelEnabled">
-					<SetupPanelTabs v-model="selectedTab" :tab-labels="labelOverrides" />
+					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
 				<div v-if="showSetupPanel" :class="$style.content">
 					<SetupPanel />

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import type { SetupPanelTabs } from '@/features/setupPanel/types';
+import type { FocusSidebarTabs } from '@/features/setupPanel/types';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nTabs } from '@n8n/design-system';
 
@@ -9,7 +9,7 @@ const i18n = useI18n();
 
 const props = withDefaults(
 	defineProps<{
-		modelValue?: SetupPanelTabs;
+		modelValue?: FocusSidebarTabs;
 		tabLabels?: {
 			setup?: string;
 			focus?: string;
@@ -22,10 +22,10 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'update:modelValue': [tab: SetupPanelTabs];
+	'update:modelValue': [tab: FocusSidebarTabs];
 }>();
 
-const tabs = computed<Array<TabOptions<SetupPanelTabs>>>(() => [
+const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => [
 	{
 		label: props.tabLabels?.setup ?? i18n.baseText('setupPanel.tabs.setup'),
 		value: 'setup',
@@ -36,7 +36,7 @@ const tabs = computed<Array<TabOptions<SetupPanelTabs>>>(() => [
 	},
 ]);
 
-const onTabSelected = (tab: SetupPanelTabs) => {
+const onTabSelected = (tab: FocusSidebarTabs) => {
 	emit('update:modelValue', tab);
 };
 </script>

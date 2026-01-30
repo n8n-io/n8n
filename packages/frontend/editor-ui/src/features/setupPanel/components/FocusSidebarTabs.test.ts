@@ -1,10 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-import SetupPanelTabs from './SetupPanelTabs.vue';
+import FocusSidebarTabs from './FocusSidebarTabs.vue';
 
-const renderComponent = createComponentRenderer(SetupPanelTabs);
+const renderComponent = createComponentRenderer(FocusSidebarTabs);
 
-describe('SetupPanelTabs', () => {
+describe('FocusSidebarTabs', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
