@@ -95,8 +95,6 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .popover {
 	min-width: 208px;
-	margin-bottom: -8px;
-	margin-left: -2px;
 }
 
 .content {
@@ -104,6 +102,7 @@ onBeforeUnmount(() => {
 	flex-direction: row;
 	width: fit-content;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 }
 
 .color {
