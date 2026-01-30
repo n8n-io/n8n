@@ -12,9 +12,8 @@ import {
 	createMockMessageDto,
 	createMockModelsResponse,
 	createMockSession,
-	wrapOnMessageUpdate,
-	type SimulateMessageChunkFn,
 } from './__test__/data';
+import type { useChatStore } from './chat.store';
 import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
 
@@ -88,6 +87,15 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		pushDisconnect: vi.fn(),
+		addEventListener: vi.fn(() => vi.fn()),
+		isConnected: { value: true },
+	}),
+}));
+
 const mockRoute = reactive<{ params: Record<string, unknown>; query: Record<string, unknown> }>({
 	params: {},
 	query: {},
@@ -118,14 +126,71 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let simulateStreamChunk: SimulateMessageChunkFn;
-	let simulateStreamDone: () => void;
+	let chatStore: ReturnType<typeof useChatStore>;
 
-	beforeEach(() => {
+	// Helper to simulate WebSocket stream events
+	function simulateStreamChunk(
+		type: 'begin' | 'item' | 'end',
+		content: string,
+		metadata: {
+			messageId: string;
+			previousMessageId: string | null;
+			retryOfMessageId?: string | null;
+		},
+	) {
+		if (type === 'begin') {
+			chatStore.handleWebSocketStreamBegin({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				previousMessageId: metadata.previousMessageId,
+				retryOfMessageId: metadata.retryOfMessageId ?? null,
+			});
+		} else if (type === 'item') {
+			chatStore.handleWebSocketStreamChunk({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				content,
+			});
+		} else if (type === 'end') {
+			chatStore.handleWebSocketStreamEnd({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				status: 'success',
+			});
+		}
+	}
+
+	function simulateStreamDone() {
+		chatStore.handleWebSocketExecutionEnd({
+			sessionId: chatStore.streaming?.sessionId ?? '',
+			status: 'success',
+		});
+	}
+
+	// Helper to simulate human message created event (sent from backend when message is accepted)
+	function simulateHumanMessageCreated(metadata: {
+		sessionId: string;
+		messageId: string;
+		previousMessageId: string | null;
+		content: string;
+	}) {
+		chatStore.handleHumanMessageCreated({
+			sessionId: metadata.sessionId,
+			messageId: metadata.messageId,
+			previousMessageId: metadata.previousMessageId,
+			content: metadata.content,
+			attachments: [],
+			timestamp: Date.now(),
+		});
+	}
+
+	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		simulateStreamChunk = () => {};
-		simulateStreamDone = () => {};
+
+		// Import chat store dynamically to get fresh instance with active pinia
+		const { useChatStore: useChatStoreImport } = await import('./chat.store');
+		chatStore = useChatStoreImport();
 
 		mockRoute.params = {};
 		mockRoute.query = {};
@@ -137,24 +202,13 @@ describe('ChatView', () => {
 		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
-		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
-			simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-			simulateStreamDone = onDone_;
-		});
+		vi.mocked(chatApi.sendMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.editMessageApi).mockClear();
-		vi.mocked(chatApi.editMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-				simulateStreamDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.editMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
-		vi.mocked(chatApi.regenerateMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-				simulateStreamDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.regenerateMessageApi).mockResolvedValue({
+			status: 'streaming',
+		});
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
 
 		vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
@@ -442,14 +496,19 @@ describe('ChatView', () => {
 					sessionId: expect.any(String),
 					credentials: {},
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
+
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: sessionIdFromApi,
+				messageId: messageIdFromApi,
+				previousMessageId: null,
+				content: 'What is n8n?',
+			});
 
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-123',
@@ -550,13 +609,18 @@ describe('ChatView', () => {
 					credentials: {},
 					previousMessageId: 'msg-2',
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
+
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: 'existing-session-123',
+				messageId: messageIdFromApi,
+				previousMessageId: 'msg-2',
+				content: 'New question',
+			});
 
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-456',
@@ -686,28 +750,22 @@ describe('ChatView', () => {
 
 			await vi.waitFor(() => expect(chatApi.editMessageApi).toHaveBeenCalled());
 
-			expect(chatApi.editMessageApi).toHaveBeenCalledWith(
-				expect.anything(),
-				{
-					sessionId: 'existing-session-123',
-					editId: 'msg-1',
-					payload: expect.objectContaining({
-						message: 'Please analyze these files',
-						model: { provider: 'custom-agent', agentId: 'agent-123' },
-						keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
-						newAttachments: [
-							expect.objectContaining({
-								fileName: 'new-file.txt',
-								mimeType: 'text/plain',
-								data: expect.any(String), // base64 data
-							}),
-						],
-					}),
-				},
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
-			);
+			expect(chatApi.editMessageApi).toHaveBeenCalledWith(expect.anything(), {
+				sessionId: 'existing-session-123',
+				editId: 'msg-1',
+				payload: expect.objectContaining({
+					message: 'Please analyze these files',
+					model: { provider: 'custom-agent', agentId: 'agent-123' },
+					keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
+					newAttachments: [
+						expect.objectContaining({
+							fileName: 'new-file.txt',
+							mimeType: 'text/plain',
+							data: expect.any(String), // base64 data
+						}),
+					],
+				}),
+			});
 
 			const promptId = vi.mocked(chatApi.editMessageApi).mock.calls[0][1].payload.messageId;
 
