@@ -47,7 +47,6 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const versionsStore = useVersionsStore();
 	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
@@ -82,8 +81,6 @@ export async function initializeCore() {
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 		},
 	});
-
-	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
@@ -196,6 +193,7 @@ export async function initializeAuthenticatedFeatures(
 
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
 	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
+		versionsStore.initialize(settingsStore.settings.versionNotifications);
 		void versionsStore.checkForNewVersions();
 	}
 

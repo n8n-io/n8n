@@ -11,6 +11,8 @@ interface RouteOptions {
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
 	allowSkipPreviewAuth?: boolean;
+	/** When this flag is set to true, the endpoint can be accessed without authentication */
+	allowUnauthenticated?: boolean;
 	/** When this flag is set to true, the auth cookie does not enforce MFA to be used in the token */
 	allowSkipMFA?: boolean;
 	/** When these options are set, calls to this endpoint are rate limited based on IP address */
@@ -38,6 +40,7 @@ const RouteFactory =
 		routeMetadata.skipAuth = options.skipAuth ?? false;
 		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
+		routeMetadata.allowUnauthenticated = options.allowUnauthenticated ?? false;
 		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.ipRateLimit = options.ipRateLimit;
 		routeMetadata.keyedRateLimit = options.keyedRateLimit;

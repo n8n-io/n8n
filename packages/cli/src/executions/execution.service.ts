@@ -366,7 +366,7 @@ export class ExecutionService {
 			status: 'error',
 		};
 
-		await this.executionRepository.createNewExecution(fullExecutionData);
+		await this.executionPersistence.create(fullExecutionData);
 	}
 
 	// ----------------------------------
