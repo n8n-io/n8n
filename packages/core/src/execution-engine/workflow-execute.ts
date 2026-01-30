@@ -55,6 +55,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	createEnvProviderState,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -1224,6 +1225,92 @@ export class WorkflowExecute {
 		inputData = this.handleExecuteOnce(node, inputData);
 
 		if (nodeType.execute || customOperation) {
+			// Check if this node should run in sandbox
+			if (
+				additionalData.shouldRunNodeInSandbox?.(node) &&
+				additionalData.executeNodeInSandbox &&
+				!customOperation // Don't sandbox nodes with custom operations
+			) {
+				Logger.debug(`Executing node "${node.name}" in sandbox`, {
+					nodeType: node.type,
+					nodeName: node.name,
+					workflowId: workflow.id,
+				});
+
+				// Create context to pass to sandbox execution
+				const closeFunctions: CloseFunction[] = [];
+				const context = new ExecuteContext(
+					workflow,
+					node,
+					additionalData,
+					mode,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					inputData,
+					executionData,
+					closeFunctions,
+					abortSignal,
+					subNodeExecutionResults,
+				);
+
+				const sandboxStartTime = Date.now();
+				const sandboxResult = await additionalData.executeNodeInSandbox(
+					additionalData,
+					context,
+					inputData,
+					node,
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					{},
+					mode,
+					createEnvProviderState(),
+					executionData,
+				);
+				const sandboxDurationMs = Date.now() - sandboxStartTime;
+
+				if (!sandboxResult.ok) {
+					const errorObj = sandboxResult.error;
+					// Extract error details - the error may be a serialized object from the runner
+					const errorMessage =
+						errorObj instanceof Error
+							? errorObj.message
+							: typeof errorObj === 'object' && errorObj !== null && 'message' in errorObj
+								? String((errorObj as { message: unknown }).message)
+								: String(errorObj);
+					const errorName =
+						errorObj instanceof Error
+							? errorObj.name
+							: typeof errorObj === 'object' && errorObj !== null && 'name' in errorObj
+								? String((errorObj as { name: unknown }).name)
+								: 'Error';
+
+					Logger.debug(`Sandbox execution of node "${node.name}" failed`, {
+						nodeType: node.type,
+						nodeName: node.name,
+						durationMs: sandboxDurationMs,
+						errorName,
+						errorMessage,
+						errorDetails:
+							typeof errorObj === 'object' && errorObj !== null
+								? JSON.stringify(errorObj)
+								: String(errorObj),
+					});
+					throw sandboxResult.error;
+				}
+
+				const data = sandboxResult.result as INodeExecutionData[][];
+				Logger.debug(`Sandbox execution of node "${node.name}" completed`, {
+					nodeType: node.type,
+					nodeName: node.name,
+					durationMs: sandboxDurationMs,
+					outputItemCount: data?.[0]?.length ?? 0,
+				});
+				return { data, hints: [] };
+			}
+
 			return await this.executeNode(
 				workflow,
 				node,

@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import { serializeError } from '@/error-serializer';
 import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
@@ -104,11 +105,19 @@ export abstract class TaskRunner extends EventEmitter {
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
 
 		const wsUrl = `ws://${taskBrokerHost}/runners/_ws?id=${this.id}`;
+		console.log(`[TaskRunner] Connecting to broker at ${wsUrl}`, {
+			runnerId: this.id,
+			taskType: this.taskType,
+		});
 		this.ws = new WebSocket(wsUrl, {
 			headers: {
 				authorization: `Bearer ${opts.grantToken}`,
 			},
 			maxPayload: opts.maxPayloadSize,
+		});
+
+		this.ws.addEventListener('open', () => {
+			console.log('[TaskRunner] WebSocket connected to broker');
 		});
 
 		this.ws.addEventListener('error', (event) => {
@@ -206,8 +215,13 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	onMessage(message: BrokerMessage.ToRunner.All) {
+		console.log('[TaskRunner] Received message from broker', { type: message.type });
 		switch (message.type) {
 			case 'broker:inforequest':
+				console.log('[TaskRunner] Sending runner info', {
+					name: this.name,
+					types: [this.taskType],
+				});
 				this.send({
 					type: 'runner:info',
 					name: this.name,
@@ -215,6 +229,7 @@ export abstract class TaskRunner extends EventEmitter {
 				});
 				break;
 			case 'broker:runnerregistered':
+				console.log('[TaskRunner] Runner registered, starting task offers');
 				this.startTaskOffers();
 				break;
 			case 'broker:taskofferaccept':
@@ -341,7 +356,7 @@ export abstract class TaskRunner extends EventEmitter {
 					this.send({
 						type: 'runner:taskerror',
 						taskId,
-						error: new TimeoutError(this.taskTimeout),
+						error: serializeError(new TimeoutError(this.taskTimeout)),
 					});
 				} finally {
 					this.finishTask(taskState);
@@ -566,11 +581,18 @@ export abstract class TaskRunner extends EventEmitter {
 
 	private async taskExecutionFailed(taskState: TaskState, error: unknown) {
 		try {
+			const serializedError = serializeError(error);
+			console.error('[TaskRunner] Task execution failed', {
+				taskId: taskState.taskId,
+				errorName: serializedError.name,
+				errorMessage: serializedError.message,
+			});
+
 			const sendError = () => {
 				this.send({
 					type: 'runner:taskerror',
 					taskId: taskState.taskId,
-					error,
+					error: serializedError,
 				});
 			};
 

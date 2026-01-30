@@ -169,8 +169,61 @@ export const UNSUPPORTED_HELPER_FUNCTIONS = [
 	'helpers.constructExecutionMetaData',
 ];
 
+/**
+ * RPC methods for node task runner (full node execution in sandbox).
+ * These methods are called via RPC to the main process where the real
+ * IExecuteFunctions context exists.
+ */
+export const NODE_RUNNER_RPC_METHODS = [
+	// === Core execution methods ===
+	'getCredentials',
+	'executeWorkflow',
+	'getWorkflowStaticData',
+	'continueOnFail',
+	'evaluateExpression',
+	'getContext',
+	'getExecuteData',
+	'getWorkflowDataProxy',
+	'getInputSourceData',
+	'putExecutionToWait',
+	'sendMessageToUI',
+	'logAiEvent',
+	'setMetadata',
+	'addExecutionHints',
+
+	// === Node/workflow info ===
+	'getNode',
+	'getWorkflow',
+	'getMode',
+	'getTimezone',
+	'getRestApiUrl',
+	'getInstanceBaseUrl',
+	'getInstanceId',
+	'getExecutionId',
+	'getInputData',
+	'getNodeInputs',
+	'getNodeOutputs',
+	'getExecutionDataById',
+	'getInputConnectionData',
+	'getCredentialsProperties',
+	'getNodeParameter',
+
+	// === Helpers that need main process access ===
+	'helpers.httpRequestWithAuthentication',
+	'helpers.requestWithAuthenticationPaginated',
+	'helpers.copyInputItems',
+	'helpers.normalizeItems',
+	'helpers.returnJsonArray',
+	'helpers.constructExecutionMetaData',
+	'helpers.detectBinaryEncoding',
+] as const;
+
 /** List of all RPC methods that task runner supports */
-export const AVAILABLE_RPC_METHODS = [...EXPOSED_RPC_METHODS, 'logNodeOutput'] as const;
+export const AVAILABLE_RPC_METHODS = [
+	...EXPOSED_RPC_METHODS,
+	...NODE_RUNNER_RPC_METHODS,
+	'logNodeOutput',
+] as const;
 
 /** Node types needed for the runner to execute a task. */
 export type NeededNodeType = { name: string; version: number };

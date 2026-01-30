@@ -92,6 +92,7 @@ export class TaskBrokerWsServer {
 	}
 
 	add(id: TaskRunner['id'], connection: WebSocket) {
+		this.logger.debug('Runner WebSocket connection received', { runnerId: id });
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
 

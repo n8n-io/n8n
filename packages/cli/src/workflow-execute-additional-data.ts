@@ -47,6 +47,8 @@ import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { NodeBundler } from '@/task-runners/node-bundler';
+import { NodeExecutionRouter } from '@/task-runners/node-execution-router';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -534,6 +536,73 @@ export async function getBase({
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		shouldRunNodeInSandbox: (node: INode) => Container.get(NodeExecutionRouter).shouldRunInSandbox(node),
+		async executeNodeInSandbox(
+			additionalData: IWorkflowExecuteAdditionalData,
+			executeFunctions: IExecuteFunctions,
+			inputData: ITaskDataConnections,
+			node: INode,
+			workflow: Workflow,
+			runExecutionData: IRunExecutionData,
+			runIndex: number,
+			connectionInputData: INodeExecutionData[],
+			siblingParameters: INodeParameters,
+			mode: WorkflowExecuteMode,
+			envProviderState: EnvProviderState,
+			executeData?: IExecuteData,
+		) {
+			const sandboxLogger = Container.get(Logger).scoped('node-sandbox');
+
+			sandboxLogger.debug('Preparing sandbox execution', {
+				nodeType: node.type,
+				nodeVersion: node.typeVersion,
+				nodeName: node.name,
+				workflowId: workflow.id,
+			});
+
+			const bundler = Container.get(NodeBundler);
+			const bundle = await bundler.getBundle(node.type, node.typeVersion);
+
+			sandboxLogger.debug('Bundle retrieved for sandbox execution', {
+				nodeType: node.type,
+				bundleHash: bundle.hash,
+				bundleSize: bundle.code.length,
+			});
+
+			const settings = {
+				nodeType: node.type,
+				nodeVersion: node.typeVersion,
+				nodeParameters: node.parameters,
+				bundle: {
+					code: bundle.code,
+					hash: bundle.hash,
+				},
+			};
+
+			sandboxLogger.debug('Starting task in node runner', {
+				nodeType: node.type,
+				nodeName: node.name,
+			});
+
+			return await Container.get(TaskRequester).startTask(
+				additionalData,
+				'node', // taskType for node runner
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				0, // itemIndex
+				node.name,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				envProviderState,
+				executeData,
+			);
+		},
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

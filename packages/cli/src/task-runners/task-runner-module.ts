@@ -10,6 +10,7 @@ import { EventService } from '@/events/event.service';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import type { NodeTaskRunnerProcess } from '@/task-runners/task-runner-process-node';
 import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
@@ -36,9 +37,13 @@ export class TaskRunnerModule {
 
 	private pyRunnerProcess: PyTaskRunnerProcess | undefined;
 
+	private nodeRunnerProcess: NodeTaskRunnerProcess | undefined;
+
 	private jsRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	private pyRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+
+	private nodeRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	constructor(
 		private readonly logger: Logger,
@@ -82,6 +87,13 @@ export class TaskRunnerModule {
 			}
 		})();
 
+		const stopNodeRunnerProcessTask = (async () => {
+			if (this.nodeRunnerProcess) {
+				await this.nodeRunnerProcess.stop();
+				this.nodeRunnerProcess = undefined;
+			}
+		})();
+
 		const stopRunnerServerTask = (async () => {
 			if (this.taskBrokerHttpServer) {
 				await this.taskBrokerHttpServer.stop();
@@ -89,7 +101,12 @@ export class TaskRunnerModule {
 			}
 		})();
 
-		await Promise.all([stopRunnerProcessTask, stopPythonRunnerProcessTask, stopRunnerServerTask]);
+		await Promise.all([
+			stopRunnerProcessTask,
+			stopPythonRunnerProcessTask,
+			stopNodeRunnerProcessTask,
+			stopRunnerServerTask,
+		]);
 	}
 
 	private async loadTaskRequester() {
@@ -140,18 +157,36 @@ export class TaskRunnerModule {
 			Container.get(TaskRequester).setRunnerUnavailable('python', failureReason);
 			const error = new MissingRequirementsError(failureReason);
 			this.logger.warn(error.message);
-			return; // allow bootup, will fail at execution time
+			// Don't return - continue to start the Node runner if enabled
+		} else {
+			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
+			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+				this.pyRunnerProcess,
+			);
+			this.pyRunnerProcessRestartLoopDetector.on(
+				'restart-loop-detected',
+				this.onRunnerRestartLoopDetected,
+			);
+			await this.pyRunnerProcess.start();
 		}
 
-		this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
-		this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
-			this.pyRunnerProcess,
-		);
-		this.pyRunnerProcessRestartLoopDetector.on(
-			'restart-loop-detected',
-			this.onRunnerRestartLoopDetected,
-		);
-		await this.pyRunnerProcess.start();
+		// Start Node Runner if enabled
+		if (this.runnerConfig.nodeRunnerEnabled) {
+			this.logger.info('Starting Node Task Runner (node sandbox enabled)');
+			const { NodeTaskRunnerProcess } = await import('@/task-runners/task-runner-process-node');
+			this.nodeRunnerProcess = Container.get(NodeTaskRunnerProcess);
+			this.nodeRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+				this.nodeRunnerProcess,
+			);
+			this.nodeRunnerProcessRestartLoopDetector.on(
+				'restart-loop-detected',
+				this.onRunnerRestartLoopDetected,
+			);
+			await this.nodeRunnerProcess.start();
+			this.logger.info('Node Task Runner started successfully');
+		} else {
+			this.logger.debug('Node Task Runner disabled (N8N_NODE_RUNNER_ENABLED=false)');
+		}
 	}
 
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {

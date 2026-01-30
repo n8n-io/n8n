@@ -29,6 +29,11 @@
       "import": "./src/start.ts",
       "types": "./dist/start.d.ts"
     },
+    "./start-node-runner": {
+      "require": "./dist/start-node-runner.js",
+      "import": "./src/start-node-runner.ts",
+      "types": "./dist/start-node-runner.d.ts"
+    },
     ".": {
       "require": "./dist/index.js",
       "import": "./src/index.ts",

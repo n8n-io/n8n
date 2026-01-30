@@ -74,4 +74,35 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
 	insecureMode: boolean = false;
+
+	// ===================== Node Runner Configuration =====================
+
+	/**
+	 * Whether to enable the node task runner for executing nodes in a sandbox.
+	 * When enabled, community nodes and custom nodes will be executed in a
+	 * separate sandboxed process by default.
+	 */
+	@Env('N8N_NODE_RUNNER_ENABLED')
+	nodeRunnerEnabled: boolean = false;
+
+	/**
+	 * Force specific built-in nodes to run in sandbox (comma-separated).
+	 * Example: 'n8n-nodes-base.code,n8n-nodes-base.executeCommand'
+	 */
+	@Env('N8N_NODE_RUNNER_SANDBOX_BUILTIN')
+	nodeRunnerSandboxBuiltin: string = '';
+
+	/**
+	 * Force specific community nodes to run in main process (comma-separated).
+	 * Supports wildcards for package names.
+	 * Example: 'n8n-nodes-some-trusted-package.*'
+	 */
+	@Env('N8N_NODE_RUNNER_UNSANDBOX_COMMUNITY')
+	nodeRunnerUnsandboxCommunity: string = '';
+
+	/**
+	 * Override: force ALL nodes to run in sandbox (for testing/high-security).
+	 */
+	@Env('N8N_NODE_RUNNER_SANDBOX_ALL')
+	nodeRunnerSandboxAll: boolean = false;
 }

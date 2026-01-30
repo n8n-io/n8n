@@ -494,10 +494,6 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
-	/**
-	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
-	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
@@ -2815,6 +2811,21 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	shouldRunNodeInSandbox?(node: INode): boolean;
+	executeNodeInSandbox?<T, E = unknown>(
+		additionalData: IWorkflowExecuteAdditionalData,
+		executeFunctions: IExecuteFunctions,
+		inputData: ITaskDataConnections,
+		node: INode,
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		siblingParameters: INodeParameters,
+		mode: WorkflowExecuteMode,
+		envProviderState: EnvProviderState,
+		executeData?: IExecuteData,
+	): Promise<Result<T, E>>;
 }
 
 export type WorkflowActivateMode =

@@ -131,8 +131,14 @@ export class TaskBroker {
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
+		this.logger.debug('Registering runner', {
+			runnerId: runner.id,
+			runnerName: runner.name,
+			taskTypes: runner.taskTypes,
+		});
 		this.knownRunners.set(runner.id, { runner, messageCallback });
 		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
+		this.logger.debug('Runner registered and notified', { runnerId: runner.id });
 	}
 
 	deregisterRunner(runnerId: string, error: Error) {
@@ -642,9 +648,17 @@ export class TaskBroker {
 			}
 			const offerIndex = this.pendingTaskOffers.findIndex((o) => o.taskType === request.taskType);
 			if (offerIndex === -1) {
+				// Only log once when request first comes in (not on every JS offer)
 				continue;
 			}
 			const offer = this.pendingTaskOffers[offerIndex];
+
+			this.logger.debug('Matching offer found for task request', {
+				requestId: request.requestId,
+				taskType: request.taskType,
+				offerId: offer.offerId,
+				runnerId: offer.runnerId,
+			});
 
 			request.acceptInProgress = true;
 			this.pendingTaskOffers.splice(offerIndex, 1);
@@ -654,11 +668,40 @@ export class TaskBroker {
 	}
 
 	taskRequested(request: TaskRequest) {
+		const hasMatchingOffer = this.pendingTaskOffers.some((o) => o.taskType === request.taskType);
+		const hasMatchingRunner = Array.from(this.knownRunners.values()).some((r) =>
+			r.runner.taskTypes.includes(request.taskType),
+		);
+
+		this.logger.debug('Task requested', {
+			requestId: request.requestId,
+			taskType: request.taskType,
+			hasMatchingOffer,
+			hasMatchingRunner,
+			knownRunnerTypes: Array.from(this.knownRunners.values()).flatMap((r) => r.runner.taskTypes),
+		});
+
+		if (!hasMatchingRunner) {
+			this.logger.warn(`No runner registered for task type "${request.taskType}"`, {
+				requestId: request.requestId,
+				availableTypes: Array.from(this.knownRunners.values()).flatMap((r) => r.runner.taskTypes),
+			});
+		}
+
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
 	}
 
 	taskOffered(offer: TaskOffer) {
+		// Only log if there are pending requests to reduce noise
+		if (this.pendingTaskRequests.length > 0) {
+			this.logger.debug('Task offer received', {
+				offerId: offer.offerId,
+				runnerId: offer.runnerId,
+				taskType: offer.taskType,
+				pendingRequests: this.pendingTaskRequests.length,
+			});
+		}
 		this.pendingTaskOffers.push(offer);
 		this.settleTasks();
 	}
