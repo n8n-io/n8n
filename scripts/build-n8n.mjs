@@ -35,7 +35,7 @@ const config = {
 };
 
 // Define backend patches to keep during deployment
-const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull', '@lancedb/lancedb'];
+const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull'];
 
 // #endregion ===== Configuration =====
 
