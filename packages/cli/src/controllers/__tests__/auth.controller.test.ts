@@ -8,6 +8,7 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import * as auth from '@/auth';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
@@ -41,6 +42,7 @@ describe('AuthController', () => {
 	mockInstance(PostHogClient);
 	mockInstance(License);
 	const ldapService = mockInstance(LdapService);
+	const authHandlerRegistry = mockInstance(AuthHandlerRegistry);
 	const controller = Container.get(AuthController);
 	const userService = Container.get(UserService);
 	const authService = Container.get(AuthService);
@@ -50,6 +52,13 @@ describe('AuthController', () => {
 	describe('login', () => {
 		beforeEach(() => {
 			jest.resetAllMocks();
+			// Setup auth handler registry to return ldapService for 'ldap'
+			authHandlerRegistry.get.mockImplementation((method: string) => {
+				if (method === 'ldap') {
+					return ldapService;
+				}
+				return undefined;
+			});
 		});
 
 		it('should not validate email in "emailOrLdapLoginId" if LDAP is enabled', async () => {
@@ -78,7 +87,7 @@ describe('AuthController', () => {
 
 			mockedAuth.handleEmailLogin.mockResolvedValue(member);
 
-			ldapService.handleLdapLogin.mockResolvedValue(member);
+			ldapService.handleLogin.mockResolvedValue(member);
 
 			config.set('userManagement.authenticationMethod', 'ldap');
 
@@ -93,10 +102,7 @@ describe('AuthController', () => {
 				body.password,
 			);
 
-			expect(ldapService.handleLdapLogin).toHaveBeenCalledWith(
-				body.emailOrLdapLoginId,
-				body.password,
-			);
+			expect(ldapService.handleLogin).toHaveBeenCalledWith(body.emailOrLdapLoginId, body.password);
 
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, browserId);
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
@@ -207,6 +213,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -239,6 +246,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -275,6 +283,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -312,6 +321,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -358,6 +368,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -406,6 +417,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -463,6 +475,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -519,6 +532,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -552,6 +566,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 
@@ -584,6 +599,7 @@ describe('AuthController', () => {
 				license,
 				userRepository,
 				eventService,
+				authHandlerRegistry,
 				postHog,
 			);
 

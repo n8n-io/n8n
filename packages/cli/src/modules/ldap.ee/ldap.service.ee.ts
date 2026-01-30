@@ -12,6 +12,7 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
+import type { AuthHandler } from '@/auth/auth-handler.registry';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -47,7 +48,7 @@ import {
 } from './helpers.ee';
 
 @Service()
-export class LdapService {
+export class LdapService implements AuthHandler {
 	private client: Client | undefined;
 
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
@@ -490,7 +491,7 @@ export class LdapService {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
+	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
 		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;
