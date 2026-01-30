@@ -158,7 +158,7 @@ describe('streamingHandlers', () => {
 			// Setup initial state
 			streamingManager.addRunToActive('node-1', 0);
 
-			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions);
+			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions, messages);
 
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
@@ -169,18 +169,25 @@ describe('streamingHandlers', () => {
 			streamingManager.addRunToActive('node-1', 1);
 
 			// Complete first run
-			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions);
+			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions, messages);
 			expect(streamingManager.areAllRunsComplete()).toBe(false);
 
 			// Complete second run
-			await handleNodeComplete('node-1', streamingManager, 1, userMessage, mockOptions);
+			await handleNodeComplete('node-1', streamingManager, 1, userMessage, mockOptions, messages);
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
 
 		it('should handle runs without runIndex', async () => {
 			streamingManager.addRunToActive('node-1');
 
-			await handleNodeComplete('node-1', streamingManager, undefined, userMessage, mockOptions);
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				undefined,
+				userMessage,
+				mockOptions,
+				messages,
+			);
 
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
@@ -189,7 +196,14 @@ describe('streamingHandlers', () => {
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			await expect(
-				handleNodeComplete('node-1', invalidStreamingManager, undefined, userMessage, mockOptions),
+				handleNodeComplete(
+					'node-1',
+					invalidStreamingManager,
+					undefined,
+					userMessage,
+					mockOptions,
+					messages,
+				),
 			).resolves.not.toThrow();
 		});
 
@@ -204,7 +218,14 @@ describe('streamingHandlers', () => {
 			streamingManager.addRunToActive('node-1', 0);
 			const message = streamingManager.getRunMessage('node-1', 0);
 
-			await handleNodeComplete('node-1', streamingManager, 0, userMessage, optionsWithHook);
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				0,
+				userMessage,
+				optionsWithHook,
+				messages,
+			);
 
 			expect(afterMessageSent).toHaveBeenCalledWith(userMessage, {
 				message,
@@ -220,7 +241,14 @@ describe('streamingHandlers', () => {
 			};
 
 			// Don't add any message
-			await handleNodeComplete('node-1', streamingManager, 0, userMessage, optionsWithHook);
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				0,
+				userMessage,
+				optionsWithHook,
+				messages,
+			);
 
 			expect(afterMessageSent).not.toHaveBeenCalled();
 		});

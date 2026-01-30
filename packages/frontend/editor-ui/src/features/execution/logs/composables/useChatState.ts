@@ -254,6 +254,9 @@ export function useChatState(
 			chatInputKey: 'chatInput',
 			chatSessionKey: 'sessionId',
 			defaultLanguage: 'en' as const,
+			messageComponents: {
+				[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
+			},
 			messageHistory: messages.value,
 			i18n: {
 				en: {

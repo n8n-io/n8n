@@ -6,6 +6,7 @@ import type { ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types'
 
 import type { StreamingMessageManager } from './streaming';
 import { createBotMessage, updateMessageInArray } from './streaming';
+import { parseBotChatMessageContent, shouldBlockUserInput } from './utils';
 
 export function handleStreamingChunk(
 	chunk: string,
@@ -80,13 +81,37 @@ export async function handleNodeComplete(
 	runIndex: number | undefined,
 	userMessage: string,
 	options: ChatOptions,
-): Promise<void> {
+	messages: Ref<ChatMessage[]>,
+): Promise<boolean> {
 	try {
 		// Get the completed message before marking it complete
 		const completedMessage = streamingManager.getRunMessage(nodeId, runIndex);
 
 		// Mark the run as complete
 		streamingManager.removeRunFromActive(nodeId, runIndex);
+
+		// Check if the completed streaming message is a HITL component message
+		if (completedMessage && 'text' in completedMessage) {
+			const parsed = parseBotChatMessageContent(completedMessage.text);
+			if (parsed.type === 'component') {
+				// Replace the text message with the component message in the array
+				const index = messages.value.findIndex((m) => m.id === completedMessage.id);
+				if (index !== -1) {
+					parsed.id = completedMessage.id;
+					messages.value[index] = parsed;
+				}
+
+				// Call afterMessageSent with the component message
+				if (options.afterMessageSent) {
+					await options.afterMessageSent(userMessage, {
+						message: parsed,
+						hasReceivedChunks: true,
+					});
+				}
+
+				return shouldBlockUserInput(parsed);
+			}
+		}
 
 		// Call afterMessageSent hook if provided and we have a message
 		if (options.afterMessageSent && completedMessage) {
@@ -98,4 +123,5 @@ export async function handleNodeComplete(
 	} catch (error) {
 		console.error('Error handling node complete:', error);
 	}
+	return false;
 }

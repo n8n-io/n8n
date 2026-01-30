@@ -115,6 +115,7 @@ interface StreamingMessageConfig {
 	messages: Ref<ChatMessage[]>;
 	receivedMessage: Ref<ChatMessageText | null>;
 	streamingManager: StreamingMessageManager;
+	blockUserInput: Ref<boolean>;
 }
 
 /**
@@ -123,7 +124,16 @@ interface StreamingMessageConfig {
  * @param config - Configuration object for streaming message handling
  */
 async function handleStreamingMessage(config: StreamingMessageConfig): Promise<void> {
-	const { text, files, sessionId, options, messages, receivedMessage, streamingManager } = config;
+	const {
+		text,
+		files,
+		sessionId,
+		options,
+		messages,
+		receivedMessage,
+		streamingManager,
+		blockUserInput,
+	} = config;
 
 	const handlers: api.StreamingEventHandlers = {
 		onChunk: (chunk: string, nodeId?: string, runIndex?: number) => {
@@ -133,7 +143,17 @@ async function handleStreamingMessage(config: StreamingMessageConfig): Promise<v
 			handleNodeStart(nodeId, streamingManager, runIndex);
 		},
 		onEndMessage: async (nodeId: string, runIndex?: number) => {
-			await handleNodeComplete(nodeId, streamingManager, runIndex, text, options);
+			const shouldBlock = await handleNodeComplete(
+				nodeId,
+				streamingManager,
+				runIndex,
+				text,
+				options,
+				messages,
+			);
+			if (shouldBlock) {
+				blockUserInput.value = true;
+			}
 		},
 	};
 
@@ -223,6 +243,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						messages,
 						receivedMessage,
 						streamingManager,
+						blockUserInput,
 					});
 				} else {
 					const result = await handleNonStreamingMessage({
