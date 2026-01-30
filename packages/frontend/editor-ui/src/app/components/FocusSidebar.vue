@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
 	flex-wrap: nowrap;
 	border-left: 1px solid var(--color--foreground);
 	background: var(--color--background--light-3);
-	overflow-y: hidden;
+	overflow: hidden;
 	height: 100%;
 	flex-grow: 0;
 	flex-shrink: 0;
