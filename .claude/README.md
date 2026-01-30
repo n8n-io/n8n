@@ -35,9 +35,12 @@ To auto-approve Linear MCP tools, add to your global settings:
 
 ## Available Commands
 
-- `/n8n-conventions` - Load n8n codebase conventions and patterns
 - `/n8n-triage PAY-XXX` - Analyze and triage a Linear issue
 - `/n8n-plan PAY-XXX` - Create implementation plan
+
+## Quick Reference
+
+- `/n8n-conventions` - Load detailed conventions guide (optional - agents already know n8n patterns)
 
 ## Workflow
 
@@ -55,4 +58,6 @@ To auto-approve Linear MCP tools, add to your global settings:
 
 ## Skills
 
-- **n8n-conventions** - Comprehensive n8n patterns and standards
+- **n8n-conventions** - 313-line reference guide (optional - agents have embedded knowledge)
+  - Use `/n8n-conventions` when you need detailed patterns
+  - Not auto-loaded to save tokens (~6-8K)

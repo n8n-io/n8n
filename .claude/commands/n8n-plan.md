@@ -7,11 +7,12 @@ allowed-tools: Task
 Launch a Plan agent (built-in) to create an implementation plan for Linear issue $ARGUMENTS.
 
 The agent should:
-1. Load the n8n-conventions skill for context
-2. Fetch and analyze the Linear ticket
-3. Identify affected packages and files
-4. Design implementation approach
-5. Define testing strategy
-6. Document potential risks
+1. Fetch and analyze the Linear ticket using Linear MCP
+2. Identify affected packages and files
+3. Design implementation approach following n8n conventions
+4. Define testing strategy
+5. Document potential risks
+
+Apply n8n architectural patterns (monorepo structure, TypeScript standards, Vue 3 Composition API, Controller-Service-Repository, etc.).
 
 Return a detailed, actionable plan ready for implementation.
