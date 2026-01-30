@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 	active: false,
 	square: false,
 	element: 'button',
+	wiggleIcon: false,
 });
 
 watchEffect(() => {
@@ -51,7 +52,8 @@ const classes = computed(() => {
 		`${props.block ? ` ${$style.block}` : ''}` +
 		`${props.active ? ` ${$style.active}` : ''}` +
 		`${props.icon || props.loading ? ` ${$style.withIcon}` : ''}` +
-		`${props.square ? ` ${$style.square}` : ''}`
+		`${props.square ? ` ${$style.square}` : ''}` +
+		`${props.wiggleIcon ? ` ${$style.wiggleIcon}` : ''}`
 	);
 });
 </script>
@@ -368,5 +370,26 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .float-right {
 	float: right;
+}
+
+.wiggleIcon {
+	&:hover {
+		.icon {
+			animation: wiggle 0.5s ease-in-out;
+		}
+	}
+}
+
+@keyframes wiggle {
+	0%,
+	100% {
+		transform: rotate(0deg);
+	}
+	25% {
+		transform: rotate(-10deg);
+	}
+	75% {
+		transform: rotate(10deg);
+	}
 }
 </style>

@@ -43,6 +43,7 @@ export interface ButtonProps extends IconButtonProps {
 	href?: string;
 	label?: string;
 	square?: boolean;
+	wiggleIcon?: boolean;
 }
 
 export type IN8nButton = {

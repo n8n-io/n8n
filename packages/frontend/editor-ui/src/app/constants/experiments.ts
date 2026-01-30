@@ -67,6 +67,8 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantInspiration: 'variant-inspiration',
 });
 
+export const TRIAL_BANNER_PERMANENT_EXPERIMENT = createExperiment('066_trial_banner_permanent');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -80,4 +82,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
+	TRIAL_BANNER_PERMANENT_EXPERIMENT.name,
 ];
