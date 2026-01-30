@@ -26,17 +26,9 @@ describe('ExternalSecretsModule', () => {
 		await testDb.init();
 
 		Container.set(Logger, mockLogger());
-
-		jest.useFakeTimers();
-	});
-
-	afterEach(async () => {
-		// Cleanup will be handled per-test as needed
-		jest.clearAllTimers();
 	});
 
 	afterAll(async () => {
-		jest.useRealTimers();
 		await testDb.terminate();
 	});
 
@@ -125,6 +117,8 @@ describe('ExternalSecretsModule', () => {
 			});
 
 			it('should start secrets refresh interval', async () => {
+				jest.useFakeTimers();
+
 				await module.init();
 
 				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
@@ -133,6 +127,8 @@ describe('ExternalSecretsModule', () => {
 
 				expect(updateSpy).toHaveBeenCalled();
 				updateSpy.mockRestore();
+
+				jest.useRealTimers();
 			});
 		});
 
@@ -151,6 +147,8 @@ describe('ExternalSecretsModule', () => {
 			});
 
 			it('should stop refresh after shutdown', async () => {
+				jest.useFakeTimers();
+
 				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				await module.shutdown();
@@ -159,6 +157,7 @@ describe('ExternalSecretsModule', () => {
 				expect(updateSpy).not.toHaveBeenCalled();
 
 				updateSpy.mockRestore();
+				jest.useRealTimers();
 			});
 		});
 	});
@@ -231,6 +230,8 @@ describe('ExternalSecretsModule', () => {
 			});
 
 			it('should start secrets refresh interval', async () => {
+				jest.useFakeTimers();
+
 				await module.init();
 
 				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
@@ -239,6 +240,8 @@ describe('ExternalSecretsModule', () => {
 
 				expect(updateSpy).toHaveBeenCalled();
 				updateSpy.mockRestore();
+
+				jest.useRealTimers();
 			});
 		});
 
@@ -257,6 +260,8 @@ describe('ExternalSecretsModule', () => {
 			});
 
 			it('should stop refresh after shutdown', async () => {
+				jest.useFakeTimers();
+
 				const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
 				await module.shutdown();
@@ -265,6 +270,7 @@ describe('ExternalSecretsModule', () => {
 				expect(updateSpy).not.toHaveBeenCalled();
 
 				updateSpy.mockRestore();
+				jest.useRealTimers();
 			});
 		});
 	});
