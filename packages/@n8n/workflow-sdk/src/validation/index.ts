@@ -24,7 +24,8 @@ export type ValidationErrorCode =
 	| 'MISSING_EXPRESSION_PREFIX'
 	| 'INVALID_PARAMETER'
 	| 'INVALID_INPUT_INDEX'
-	| 'SUBNODE_NOT_CONNECTED';
+	| 'SUBNODE_NOT_CONNECTED'
+	| 'MULTIPLE_MANUAL_TRIGGERS';
 
 /**
  * Validation error class

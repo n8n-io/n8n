@@ -1389,4 +1389,72 @@ describe('graph validation', () => {
 			expect(subnodeError).toBeUndefined();
 		});
 	});
+
+	describe('checkMultipleManualTriggers', () => {
+		test('returns no error when workflow has single ManualTrigger', () => {
+			const wf = workflow('test-id', 'Test Workflow').add(
+				trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1.1,
+					config: { name: 'Start' },
+				}),
+			);
+
+			const result = wf.validate();
+
+			const multiTriggerError = result.errors.find((e) => e.code === 'MULTIPLE_MANUAL_TRIGGERS');
+			expect(multiTriggerError).toBeUndefined();
+		});
+
+		test('returns error when workflow has multiple ManualTrigger nodes', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start 1' },
+					}),
+				)
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start 2' },
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContainEqual(
+				expect.objectContaining({
+					code: 'MULTIPLE_MANUAL_TRIGGERS',
+					message: expect.stringContaining('2 ManualTrigger nodes'),
+				}),
+			);
+		});
+
+		test('allows mixing ManualTrigger with other trigger types', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Manual Start' },
+					}),
+				)
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.scheduleTrigger',
+						version: 1.2,
+						config: { name: 'Schedule Start' },
+					}),
+				);
+
+			const result = wf.validate();
+
+			const multiTriggerError = result.errors.find((e) => e.code === 'MULTIPLE_MANUAL_TRIGGERS');
+			expect(multiTriggerError).toBeUndefined();
+		});
+	});
 });
