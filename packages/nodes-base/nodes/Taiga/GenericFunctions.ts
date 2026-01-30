@@ -67,9 +67,10 @@ export async function taigaApiRequest(
 		method,
 		body,
 		uri:
-			uri || credentials.url
+			uri ||
+			(credentials.url
 				? `${credentials.url}/api/v1${resource}`
-				: `https://api.taiga.io/api/v1${resource}`,
+				: `https://api.taiga.io/api/v1${resource}`),
 		json: true,
 	};
 
