@@ -190,7 +190,9 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+				{{ subtitle }}
+			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>

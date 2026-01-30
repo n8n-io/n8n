@@ -68,11 +68,15 @@ export function useInstallNode() {
 			}
 
 			// refresh store information about installed nodes
-			await nodeTypesStore.getNodeTypes();
-			await credentialsStore.fetchCredentialTypes(true);
+			await Promise.all([
+				nodeTypesStore.getNodeTypes(),
+				nodeTypesStore.fetchCommunityNodePreviews(),
+				credentialsStore.fetchCredentialTypes(true),
+			]);
 			await nextTick();
 
 			// update parameters and webhooks for freshly installed nodes
+			// rename types from preview version to the actual version
 			const nodeType = props.nodeType;
 			if (nodeType && workflowsStore.workflow.nodes?.length) {
 				const nodesToUpdate = workflowsStore.workflow.nodes.filter(

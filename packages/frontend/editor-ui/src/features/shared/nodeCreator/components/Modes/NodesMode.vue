@@ -138,9 +138,15 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
+		const notInstalledCommunityNode =
+			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
 
-		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
+		if (
+			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
+			notInstalledCommunityNode
+		) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
@@ -155,8 +161,6 @@ function onSelected(item: INodeCreateElement) {
 			pushViewStack(viewStack);
 			return;
 		}
-
-		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
