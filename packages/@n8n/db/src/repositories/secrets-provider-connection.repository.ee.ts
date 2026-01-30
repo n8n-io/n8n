@@ -25,20 +25,26 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		const connectionIds = connectionsWithAccess.map((r) => r.connectionId);
 
-		// If no connections have access, return all connections
+		// If no connections have access, return all enabled connections
 		if (connectionIds.length === 0) {
-			return await this.find({ relations: ['projectAccess'] });
+			return await this.find({
+				where: { isEnabled: true },
+				relations: ['projectAccess'],
+			});
 		}
 
-		// Return connections that are NOT in the list of connections with access
+		// Return enabled connections that are NOT in the list of connections with access
 		return await this.find({
-			where: { id: Not(In(connectionIds)) },
+			where: {
+				id: Not(In(connectionIds)),
+				isEnabled: true,
+			},
 			relations: ['projectAccess'],
 		});
 	}
 
 	/**
-	 * Find all connections that have access to a specific project
+	 * Find all enabled connections that have access to a specific project
 	 */
 	async findByProjectId(projectId: string): Promise<SecretsProviderConnection[]> {
 		// Get connection IDs that have access to this project
@@ -53,9 +59,12 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		const connectionIds = accessRecords.map((r) => r.secretsProviderConnectionId);
 
-		// Return connections with the projectAccess relation loaded
+		// Return enabled connections with the projectAccess relation loaded
 		return await this.find({
-			where: { id: In(connectionIds) },
+			where: {
+				id: In(connectionIds),
+				isEnabled: true,
+			},
 			relations: ['projectAccess'],
 		});
 	}

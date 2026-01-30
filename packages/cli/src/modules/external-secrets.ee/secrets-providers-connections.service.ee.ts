@@ -1,4 +1,4 @@
-import type { SecretsProviderType } from '@n8n/api-types';
+import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import { CreateSecretsProviderConnectionDto } from '@n8n/api-types/src';
 import type { SecretsProviderConnection } from '@n8n/db';
 import {
@@ -11,6 +11,7 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 @Service()
@@ -19,6 +20,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
 		private readonly cipher: Cipher,
+		private readonly externalSecretsManager: ExternalSecretsManager,
 	) {}
 
 	async createConnection(
@@ -118,6 +120,57 @@ export class SecretsProvidersConnectionsService {
 
 	async listConnections(): Promise<SecretsProviderConnection[]> {
 		return await this.repository.findAll();
+	}
+
+	/**
+	 * Get secrets completions for autocomplete in expression editor.
+	 * Returns completion items based on query parameters:
+	 * - No projectId: returns only global secrets
+	 * - projectId only: returns only project secrets
+	 * - projectId + includeGlobal: returns both project and global secrets
+	 */
+	async getSecretsCompletions(options: {
+		projectId?: string;
+		includeGlobal?: boolean;
+	}): Promise<SecretCompletionsResponse[]> {
+		const { projectId, includeGlobal } = options;
+
+		if (!projectId) {
+			return await this.getGlobalCompletions();
+		}
+
+		if (!includeGlobal) {
+			return await this.getProjectCompletions(projectId);
+		}
+		const [projectSecrets, globalSecrets] = await Promise.all([
+			this.getProjectCompletions(projectId),
+			this.getGlobalCompletions(),
+		]);
+
+		return [...projectSecrets, ...globalSecrets];
+	}
+
+	private async getGlobalCompletions(): Promise<SecretCompletionsResponse[]> {
+		const connections = await this.repository.findGlobalConnections();
+		return connections.map((connection) => this.toCompletionItem(connection, true));
+	}
+
+	private async getProjectCompletions(projectId: string): Promise<SecretCompletionsResponse[]> {
+		const connections = await this.repository.findByProjectId(projectId);
+		return connections.map((connection) => this.toCompletionItem(connection, false));
+	}
+
+	private toCompletionItem(
+		connection: SecretsProviderConnection,
+		isGlobal: boolean,
+	): SecretCompletionsResponse {
+		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		return {
+			type: connection.type as SecretsProviderType,
+			providerKey: connection.providerKey,
+			secretCompletions: secretNames,
+			isGlobal,
+		};
 	}
 
 	toPublicConnection(
