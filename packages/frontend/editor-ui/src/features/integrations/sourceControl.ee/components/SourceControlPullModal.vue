@@ -38,7 +38,8 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
-	N8nSelect2,
+	N8nOption,
+	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -384,13 +385,27 @@ onMounted(() => {
 					<N8nText tag="div" bold size="medium" color="text-dark">
 						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
 					</N8nText>
-					<N8nSelect2
+					<N8nSelect
 						v-model="autoPublish"
-						:items="autoPublishOptions"
 						size="medium"
 						:class="$style.select"
 						data-test-id="auto-publish-select"
-					/>
+					>
+						<N8nOption
+							v-for="option in autoPublishOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+							:disabled="option.disabled"
+						>
+							<div :class="$style.listOption">
+								<N8nText bold>{{ option.label }}</N8nText>
+								<N8nText v-if="option.description" size="small" color="text-light">
+									{{ option.description }}
+								</N8nText>
+							</div>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 				<div style="display: flex; flex: 1; min-height: 0">
 					<div :class="$style.tabs">
@@ -694,12 +709,21 @@ onMounted(() => {
 }
 
 .select {
-	width: 210px;
+	width: 250px;
 }
 
 .statusLine {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.listOption {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	margin: var(--spacing--3xs) 0;
+	white-space: normal;
+	padding-right: var(--spacing--md);
 }
 </style>
