@@ -16,6 +16,35 @@ import {
 import { addBinariesToItem } from './utils';
 import { prepareFieldsArray } from '../utils/utils';
 
+/**
+ * Checks if two field paths conflict due to nested path relationships.
+ * Returns true if one path is a parent/ancestor of another path.
+ * Examples:
+ * - 'user' and 'user.name' conflict (user is parent of user.name)
+ * - 'user.address' and 'user.address.city' conflict
+ * - 'user' and 'profile' do NOT conflict (different paths)
+ */
+function hasNestedPathConflict(path1: string, path2: string): boolean {
+	if (path1 === path2) return true;
+
+	// Check if path1 is a parent of path2 or vice versa
+	const segments1 = path1.split('.');
+	const segments2 = path2.split('.');
+
+	// One path is a prefix of the other
+	const minLength = Math.min(segments1.length, segments2.length);
+
+	// Check if all segments of the shorter path match the longer path
+	for (let i = 0; i < minLength; i++) {
+		if (segments1[i] !== segments2[i]) {
+			return false; // Paths diverge, no conflict
+		}
+	}
+
+	// If we got here, one path is a prefix of the other
+	return true;
+}
+
 export class Aggregate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Aggregate',
@@ -171,9 +200,19 @@ export class Aggregate implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Group By Fields',
+						name: 'groupByFields',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. category, type',
+						description:
+							'Comma-separated list of fields to group by. Creates one output item per unique combination of these field values. Dot-notation is supported to access nested fields.',
+						requiresDataPath: 'multiple',
+					},
 					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
@@ -244,6 +283,8 @@ export class Aggregate implements INodeType {
 		const notFoundedFields: { [key: string]: boolean[] } = {};
 
 		const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
+		const groupByFieldsParam = this.getNodeParameter('options.groupByFields', 0, '') as string;
+		const groupByFields = prepareFieldsArray(groupByFieldsParam, 'Group By Fields');
 
 		if (aggregate === 'aggregateIndividualFields') {
 			const disableDotNotation = this.getNodeParameter(
@@ -405,20 +446,6 @@ export class Aggregate implements INodeType {
 			returnData = output;
 		}
 
-		const includeBinaries = this.getNodeParameter('options.includeBinaries', 0, false) as boolean;
-
-		if (includeBinaries) {
-			const pairedItems = (returnData.pairedItem || []) as IPairedItemData[];
-
-			const aggregatedItems = pairedItems.map((item) => {
-				return items[item.item];
-			});
-
-			const keepOnlyUnique = this.getNodeParameter('options.keepOnlyUnique', 0, false) as boolean;
-
-			addBinariesToItem(returnData, aggregatedItems, keepOnlyUnique);
-		}
-
 		if (Object.keys(notFoundedFields).length) {
 			const hints: NodeExecutionHint[] = [];
 
@@ -434,6 +461,252 @@ export class Aggregate implements INodeType {
 			if (hints.length) {
 				this.addExecutionHints(...hints);
 			}
+		}
+
+		// Apply grouping if specified
+		if (groupByFields.length > 0) {
+			const groups: {
+				[key: string]: { items: IDataObject[]; pairedItems: number[]; values: any[] };
+			} = {};
+
+			// Group original items by the specified fields
+			items.forEach((item, index) => {
+				const groupValues = groupByFields.map((field) => {
+					const value = get(item.json, field);
+					if (typeof value === 'object' && value !== null) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Field "${field}" has a non-scalar value which cannot be used for grouping.`,
+							{
+								description:
+									'Only scalar values (string, number, boolean, null) can be used in "Group By Fields".',
+							},
+						);
+					}
+					return value;
+				});
+				const groupKey = JSON.stringify(groupValues);
+
+				if (!groups[groupKey]) {
+					groups[groupKey] = { items: [], pairedItems: [], values: groupValues };
+				}
+
+				groups[groupKey].items.push(item.json);
+				groups[groupKey].pairedItems.push(index);
+			});
+
+			// Create output items for each group
+			const result: INodeExecutionData[] = [];
+			const groupPairedItems: number[][] = []; // Track all items in each group for binary aggregation
+
+			Object.values(groups).forEach((groupData) => {
+				const groupItem: IDataObject = {};
+
+				// Add the grouping field values to the output
+				groupByFields.forEach((field, index) => {
+					const value = groupData.values[index];
+					set(groupItem, field, value);
+				});
+
+				if (aggregate === 'aggregateAllItemData') {
+					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
+
+					// Check for conflicts with group-by field names (including nested paths)
+					const conflictingGroupByField = groupByFields.find((groupByField) =>
+						hasNestedPathConflict(destinationFieldName, groupByField),
+					);
+					if (conflictingGroupByField) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The destination field '${destinationFieldName}' conflicts with a Group By field '${conflictingGroupByField}'`,
+							{ description: 'Please choose a different destination field name or Group By field' },
+						);
+					}
+
+					const fieldsToExclude = prepareFieldsArray(
+						this.getNodeParameter('fieldsToExclude', 0, '') as string,
+						'Fields To Exclude',
+					);
+					const fieldsToInclude = prepareFieldsArray(
+						this.getNodeParameter('fieldsToInclude', 0, '') as string,
+						'Fields To Include',
+					);
+
+					let groupedAndFilteredItems = groupData.items;
+
+					if (fieldsToExclude.length || fieldsToInclude.length) {
+						groupedAndFilteredItems = groupedAndFilteredItems
+							.map((item) => {
+								const newItem: IDataObject = {};
+								let outputFields = Object.keys(item);
+
+								if (fieldsToExclude.length) {
+									outputFields = outputFields.filter((key) => !fieldsToExclude.includes(key));
+								}
+								if (fieldsToInclude.length) {
+									outputFields = outputFields.filter((key) =>
+										fieldsToInclude.length ? fieldsToInclude.includes(key) : true,
+									);
+								}
+
+								outputFields.forEach((key) => {
+									newItem[key] = item[key];
+								});
+								return newItem;
+							})
+							.filter((item) => !isEmpty(item));
+					}
+
+					groupItem[destinationFieldName] = groupedAndFilteredItems;
+				} else {
+					// For aggregateIndividualFields mode, recompute aggregation for the group
+					const fieldsToAggregate = this.getNodeParameter(
+						'fieldsToAggregate.fieldToAggregate',
+						0,
+						[],
+					) as [{ fieldToAggregate: string; renameField: boolean; outputFieldName: string }];
+					const disableDotNotation = this.getNodeParameter(
+						'options.disableDotNotation',
+						0,
+						false,
+					) as boolean;
+					const mergeLists = this.getNodeParameter('options.mergeLists', 0, false) as boolean;
+					const keepMissing = this.getNodeParameter('options.keepMissing', 0, false) as boolean;
+
+					// Validate that fields are specified
+					if (!fieldsToAggregate.length) {
+						throw new NodeOperationError(this.getNode(), 'No fields specified', {
+							description: 'Please add a field to aggregate',
+						});
+					}
+
+					// Validate unique output field names and detect conflicts with group-by fields
+					const outputFields: string[] = [];
+					for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
+						const getFieldToAggregate = () =>
+							!disableDotNotation && fieldToAggregate.includes('.')
+								? fieldToAggregate.split('.').pop()
+								: fieldToAggregate;
+
+						const field = renameField ? outputFieldName : (getFieldToAggregate() as string);
+
+						if (outputFields.includes(field)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The '${field}' output field is used more than once`,
+								{ description: 'Please make sure each output field name is unique' },
+							);
+						}
+
+						// Check for conflicts with group-by field names (including nested paths)
+						const conflictingGroupByField = groupByFields.find((groupByField) =>
+							hasNestedPathConflict(field, groupByField),
+						);
+						if (conflictingGroupByField) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The output field '${field}' conflicts with a Group By field '${conflictingGroupByField}'`,
+								{
+									description:
+										'Please rename the aggregated field or choose a different Group By field',
+								},
+							);
+						}
+
+						outputFields.push(field);
+					}
+
+					const values: { [key: string]: any } = {};
+
+					for (const { fieldToAggregate, outputFieldName } of fieldsToAggregate) {
+						const getFieldToAggregate = () =>
+							!disableDotNotation && fieldToAggregate.includes('.')
+								? fieldToAggregate.split('.').pop()
+								: fieldToAggregate;
+
+						const _outputFieldName = outputFieldName
+							? outputFieldName
+							: (getFieldToAggregate() as string);
+
+						if (fieldToAggregate !== '') {
+							values[_outputFieldName] = [];
+							for (const itemJson of groupData.items) {
+								// Track missing fields
+								if (notFoundedFields[fieldToAggregate] === undefined) {
+									notFoundedFields[fieldToAggregate] = [];
+								}
+
+								let value;
+								if (!disableDotNotation) {
+									value = get(itemJson, fieldToAggregate);
+								} else {
+									value = itemJson[fieldToAggregate];
+								}
+
+								notFoundedFields[fieldToAggregate].push(value === undefined ? false : true);
+
+								if (!keepMissing) {
+									if (Array.isArray(value)) {
+										// Align with standard flow: filter only null, not undefined
+										value = value.filter((entry) => entry !== null);
+									} else if (value === null || value === undefined) {
+										continue;
+									}
+								}
+
+								if (Array.isArray(value) && mergeLists) {
+									values[_outputFieldName].push(...value);
+								} else {
+									values[_outputFieldName].push(value);
+								}
+							}
+						}
+					}
+
+					for (const key of Object.keys(values)) {
+						if (!disableDotNotation) {
+							set(groupItem, key, values[key]);
+						} else {
+							groupItem[key] = values[key];
+						}
+					}
+				}
+
+				// Store all paired items for binary aggregation
+				groupPairedItems.push(groupData.pairedItems);
+
+				result.push({
+					json: groupItem,
+					pairedItem: { item: groupData.pairedItems[0] },
+				});
+			});
+
+			const includeBinaries = this.getNodeParameter('options.includeBinaries', 0, false) as boolean;
+			if (includeBinaries) {
+				const keepOnlyUnique = this.getNodeParameter('options.keepOnlyUnique', 0, false) as boolean;
+				for (let i = 0; i < result.length; i++) {
+					const resultItem = result[i];
+					const pairedItemIndices = groupPairedItems[i];
+					const aggregatedItems = pairedItemIndices.map((itemIndex) => items[itemIndex]);
+					addBinariesToItem(resultItem, aggregatedItems, keepOnlyUnique);
+				}
+			}
+
+			return [result];
+		}
+
+		const includeBinaries = this.getNodeParameter('options.includeBinaries', 0, false) as boolean;
+
+		if (includeBinaries) {
+			const pairedItems = (returnData.pairedItem || []) as IPairedItemData[];
+
+			const aggregatedItems = pairedItems.map((item) => {
+				return items[item.item];
+			});
+
+			const keepOnlyUnique = this.getNodeParameter('options.keepOnlyUnique', 0, false) as boolean;
+
+			addBinariesToItem(returnData, aggregatedItems, keepOnlyUnique);
 		}
 
 		return [[returnData]];
