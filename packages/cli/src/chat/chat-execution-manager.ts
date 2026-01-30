@@ -98,6 +98,16 @@ export class ChatExecutionManager {
 		const inputData = executionData.data;
 		const connectionInputData = executionData.data.main[0];
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		// Update the execution data to include the new session ID in the context
+		// This ensures that when nodes like memory nodes retrieve session IDs,
+		// they get the updated session ID instead of the one from the initial execution
+		const { sessionId, action, chatInput, files } = message;
+		const updatedConnectionInputData = this.updateSessionIdInInputData(
+			connectionInputData,
+			sessionId,
+		);
+
 		const context = new ExecuteContext(
 			workflow,
 			node,
@@ -105,13 +115,12 @@ export class ChatExecutionManager {
 			'manual',
 			execution.data,
 			0,
-			connectionInputData ?? [],
+			updatedConnectionInputData ?? [],
 			inputData,
 			executionData,
 			[],
 		);
 
-		const { sessionId, action, chatInput, files } = message;
 		const binary = await this.mapFilesToBinaryData(context, files);
 
 		const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
@@ -124,6 +133,23 @@ export class ChatExecutionManager {
 		}
 
 		return [[nodeExecutionData]];
+	}
+
+	private updateSessionIdInInputData(inputData: INodeExecutionData[] | null, newSessionId: string) {
+		if (!inputData) return inputData;
+
+		return inputData.map((item) => {
+			// Update the session ID in the json data
+			const updatedJson = {
+				...item.json,
+				sessionId: newSessionId,
+			};
+
+			return {
+				...item,
+				json: updatedJson,
+			};
+		});
 	}
 
 	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {
