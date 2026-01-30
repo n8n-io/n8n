@@ -4,8 +4,10 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
+import { SECURITY_AUDIT_UI_EXPERIMENT } from '../constants/experiments';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
+import { usePostHog } from '../stores/posthog.store';
 import { hasPermission } from '../utils/rbac/permissions';
 
 export function useSettingsItems() {
@@ -13,6 +15,7 @@ export function useSettingsItems() {
 	const i18n = useI18n();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const posthog = usePostHog();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 
 	const settingsItems = computed<IMenuItem[]>(() => {
@@ -134,6 +137,17 @@ export function useSettingsItems() {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 			route: { to: { name: VIEWS.MIGRATION_REPORT } },
+		});
+
+		menuItems.push({
+			id: 'settings-security-audit',
+			icon: 'lock',
+			label: i18n.baseText('settings.securityAudit'),
+			position: 'top',
+			available:
+				(import.meta.env.DEV || posthog.isFeatureEnabled(SECURITY_AUDIT_UI_EXPERIMENT.name)) &&
+				canUserAccessRouteByName(VIEWS.SECURITY_AUDIT),
+			route: { to: { name: VIEWS.SECURITY_AUDIT } },
 		});
 
 		// Append module-registered settings sidebar items.
