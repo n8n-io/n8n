@@ -57,6 +57,10 @@ export class ChatHubWorkflowService {
 		this.logger = this.logger.scoped('chat-hub');
 	}
 
+	async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
+
 	async createChatWorkflow(
 		userId: string,
 		sessionId: ChatSessionId,
