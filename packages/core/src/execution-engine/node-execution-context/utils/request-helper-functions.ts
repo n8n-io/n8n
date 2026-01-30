@@ -287,6 +287,16 @@ export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
 ) {
+	// axios not apply the http.globalAgent, need set it manually
+	const url = process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+	if (url) {
+		const parsedUrl = new URL(url);
+		axiosConfig.proxy = {
+			host: parsedUrl.hostname,
+			port: parseInt(parsedUrl.port) || (parsedUrl.protocol === 'https:' ? 443 : 80),
+			protocol: parsedUrl.protocol.replace(':', ''),
+		};
+	}
 	try {
 		return await axios(axiosConfig);
 	} catch (error) {
