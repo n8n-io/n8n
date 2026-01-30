@@ -732,6 +732,59 @@ export function mergeDisplayOptions(
 }
 
 /**
+ * Merge duplicate properties by name, combining displayOptions and nested options.
+ * When multiple properties have the same name (e.g., multiple 'options' collections
+ * with different displayOptions), their displayOptions and nested options are merged.
+ *
+ * @param properties - Array of node properties, possibly with duplicates
+ * @returns Map of property name to merged property
+ */
+export function mergePropertiesByName(properties: NodeProperty[]): Map<string, NodeProperty> {
+	const propsByName = new Map<string, NodeProperty>();
+
+	for (const prop of properties) {
+		// Skip display-only types
+		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+			continue;
+		}
+
+		const existing = propsByName.get(prop.name);
+		if (existing) {
+			// Merge displayOptions from duplicate property
+			if (prop.displayOptions && existing.displayOptions) {
+				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
+			} else if (prop.displayOptions && !existing.displayOptions) {
+				// If only the new one has displayOptions, the existing one has no condition
+				// which means it's always visible - keep existing as-is (no condition)
+			}
+
+			// For collection/fixedCollection types, merge nested options
+			if (
+				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
+				prop.options &&
+				existing.options
+			) {
+				const existingOptionNames = new Set(existing.options.map((o) => o.name));
+				for (const opt of prop.options) {
+					if (!existingOptionNames.has(opt.name)) {
+						existing.options.push(opt);
+					}
+				}
+			}
+			// Keep the first property's other attributes (type, required, etc.)
+		} else {
+			// Create a shallow copy to avoid mutating the original when merging
+			propsByName.set(prop.name, {
+				...prop,
+				options: prop.options ? [...prop.options] : undefined,
+			});
+		}
+	}
+
+	return propsByName;
+}
+
+/**
  * Generate a conditional schema property line using resolveSchema helper.
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
  *
@@ -1032,30 +1085,8 @@ function generateSchemasForNode(
 			);
 			lines.push('\treturn z.object({');
 
-			// Group properties by name, merging displayOptions for duplicates
-			const propsByName = new Map<string, NodeProperty>();
-			for (const prop of node.properties) {
-				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
-					continue;
-				}
-
-				const existing = propsByName.get(prop.name);
-				if (existing) {
-					// Merge displayOptions from duplicate property
-					if (prop.displayOptions && existing.displayOptions) {
-						existing.displayOptions = mergeDisplayOptions(
-							existing.displayOptions,
-							prop.displayOptions,
-						);
-					} else if (prop.displayOptions && !existing.displayOptions) {
-						// If only the new one has displayOptions, the existing one has no condition
-						// which means it's always visible - keep existing as-is (no condition)
-					}
-					// Keep the first property's other attributes (type, required, etc.)
-				} else {
-					propsByName.set(prop.name, { ...prop });
-				}
-			}
+			// Group properties by name, merging displayOptions and nested options for duplicates
+			const propsByName = mergePropertiesByName(node.properties);
 
 			// Generate schema for each merged property
 			// Convert propsByName to array for extractDefaultsForDisplayOptions
@@ -1142,26 +1173,8 @@ function generateSchemasForNode(
 			// Generate static Parameters Schema
 			lines.push(`export const ${parametersSchemaName} = z.object({`);
 
-			// Group properties by name, merging displayOptions for duplicates
-			const propsByName = new Map<string, NodeProperty>();
-			for (const prop of node.properties) {
-				if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
-					continue;
-				}
-
-				const existing = propsByName.get(prop.name);
-				if (existing) {
-					// Merge displayOptions from duplicate property
-					if (prop.displayOptions && existing.displayOptions) {
-						existing.displayOptions = mergeDisplayOptions(
-							existing.displayOptions,
-							prop.displayOptions,
-						);
-					}
-				} else {
-					propsByName.set(prop.name, { ...prop });
-				}
-			}
+			// Group properties by name, merging displayOptions and nested options for duplicates
+			const propsByName = mergePropertiesByName(node.properties);
 
 			for (const prop of propsByName.values()) {
 				const propLine = generateSchemaPropertyLine(prop, !prop.required);
@@ -1284,22 +1297,8 @@ function generateSchemasForNode(
 			}
 		}
 
-		// Group properties by name, merging displayOptions for duplicates
-		const propsByName = new Map<string, NodeProperty>();
-		for (const prop of props) {
-			const existing = propsByName.get(prop.name);
-			if (existing) {
-				// Merge displayOptions from duplicate property
-				if (prop.displayOptions && existing.displayOptions) {
-					existing.displayOptions = mergeDisplayOptions(
-						existing.displayOptions,
-						prop.displayOptions,
-					);
-				}
-			} else {
-				propsByName.set(prop.name, { ...prop });
-			}
-		}
+		// Group properties by name, merging displayOptions and nested options for duplicates
+		const propsByName = mergePropertiesByName(props);
 
 		for (const prop of propsByName.values()) {
 			const propLine = generateSchemaPropertyLine(prop, !prop.required);
@@ -1987,22 +1986,8 @@ export function generateDiscriminatorSchemaFile(
 		}
 	}
 
-	// Group properties by name, merging displayOptions for duplicates
-	const propsByName = new Map<string, NodeProperty>();
-	for (const prop of props) {
-		const existing = propsByName.get(prop.name);
-		if (existing) {
-			// Merge displayOptions from duplicate property
-			if (prop.displayOptions && existing.displayOptions) {
-				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
-			} else if (prop.displayOptions && !existing.displayOptions) {
-				// If only the new one has displayOptions, the existing one has no condition
-				// which means it's always visible - keep existing as-is (no condition)
-			}
-		} else {
-			propsByName.set(prop.name, { ...prop });
-		}
-	}
+	// Group properties by name, merging displayOptions and nested options for duplicates
+	const propsByName = mergePropertiesByName(props);
 
 	// Generate schema for each merged property
 	// Convert propsByName to array for extractDefaultsForDisplayOptions

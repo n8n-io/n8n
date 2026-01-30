@@ -15,6 +15,19 @@ import * as path from 'path';
 // Type Definitions (Expected interfaces from the implementation)
 // =============================================================================
 
+interface NestedOption {
+	name: string;
+	value?: string | number | boolean;
+	description?: string;
+	displayName?: string;
+	builderHint?: string;
+	values?: NodeProperty[];
+	type?: string;
+	default?: unknown;
+	// Nested options can themselves have options (e.g., options type inside a collection)
+	options?: NestedOption[];
+}
+
 interface NodeProperty {
 	name: string;
 	displayName: string;
@@ -25,16 +38,7 @@ interface NodeProperty {
 	default?: unknown;
 	required?: boolean;
 	placeholder?: string;
-	options?: Array<{
-		name: string;
-		value?: string | number | boolean;
-		description?: string;
-		displayName?: string;
-		builderHint?: string;
-		values?: NodeProperty[];
-		type?: string;
-		default?: unknown;
-	}>;
+	options?: NestedOption[];
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -895,6 +899,82 @@ describe('generate-types', () => {
 			expect(combinations).toContainEqual({ mode: 'runOnceForAllItems' });
 			expect(combinations).toContainEqual({ mode: 'runOnceForEachItem' });
 		});
+
+		it('should NOT split by mode when mode has non-version displayOptions', () => {
+			// This simulates ChatTrigger where mode has displayOptions: { show: { public: [true] } }
+			// When mode is conditionally shown, splitting by mode creates incorrect combinations
+			const nodeWithConditionalMode: NodeTypeDescription = {
+				name: 'n8n-nodes-langchain.chatTrigger',
+				displayName: 'Chat Trigger',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Hosted Chat', value: 'hostedChat' },
+							{ name: 'Webhook', value: 'webhook' },
+						],
+						default: 'hostedChat',
+						// This is the key difference - mode has displayOptions
+						displayOptions: { show: { public: [true] } },
+					},
+					{
+						displayName: 'Some Property',
+						name: 'someProperty',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['hostedChat'] } },
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithConditionalMode);
+			// Should NOT create combinations based on mode when mode has displayOptions
+			expect(combinations).toEqual([]);
+		});
+
+		it('should still split by mode when mode only has @version displayOptions', () => {
+			// Version-only displayOptions are fine - version filtering is handled separately
+			const nodeWithVersionOnlyMode: NodeTypeDescription = {
+				name: 'test.node',
+				displayName: 'Test',
+				group: ['transform'],
+				version: 2,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Option A', value: 'optionA' },
+							{ name: 'Option B', value: 'optionB' },
+						],
+						default: 'optionA',
+						// Only @version in displayOptions - this should be allowed
+						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+					},
+					{
+						displayName: 'Some Property',
+						name: 'someProperty',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['optionA'] } },
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithVersionOnlyMode);
+			// Should still split by mode - version displayOptions are allowed
+			expect(combinations).toContainEqual({ mode: 'optionA' });
+			expect(combinations).toContainEqual({ mode: 'optionB' });
+		});
 	});
 
 	describe('getPropertiesForCombination', () => {
@@ -1020,6 +1100,96 @@ describe('generate-types', () => {
 			// Should include options with nested structure (not Record<string, unknown>)
 			expect(result).toContain('options?:');
 			expect(result).toContain('systemMessage?:');
+		});
+
+		it('should merge duplicate collection properties with different options', () => {
+			// This test covers the ChatTrigger scenario where multiple 'options' collections
+			// with different displayOptions contain different nested options
+			const nodeWithDuplicateOptions: NodeTypeDescription = {
+				name: 'n8n-nodes-base.chatTrigger',
+				displayName: 'Chat Trigger',
+				group: ['trigger'],
+				version: 1.4,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Public',
+						name: 'public',
+						type: 'boolean',
+						default: false,
+					},
+					// First options collection - only for public: false
+					{
+						displayName: 'Options',
+						name: 'options',
+						type: 'collection',
+						default: {},
+						displayOptions: {
+							show: { public: [false] },
+						},
+						options: [
+							{
+								displayName: 'Allow File Uploads',
+								name: 'allowFileUploads',
+								type: 'boolean',
+								default: false,
+							},
+							{
+								displayName: 'Response Mode',
+								name: 'responseMode',
+								type: 'options',
+								default: 'lastNode',
+								options: [
+									{ name: 'Last Node', value: 'lastNode' },
+									{ name: 'Response Node', value: 'responseNode' },
+								],
+							},
+						],
+					},
+					// Second options collection - for public: true, contains loadPreviousSession
+					{
+						displayName: 'Options',
+						name: 'options',
+						type: 'collection',
+						default: {},
+						displayOptions: {
+							show: { public: [true] },
+						},
+						options: [
+							{
+								displayName: 'Load Previous Session',
+								name: 'loadPreviousSession',
+								type: 'options',
+								default: 'notSupported',
+								options: [
+									{ name: 'Not Supported', value: 'notSupported' },
+									{ name: 'From Memory', value: 'memory' },
+								],
+							},
+							{
+								displayName: 'Input Placeholder',
+								name: 'inputPlaceholder',
+								type: 'string',
+								default: 'Type your message...',
+							},
+						],
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(nodeWithDuplicateOptions);
+
+			// Should have options property
+			expect(result).toContain('options?:');
+
+			// Should include options from FIRST collection
+			expect(result).toContain('allowFileUploads?:');
+			expect(result).toContain('responseMode?:');
+
+			// Should ALSO include options from SECOND collection (the merged ones)
+			expect(result).toContain('loadPreviousSession?:');
+			expect(result).toContain('inputPlaceholder?:');
 		});
 	});
 
