@@ -220,6 +220,7 @@ describe('useRecommendedTemplatesStore', () => {
 			});
 
 			it('should filter out failed template fetches', async () => {
+				// Setup: 4 successful, 1 null, 1 rejected
 				mockFetchTemplateById
 					.mockResolvedValueOnce(createMockTemplate(1))
 					.mockResolvedValueOnce(null)
@@ -230,9 +231,12 @@ describe('useRecommendedTemplatesStore', () => {
 
 				const result = await store.loadRecommendedTemplates();
 
-				// Should only include successfully fetched non-null templates
-				const successfulTemplates = result.filter((t) => t !== null);
-				expect(successfulTemplates.length).toBeLessThanOrEqual(NUMBER_OF_TEMPLATES);
+				// Verify no null values in result
+				expect(result.every((t) => t !== null)).toBe(true);
+
+				// Verify only successfully fetched templates are included (4 out of 6)
+				expect(result).toHaveLength(4);
+				expect(result.map((t) => t.id)).toEqual([1, 3, 5, 6]);
 			});
 		});
 	});
