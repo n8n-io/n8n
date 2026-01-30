@@ -6,7 +6,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-import { computed, watch, useTemplateRef } from 'vue';
+import { computed, watch, useTemplateRef, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
@@ -123,6 +123,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	emit('contextMenuAction', action, nodeIds);
 }
+
+onBeforeUnmount(() => {
+	unregisterKeyboardListener();
+});
 </script>
 
 <template>
