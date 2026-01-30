@@ -19,8 +19,6 @@ const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
 describe('ExternalSecretsModule', () => {
-	jest.useFakeTimers();
-
 	let config: ExternalSecretsConfig;
 
 	beforeAll(async () => {
@@ -28,6 +26,8 @@ describe('ExternalSecretsModule', () => {
 		await testDb.init();
 
 		Container.set(Logger, mockLogger());
+
+		jest.useFakeTimers();
 	});
 
 	afterEach(async () => {
@@ -36,6 +36,7 @@ describe('ExternalSecretsModule', () => {
 	});
 
 	afterAll(async () => {
+		jest.useRealTimers();
 		await testDb.terminate();
 	});
 
