@@ -38,7 +38,6 @@ function transformSecretsToNestedObject(
 						const key = splitSecret[i] as keyof typeof acc;
 						// Actual value key
 						if (i === splitSecret.length - 1) {
-							const key = splitSecret[i] as keyof typeof acc;
 							acc[key] = '*********' as (typeof acc)[typeof key];
 							continue;
 						}
