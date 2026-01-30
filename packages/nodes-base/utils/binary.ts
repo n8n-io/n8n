@@ -102,11 +102,20 @@ export async function createBinaryFromJson(
 		let valueAsString = value as unknown as string;
 
 		if (typeof value === 'object') {
-			options.mimeType = 'application/json';
-			if (options.format) {
-				valueAsString = JSON.stringify(value, null, 2);
+			options.mimeType = options.mimeType ?? 'application/json';
+
+			if (options.mimeType.indexOf('jsonl') > -1) {
+				if (Array.isArray(value)) {
+					valueAsString = value.map((v) => JSON.stringify(v)).join('\n');
+				} else {
+					valueAsString = JSON.stringify(value);
+				}
 			} else {
-				valueAsString = JSON.stringify(value);
+				if (options.format) {
+					valueAsString = JSON.stringify(value, null, 2);
+				} else {
+					valueAsString = JSON.stringify(value);
+				}
 			}
 		}
 
@@ -132,7 +141,7 @@ export async function createBinaryFromJson(
 }
 
 const parseText = (textContent: PdfTextContent) => {
-	let lastY = undefined;
+	let lastY;
 	const text = [];
 	for (const item of textContent.items) {
 		if ('str' in item) {
