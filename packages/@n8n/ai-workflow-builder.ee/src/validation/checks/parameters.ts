@@ -1,5 +1,6 @@
 import {
 	checkConditions,
+	isExpression,
 	type INodeParameters,
 	type INodeProperties,
 	type INodePropertyOptions,
@@ -10,6 +11,17 @@ import type { SimpleWorkflow } from '@/types';
 import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 
 import type { ProgrammaticViolation } from '../types';
+
+/** The value type for options (dropdown) fields */
+type OptionValue = INodePropertyOptions['value'];
+
+/**
+ * Type guard for option values (primitives only).
+ * Options can only be string, number, or boolean.
+ */
+function isOptionValue(value: unknown): value is OptionValue {
+	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
 
 /**
  * Check if a property should be hidden based on a specific condition key.
@@ -75,14 +87,6 @@ function hasMeaningfulDefault(property: INodeProperties): boolean {
 }
 
 /**
- * Check if a value is an expression (starts with '=').
- * Expressions are not validated statically.
- */
-function isExpression(value: unknown): boolean {
-	return typeof value === 'string' && value.startsWith('=');
-}
-
-/**
  * Type guard for INodePropertyOptions.
  * INodePropertyOptions has `name` + `value` (primitive value).
  */
@@ -100,12 +104,12 @@ function isINodePropertyOptions(item: unknown): item is INodePropertyOptions {
  * Get allowed values from options property.
  * Returns undefined if the property doesn't have static options.
  */
-function getAllowedOptionsValues(property: INodeProperties): Set<unknown> | undefined {
+function getAllowedOptionsValues(property: INodeProperties): Set<OptionValue> | undefined {
 	if (property.type !== 'options' || !property.options) {
 		return undefined;
 	}
 
-	const allowedValues = new Set<unknown>();
+	const allowedValues = new Set<OptionValue>();
 	for (const opt of property.options) {
 		if (isINodePropertyOptions(opt)) {
 			allowedValues.add(opt.value);
@@ -113,16 +117,6 @@ function getAllowedOptionsValues(property: INodeProperties): Set<unknown> | unde
 	}
 
 	return allowedValues.size > 0 ? allowedValues : undefined;
-}
-
-/**
- * Convert a parameter value to a string for display purposes.
- */
-function valueToString(value: unknown): string {
-	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-		return String(value);
-	}
-	return JSON.stringify(value);
 }
 
 /**
@@ -190,20 +184,22 @@ function validateOptionsValues(
 
 		const paramValue = nodeParameters[property.name];
 		if (paramValue === undefined || paramValue === null || isExpression(paramValue)) continue;
+		// Only validate primitive option values (not objects/arrays)
+		if (!isOptionValue(paramValue)) continue;
 
 		const allowedValues = getAllowedOptionsValues(property);
 		if (allowedValues && !allowedValues.has(paramValue)) {
 			violations.push({
 				name: 'node-invalid-options-value',
 				type: 'critical',
-				description: `Node "${node.name}" has invalid value "${valueToString(paramValue)}" for parameter "${property.displayName}"`,
+				description: `Node "${node.name}" has invalid value "${String(paramValue)}" for parameter "${property.displayName}"`,
 				pointsDeducted: 50,
 				metadata: {
 					nodeName: node.name,
 					nodeType: node.type,
 					parameterName: property.name,
 					parameterDisplayName: property.displayName,
-					invalidValue: valueToString(paramValue),
+					invalidValue: String(paramValue),
 				},
 			});
 		}
