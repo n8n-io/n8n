@@ -1,3 +1,6 @@
+import { ApplicationError } from '@n8n/errors';
+import { get as pslGet } from 'psl';
+
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -26,8 +29,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -47,7 +50,6 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
-import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -109,13 +111,16 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		return [url.protocol, url.hostname].join('//');
+		// Extract registered domain using psl to properly handle multi-level TLDs
+		return pslGet(url.hostname) ?? url.hostname;
 	} catch {
 		const match = urlParts.exec(raw);
 
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		return match.groups.protocolPlusDomain;
+		// Extract hostname and get registered domain
+		const hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
+		return pslGet(hostname) ?? hostname;
 	}
 }
 
@@ -308,7 +313,6 @@ export function generateNodesGraph(
 			const { url } = node.parameters as { url: string };
 
 			nodeItem.domain_base = getDomainBase(url);
-			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
 		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
