@@ -417,14 +417,14 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			// "None" is selected by default
-			const noneButton = getByText('None');
-			expect(noneButton.closest('.n8n-radio-button')).toHaveAttribute('aria-checked', 'true');
+			// "Off" is selected by default
+			const offButton = getByText('Off');
+			expect(offButton.closest('.n8n-radio-button')).toHaveAttribute('aria-checked', 'true');
 
 			expect(queryByText('Auto-publishing')).not.toBeInTheDocument();
 		});
 
-		it('should show badges for all non-deleted workflows when "All" is selected', async () => {
+		it('should show badges for all non-deleted workflows when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -471,8 +471,8 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const onButton = getByText('On');
+			await userEvent.click(onButton);
 
 			await waitFor(() => {
 				// All 3 workflows should show badges
@@ -481,7 +481,7 @@ describe('SourceControlPullModal', () => {
 			});
 		});
 
-		it('should show badges only for published existing workflows when "Only currently published" is selected', async () => {
+		it('should show badges only for published existing workflows when "If workflow already published" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -528,7 +528,7 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const publishedButton = getByText('Only currently published');
+			const publishedButton = getByText('If workflow already published');
 			await userEvent.click(publishedButton);
 
 			await waitFor(() => {
@@ -538,7 +538,7 @@ describe('SourceControlPullModal', () => {
 			});
 		});
 
-		it('should not show badges for deleted workflows even when "All" is selected', async () => {
+		it('should not show badges for deleted workflows even when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -574,8 +574,8 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const onButton = getByText('On');
+			await userEvent.click(onButton);
 
 			await waitFor(() => {
 				// Only 1 badge (for the new workflow, not the deleted one)
@@ -587,7 +587,7 @@ describe('SourceControlPullModal', () => {
 			expect(getByText('New Workflow')).toBeInTheDocument();
 		});
 
-		it('should not show badges for archived workflows even when "All" is selected', async () => {
+		it('should not show badges for archived workflows even when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -625,8 +625,8 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const onButton = getByText('On');
+			await userEvent.click(onButton);
 
 			await waitFor(() => {
 				// Only 1 badge (for the active workflow, not the archived one)
