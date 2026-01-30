@@ -1,6 +1,6 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type { Project, User, ICredentialsDb, ScopesField, CredentialAccessContext } from '@n8n/db';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -200,11 +200,24 @@ export class CredentialsService {
 		includeGlobal: boolean,
 		includeData: boolean,
 	): Promise<CredentialsEntity[]> {
-		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
-			scopes: ['credential:read'],
-		});
+		// Build access context for JOIN-based access control
+		const [projectRoles, credentialRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['credential:read']),
+			this.roleService.rolesWithScope('credential', ['credential:read']),
+		]);
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions, ids);
+		const accessContext: CredentialAccessContext = {
+			user,
+			projectRoles,
+			credentialRoles,
+			isGlobalScope: false,
+		};
+
+		// Use JOIN-based access control instead of pre-fetching IDs
+		let credentials = await this.credentialsRepository.findManyForUser(
+			accessContext,
+			listQueryOptions,
+		);
 
 		if (includeGlobal) {
 			credentials = await this.addGlobalCredentials(credentials, includeData);

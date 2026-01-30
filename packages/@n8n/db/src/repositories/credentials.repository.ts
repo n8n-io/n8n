@@ -6,6 +6,21 @@ import { CredentialsEntity } from '../entities';
 import type { User } from '../entities';
 import type { ListQuery } from '../entities/types-db';
 
+/**
+ * Represents the user's access context for credential queries.
+ * Used to apply filter-based access control when fetching credentials.
+ */
+export interface CredentialAccessContext {
+	/** The user requesting access */
+	user: User;
+	/** Project roles that grant access (e.g., 'project:owner', 'project:admin') */
+	projectRoles: string[];
+	/** Credential sharing roles that grant access (e.g., 'credential:owner', 'credential:user') */
+	credentialRoles: string[];
+	/** Whether the user has global credential:list scope (admin/owner) */
+	isGlobalScope: boolean;
+}
+
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
 	constructor(dataSource: DataSource) {
@@ -27,6 +42,44 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		if (credentialIds) {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
+		}
+
+		return await this.find(findManyOptions);
+	}
+
+	/**
+	 * Find credentials using user access context.
+	 *
+	 * @param accessContext - User's access context with roles
+	 * @param listQueryOptions - Query options (filter, pagination, etc.)
+	 */
+	async findManyForUser(
+		accessContext: CredentialAccessContext,
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+	) {
+		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+
+		// Apply access control filter if user doesn't have global scope
+		if (!accessContext.isGlobalScope) {
+			// Merge access control filter with existing where conditions
+			findManyOptions.where = {
+				...findManyOptions.where,
+				shared: {
+					// Preserve any existing shared filters
+					...(!Array.isArray(findManyOptions.where) &&
+					typeof findManyOptions.where?.shared === 'object' &&
+					findManyOptions.where.shared !== null
+						? findManyOptions.where.shared
+						: {}),
+					role: In(accessContext.credentialRoles),
+					project: {
+						projectRelations: {
+							role: In(accessContext.projectRoles),
+							userId: accessContext.user.id,
+						},
+					},
+				},
+			};
 		}
 
 		return await this.find(findManyOptions);
@@ -106,7 +159,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		if (typeof filter.withRole === 'string' && filter.withRole !== '') {
 			filter.shared = {
-				...(filter?.shared ? filter.shared : {}),
+				...(filter?.shared ?? {}),
 				role: filter.withRole,
 			};
 			delete filter.withRole;
@@ -119,7 +172,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			typeof filter.user.id === 'string'
 		) {
 			filter.shared = {
-				...(filter?.shared ? filter.shared : {}),
+				...(filter?.shared ?? {}),
 				project: {
 					projectRelations: {
 						userId: filter.user.id,

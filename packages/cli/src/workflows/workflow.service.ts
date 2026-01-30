@@ -7,6 +7,7 @@ import type {
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
 	WorkflowHistory,
+	WorkflowAccessContext,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -19,6 +20,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -40,7 +42,6 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -79,7 +80,6 @@ export class WorkflowService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
@@ -104,8 +104,13 @@ export class WorkflowService {
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
-		let sharedWorkflowIds: string[] = [];
 		let isPersonalProject = false;
+
+		// Check if user has global scope (admin/owner)
+		const isGlobalScope = hasGlobalScope(user, 'workflow:read');
+
+		// Build access context for JOIN-based access control
+		let accessContext: WorkflowAccessContext;
 
 		if (options?.filter?.projectId) {
 			const projects = await this.projectService.getProjectRelationsForUser(user);
@@ -114,27 +119,56 @@ export class WorkflowService {
 			);
 		}
 
-		if (isPersonalProject) {
-			sharedWorkflowIds =
-				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(user);
+		if (isGlobalScope) {
+			// Users with global scope can see all workflows
+			accessContext = {
+				user,
+				projectRoles: [],
+				workflowRoles: [],
+				isGlobalScope: true,
+			};
+		} else if (isPersonalProject) {
+			// Personal project: only show workflows where user is owner
+			accessContext = {
+				user,
+				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+				workflowRoles: ['workflow:owner'],
+				isGlobalScope: false,
+			};
 		} else if (onlySharedWithMe) {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
+			// Shared with me: show workflows where user has editor role in their own project
+			accessContext = {
+				user,
+				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+				workflowRoles: ['workflow:editor'],
+				isGlobalScope: false,
+			};
 		} else {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: requiredScopes,
-			});
+			// Regular case: use roles from required scopes
+			const [projectRoles, workflowRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', requiredScopes),
+				this.roleService.rolesWithScope('workflow', requiredScopes),
+			]);
+			accessContext = {
+				user,
+				projectRoles,
+				workflowRoles,
+				isGlobalScope: false,
+			};
 		}
 
+		// Use JOIN-based access control instead of pre-fetching IDs
 		if (includeFolders) {
-			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
-				sharedWorkflowIds,
-				options,
-			);
+			[workflowsAndFolders, count] =
+				await this.workflowRepository.getWorkflowsAndFoldersWithCountForUser(
+					accessContext,
+					options,
+				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
 		} else {
-			({ workflows, count } = await this.workflowRepository.getManyAndCount(
-				sharedWorkflowIds,
+			({ workflows, count } = await this.workflowRepository.getManyAndCountForUser(
+				accessContext,
 				options,
 			));
 		}

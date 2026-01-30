@@ -52,28 +52,27 @@ beforeAll(async () => {
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
-		mock(),
-		Container.get(SharedWorkflowRepository),
-		workflowRepository,
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		workflowHistoryService,
-		mock(),
-		activeWorkflowManager,
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		globalConfig,
-		mock(),
-		Container.get(WorkflowFinderService),
-		workflowPublishHistoryRepository,
-		workflowValidationService,
-		nodeTypes,
-		webhookServiceMock,
+		mock(), // logger
+		Container.get(SharedWorkflowRepository), // sharedWorkflowRepository
+		workflowRepository, // workflowRepository
+		mock(), // workflowTagMappingRepository
+		mock(), // binaryDataService
+		mock(), // ownershipService
+		mock(), // tagService
+		workflowHistoryService, // workflowHistoryService
+		mock(), // externalHooks
+		activeWorkflowManager, // activeWorkflowManager
+		mock(), // roleService
+		mock(), // projectService
+		mock(), // executionRepository
+		mock(), // eventService
+		globalConfig, // globalConfig
+		mock(), // folderRepository
+		Container.get(WorkflowFinderService), // workflowFinderService
+		workflowPublishHistoryRepository, // workflowPublishHistoryRepository
+		workflowValidationService, // workflowValidationService
+		nodeTypes, // nodeTypes
+		webhookServiceMock, // webhookService
 		mock(), // licenseState
 	);
 });
