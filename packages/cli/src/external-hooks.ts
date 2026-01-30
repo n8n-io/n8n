@@ -12,7 +12,7 @@ import {
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { ensureError, UnexpectedError } from 'n8n-workflow';
 import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -164,15 +164,17 @@ export class ExternalHooks {
 		for (const hookFunction of hookFunctions) {
 			try {
 				await hookFunction.apply(context, hookParameters);
-			} catch (cause) {
-				this.logger.error(`There was a problem running hook "${hookName}"`);
-
-				const error = new UnexpectedError(`External hook "${hookName}" failed`, { cause });
-				this.errorReporter.error(error, { level: 'fatal' });
+			} catch (e) {
+				const error = ensureError(e);
+				this.errorReporter.error(error, {
+					extra: {
+						hookName,
+					},
+				});
 
 				// Throw original error, so that hooks control the error returned to use
 				// For example on Cloud we return upgrade message when user reaches max executions or activations
-				throw cause;
+				throw error;
 			}
 		}
 	}
