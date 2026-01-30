@@ -39,7 +39,6 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { ExecutionDataRepository } from './execution-data.repository';
 import {
 	AnnotationTagEntity,
 	AnnotationTagMapping,
@@ -52,7 +51,6 @@ import {
 	WorkflowEntity,
 } from '../entities';
 import type {
-	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionBase,
 	IExecutionFlattedDb,
@@ -154,7 +152,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
@@ -340,29 +337,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
-	}
-
-	/**
-	 * Insert a new execution and its execution data using a transaction.
-	 */
-	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
-		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
-		const { connections, nodes, name, settings } = currentWorkflow ?? {};
-		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
-
-		return await this.manager.transaction(async (transactionManager) => {
-			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
-				...rest,
-				createdAt: new Date(),
-			});
-			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.createExecutionDataForExecution(
-				{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
-				transactionManager,
-			);
-			return String(executionId);
-		});
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
