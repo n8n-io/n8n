@@ -8,6 +8,8 @@ export function sortByCode(
 	items: INodeExecutionData[],
 ): INodeExecutionData[] {
 	const code = this.getNodeParameter('code', 0) as string;
+	// Reset regex state
+	returnRegExp.lastIndex = 0;
 	if (!returnRegExp.test(code)) {
 		throw new NodeOperationError(
 			this.getNode(),
