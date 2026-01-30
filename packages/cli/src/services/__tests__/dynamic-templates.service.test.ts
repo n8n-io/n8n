@@ -1,24 +1,26 @@
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import {
-	DynamicTemplatesService,
-	DYNAMIC_TEMPLATES_URL,
-	REQUEST_TIMEOUT_MS,
-} from '@/services/dynamic-templates.service';
+import { DynamicTemplatesService, REQUEST_TIMEOUT_MS } from '@/services/dynamic-templates.service';
 
 jest.mock('axios');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+const MOCK_DYNAMIC_TEMPLATES_HOST = 'https://dynamic-templates.n8n.io/templates';
+
 describe('DynamicTemplatesService', () => {
 	const mockLogger = mock<Logger>();
+	const mockGlobalConfig = mock<GlobalConfig>({
+		templates: { dynamicTemplatesHost: MOCK_DYNAMIC_TEMPLATES_HOST },
+	});
 	let dynamicTemplatesService: DynamicTemplatesService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		dynamicTemplatesService = new DynamicTemplatesService(mockLogger);
+		dynamicTemplatesService = new DynamicTemplatesService(mockLogger, mockGlobalConfig);
 	});
 
 	describe('fetchDynamicTemplates', () => {
@@ -35,7 +37,7 @@ describe('DynamicTemplatesService', () => {
 			const result = await dynamicTemplatesService.fetchDynamicTemplates();
 
 			expect(result).toEqual(mockTemplates);
-			expect(mockedAxios.get).toHaveBeenCalledWith(DYNAMIC_TEMPLATES_URL, {
+			expect(mockedAxios.get).toHaveBeenCalledWith(MOCK_DYNAMIC_TEMPLATES_HOST, {
 				headers: { 'Content-Type': 'application/json' },
 				timeout: REQUEST_TIMEOUT_MS,
 			});
