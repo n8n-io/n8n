@@ -51,7 +51,7 @@ function onAction(action: string) {
 </script>
 
 <template>
-	<N8nCard hoverable>
+	<N8nCard :class="$style.card" hoverable>
 		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
@@ -68,7 +68,7 @@ function onAction(action: string) {
 					v-if="showDisconnectedBadge"
 					theme="warning"
 					:bold="false"
-					size="small"
+					size="xsmall"
 					data-test-id="disconnected-badge"
 				>
 					{{ i18n.baseText('settings.secretsProviderConnections.state.disconnected') }}
@@ -76,7 +76,7 @@ function onAction(action: string) {
 			</div>
 		</template>
 		<template #default>
-			<N8nText color="text-light" size="small">
+			<N8nText class="pb-4xs" color="text-light" size="small">
 				<span data-test-id="secrets-provider-display-name">
 					{{ providerTypeInfo?.displayName ?? provider.type }}
 				</span>
@@ -119,6 +119,11 @@ function onAction(action: string) {
 </template>
 
 <style lang="css" module>
+.card {
+	--card--padding: var(--spacing--2xs);
+	padding-left: var(--spacing--sm);
+}
+
 .providerImage {
 	width: 100%;
 	height: 100%;
