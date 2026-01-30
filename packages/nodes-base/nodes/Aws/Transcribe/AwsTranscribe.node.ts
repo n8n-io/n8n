@@ -123,32 +123,420 @@ export class AwsTranscribe implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'American English',
+						name: 'Abkhaz',
+						value: 'ab-GE',
+					},
+					{
+						name: 'Afrikaans',
+						value: 'af-ZA',
+					},
+					{
+						name: 'Arabic, Gulf',
+						value: 'ar-AE',
+					},
+					{
+						name: 'Arabic, Modern Standard',
+						value: 'ar-SA',
+					},
+					{
+						name: 'Armenian',
+						value: 'hy-AM',
+					},
+					{
+						name: 'Asturian',
+						value: 'ast-ES',
+					},
+					{
+						name: 'Azerbaijani',
+						value: 'az-AZ',
+					},
+					{
+						name: 'Bashkir',
+						value: 'ba-RU',
+					},
+					{
+						name: 'Basque',
+						value: 'eu-ES',
+					},
+					{
+						name: 'Belarusian',
+						value: 'be-BY',
+					},
+					{
+						name: 'Bengali',
+						value: 'bn-IN',
+					},
+					{
+						name: 'Bosnian',
+						value: 'bs-BA',
+					},
+					{
+						name: 'Bulgarian',
+						value: 'bg-BG',
+					},
+					{
+						name: 'Catalan',
+						value: 'ca-ES',
+					},
+					{
+						name: 'Central Kurdish, Iran',
+						value: 'ckb-IR',
+					},
+					{
+						name: 'Central Kurdish, Iraq',
+						value: 'ckb-IQ',
+					},
+					{
+						name: 'Chinese, Cantonese',
+						value: 'zh-HK',
+					},
+					{
+						name: 'Chinese, Simplified',
+						value: 'zh-CN',
+					},
+					{
+						name: 'Chinese, Traditional',
+						value: 'zh-TW',
+					},
+					{
+						name: 'Croatian',
+						value: 'hr-HR',
+					},
+					{
+						name: 'Czech',
+						value: 'cs-CZ',
+					},
+					{
+						name: 'Danish',
+						value: 'da-DK',
+					},
+					{
+						name: 'Dutch',
+						value: 'nl-NL',
+					},
+					{
+						name: 'English, Australian',
+						value: 'en-AU',
+					},
+					{
+						name: 'English, British',
+						value: 'en-GB',
+					},
+					{
+						name: 'English, Indian',
+						value: 'en-IN',
+					},
+					{
+						name: 'English, Irish',
+						value: 'en-IE',
+					},
+					{
+						name: 'English, New Zealand',
+						value: 'en-NZ',
+					},
+					{
+						name: 'English, Scottish',
+						value: 'en-AB',
+					},
+					{
+						name: 'English, South African',
+						value: 'en-ZA',
+					},
+					{
+						name: 'English, US',
 						value: 'en-US',
 					},
 					{
-						name: 'British English',
-						value: 'en-GB',
+						name: 'English, Welsh',
+						value: 'en-WL',
+					},
+					{
+						name: 'Estonian (et-EE)',
+						value: 'et-EE',
+					},
+					{
+						name: 'Estonian (et-ET)',
+						value: 'et-ET',
+					},
+					{
+						name: 'Farsi',
+						value: 'fa-IR',
+					},
+					{
+						name: 'Finnish',
+						value: 'fi-FI',
+					},
+					{
+						name: 'French',
+						value: 'fr-FR',
+					},
+					{
+						name: 'French, Canadian',
+						value: 'fr-CA',
+					},
+					{
+						name: 'Galician',
+						value: 'gl-ES',
+					},
+					{
+						name: 'Georgian',
+						value: 'ka-GE',
 					},
 					{
 						name: 'German',
 						value: 'de-DE',
 					},
 					{
-						name: 'Indian English',
-						value: 'en-IN',
+						name: 'German, Swiss',
+						value: 'de-CH',
 					},
 					{
-						name: 'Irish English',
-						value: 'en-IE',
+						name: 'Greek',
+						value: 'el-GR',
+					},
+					{
+						name: 'Gujarati',
+						value: 'gu-IN',
+					},
+					{
+						name: 'Hausa',
+						value: 'ha-NG',
+					},
+					{
+						name: 'Hebrew',
+						value: 'he-IL',
+					},
+					{
+						name: 'Hindi, Indian',
+						value: 'hi-IN',
+					},
+					{
+						name: 'Hungarian',
+						value: 'hu-HU',
+					},
+					{
+						name: 'Icelandic',
+						value: 'is-IS',
+					},
+					{
+						name: 'Indonesian',
+						value: 'id-ID',
+					},
+					{
+						name: 'Italian',
+						value: 'it-IT',
+					},
+					{
+						name: 'Japanese',
+						value: 'ja-JP',
+					},
+					{
+						name: 'Kabyle',
+						value: 'kab-DZ',
+					},
+					{
+						name: 'Kannada',
+						value: 'kn-IN',
+					},
+					{
+						name: 'Kazakh',
+						value: 'kk-KZ',
+					},
+					{
+						name: 'Kinyarwanda',
+						value: 'rw-RW',
+					},
+					{
+						name: 'Korean',
+						value: 'ko-KR',
+					},
+					{
+						name: 'Kyrgyz',
+						value: 'ky-KG',
+					},
+					{
+						name: 'Latvian',
+						value: 'lv-LV',
+					},
+					{
+						name: 'Lithuanian',
+						value: 'lt-LT',
+					},
+					{
+						name: 'Luganda',
+						value: 'lg-IN',
+					},
+					{
+						name: 'Macedonian',
+						value: 'mk-MK',
+					},
+					{
+						name: 'Malay',
+						value: 'ms-MY',
+					},
+					{
+						name: 'Malayalam',
+						value: 'ml-IN',
+					},
+					{
+						name: 'Maltese',
+						value: 'mt-MT',
+					},
+					{
+						name: 'Marathi',
+						value: 'mr-IN',
+					},
+					{
+						name: 'Meadow Mari',
+						value: 'mhr-RU',
+					},
+					{
+						name: 'Mongolian',
+						value: 'mn-MN',
+					},
+					{
+						name: 'Norwegian Bokmål',
+						value: 'no-NO',
+					},
+					{
+						name: 'Odia/Oriya',
+						value: 'or-IN',
+					},
+					{
+						name: 'Pashto',
+						value: 'ps-AF',
+					},
+					{
+						name: 'Polish',
+						value: 'pl-PL',
+					},
+					{
+						name: 'Portuguese',
+						value: 'pt-PT',
+					},
+					{
+						name: 'Portuguese, Brazilian',
+						value: 'pt-BR',
+					},
+					{
+						name: 'Punjabi',
+						value: 'pa-IN',
+					},
+					{
+						name: 'Romanian',
+						value: 'ro-RO',
 					},
 					{
 						name: 'Russian',
 						value: 'ru-RU',
 					},
 					{
+						name: 'Serbian',
+						value: 'sr-RS',
+					},
+					{
+						name: 'Sinhala',
+						value: 'si-LK',
+					},
+					{
+						name: 'Slovak',
+						value: 'sk-SK',
+					},
+					{
+						name: 'Slovenian',
+						value: 'sl-SI',
+					},
+					{
+						name: 'Somali',
+						value: 'so-SO',
+					},
+					{
 						name: 'Spanish',
 						value: 'es-ES',
+					},
+					{
+						name: 'Spanish, US',
+						value: 'es-US',
+					},
+					{
+						name: 'Sundanese',
+						value: 'su-ID',
+					},
+					{
+						name: 'Swahili, Kenya',
+						value: 'sw-KE',
+					},
+					{
+						name: 'Swahili, Burundi',
+						value: 'sw-BI',
+					},
+					{
+						name: 'Swahili, Rwanda',
+						value: 'sw-RW',
+					},
+					{
+						name: 'Swahili, Tanzania',
+						value: 'sw-TZ',
+					},
+					{
+						name: 'Swahili, Uganda',
+						value: 'sw-UG',
+					},
+					{
+						name: 'Swedish',
+						value: 'sv-SE',
+					},
+					{
+						name: 'Tagalog/Filipino',
+						value: 'tl-PH',
+					},
+					{
+						name: 'Tamil',
+						value: 'ta-IN',
+					},
+					{
+						name: 'Tatar',
+						value: 'tt-RU',
+					},
+					{
+						name: 'Telugu',
+						value: 'te-IN',
+					},
+					{
+						name: 'Thai',
+						value: 'th-TH',
+					},
+					{
+						name: 'Turkish',
+						value: 'tr-TR',
+					},
+					{
+						name: 'Ukrainian',
+						value: 'uk-UA',
+					},
+					{
+						name: 'Uyghur',
+						value: 'ug-CN',
+					},
+					{
+						name: 'Uzbek',
+						value: 'uz-UZ',
+					},
+					{
+						name: 'Vietnamese',
+						value: 'vi-VN',
+					},
+					{
+						name: 'Welsh',
+						value: 'cy-WL',
+					},
+					{
+						name: 'Wolof',
+						value: 'wo-SN',
+					},
+					{
+						name: 'Zulu',
+						value: 'zu-ZA',
 					},
 				],
 				displayOptions: {
