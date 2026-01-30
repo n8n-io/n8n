@@ -106,6 +106,45 @@ describe('CodeFlow', () => {
 				);
 			});
 		});
+
+		describe('when authorizationUri contains a fragment (hash)', () => {
+			it('should append query parameters after the fragment', () => {
+				const authWithFragment = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: 'https://app.apollo.io/#/oauth/authorize',
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+				});
+				const uri = authWithFragment.code.getUri();
+				expect(uri).toEqual(
+					'https://app.apollo.io/#/oauth/authorize?client_id=abc&' +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=notifications',
+				);
+				expect(uri.indexOf('?')).toBeGreaterThan(uri.indexOf('#'));
+			});
+
+			it('should handle fragments with existing query parameters', () => {
+				const authWithFragmentAndParams = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: 'https://example.com/auth#/oauth/authorize?existing=param',
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['read', 'write'],
+				});
+				const uri = authWithFragmentAndParams.code.getUri();
+				expect(uri).toEqual(
+					'https://example.com/auth#/oauth/authorize?existing=param&client_id=abc&' +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=read%20write',
+				);
+			});
+		});
 	});
 
 	describe('#getToken', () => {
