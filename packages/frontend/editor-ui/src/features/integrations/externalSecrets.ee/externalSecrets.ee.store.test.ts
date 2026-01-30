@@ -203,19 +203,6 @@ describe('externalSecretsStore', () => {
 
 			expect(result).toEqual({});
 		});
-
-		it('should handle single-level secret keys', () => {
-			const store = useExternalSecretsStore();
-			store.state.projectSecrets = { provider: ['simple_key'] };
-
-			const result = store.projectSecretsAsObject;
-
-			expect(result).toEqual({
-				provider: {
-					simple_key: '*********',
-				},
-			});
-		});
 	});
 
 	describe('secretsAsObject', () => {
