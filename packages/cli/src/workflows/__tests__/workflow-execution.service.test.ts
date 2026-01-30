@@ -768,3 +768,244 @@ function createMainConnection(targetNode: string, sourceNode: string): IConnecti
 		},
 	};
 }
+
+describe('executeViaPublicApi()', () => {
+	const manualTriggerNode: INode = {
+		id: 'manual-trigger-id',
+		name: 'Manual Trigger',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+
+	const cronTriggerNode: INode = {
+		id: 'cron-trigger-id',
+		name: 'Cron Trigger',
+		type: 'n8n-nodes-base.cron',
+		typeVersion: 1,
+		position: [100, 0],
+		parameters: {},
+	};
+
+	const disabledTriggerNode: INode = {
+		...manualTriggerNode,
+		id: 'disabled-trigger-id',
+		name: 'Disabled Trigger',
+		disabled: true,
+	};
+
+	let workflowRunnerMock: MockProxy<WorkflowRunner>;
+	let nodeTypesMock: MockProxy<NodeTypes>;
+	let service: WorkflowExecutionService;
+
+	beforeEach(() => {
+		workflowRunnerMock = mock<WorkflowRunner>();
+		nodeTypesMock = mock<NodeTypes>();
+		workflowRunnerMock.run.mockResolvedValue('test-execution-id');
+
+		service = new WorkflowExecutionService(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			nodeTypesMock,
+			mock(),
+			workflowRunnerMock,
+			mock(),
+			mock(),
+			mock(),
+		);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('findStartNode behavior', () => {
+		test('should prefer manual trigger when present', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [cronTriggerNode, manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			nodeTypesMock.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.triggerToStartFrom?.name).toBe('Manual Trigger');
+		});
+
+		test('should fall back to other trigger when no manual trigger', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [cronTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			nodeTypesMock.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.triggerToStartFrom?.name).toBe('Cron Trigger');
+		});
+
+		test('should skip disabled triggers', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [disabledTriggerNode, cronTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			nodeTypesMock.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.triggerToStartFrom?.name).toBe('Cron Trigger');
+		});
+
+		test('should throw error when no trigger node exists', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [hackerNewsNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			nodeTypesMock.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { group: [] } }),
+			);
+
+			await expect(service.executeViaPublicApi(workflow, user, {})).rejects.toThrow(
+				'Workflow has no trigger node to start from',
+			);
+		});
+	});
+
+	describe('inputData handling', () => {
+		test('should convert inputData to pinData format for start node', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+			const inputData = { key: 'value', nested: { data: 123 } };
+
+			await service.executeViaPublicApi(workflow, user, { inputData });
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.pinData).toEqual({
+				'Manual Trigger': [{ json: inputData }],
+			});
+		});
+	});
+
+	describe('pinData handling', () => {
+		test('should pass pinData directly when provided', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+			const pinData = {
+				'Some Node': [{ json: { custom: 'data' } }],
+			};
+
+			await service.executeViaPublicApi(workflow, user, { pinData });
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.pinData).toEqual(pinData);
+		});
+
+		test('should not set pinData when neither inputData nor pinData provided', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.pinData).toBeUndefined();
+		});
+	});
+
+	describe('execution data', () => {
+		test('should return executionId from workflowRunner', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			workflowRunnerMock.run.mockResolvedValue('expected-execution-id');
+
+			const result = await service.executeViaPublicApi(workflow, user, {});
+
+			expect(result).toEqual({ executionId: 'expected-execution-id' });
+		});
+
+		test('should set executionMode to manual', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.executionMode).toBe('manual');
+		});
+
+		test('should pass userId from user', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'test-user-123' });
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.userId).toBe('test-user-123');
+		});
+
+		test('should force workflow to inactive state for execution', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: 'workflow-id',
+				active: true,
+				activeVersionId: 'some-version',
+				nodes: [manualTriggerNode],
+				connections: {},
+			});
+			const user = mock<User>({ id: 'user-id' });
+
+			await service.executeViaPublicApi(workflow, user, {});
+
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.workflowData.active).toBe(false);
+			expect(callArgs.workflowData.activeVersionId).toBeNull();
+		});
+	});
+});

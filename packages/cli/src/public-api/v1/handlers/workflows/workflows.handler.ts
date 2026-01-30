@@ -13,6 +13,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -368,6 +369,62 @@ export = {
 				);
 
 				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
+			}
+		},
+	],
+	executeWorkflow: [
+		apiKeyHasScope('workflow:execute'),
+		projectScope('workflow:execute', 'workflow'),
+		async (req: WorkflowRequest.Execute, res: express.Response): Promise<express.Response> => {
+			const { id: workflowId } = req.params;
+
+			// Validate request body with Zod
+			const executeBodySchema = z
+				.object({
+					inputData: z.record(z.unknown()).optional(),
+					pinData: z.record(z.array(z.object({ json: z.record(z.unknown()) }))).optional(),
+				})
+				.refine((data) => !(data.inputData && data.pinData), {
+					message: 'Cannot use both inputData and pinData. Choose one.',
+				});
+
+			const parseResult = executeBodySchema.safeParse(req.body ?? {});
+			if (!parseResult.success) {
+				return res.status(400).json({
+					message: parseResult.error.errors[0]?.message ?? 'Invalid request body',
+				});
+			}
+
+			const { inputData, pinData } = parseResult.data;
+
+			try {
+				// Get workflow
+				const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
+					workflowId,
+					req.user,
+					['workflow:execute'],
+				);
+
+				if (!workflow) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+
+				// Execute workflow
+				const executionService = Container.get(WorkflowExecutionService);
+				const result = await executionService.executeViaPublicApi(workflow, req.user, {
+					inputData,
+					pinData,
+				});
+
+				return res.json({ executionId: result.executionId });
 			} catch (error) {
 				if (error instanceof NotFoundError) {
 					return res.status(404).json({ message: 'Not Found' });

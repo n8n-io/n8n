@@ -2277,3 +2277,81 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
 	});
 });
+
+describe('POST /workflows/:id/execute', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/execute', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/execute', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/non-existing-id/execute').send({});
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should execute workflow and return execution ID', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`).send({});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.executionId).toBeDefined();
+		expect(typeof response.body.executionId).toBe('string');
+	});
+
+	test('should execute workflow with inputData', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`).send({
+			inputData: { testKey: 'testValue' },
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.executionId).toBeDefined();
+	});
+
+	test('should execute workflow with pinData', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const triggerNodeName = workflow.nodes[0]?.name ?? 'Trigger';
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`).send({
+			pinData: {
+				[triggerNodeName]: [{ json: { pinnedKey: 'pinnedValue' } }],
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.executionId).toBeDefined();
+	});
+
+	test('should fail when both inputData and pinData are provided', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`).send({
+			inputData: { key: 'value' },
+			pinData: { Node: [{ json: {} }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Cannot use both');
+	});
+
+	test('should execute non-owned workflow when owner', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/execute`).send({});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.executionId).toBeDefined();
+	});
+
+	test('should fail for member trying to execute workflow without access', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`).send({});
+
+		expect(response.statusCode).toBe(404);
+	});
+});
