@@ -2,6 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { PlanningAgent, type PlanningAgentConfig } from './planning-agent';
+import type { StreamChunk, StreamOutput } from './types/streaming';
 import { NodeTypeParser } from './utils/node-type-parser';
 
 // Create mock node types
@@ -30,7 +31,14 @@ const mockNodeTypes: INodeTypeDescription[] = [
 	},
 ] as INodeTypeDescription[];
 
-// Create a mock LLM
+// Create an async generator from chunks
+async function* mockAsyncGenerator<T>(chunks: T[]): AsyncGenerator<T> {
+	for (const chunk of chunks) {
+		yield chunk;
+	}
+}
+
+// Create a mock LLM with streaming support
 const createMockLLM = (responseContent: string) => {
 	const mockResponse = {
 		content: responseContent,
@@ -42,6 +50,7 @@ const createMockLLM = (responseContent: string) => {
 		invoke: jest.fn().mockResolvedValue(mockResponse),
 		bindTools: jest.fn().mockReturnValue({
 			invoke: jest.fn().mockResolvedValue(mockResponse),
+			stream: jest.fn().mockReturnValue(mockAsyncGenerator([mockResponse])),
 		}),
 	};
 };
@@ -138,6 +147,52 @@ describe('PlanningAgent', () => {
 			expect(finalResponse?.content).toContain('Overview');
 		});
 
+		it('should yield text content as message chunks', async () => {
+			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
+
+			const fullResponse =
+				'<planning>\nAnalyzing...\n</planning>\n<final_answer>Streamed answer.</final_answer>';
+
+			const config: PlanningAgentConfig = {
+				llm: createMockLLM(fullResponse) as unknown as PlanningAgentConfig['llm'],
+				nodeTypeParser,
+			};
+
+			const agent = new PlanningAgent(config);
+			const generator = agent.run('Test streaming');
+
+			const streamedChunks: StreamOutput[] = [];
+			let finalResponse;
+
+			while (true) {
+				const result = await generator.next();
+				if (result.done) {
+					finalResponse = result.value;
+					break;
+				}
+				streamedChunks.push(result.value);
+			}
+
+			// Should have yielded text chunk
+			const textChunks = streamedChunks.filter((c) =>
+				c.messages?.some((m: StreamChunk) => m.type === 'message'),
+			);
+			expect(textChunks.length).toBe(1);
+
+			// Verify chunk content - extract text from message chunks
+			const getMessageText = (chunk: StreamOutput) => {
+				const msg = chunk.messages?.find((m: StreamChunk) => m.type === 'message');
+				return msg && 'text' in msg ? msg.text : undefined;
+			};
+
+			expect(getMessageText(textChunks[0])).toContain('<planning>');
+			expect(getMessageText(textChunks[0])).toContain('<final_answer>');
+
+			// Final response should be parsed correctly
+			expect(finalResponse?.type).toBe('answer');
+			expect(finalResponse?.content).toBe('Streamed answer.');
+		});
+
 		it('should handle <planning> tags interleaved with <final_plan>', async () => {
 			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
 
@@ -224,7 +279,7 @@ None
 					{
 						id: 'call-1',
 						name: 'search_nodes',
-						args: { query: 'email' },
+						args: { queries: ['email'] },
 					},
 				],
 				response_metadata: { usage: { input_tokens: 100, output_tokens: 50 } },
@@ -236,13 +291,15 @@ None
 				response_metadata: { usage: { input_tokens: 100, output_tokens: 50 } },
 			};
 
+			const mockInvoke = jest
+				.fn()
+				.mockResolvedValueOnce(toolCallResponse)
+				.mockResolvedValueOnce(finalResponse);
+
 			const mockLLM = {
 				invoke: jest.fn(),
 				bindTools: jest.fn().mockReturnValue({
-					invoke: jest
-						.fn()
-						.mockResolvedValueOnce(toolCallResponse)
-						.mockResolvedValueOnce(finalResponse),
+					invoke: mockInvoke,
 				}),
 			};
 
@@ -254,7 +311,7 @@ None
 			const agent = new PlanningAgent(config);
 			const generator = agent.run('Find email nodes');
 
-			const chunks = [];
+			const chunks: StreamOutput[] = [];
 			while (true) {
 				const result = await generator.next();
 				if (result.done) {

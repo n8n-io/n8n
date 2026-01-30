@@ -22,7 +22,7 @@ import { buildPlanningAgentPrompt } from './prompts/planning';
 import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetBestPracticesTool } from './tools/get-best-practices.tool';
 import type { NodeTypeParser } from './utils/node-type-parser';
-import type { StreamOutput, ToolProgressChunk } from './types/streaming';
+import type { AgentMessageChunk, StreamOutput, ToolProgressChunk } from './types/streaming';
 
 /** Maximum iterations for the planning agent loop */
 const MAX_PLANNING_ITERATIONS = 10;
@@ -151,24 +151,56 @@ export class PlanningAgent {
 					throw new Error('Aborted');
 				}
 
-				// Invoke LLM
+				// Invoke LLM (streaming tool calls with LangChain has issues with args)
 				this.debugLog('RUN', 'Invoking LLM...');
 				const response = await llmWithTools.invoke(messages, { signal: abortSignal });
 
-				// Add AI message to history
+				// Extract text content and yield it for streaming
+				const accumulatedText = this.extractTextContent(response) ?? '';
+				if (accumulatedText) {
+					yield {
+						messages: [
+							{
+								role: 'assistant',
+								type: 'message',
+								text: accumulatedText,
+							} as AgentMessageChunk,
+						],
+					};
+				}
+
+				// Get tool calls from the response
+				const toolCalls = response.tool_calls ?? [];
+
+				this.debugLog('RUN', 'LLM response received', {
+					textLength: accumulatedText.length,
+					toolCallCount: toolCalls.length,
+					toolCalls: toolCalls.map((tc) => ({
+						id: tc.id,
+						name: tc.name,
+						argsKeys: Object.keys(tc.args),
+					})),
+				});
+
+				if (!accumulatedText && toolCalls.length === 0) {
+					this.debugLog('RUN', 'No response from LLM');
+					continue;
+				}
+
+				// Add response to message history
 				messages.push(response);
 
 				// Check if there are tool calls
-				if (response.tool_calls && response.tool_calls.length > 0) {
+				if (toolCalls.length > 0) {
 					this.debugLog('RUN', 'Processing tool calls...', {
-						toolCalls: response.tool_calls.map((tc) => ({
+						toolCalls: toolCalls.map((tc) => ({
 							name: tc.name,
 							id: tc.id ?? 'unknown',
 						})),
 					});
 
 					// Execute tool calls and stream progress
-					for (const toolCall of response.tool_calls) {
+					for (const toolCall of toolCalls) {
 						if (!toolCall.id) {
 							this.debugLog('RUN', 'Skipping tool call without ID', { name: toolCall.name });
 							continue;
@@ -181,10 +213,9 @@ export class PlanningAgent {
 				} else {
 					// No tool calls - try to parse as final response
 					this.debugLog('RUN', 'No tool calls, attempting to parse final response...');
-					const textContent = this.extractTextContent(response);
 
-					if (textContent) {
-						const parsed = this.parseTaggedResponse(textContent);
+					if (accumulatedText) {
+						const parsed = this.parseTaggedResponse(accumulatedText);
 						if (parsed) {
 							finalResponse = parsed;
 							this.debugLog('RUN', 'Final response parsed successfully', {
@@ -193,8 +224,8 @@ export class PlanningAgent {
 							});
 							break;
 						} else {
-							// If we couldn't parse JSON, ask the LLM to format correctly
-							this.debugLog('RUN', 'Failed to parse JSON response, requesting correction');
+							// If we couldn't parse, ask the LLM to format correctly
+							this.debugLog('RUN', 'Failed to parse response, requesting correction');
 							messages.push({
 								type: 'human',
 								content:
