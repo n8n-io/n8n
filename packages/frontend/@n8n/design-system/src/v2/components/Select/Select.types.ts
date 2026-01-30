@@ -12,6 +12,7 @@ type VueCssClass = undefined | string | Record<string, boolean> | Array<string |
 
 export type SelectItemProps = {
 	label?: string;
+	description?: string;
 	/**
 	 * The item type.
 	 * @defaultValue 'item'

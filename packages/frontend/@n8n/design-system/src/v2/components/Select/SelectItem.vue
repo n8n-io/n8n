@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import { SelectItem, SelectItemIndicator, SelectItemText, type AcceptableValue } from 'reka-ui';
 import { computed, useCssModule } from 'vue';
-
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { SelectItemProps, SelectValue } from './Select.types';
 
@@ -35,11 +35,16 @@ const trailingProps = computed(() => ({
 			<Icon v-if="props.icon" :icon="props.icon" v-bind="leadingProps" />
 		</slot>
 
-		<SelectItemText :class="$style.itemText">
-			<slot name="item-label" :item="props">
-				{{ props.label }}
-			</slot>
-		</SelectItemText>
+		<div :class="$style.itemContent">
+			<SelectItemText :class="$style.itemText">
+				<slot name="item-label" :item="props">
+					{{ props.label }}
+				</slot>
+			</SelectItemText>
+			<N8nText v-if="props.description" size="small" color="text-light" :class="$style.description">
+				{{ props.description }}
+			</N8nText>
+		</div>
 
 		<slot name="item-trailing" :item="props" :ui="trailingProps" />
 		<SelectItemIndicator as-child>
@@ -53,13 +58,33 @@ const trailingProps = computed(() => ({
 	flex-shrink: 0;
 }
 
-.itemText {
+.itemContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 	flex-grow: 1;
+	min-width: 0;
+}
+
+.itemText {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .itemIndicator,
 .itemTrailing {
 	margin-left: auto;
 	flex-shrink: 0;
+}
+
+.description {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
 }
 </style>

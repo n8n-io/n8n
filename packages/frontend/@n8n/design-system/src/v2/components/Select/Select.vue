@@ -290,12 +290,11 @@ const groups = computed<SelectItemProps[]>(() => {
 
 .selectItem {
 	font-size: var(--font-size--xs);
-	line-height: 1;
 	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--2xs);
+	height: auto;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 	position: relative;
 	user-select: none;
 	color: var(--color--text--shade-1);
