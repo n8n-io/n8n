@@ -38,6 +38,9 @@ export {
 	generateVersionIndexFile,
 	generateNodeTypeFile,
 	generateIndexFile,
+	// Split version generation (for nodes with discriminators)
+	hasDiscriminatorPattern,
+	planSplitVersionFiles,
 	// Subnode utilities
 	extractOutputTypes,
 	groupNodesByOutputType,

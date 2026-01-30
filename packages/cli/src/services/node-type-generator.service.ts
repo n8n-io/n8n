@@ -7,8 +7,12 @@ import { InstanceSettings } from 'n8n-core';
 
 import {
 	generateSingleVersionTypeFile,
+	generateSingleVersionSchemaFile,
 	generateVersionIndexFile,
 	generateIndexFile,
+	generateBaseSchemaFile,
+	hasDiscriminatorPattern,
+	planSplitVersionFiles,
 	versionToFileName,
 	nodeNameToFileName,
 	getPackageName,
@@ -82,6 +86,10 @@ export class NodeTypeGeneratorService {
 		// Ensure output directory exists
 		await fs.promises.mkdir(outputDir, { recursive: true });
 
+		// Generate base.schema.ts with common Zod helpers
+		const baseSchemaContent = generateBaseSchemaFile();
+		await fs.promises.writeFile(path.join(outputDir, 'base.schema.ts'), baseSchemaContent, 'utf-8');
+
 		// Read and parse nodes.json
 		const content = await fs.promises.readFile(nodesJsonPath, 'utf-8');
 		const nodes = JSON.parse(content) as NodeTypeDescription[];
@@ -132,13 +140,29 @@ export class NodeTypeGeneratorService {
 						}
 					}
 
-					// Generate a file for each version
+					// Generate files for each version
 					for (const version of allVersions) {
 						const sourceNode = versionToNode.get(version)!;
 						const fileName = versionToFileName(version);
-						const typeContent = generateSingleVersionTypeFile(sourceNode, version);
-						const filePath = path.join(nodeDir, `${fileName}.ts`);
-						await fs.promises.writeFile(filePath, typeContent, 'utf-8');
+
+						if (hasDiscriminatorPattern(sourceNode)) {
+							// Generate split structure for nodes with resource/operation or mode patterns
+							// planSplitVersionFiles returns both type files AND schema files
+							const versionDir = path.join(nodeDir, fileName);
+							await fs.promises.mkdir(versionDir, { recursive: true });
+							const files = planSplitVersionFiles(sourceNode, version);
+							await this.writePlanToDisk(versionDir, files);
+						} else {
+							// Generate flat type file
+							const typeContent = generateSingleVersionTypeFile(sourceNode, version);
+							const filePath = path.join(nodeDir, `${fileName}.ts`);
+							await fs.promises.writeFile(filePath, typeContent, 'utf-8');
+
+							// Generate flat schema file
+							const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
+							const schemaFilePath = path.join(nodeDir, `${fileName}.schema.ts`);
+							await fs.promises.writeFile(schemaFilePath, schemaContent, 'utf-8');
+						}
 					}
 
 					// Generate index.ts
@@ -164,5 +188,20 @@ export class NodeTypeGeneratorService {
 		await fs.promises.writeFile(hashFilePath, hash, 'utf-8');
 
 		this.logger.info(`Generated types for ${allNodes.length} nodes in ${outputDir}`);
+	}
+
+	/**
+	 * Write a plan (Map of relative paths to content) to disk
+	 *
+	 * @param baseDir Base directory for the files
+	 * @param plan Map of relative path -> file content
+	 */
+	private async writePlanToDisk(baseDir: string, plan: Map<string, string>): Promise<void> {
+		for (const [relativePath, content] of plan) {
+			const fullPath = path.join(baseDir, relativePath);
+			const dir = path.dirname(fullPath);
+			await fs.promises.mkdir(dir, { recursive: true });
+			await fs.promises.writeFile(fullPath, content, 'utf-8');
+		}
 	}
 }
