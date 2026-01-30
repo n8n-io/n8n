@@ -1,4 +1,4 @@
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ActiveWorkflows } from 'n8n-core';
 import { type INode, type Workflow, type IWorkflowBase } from 'n8n-workflow';
@@ -50,7 +50,7 @@ export class TriggerValidationService {
 	 *
 	 * @throws TriggerParameterConflictError if a conflict is found
 	 */
-	async validateWorkflowActivation(workflow: Workflow): Promise<void> {
+	async validateWorkflowActivation(workflow: Workflow | WorkflowEntity): Promise<void> {
 		const workflowId = workflow.id;
 		const nodes = Object.values(workflow.nodes);
 		const enabledNodes = nodes.filter((n) => !n.disabled);

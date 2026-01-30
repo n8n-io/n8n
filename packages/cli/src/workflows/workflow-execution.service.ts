@@ -108,15 +108,6 @@ export class WorkflowExecutionService {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
 
-		const triggerToStartFrom =
-			'triggerToStartFrom' in payload ? payload.triggerToStartFrom : undefined;
-
-		await this.triggerValidation.validateManualExecution(
-			payload.workflowData,
-			workflowIsActive,
-			triggerToStartFrom,
-		);
-
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -216,6 +207,15 @@ export class WorkflowExecutionService {
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
 			};
 		}
+
+		const triggerToStartFrom =
+			'triggerToStartFrom' in payload ? payload.triggerToStartFrom : undefined;
+
+		await this.triggerValidation.validateManualExecution(
+			payload.workflowData,
+			workflowIsActive,
+			triggerToStartFrom,
+		);
 
 		if (data) {
 			const offloadingManualExecutionsInQueueMode =

@@ -64,7 +64,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { TriggerValidationService } from '@/workflows/trigger-validation.service';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -97,7 +96,6 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
-		private readonly triggerValidation: TriggerValidationService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -968,8 +966,6 @@ export class ActiveWorkflowManager {
 		if (workflow.getTriggerNodes().length === 0 && workflow.getPollNodes().length === 0) {
 			return false;
 		}
-
-		await this.triggerValidation.validateWorkflowActivation(workflow);
 
 		await this.activeWorkflows.add(
 			workflow.id,
