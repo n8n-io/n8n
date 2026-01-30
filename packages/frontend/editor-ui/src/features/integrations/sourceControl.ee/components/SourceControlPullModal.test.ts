@@ -407,7 +407,7 @@ describe('SourceControlPullModal', () => {
 				},
 			];
 
-			const { queryByText, getByText } = renderModal({
+			const { queryByText, getByTestId } = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -417,14 +417,12 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			// "None" is selected by default
-			const noneButton = getByText('None');
-			expect(noneButton.closest('.n8n-radio-button')).toHaveAttribute('aria-checked', 'true');
+			expect(getByTestId('auto-publish-select')).toBeInTheDocument();
 
-			expect(queryByText('Auto-publishing')).not.toBeInTheDocument();
+			expect(queryByText('Auto-publish')).not.toBeInTheDocument();
 		});
 
-		it('should show badges for all non-deleted workflows when "All" is selected', async () => {
+		it('should show badges for all non-deleted workflows when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -461,7 +459,7 @@ describe('SourceControlPullModal', () => {
 				},
 			];
 
-			const { getAllByText, getByText } = renderModal({
+			const wrapper = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -471,17 +469,25 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const selectTrigger = wrapper.getByTestId('auto-publish-select');
+			await userEvent.click(selectTrigger);
+
+			await waitFor(() => {
+				const onOption = wrapper.getAllByText('On');
+				expect(onOption.length).toBeGreaterThan(0);
+			});
+
+			const onOption = wrapper.getAllByText('On')[0];
+			await userEvent.click(onOption);
 
 			await waitFor(() => {
 				// All 3 workflows should show badges
-				const autoPublishBadges = getAllByText('Auto-publishing');
+				const autoPublishBadges = wrapper.getAllByText('Auto-publish');
 				expect(autoPublishBadges).toHaveLength(3);
 			});
 		});
 
-		it('should show badges only for published existing workflows when "Only currently published" is selected', async () => {
+		it('should show badges only for published existing workflows when "If workflow already published" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -518,7 +524,7 @@ describe('SourceControlPullModal', () => {
 				},
 			];
 
-			const { getAllByText, getByText } = renderModal({
+			const wrapper = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -528,17 +534,25 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const publishedButton = getByText('Only currently published');
-			await userEvent.click(publishedButton);
+			const selectTrigger = wrapper.getByTestId('auto-publish-select');
+			await userEvent.click(selectTrigger);
+
+			await waitFor(() => {
+				const publishedOption = wrapper.getAllByText('If workflow already published');
+				expect(publishedOption.length).toBeGreaterThan(0);
+			});
+
+			const publishedOption = wrapper.getAllByText('If workflow already published')[0];
+			await userEvent.click(publishedOption);
 
 			await waitFor(() => {
 				// Only 1 workflow (the published modified one) should show badge
-				const autoPublishBadges = getAllByText('Auto-publishing');
+				const autoPublishBadges = wrapper.getAllByText('Auto-publish');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 		});
 
-		it('should not show badges for deleted workflows even when "All" is selected', async () => {
+		it('should not show badges for deleted workflows even when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -564,7 +578,7 @@ describe('SourceControlPullModal', () => {
 				},
 			];
 
-			const { getAllByText, getByText } = renderModal({
+			const wrapper = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -574,20 +588,28 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const selectTrigger = wrapper.getByTestId('auto-publish-select');
+			await userEvent.click(selectTrigger);
+
+			await waitFor(() => {
+				const onOption = wrapper.getAllByText('On');
+				expect(onOption.length).toBeGreaterThan(0);
+			});
+
+			const onOption = wrapper.getAllByText('On')[0];
+			await userEvent.click(onOption);
 
 			await waitFor(() => {
 				// Only 1 badge (for the new workflow, not the deleted one)
-				const autoPublishBadges = getAllByText('Auto-publishing');
+				const autoPublishBadges = wrapper.getAllByText('Auto-publish');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 
-			expect(getByText('Deleted Workflow')).toBeInTheDocument();
-			expect(getByText('New Workflow')).toBeInTheDocument();
+			expect(wrapper.getByText('Deleted Workflow')).toBeInTheDocument();
+			expect(wrapper.getByText('New Workflow')).toBeInTheDocument();
 		});
 
-		it('should not show badges for archived workflows even when "All" is selected', async () => {
+		it('should not show badges for archived workflows even when "On" is selected', async () => {
 			const status: SourceControlledFile[] = [
 				{
 					id: 'workflow-1',
@@ -615,7 +637,7 @@ describe('SourceControlPullModal', () => {
 				},
 			];
 
-			const { getAllByText, getByText } = renderModal({
+			const wrapper = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -625,17 +647,25 @@ describe('SourceControlPullModal', () => {
 				},
 			});
 
-			const allButton = getByText('All');
-			await userEvent.click(allButton);
+			const selectTrigger = wrapper.getByTestId('auto-publish-select');
+			await userEvent.click(selectTrigger);
+
+			await waitFor(() => {
+				const onOption = wrapper.getAllByText('On');
+				expect(onOption.length).toBeGreaterThan(0);
+			});
+
+			const onOption = wrapper.getAllByText('On')[0];
+			await userEvent.click(onOption);
 
 			await waitFor(() => {
 				// Only 1 badge (for the active workflow, not the archived one)
-				const autoPublishBadges = getAllByText('Auto-publishing');
+				const autoPublishBadges = wrapper.getAllByText('Auto-publish');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 
-			expect(getByText('Archived Workflow')).toBeInTheDocument();
-			expect(getByText('Active Workflow')).toBeInTheDocument();
+			expect(wrapper.getByText('Archived Workflow')).toBeInTheDocument();
+			expect(wrapper.getByText('Active Workflow')).toBeInTheDocument();
 		});
 	});
 });

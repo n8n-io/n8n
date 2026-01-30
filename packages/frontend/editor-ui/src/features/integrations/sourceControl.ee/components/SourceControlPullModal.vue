@@ -38,7 +38,8 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
-	N8nRadioButtons,
+	N8nOption,
+	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -76,27 +77,30 @@ const autoPublishOptions = computed(() => {
 	const workflows = status.value.filter((f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow);
 	const hasPublishedWorkflows = workflows.some((w) => w.isLocalPublished && w.status !== 'created');
 
-	const options: Array<{ label: string; value: AutoPublishMode }> = [
+	return [
 		{
-			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.none'),
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.off'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.off.description',
+			),
 			value: 'none',
 		},
-	];
-
-	// Only show "published" option if there are existing published workflows
-	if (hasPublishedWorkflows) {
-		options.push({
+		{
 			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.published'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.published.description',
+			),
 			value: 'published',
-		});
-	}
-
-	options.push({
-		label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.all'),
-		value: 'all',
-	});
-
-	return options;
+			disabled: !hasPublishedWorkflows,
+		},
+		{
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.on'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.on.description',
+			),
+			value: 'all',
+		},
+	];
 });
 
 const hasModifiedWorkflows = computed(() => {
@@ -366,8 +370,8 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
 			</N8nHeading>
 
-			<div :class="[$style.filtersRow]" class="mt-l">
-				<N8nText tag="div" class="mb-xs">
+			<div :class="[$style.filtersRow]" class="mt-xs">
+				<N8nText tag="div">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
@@ -377,18 +381,31 @@ onMounted(() => {
 		</template>
 		<template #content>
 			<div style="display: flex; flex-direction: column; height: 100%">
-				<div :class="$style.autoPublishSection" class="mb-m">
-					<N8nText tag="div" bold size="medium" class="mb-2xs">
+				<div :class="$style.autoPublishSection">
+					<N8nText tag="div" bold size="medium" color="text-dark">
 						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
 					</N8nText>
-					<N8nText tag="div" size="small" color="text-light" class="mb-xs">
-						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.description') }}
-					</N8nText>
-					<N8nRadioButtons
+					<N8nSelect
 						v-model="autoPublish"
-						:options="autoPublishOptions"
-						data-test-id="auto-publish-radio-buttons"
-					/>
+						size="medium"
+						:class="$style.select"
+						data-test-id="auto-publish-select"
+					>
+						<N8nOption
+							v-for="option in autoPublishOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+							:disabled="option.disabled"
+						>
+							<div :class="$style.listOption">
+								<N8nText bold>{{ option.label }}</N8nText>
+								<N8nText v-if="option.description" size="small" color="text-light">
+									{{ option.description }}
+								</N8nText>
+							</div>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 				<div style="display: flex; flex: 1; min-height: 0">
 					<div :class="$style.tabs">
@@ -452,35 +469,26 @@ onMounted(() => {
 														</RouterLink>
 														<span v-else>{{ file.name }}</span>
 													</N8nText>
-													<N8nText
-														v-if="file.updatedAt"
-														tag="p"
-														class="mt-0"
-														color="text-light"
-														size="small"
-													>
-														{{ renderUpdatedAt(file) }}
-													</N8nText>
-													<N8nText
-														v-if="file.willBeAutoPublished"
-														tag="p"
-														class="mt-2xs"
-														color="success"
-														size="small"
-														bold
-													>
-														{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublishing') }}
-													</N8nText>
-													<N8nText
-														v-if="file.isRemoteArchived"
-														tag="p"
-														class="mt-2xs"
-														color="warning"
-														size="small"
-														bold
-													>
-														{{ i18n.baseText('settings.sourceControl.modals.pull.willBeArchived') }}
-													</N8nText>
+													<div :class="$style.statusLine">
+														<N8nText v-if="file.updatedAt" color="text-light" size="small">
+															{{ renderUpdatedAt(file) }}
+														</N8nText>
+														<N8nText
+															v-if="file.willBeAutoPublished"
+															color="success"
+															size="small"
+															bold
+														>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
+															}}
+														</N8nText>
+														<N8nText v-if="file.isRemoteArchived" color="warning" size="small" bold>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
+															}}
+														</N8nText>
+													</div>
 												</div>
 												<span :class="[$style.badges]">
 													<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
@@ -693,8 +701,29 @@ onMounted(() => {
 }
 
 .autoPublishSection {
-	padding: var(--spacing--md);
-	border: var(--border);
-	border-radius: var(--radius--lg);
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	padding: var(--spacing--4xs) 0;
+	margin-bottom: var(--spacing--xs);
+}
+
+.select {
+	width: 250px;
+}
+
+.statusLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.listOption {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	margin: var(--spacing--3xs) 0;
+	white-space: normal;
+	padding-right: var(--spacing--md);
 }
 </style>
