@@ -271,9 +271,11 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
-				id: `${index}`,
-				text: message.kwargs.content,
-				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
+			    id: `${index}`,
+			    text: message.id.includes('HumanMessage') 
+			        ? message.kwargs.chat_input 
+			        : message.kwargs.content,
+			    sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
 			}));
 
 			// Always set currentSessionId to preserve manually set sessionIds
