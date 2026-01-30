@@ -67,7 +67,7 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantInspiration: 'variant-inspiration',
 });
 
-export const DYNAMIC_TEMPLATES_EXPERIMENT = createExperiment('064_dynamic_templates');
+export const DYNAMIC_TEMPLATES_EXPERIMENT = createExperiment('068_dynamic_templates');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
