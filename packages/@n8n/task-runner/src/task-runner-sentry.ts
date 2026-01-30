@@ -30,6 +30,9 @@ export class TaskRunnerSentry {
 			withEventLoopBlockDetection: false,
 			tracesSampleRate,
 			profilesSampleRate,
+			eligibleIntegrations: {
+				Http: true,
+			},
 		});
 	}
 
