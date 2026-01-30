@@ -1,3 +1,4 @@
+import type { ChatHubN8nModel } from '@n8n/api-types';
 import {
 	createActiveWorkflow,
 	createWorkflow,
@@ -5,7 +6,6 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import assert from 'assert';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
@@ -105,8 +105,7 @@ describe('ChatHubModelsService', () => {
 				expect(model.name).toBe(agentName);
 				expect(model.description).toBe(agentDescription);
 				expect(model.model.provider).toBe('n8n');
-				assert(model.model.provider === 'n8n');
-				expect(model.model.workflowId).toBeDefined();
+				expect((model.model as ChatHubN8nModel).workflowId).toBeDefined();
 				expect(model.metadata.available).toBe(true);
 			});
 

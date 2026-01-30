@@ -11,8 +11,8 @@ import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialE
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubSessionRepository } from './chat-session.repository';
 import { EditMessagePayload, HumanMessagePayload } from './chat-hub.types';
+import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
 export class ChatHubMessageRepository extends Repository<ChatHubMessage> {

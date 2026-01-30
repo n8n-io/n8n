@@ -7,7 +7,6 @@ import {
 	type ChatMessageId,
 	type ChatSessionId,
 	ChatHubConversationModel,
-	ChatHubBaseLLMModel,
 	type ChatHubUpdateConversationRequest,
 	type ChatHubSessionDto,
 } from '@n8n/api-types';
@@ -20,13 +19,9 @@ import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
-	type INodeCredentials,
-	type IWorkflowBase,
-	CHAT_NODE_TYPE,
 	INode,
+	type INodeCredentials,
 	type IBinaryData,
-	createRunExecutionData,
-	AGENT_LANGCHAIN_NODE_TYPE,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -35,7 +30,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import type { ChatHubMessage } from './chat-hub-message.entity';
@@ -43,18 +37,11 @@ import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity'
 import { ChatHubTitleService } from './chat-hub-title.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import {
-	CHAT_TRIGGER_NODE_MIN_VERSION,
-	SUPPORTED_RESPONSE_MODES,
-	TOOLS_AGENT_NODE_MIN_VERSION,
-} from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
 	EditMessagePayload,
-	chatTriggerParamsShape,
 	PreparedChatWorkflow,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
@@ -71,14 +58,12 @@ export class ChatHubService {
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly chatHubAgentService: ChatHubAgentService,
-		private readonly chatHubCredentialsService: ChatHubCredentialsService,
-		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubModelsService: ChatHubModelsService,
-		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatStreamService: ChatStreamService,
 		private readonly chatHubExecutionService: ChatHubExecutionService,
 		private readonly chatHubTitleService: ChatHubTitleService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -93,264 +78,6 @@ export class ChatHubService {
 		}
 
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
-	}
-
-	private async prepareReplyWorkflow(
-		user: User,
-		sessionId: ChatSessionId,
-		credentials: INodeCredentials,
-		model: ChatHubConversationModel,
-		history: ChatHubMessage[],
-		message: string,
-		tools: INode[],
-		attachments: IBinaryData[],
-		timeZone: string,
-		trx: EntityManager,
-		executionMetadata: ChatHubAuthenticationMetadata,
-	) {
-		if (model.provider === 'n8n') {
-			return await this.prepareWorkflowAgentWorkflow(
-				user,
-				sessionId,
-				model.workflowId,
-				message,
-				attachments,
-				trx,
-				executionMetadata,
-			);
-		}
-
-		if (model.provider === 'custom-agent') {
-			return await this.prepareChatAgentWorkflow(
-				model.agentId,
-				user,
-				sessionId,
-				history,
-				message,
-				attachments,
-				timeZone,
-				trx,
-				executionMetadata,
-			);
-		}
-
-		return await this.prepareBaseChatWorkflow(
-			user,
-			sessionId,
-			credentials,
-			model,
-			history,
-			message,
-			undefined,
-			tools,
-			attachments,
-			timeZone,
-			trx,
-			executionMetadata,
-		);
-	}
-
-	private async prepareBaseChatWorkflow(
-		user: User,
-		sessionId: ChatSessionId,
-		credentials: INodeCredentials,
-		model: ChatHubBaseLLMModel,
-		history: ChatHubMessage[],
-		message: string,
-		systemMessage: string | undefined,
-		tools: INode[],
-		attachments: IBinaryData[],
-		timeZone: string,
-		trx: EntityManager,
-		executionMetadata: ChatHubAuthenticationMetadata,
-	) {
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
-		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
-		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
-
-		return await this.chatHubWorkflowService.createChatWorkflow(
-			user.id,
-			sessionId,
-			projectId,
-			history,
-			message,
-			attachments,
-			credentials,
-			model,
-			systemMessage,
-			tools,
-			timeZone,
-			executionMetadata,
-			trx,
-		);
-	}
-
-	private async prepareChatAgentWorkflow(
-		agentId: string,
-		user: User,
-		sessionId: ChatSessionId,
-		history: ChatHubMessage[],
-		message: string,
-		attachments: IBinaryData[],
-		timeZone: string,
-		trx: EntityManager,
-		executionMetadata: ChatHubAuthenticationMetadata,
-	) {
-		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
-
-		if (!agent) {
-			throw new BadRequestError('Agent not found');
-		}
-
-		if (!agent.provider || !agent.model) {
-			throw new BadRequestError('Provider or model not set for agent');
-		}
-
-		const credentialId = agent.credentialId;
-		if (!credentialId) {
-			throw new BadRequestError('Credentials not set for agent');
-		}
-
-		const systemMessage =
-			agent.systemPrompt + '\n\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
-
-		const model: ChatHubBaseLLMModel = {
-			provider: agent.provider,
-			model: agent.model,
-		};
-
-		const credentials: INodeCredentials = {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-				id: credentialId,
-				name: '',
-			},
-		};
-
-		const { tools } = agent;
-
-		return await this.prepareBaseChatWorkflow(
-			user,
-			sessionId,
-			credentials,
-			model,
-			history,
-			message,
-			systemMessage,
-			tools,
-			attachments,
-			timeZone,
-			trx,
-			executionMetadata,
-		);
-	}
-
-	private async prepareWorkflowAgentWorkflow(
-		user: User,
-		sessionId: ChatSessionId,
-		workflowId: string,
-		message: string,
-		attachments: IBinaryData[],
-		trx: EntityManager,
-		executionMetadata: ChatHubAuthenticationMetadata,
-	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:execute-chat'],
-			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
-		);
-
-		if (!workflow?.activeVersion) {
-			throw new BadRequestError('Workflow not found');
-		}
-
-		const chatTriggers = workflow.activeVersion.nodes.filter(
-			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-		);
-
-		if (chatTriggers.length !== 1) {
-			throw new BadRequestError('Workflow must have exactly one chat trigger');
-		}
-
-		const chatTrigger = chatTriggers[0];
-
-		if (chatTrigger.typeVersion < CHAT_TRIGGER_NODE_MIN_VERSION) {
-			throw new BadRequestError(
-				'Chat Trigger node version is too old to support Chat. Please update the node.',
-			);
-		}
-
-		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-		if (!chatTriggerParams) {
-			throw new BadRequestError('Chat Trigger node has invalid parameters');
-		}
-
-		if (!chatTriggerParams.availableInChat) {
-			throw new BadRequestError('Chat Trigger node must be made available in Chat');
-		}
-
-		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
-		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
-			throw new BadRequestError(
-				'Chat Trigger node response mode must be set to "When Last Node Finishes", "Using Response Nodes" or "Streaming" to use the workflow on Chat',
-			);
-		}
-
-		const chatResponseNodes = workflow.activeVersion.nodes.filter(
-			(node) => node.type === CHAT_NODE_TYPE,
-		);
-
-		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
-			throw new BadRequestError(
-				'Chat nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
-			);
-		}
-
-		const agentNodes = workflow.activeVersion.nodes?.filter(
-			(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
-		);
-
-		// Agents older than this can't do streaming
-		if (agentNodes.some((node) => node.typeVersion < TOOLS_AGENT_NODE_MIN_VERSION)) {
-			throw new BadRequestError(
-				'Agent node version is too old to support streaming responses. Please update the node.',
-			);
-		}
-
-		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
-			chatTrigger,
-			sessionId,
-			message,
-			attachments,
-			executionMetadata,
-		);
-
-		const executionData = createRunExecutionData({
-			executionData: {
-				nodeExecutionStack,
-			},
-			manualData: {
-				userId: user.id,
-			},
-		});
-
-		const workflowData: IWorkflowBase = {
-			...workflow,
-			nodes: workflow.activeVersion.nodes,
-			connections: workflow.activeVersion.connections,
-			// Force saving data on successful executions for custom agent workflows
-			// to be able to read the results after execution.
-			settings: {
-				...workflow.settings,
-				saveDataSuccessExecution: 'all',
-			},
-		};
-
-		return {
-			workflowData,
-			executionData,
-			responseMode,
-		};
 	}
 
 	private async ensurePreviousMessage(
@@ -676,7 +403,7 @@ export class ChatHubService {
 					trx,
 				);
 
-				const replyWorkflow = await this.prepareReplyWorkflow(
+				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
@@ -850,7 +577,7 @@ export class ChatHubService {
 						trx,
 					);
 
-					const workflow = await this.prepareReplyWorkflow(
+					const workflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
 						user,
 						sessionId,
 						credentials,
@@ -959,7 +686,7 @@ export class ChatHubService {
 				const message = lastHumanMessage ? lastHumanMessage.content : '';
 				const attachments = lastHumanMessage.attachments ?? [];
 
-				const workflow = await this.prepareReplyWorkflow(
+				const workflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
