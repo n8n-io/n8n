@@ -263,20 +263,21 @@ const showBottomInput = computed(() => {
 });
 
 const showFooterRating = computed(() => {
-	if (props.streaming || !props.messages?.length) {
-		return false;
-	}
-
-	// Check if there's a workflow-updated message in the original messages
-	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
-	// and check the last visible message (from normalizedMessages)
-	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
-	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
-		return false;
-	}
-
-	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
-	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
+	// if (props.streaming || !props.messages?.length) {
+	// 	return false;
+	// }
+	//
+	// // Check if there's a workflow-updated message in the original messages
+	// // (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	// // and check the last visible message (from normalizedMessages)
+	// const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
+	// if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+	// 	return false;
+	// }
+	//
+	// const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	// return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
+	return true;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -681,7 +682,7 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--l);
+	padding-bottom: var(--spacing--lg);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
