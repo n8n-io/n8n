@@ -73,9 +73,9 @@ const autoPublishOptions = computed(() => {
 
 	return [
 		{
-			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.none'),
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.off'),
 			description: i18n.baseText(
-				'settings.sourceControl.modals.pull.autoPublish.options.none.description',
+				'settings.sourceControl.modals.pull.autoPublish.options.off.description',
 			),
 			value: 'none',
 		},
@@ -88,9 +88,9 @@ const autoPublishOptions = computed(() => {
 			disabled: !hasPublishedWorkflows,
 		},
 		{
-			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.all'),
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.on'),
 			description: i18n.baseText(
-				'settings.sourceControl.modals.pull.autoPublish.options.all.description',
+				'settings.sourceControl.modals.pull.autoPublish.options.on.description',
 			),
 			value: 'all',
 		},
