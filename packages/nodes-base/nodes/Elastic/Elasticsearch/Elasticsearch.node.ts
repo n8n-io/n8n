@@ -74,8 +74,9 @@ export class Elasticsearch implements INodeType {
 
 		let bulkBody: IDataObject = {};
 
+		const bulkOperation = this.getNodeParameter('options.bulkOperation', 0, false);
+
 		for (let i = 0; i < items.length; i++) {
-			const bulkOperation = this.getNodeParameter('options.bulkOperation', i, false);
 			if (resource === 'document') {
 				// **********************************************************************
 				//                                document
