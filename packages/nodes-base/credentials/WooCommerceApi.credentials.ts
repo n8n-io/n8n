@@ -44,22 +44,25 @@ export class WooCommerceApi implements ICredentialType {
 				'Whether credentials should be included in the query. Occasionally, some servers may not parse the Authorization header correctly (if you see a “Consumer key is missing” error when authenticating over SSL, you have a server issue). In this case, you may provide the consumer key/secret as query string parameters instead.',
 		},
 	];
-
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		requestOptions.auth = {
-			// @ts-ignore
-			user: credentials.consumerKey as string,
-			password: credentials.consumerSecret as string,
-		};
-		if (credentials.includeCredentialsInQuery === true && requestOptions.qs) {
-			delete requestOptions.auth;
+		if (credentials.includeCredentialsInQuery === true) {
+			// Use query parameters for authentication
+			if (!requestOptions.qs) {
+				requestOptions.qs = {};
+			}
 			Object.assign(requestOptions.qs, {
 				consumer_key: credentials.consumerKey,
 				consumer_secret: credentials.consumerSecret,
 			});
+		} else {
+			// Use HTTP Basic Auth
+			requestOptions.auth = {
+				user: credentials.consumerKey as string,
+				password: credentials.consumerSecret as string,
+			};
 		}
 		return requestOptions;
 	}
