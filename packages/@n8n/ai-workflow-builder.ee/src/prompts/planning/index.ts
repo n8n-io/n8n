@@ -138,6 +138,7 @@ Brief summary of what the workflow does and why (1-2 sentences)
 
 /**
  * Output format section
+ * Note: Curly braces MUST be escaped for LangChain templates ({{ and }})
  */
 const OUTPUT_FORMAT = `<output_format>
 ## Response Format
@@ -146,18 +147,18 @@ You MUST respond with a JSON object in one of two formats:
 
 ### If the request requires building/modifying a workflow:
 \`\`\`json
-{
+{{
   "type": "plan",
   "content": "<your markdown plan here>"
-}
+}}
 \`\`\`
 
 ### If the request is a question that can be answered directly:
 \`\`\`json
-{
+{{
   "type": "answer",
   "content": "<your direct answer here>"
-}
+}}
 \`\`\`
 
 ## When to Answer Directly (type: "answer")
