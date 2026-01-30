@@ -536,6 +536,14 @@ export class WorkflowRunner {
 
 	/**
 	 * Whether main must retrieve full execution data from the DB on job completion.
+	 *
+	 * Full data is needed when:
+	 * - `integrated` mode: parent workflow needs child execution output data
+	 * - `lastNode` response mode: webhook response is built from the last node's output
+	 * - `workflow.postExecute` hook: external hooks receive full execution data
+	 *
+	 * In all other cases we can skip the DB fetch and use the lightweight
+	 * result summary sent by the worker via the job progress message.
 	 */
 	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
 		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;

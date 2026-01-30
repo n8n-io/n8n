@@ -631,6 +631,10 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
+		/**
+		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
+		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+		 */
 		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
 
 		if (shouldDeferOnReceivedResponse) {
