@@ -9,12 +9,4 @@ export class VectorStoreConfig {
 	/** Base path for LanceDB storage (relative to n8n user directory). */
 	@Env('N8N_VECTOR_STORE_LANCEDB_PATH')
 	lancedbPath: string = 'vector-store';
-
-	/** Enable debug logging for LanceDB operations. */
-	@Env('N8N_VECTOR_STORE_LANCEDB_DEBUG')
-	lancedbDebug: boolean = false;
-
-	/** Maximum number of concurrent LanceDB connections. */
-	@Env('N8N_VECTOR_STORE_LANCEDB_POOL_SIZE')
-	lancedbPoolSize: number = 10;
 }

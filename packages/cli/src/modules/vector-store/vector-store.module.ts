@@ -18,6 +18,10 @@ export class VectorStoreModule implements ModuleInterface {
 		await Container.get(VectorStoreDataService).shutdown();
 	}
 
+	async commands() {
+		await import('./vector-store-benchmark.command');
+	}
+
 	async entities() {
 		// No database entities needed - LanceDB uses file-based storage
 		return [];
