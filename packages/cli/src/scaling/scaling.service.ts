@@ -80,6 +80,13 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
+		// Initialize MCP Server Manager with queue mode enabled
+		// This tells the MCP Trigger to delegate tool executions to workers
+		const { McpServerManager } = await import(
+			'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+		);
+		McpServerManager.instance(this.logger).setQueueMode(true);
+
 		this.logger.debug('Queue setup completed');
 	}
 
@@ -392,20 +399,21 @@ export class ScalingService {
 						break;
 					}
 
-					this.logger.debug(
-						`Received MCP response for execution ${msg.executionId} (job ${jobId})`,
-						{
-							workerId: msg.workerId,
-							executionId: msg.executionId,
-							mcpType: msg.mcpType,
-							sessionId: msg.sessionId,
-							messageId: msg.messageId,
-							jobId,
-						},
-					);
+					this.logger.debug('MCP DEBUG: Main received response from worker', {
+						executionId: msg.executionId,
+						workerId: msg.workerId,
+						mcpType: msg.mcpType,
+						sessionId: msg.sessionId,
+					});
 
 					// Route to appropriate MCP handler based on type
-					void this.handleMcpResponse(msg.executionId, msg.mcpType, msg.sessionId, msg.messageId);
+					void this.handleMcpResponse(
+						msg.executionId,
+						msg.mcpType,
+						msg.sessionId,
+						msg.messageId,
+						msg.response,
+					);
 					break;
 				default:
 					assertNever(msg);
@@ -424,51 +432,71 @@ export class ScalingService {
 	}
 
 	/**
-	 * Handle MCP response from worker - fetch execution data and forward to appropriate MCP handler.
+	 * Handle MCP response from worker - forward to appropriate MCP handler.
+	 * For MCP Service: fetches execution data from DB and forwards IRun.
+	 * For MCP Trigger: forwards the response directly (tool result from sendResponse hook).
 	 */
 	private async handleMcpResponse(
 		executionId: string,
 		mcpType: 'service' | 'trigger',
 		sessionId: string,
 		messageId: string,
+		response: unknown,
 	): Promise<void> {
+		this.logger.debug('MCP DEBUG: Handling MCP response', { executionId, mcpType });
+
 		try {
-			// Fetch execution data from DB
-			const executionData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
-
-			if (!executionData) {
-				this.logger.error('MCP response: Execution not found in DB', { executionId });
-				return;
-			}
-
-			// Convert to IRun format
-			const runData: IRun = {
-				finished: executionData.finished,
-				mode: executionData.mode,
-				startedAt: executionData.startedAt,
-				stoppedAt: executionData.stoppedAt,
-				status: executionData.status,
-				data: executionData.data,
-				storedAt: executionData.storedAt,
-			};
-
 			if (mcpType === 'service') {
-				// Forward to MCP Service
+				// For MCP Service, fetch execution data from DB
+				this.logger.debug('MCP DEBUG: Fetching execution data from DB for MCP Service', {
+					executionId,
+				});
+
+				const executionData = await this.executionRepository.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				if (!executionData) {
+					this.logger.error('MCP DEBUG: Execution not found in DB', { executionId });
+					return;
+				}
+
+				this.logger.debug('MCP DEBUG: Execution data fetched successfully', {
+					executionId,
+					status: executionData.status,
+				});
+
+				// Convert to IRun format
+				const runData: IRun = {
+					finished: executionData.finished,
+					mode: executionData.mode,
+					startedAt: executionData.startedAt,
+					stoppedAt: executionData.stoppedAt,
+					status: executionData.status,
+					data: executionData.data,
+					storedAt: executionData.storedAt,
+				};
+
+				this.logger.debug('MCP DEBUG: Routing response to MCP Service', { executionId });
 				const { McpService } = await import('@/modules/mcp/mcp.service');
 				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {
-				// Forward to MCP Trigger's McpServerManager
+				// For MCP Trigger, forward the response directly (tool result)
+				this.logger.debug('MCP DEBUG: Routing response to MCP Trigger', {
+					executionId,
+					sessionId,
+					messageId,
+					hasResponse: response !== undefined,
+				});
 				const { McpServerManager } = await import(
 					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
 				);
 				// McpServerManager is a singleton that requires a logger for first initialization
 				// At this point it should already be initialized by the MCP Trigger node
 				const mcpServerManager = McpServerManager.instance(this.logger);
-				mcpServerManager.handleWorkerResponse(sessionId, messageId, runData);
+				mcpServerManager.handleWorkerResponse(sessionId, messageId, response);
 			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {

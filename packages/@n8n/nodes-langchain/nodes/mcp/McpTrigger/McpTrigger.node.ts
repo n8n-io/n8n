@@ -187,8 +187,17 @@ export class McpTrigger extends Node {
 
 				if (sessionId && mcpServerManager.getTransport(sessionId)) {
 					const connectedTools = await getConnectedTools(context, true);
-					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+					const { wasToolCall, toolCallInfo, messageId } = await mcpServerManager.handlePostMessage(
+						req,
+						resp,
+						connectedTools,
+					);
+					if (wasToolCall) {
+						// Include tool call info and messageId in workflowData for queue mode execution
+						// The messageId is the JSONRPC request ID, needed to correlate worker responses
+						const workflowData = toolCallInfo ? { mcpToolCall: toolCallInfo, mcpMessageId: messageId } : {};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
 				} else {
 					// If no session is established, this is a setup request
 					// for the StreamableHTTPServerTransport, so we create a new transport

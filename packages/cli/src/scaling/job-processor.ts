@@ -6,12 +6,20 @@ import { Service } from '@n8n/di';
 import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	IExecuteData,
 	IExecuteResponsePromiseData,
+	INodeExecutionData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
@@ -81,6 +89,16 @@ export class JobProcessor {
 			workflowId,
 			jobId: job.id,
 		});
+
+		if (job.data.isMcpExecution) {
+			this.logger.debug('MCP DEBUG: Worker picked up MCP execution', {
+				executionId,
+				workflowId,
+				mcpSessionId: job.data.mcpSessionId,
+				mcpMessageId: job.data.mcpMessageId,
+				targetMainId: job.data.originMainId,
+			});
+		}
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
 
@@ -291,21 +309,96 @@ export class JobProcessor {
 
 		await job.progress(msg);
 
-		// For MCP executions, send an mcp-response message to notify main
-		// Main will fetch the execution data from DB and resolve the pending promise
-		if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.originMainId) {
+		// For MCP Trigger executions with tool calls, execute the tool and send result
+		if (
+			job.data.isMcpExecution &&
+			job.data.mcpType === 'trigger' &&
+			job.data.mcpSessionId &&
+			job.data.originMainId &&
+			job.data.mcpToolCall?.sourceNodeName
+		) {
+			const { toolName, arguments: toolArgs, sourceNodeName } = job.data.mcpToolCall;
+
+			this.logger.debug('MCP DEBUG: Worker executing tool node for MCP Trigger', {
+				executionId,
+				workflowId,
+				toolName,
+				sourceNodeName,
+				mcpSessionId: job.data.mcpSessionId,
+			});
+
+			let toolResult: unknown;
+			try {
+				toolResult = await this.executeToolNode(
+					workflow,
+					sourceNodeName,
+					toolArgs,
+					additionalData,
+					executionId,
+				);
+				this.logger.debug('MCP DEBUG: Tool node executed successfully', {
+					executionId,
+					toolName,
+					sourceNodeName,
+					hasResult: toolResult !== undefined,
+				});
+			} catch (error) {
+				this.logger.error('MCP DEBUG: Tool node execution failed', {
+					executionId,
+					toolName,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				toolResult = { error: error instanceof Error ? error.message : String(error) };
+			}
+
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				mcpType: 'trigger',
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: toolResult, // Actual tool result
+				workerId: this.instanceSettings.hostId,
+				targetMainId: job.data.originMainId,
+			};
+
+			await job.progress(mcpMsg);
+
+			this.logger.debug('MCP DEBUG: Worker sent tool result to main', {
+				executionId,
+				workflowId,
+				toolName,
+				targetMainId: job.data.originMainId,
+			});
+		} else if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.originMainId) {
+			// For MCP Service executions or MCP Trigger without tool call, send basic response
+			this.logger.debug('MCP DEBUG: Worker sending response back to main', {
+				executionId,
+				workflowId,
+				success: props.success,
+				mcpSessionId: job.data.mcpSessionId,
+				targetMainId: job.data.originMainId,
+			});
+
 			const mcpMsg: McpResponseMessage = {
 				kind: 'mcp-response',
 				executionId,
 				mcpType: job.data.mcpType ?? 'service',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
-				response: { success: props.success }, // Main will fetch full data from DB
+				response: { success: props.success },
 				workerId: this.instanceSettings.hostId,
 				targetMainId: job.data.originMainId,
 			};
 
 			await job.progress(mcpMsg);
+
+			this.logger.debug('MCP DEBUG: Worker sent response to main successfully', {
+				executionId,
+				workflowId,
+				targetMainId: job.data.originMainId,
+			});
 		}
 
 		/**
@@ -387,5 +480,99 @@ export class JobProcessor {
 		}
 
 		return response;
+	}
+
+	/**
+	 * Execute a tool node for MCP Trigger in queue mode.
+	 * This method creates a minimal workflow execution to run just the tool node
+	 * and extract its output.
+	 */
+	private async executeToolNode(
+		workflow: Workflow,
+		sourceNodeName: string,
+		toolArgs: Record<string, unknown>,
+		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
+			infer T
+		>
+			? T
+			: never,
+		executionId: string,
+	): Promise<unknown> {
+		const toolNode = workflow.getNode(sourceNodeName);
+		if (!toolNode) {
+			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
+		}
+
+		this.logger.debug('MCP DEBUG: Executing tool node', {
+			sourceNodeName,
+			toolArgs: JSON.stringify(toolArgs),
+			executionId,
+		});
+
+		// Create input data for the tool node with the tool arguments
+		// Cast toolArgs to IDataObject since it comes from JSON-RPC which is type-safe
+		const inputData: INodeExecutionData[][] = [
+			[
+				{
+					json: toolArgs as unknown as INodeExecutionData['json'],
+				},
+			],
+		];
+
+		// Create execution stack with just the tool node
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: toolNode,
+				data: {
+					main: inputData,
+				},
+				source: null,
+			},
+		];
+
+		// Create minimal run execution data for the tool node
+		const toolRunData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+		});
+
+		// Execute the tool node
+		const workflowExecute = new WorkflowExecute(additionalData, 'webhook', toolRunData);
+		const toolRun = await workflowExecute.processRunExecutionData(workflow);
+
+		// Extract the tool node's output from the run data
+		const nodeRunData = toolRun.data.resultData.runData[sourceNodeName];
+		if (!nodeRunData || nodeRunData.length === 0) {
+			this.logger.warn('MCP DEBUG: No run data found for tool node', {
+				sourceNodeName,
+				executionId,
+			});
+			return { error: 'Tool execution produced no output' };
+		}
+
+		// Get the output data from the last run
+		const lastRun = nodeRunData[nodeRunData.length - 1];
+		const outputData = lastRun.data?.[NodeConnectionTypes.Main]?.[0];
+
+		if (!outputData || outputData.length === 0) {
+			this.logger.warn('MCP DEBUG: Tool node output is empty', {
+				sourceNodeName,
+				executionId,
+			});
+			return { error: 'Tool execution produced empty output' };
+		}
+
+		// Return the JSON data from the first output item
+		// For tools, typically there's a single output item with the result
+		const result = outputData[0]?.json;
+
+		this.logger.debug('MCP DEBUG: Tool node execution completed', {
+			sourceNodeName,
+			executionId,
+			hasResult: result !== undefined,
+		});
+
+		return result;
 	}
 }

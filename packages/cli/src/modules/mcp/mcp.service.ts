@@ -141,7 +141,7 @@ export class McpService {
 			createdAt: new Date(),
 		});
 
-		this.logger.debug('Created pending MCP response', { executionId });
+		this.logger.debug('MCP DEBUG: Created pending response, waiting for worker', { executionId });
 		return deferred;
 	}
 
@@ -156,7 +156,10 @@ export class McpService {
 			return;
 		}
 
-		this.logger.debug('Resolving pending MCP response', { executionId });
+		this.logger.debug('MCP DEBUG: Resolving pending MCP response', {
+			executionId,
+			status: runData?.status,
+		});
 		pending.promise.resolve(runData);
 		this.pendingResponses.delete(executionId);
 	}

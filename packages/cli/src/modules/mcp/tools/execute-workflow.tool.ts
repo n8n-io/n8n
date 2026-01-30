@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
+import { Container } from '@n8n/di';
 import type { User, WorkflowRepository } from '@n8n/db';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -258,6 +260,15 @@ export const executeWorkflow = async (
 	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
 	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+	const logger = Container.get(Logger);
+
+	logger.debug('MCP DEBUG: Starting workflow execution', {
+		workflowId,
+		mcpMessageId,
+		isQueueMode: mcpService.isQueueMode,
+		originMainId: mcpService.hostId,
+	});
+
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
@@ -300,6 +311,13 @@ export const executeWorkflow = async (
 
 	const executionId = await workflowRunner.run(runData);
 
+	logger.debug('MCP DEBUG: Execution started, waiting for response', {
+		executionId,
+		workflowId,
+		mcpMessageId,
+		isQueueMode: mcpService.isQueueMode,
+	});
+
 	// Create a timeout promise
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
@@ -324,8 +342,22 @@ export const executeWorkflow = async (
 			throw new UnexpectedError('Workflow did not return any data');
 		}
 
+		const success = data.status !== 'error' && !data.data.resultData?.error;
+
+		logger.debug('MCP DEBUG: Received execution response', {
+			executionId,
+			workflowId,
+			status: data.status,
+			success,
+		});
+
+		logger.debug('MCP DEBUG: Returning result to MCP client', {
+			executionId,
+			success,
+		});
+
 		return {
-			success: data.status !== 'error' && !data.data.resultData?.error,
+			success,
 			executionId,
 			result: data.data.resultData,
 			error: data.data.resultData?.error,

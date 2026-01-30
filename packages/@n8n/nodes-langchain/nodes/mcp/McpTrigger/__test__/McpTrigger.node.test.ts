@@ -69,8 +69,8 @@ describe('McpTrigger Node', () => {
 			mockServerManager.getSessionId.mockReturnValue(sessionId);
 			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
-			// Mock that the server executes a tool and returns true
-			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
+			// Mock that the server executes a tool and returns wasToolCall: true
+			mockServerManager.handlePostMessage.mockResolvedValueOnce({ wasToolCall: true });
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
@@ -95,8 +95,8 @@ describe('McpTrigger Node', () => {
 			mockServerManager.getSessionId.mockReturnValue(sessionId);
 			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
-			// Mock that the server doesn't execute a tool and returns false
-			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);
+			// Mock that the server doesn't execute a tool and returns wasToolCall: false
+			mockServerManager.handlePostMessage.mockResolvedValueOnce({ wasToolCall: false });
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);

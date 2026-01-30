@@ -5,12 +5,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -596,6 +596,54 @@ export async function executeWebhook(
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
 			runData.pushRef = runExecutionData.pushRef;
+		}
+
+		// Add MCP metadata for MCP Trigger executions in queue mode
+		const executionsConfig = Container.get(ExecutionsConfig);
+		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
+			const instanceSettings = Container.get(InstanceSettings);
+			// Extract MCP session ID from query param or header
+			const mcpSessionId =
+				(req.query?.sessionId as string) ?? (req.headers['mcp-session-id'] as string) ?? '';
+
+			// Extract tool call info and messageId from webhook result data if present
+			// This is passed from McpTrigger.node.ts via workflowData
+			const firstItem = webhookResultData.workflowData?.[0]?.[0];
+
+			// Use the JSONRPC message ID passed from McpTrigger, or generate a fallback
+			// The messageId must match what was used in McpServerManager.handlePostMessage
+			// to correctly correlate worker responses with pending requests
+			const mcpMessageId =
+				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+					? firstItem.json.mcpMessageId
+					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+			runData.isMcpExecution = true;
+			runData.mcpType = 'trigger';
+			runData.mcpSessionId = mcpSessionId;
+			runData.mcpMessageId = mcpMessageId;
+			runData.originMainId = instanceSettings.hostId;
+
+			if (firstItem && 'json' in firstItem && firstItem.json?.mcpToolCall) {
+				runData.mcpToolCall = firstItem.json.mcpToolCall as {
+					toolName: string;
+					arguments: Record<string, unknown>;
+					sourceNodeName?: string;
+				};
+				Container.get(Logger).debug('MCP DEBUG: MCP Trigger tool call info extracted', {
+					toolName: runData.mcpToolCall.toolName,
+					sourceNodeName: runData.mcpToolCall.sourceNodeName,
+					mcpSessionId,
+					mcpMessageId,
+				});
+			}
+
+			Container.get(Logger).debug('MCP DEBUG: MCP Trigger execution in queue mode', {
+				mcpSessionId,
+				mcpMessageId,
+				originMainId: instanceSettings.hostId,
+				hasToolCall: !!runData.mcpToolCall,
+			});
 		}
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;

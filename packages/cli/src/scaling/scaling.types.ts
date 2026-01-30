@@ -33,6 +33,13 @@ export type JobData = {
 	mcpMessageId?: string;
 	/** ID of the main instance that enqueued this job (for multi-main routing). */
 	originMainId?: string;
+	/** Tool call info for MCP Trigger executions (tool name, args, source node). */
+	mcpToolCall?: {
+		toolName: string;
+		arguments: Record<string, unknown>;
+		/** The n8n node name that provides this tool. */
+		sourceNodeName?: string;
+	};
 };
 
 export type JobResult = {

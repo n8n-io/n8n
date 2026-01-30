@@ -388,12 +388,28 @@ export class WorkflowRunner {
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
 			originMainId: data.originMainId,
+			mcpToolCall: data.mcpToolCall,
 		};
 
 		if (!this.scalingService) {
 			const { ScalingService } = await import('@/scaling/scaling.service');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
+		}
+
+		if (data.isMcpExecution) {
+			this.logger.debug('MCP DEBUG: Enqueuing MCP execution to worker queue', {
+				executionId,
+				workflowId,
+				mcpSessionId: data.mcpSessionId,
+				mcpMessageId: data.mcpMessageId,
+				originMainId: data.originMainId,
+			});
+		} else {
+			this.logger.debug('MCP DEBUG: Enqueuing non-MCP execution to worker queue', {
+				executionId,
+				workflowId,
+			});
 		}
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.

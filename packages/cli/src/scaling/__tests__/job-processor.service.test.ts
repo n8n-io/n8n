@@ -319,6 +319,7 @@ describe('JobProcessor', () => {
 
 			const job = mock<Job>();
 			job.data = {
+				workflowId: 'wf-1',
 				executionId: 'exec-mcp-123',
 				loadStaticData: false,
 				isMcpExecution: true,
@@ -377,6 +378,7 @@ describe('JobProcessor', () => {
 
 			const job = mock<Job>();
 			job.data = {
+				workflowId: 'wf-1',
 				executionId: 'exec-regular-123',
 				loadStaticData: false,
 				// No MCP fields - explicitly undefined
@@ -437,6 +439,7 @@ describe('JobProcessor', () => {
 
 			const job = mock<Job>();
 			job.data = {
+				workflowId: 'wf-1',
 				executionId: 'exec-mcp-error',
 				loadStaticData: false,
 				isMcpExecution: true,

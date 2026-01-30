@@ -109,7 +109,7 @@ describe('McpServer', () => {
 			);
 
 			// Verify that we check if it was a tool call
-			expect(result).toBe(true);
+			expect(result.wasToolCall).toBe(true);
 
 			// Verify flush was called
 			expect(mockResponse.flush).toHaveBeenCalled();
@@ -144,7 +144,7 @@ describe('McpServer', () => {
 			const firstResult = await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [
 				mockTool,
 			]);
-			expect(firstResult).toBe(true);
+			expect(firstResult.wasToolCall).toBe(true);
 			expect(mockTransport.handleRequest).toHaveBeenCalledWith(
 				mockRequest,
 				mockResponse,
@@ -165,7 +165,7 @@ describe('McpServer', () => {
 			const secondResult = await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [
 				mockTool,
 			]);
-			expect(secondResult).toBe(true);
+			expect(secondResult.wasToolCall).toBe(true);
 
 			// Verify transport's handleRequest was called twice
 			expect(mockTransport.handleRequest).toHaveBeenCalledTimes(2);
@@ -347,7 +347,7 @@ describe('McpServer', () => {
 			);
 
 			// Verify that we check if it was a tool call
-			expect(result).toBe(true);
+			expect(result.wasToolCall).toBe(true);
 
 			// Verify flush was called
 			expect(mockResponse.flush).toHaveBeenCalled();
