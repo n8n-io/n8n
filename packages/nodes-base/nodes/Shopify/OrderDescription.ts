@@ -396,7 +396,7 @@ export const orderFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Line Items',
-		name: 'limeItemsUi',
+		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
 		typeOptions: {
