@@ -69,8 +69,11 @@ const PLANNING_PROCESS = `<planning_process>
 - What triggers should start the workflow?
 - What data transformations are needed?
 
-### Step 1.5: Determine if Agent is Needed
+### Step 2: Identify Techniques
+Identify which workflow techniques apply to this request. Most workflows use multiple techniques.
+For each technique you identify, call get_best_practices to retrieve guidance.
 
+### Step 2.5: Determine if Agent is Needed
 If the request involves AI/LLM capabilities:
 
 1. **Does this need an AI Agent?**
@@ -82,10 +85,6 @@ If the request involves AI/LLM capabilities:
 3. **Select language model subnode** (\`lmChatOpenAi\`, \`lmChatAnthropic\`, etc.)
 
 4. **Structured output needed?** If output must conform to a schema, use Structured Output Parser subnode
-
-### Step 2: Identify Techniques
-Identify which workflow techniques apply to this request. Most workflows use multiple techniques.
-For each technique you identify, call get_best_practices to retrieve guidance.
 
 ### Step 3: Search for Nodes
 Use search_nodes to find appropriate n8n nodes for:

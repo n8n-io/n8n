@@ -169,6 +169,7 @@ export class Orchestrator {
 	 * @param abortSignal - Optional abort signal
 	 * @yields StreamOutput chunks for messages, tool progress, and workflow updates
 	 */
+	// eslint-disable-next-line complexity
 	async *chat(
 		userMessage: string,
 		currentWorkflow?: WorkflowJSON,
