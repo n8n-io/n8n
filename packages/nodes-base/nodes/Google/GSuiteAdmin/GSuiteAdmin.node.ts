@@ -119,6 +119,12 @@ export class GSuiteAdmin implements INodeType {
 					}>;
 				};
 
+				// push default orgUnit (root), which is not returned from the API call above
+				returnData.push({
+					name: '/',
+					value: '/',
+				});
+
 				for (const unit of orgUnits.organizationUnits) {
 					returnData.push({
 						name: unit.name,
@@ -499,6 +505,10 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
+						if (additionalFields.orgUnitPath && typeof additionalFields.orgUnitPath === 'string') {
+							body.orgUnitPath = additionalFields.orgUnitPath;
+						}
+
 						if (additionalFields.customFields) {
 							const customFields = (additionalFields.customFields as IDataObject)
 								.fieldValues as IDataObject[];
@@ -725,6 +735,7 @@ export class GSuiteAdmin implements INodeType {
 							phones?: IDataObject[];
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
+							orgUnitPath?: string;
 							customSchemas?: IDataObject;
 							password?: string;
 							changePasswordAtNextLogin?: boolean;
@@ -779,6 +790,10 @@ export class GSuiteAdmin implements INodeType {
 								directorySyncAdmin: roles.includes('directorySyncAdmin'),
 								mobileAdmin: roles.includes('mobileAdmin'),
 							};
+						}
+
+						if (updateFields.orgUnitPath && typeof updateFields.orgUnitPath === 'string') {
+							body.orgUnitPath = updateFields.orgUnitPath;
 						}
 
 						if (updateFields.customFields) {

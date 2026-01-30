@@ -25,6 +25,7 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						type: 'home',
 					},
 				],
+				orgUnitPath: '/',
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',
