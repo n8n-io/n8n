@@ -34,7 +34,7 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
-	N8nRadioButtons,
+	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -71,27 +71,30 @@ const autoPublishOptions = computed(() => {
 	const workflows = status.value.filter((f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow);
 	const hasPublishedWorkflows = workflows.some((w) => w.isLocalPublished && w.status !== 'created');
 
-	const options: Array<{ label: string; value: AutoPublishMode }> = [
+	return [
 		{
 			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.none'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.none.description',
+			),
 			value: 'none',
 		},
-	];
-
-	// Only show "published" option if there are existing published workflows
-	if (hasPublishedWorkflows) {
-		options.push({
+		{
 			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.published'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.published.description',
+			),
 			value: 'published',
-		});
-	}
-
-	options.push({
-		label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.all'),
-		value: 'all',
-	});
-
-	return options;
+			disabled: !hasPublishedWorkflows,
+		},
+		{
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.all'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.all.description',
+			),
+			value: 'all',
+		},
+	];
 });
 
 const hasModifiedWorkflows = computed(() => {
@@ -340,8 +343,8 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
 			</N8nHeading>
 
-			<div :class="[$style.filtersRow]" class="mt-l">
-				<N8nText tag="div" class="mb-xs">
+			<div :class="[$style.filtersRow]" class="mt-xs">
+				<N8nText tag="div">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
@@ -351,17 +354,16 @@ onMounted(() => {
 		</template>
 		<template #content>
 			<div style="display: flex; flex-direction: column; height: 100%">
-				<div :class="$style.autoPublishSection" class="mb-m">
-					<N8nText tag="div" bold size="medium" class="mb-2xs">
+				<div :class="$style.autoPublishSection">
+					<N8nText tag="div" bold size="medium" color="text-dark">
 						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
 					</N8nText>
-					<N8nText tag="div" size="small" color="text-light" class="mb-xs">
-						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.description') }}
-					</N8nText>
-					<N8nRadioButtons
+					<N8nSelect2
 						v-model="autoPublish"
-						:options="autoPublishOptions"
-						data-test-id="auto-publish-radio-buttons"
+						:items="autoPublishOptions"
+						size="medium"
+						:class="$style.select"
+						data-test-id="auto-publish-select"
 					/>
 				</div>
 				<div style="display: flex; flex: 1; min-height: 0">
@@ -665,8 +667,14 @@ onMounted(() => {
 }
 
 .autoPublishSection {
-	padding: var(--spacing--md);
-	border: var(--border);
-	border-radius: var(--radius--lg);
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	padding: var(--spacing--4xs) 0;
+	margin-bottom: var(--spacing--xs);
+}
+
+.select {
+	width: 210px;
 }
 </style>
