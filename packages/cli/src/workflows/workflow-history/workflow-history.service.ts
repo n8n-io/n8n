@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowHistoryUpdate } from '@n8n/db';
+import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -134,8 +135,24 @@ export class WorkflowHistoryService {
 		}
 	}
 
-	async updateVersion(versionId: string, workflowId: string, updateData: WorkflowHistoryUpdate) {
-		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
+	async updateVersionForUser(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		updateData: UpdateWorkflowHistoryVersionDto,
+	) {
+		// Check rights and ensure version exists
+		await this.getVersion(user, workflowId, versionId, { includePublishHistory: false });
+
+		await this.updateVersion(workflowId, versionId, updateData);
+	}
+
+	async updateVersion(
+		workflowId: string,
+		versionId: string,
+		updateData: UpdateWorkflowHistoryVersionDto,
+	) {
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, updateData);
 	}
 
 	/**

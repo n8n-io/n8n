@@ -425,8 +425,3 @@ export interface ISimplifiedPinData {
 		pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	}>;
 }
-
-export type WorkflowHistoryUpdate = Omit<
-	Partial<WorkflowHistory>,
-	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
->;
