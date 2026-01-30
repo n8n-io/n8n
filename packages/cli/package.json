@@ -115,7 +115,7 @@
     "@n8n_io/license-sdk": "2.25.0",
     "@parcel/watcher": "^2.5.1",
     "@rudderstack/rudder-sdk-node": "3.0.0",
-    "@sentry/node": "catalog:",
+    "@sentry/node": "catalog:sentry",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "bcryptjs": "2.4.3",

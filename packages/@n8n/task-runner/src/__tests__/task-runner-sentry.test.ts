@@ -9,6 +9,8 @@ describe('TaskRunnerSentry', () => {
 		n8nVersion: '1.0.0',
 		environment: 'local',
 		deploymentName: 'test',
+		profilesSampleRate: 0,
+		tracesSampleRate: 0,
 	};
 
 	afterEach(() => {
@@ -258,6 +260,11 @@ describe('TaskRunnerSentry', () => {
 				serverName: 'test',
 				serverType: 'task_runner',
 				withEventLoopBlockDetection: false,
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eligibleIntegrations: {
+					Http: true,
+				},
 			});
 		});
 	});

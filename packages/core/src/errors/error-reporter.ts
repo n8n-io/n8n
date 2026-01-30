@@ -1,4 +1,4 @@
-import { inProduction, inTest, Logger } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
@@ -7,6 +7,8 @@ import type { NodeOptions } from '@sentry/node';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+
+type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
@@ -19,11 +21,23 @@ type ErrorReporterInitOptions = {
 	/** Whether to enable event loop block detection, if Sentry is enabled. */
 	withEventLoopBlockDetection: boolean;
 
+	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
+	tracesSampleRate: number;
+
+	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
+	profilesSampleRate: number;
+
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
 	 */
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
+
+	/**
+	 * Integrations eligible for enablement. `tracesSampleRate` still determines
+	 * whether they are actually enabled or not.
+	 */
+	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
 };
 
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -88,6 +102,9 @@ export class ErrorReporter {
 		serverName,
 		releaseDate,
 		withEventLoopBlockDetection,
+		profilesSampleRate,
+		tracesSampleRate,
+		eligibleIntegrations = {},
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -123,13 +140,28 @@ export class ErrorReporter {
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
 
-		const enabledIntegrations = [
+		// Most of the integrations are listed here:
+		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
+		const enabledIntegrations = new Set([
 			'InboundFilters',
 			'FunctionToString',
 			'LinkedErrors',
 			'OnUnhandledRejection',
 			'ContextLines',
-		];
+		]);
+
+		const isTracingEnabled = tracesSampleRate > 0;
+		if (isTracingEnabled) {
+			const tracingIntegrations: SentryIntegration[] = ['Http', 'Postgres', 'Redis', 'Express'];
+			tracingIntegrations
+				.filter((integrationName) => !!eligibleIntegrations[integrationName])
+				.forEach((integrationName) => enabledIntegrations.add(integrationName));
+		}
+
+		const isProfilingEnabled = profilesSampleRate > 0;
+		if (isProfilingEnabled && !isTracingEnabled) {
+			this.logger.warn('Profiling is enabled but tracing is disabled. Profiling will not work.');
+		}
 
 		const eventLoopBlockIntegration = withEventLoopBlockDetection
 			? // The EventLoopBlockIntegration doesn't automatically include the
@@ -140,16 +172,18 @@ export class ErrorReporter {
 				})
 			: [];
 
+		const profilingIntegration = isProfilingEnabled ? await this.getProfilingIntegration() : [];
+
 		init({
 			dsn,
 			release,
 			environment,
-			tracesSampleRate: inProduction ? 0.01 : 0,
 			serverName,
-			beforeBreadcrumb: () => null,
+			...(isTracingEnabled ? { tracesSampleRate } : {}),
+			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
+				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
 					include: {
@@ -161,6 +195,7 @@ export class ErrorReporter {
 					},
 				}),
 				...eventLoopBlockIntegration,
+				...profilingIntegration,
 			],
 		});
 
@@ -276,8 +311,20 @@ export class ErrorReporter {
 				}),
 			];
 		} catch {
-			this.logger.debug(
+			this.logger.warn(
 				"Sentry's event loop block integration is disabled, because the native binary for `@sentry/node-native` was not found",
+			);
+			return [];
+		}
+	}
+
+	private async getProfilingIntegration() {
+		try {
+			const { nodeProfilingIntegration } = await import('@sentry/profiling-node');
+			return [nodeProfilingIntegration()];
+		} catch {
+			this.logger.warn(
+				'Sentry profiling is disabled, because the `@sentry/profiling-node` package was not found',
 			);
 			return [];
 		}
