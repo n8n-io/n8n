@@ -11,12 +11,20 @@ export const teamOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get team information',
 				action: 'Get a team',
 			},
 			{
 				name: 'Get Credits',
 				value: 'getCredits',
+				description: 'Get team credits balance',
 				action: 'Get team credits',
+			},
+			{
+				name: 'Get Senders',
+				value: 'getSenders',
+				description: 'Get list of team senders and associated campaigns',
+				action: 'Get team senders',
 			},
 		],
 		displayOptions: {
@@ -31,4 +39,13 @@ export const teamFields: INodeProperties[] = [
 	// ----------------------------------
 	//        team: get
 	// ----------------------------------
+	// No additional fields required
+	// ----------------------------------
+	//        team: getCredits
+	// ----------------------------------
+	// No additional fields required
+	// ----------------------------------
+	//        team: getSenders
+	// ----------------------------------
+	// No additional fields required
 ];
