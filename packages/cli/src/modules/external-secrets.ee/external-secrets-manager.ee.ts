@@ -345,9 +345,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	private decryptSettings(encryptedData: string): SecretsProviderSettings['settings'] {
-		const decryptedData = this.cipher.decrypt(encryptedData);
-
 		try {
+			const decryptedData = this.cipher.decrypt(encryptedData);
 			return jsonParse<SecretsProviderSettings['settings']>(decryptedData);
 		} catch (e) {
 			this.logger.error('Failed to decrypt external secrets settings', { error: e });
