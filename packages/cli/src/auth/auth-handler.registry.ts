@@ -1,27 +1,97 @@
-import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
-
-export interface AuthHandler {
-	handleLogin(loginId: string, password: string): Promise<User | undefined>;
-}
+import { Logger } from '@n8n/backend-common';
+import type { AuthType, IAuthHandler, IPasswordAuthHandler } from '@n8n/decorators';
+import { AuthHandlerEntryMetadata } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 
 /**
- * Registry for authentication handlers. Allows modules to register
- * themselves dynamically without creating direct dependencies.
+ * Registry service for discovering, instantiating, and managing auth handler implementations.
+ * Automatically discovers all classes decorated with @AuthHandler() and makes them available by name.
  */
 @Service()
 export class AuthHandlerRegistry {
-	private handlers = new Map<string, AuthHandler>();
+	/** Map of handler names to handler instances */
+	private handlerMap: Map<string, IAuthHandler> = new Map();
 
-	register(authMethod: string, handler: AuthHandler): void {
-		this.handlers.set(authMethod, handler);
+	constructor(
+		private readonly authHandlerEntryMetadata: AuthHandlerEntryMetadata,
+		private readonly logger: Logger,
+	) {}
+
+	/**
+	 * Discovers and registers all auth handler implementations.
+	 * Instantiates each handler class, calls optional init() method, and registers by metadata.name.
+	 * Skips handlers that fail instantiation, initialization, or have duplicate names.
+	 */
+	async init() {
+		this.handlerMap.clear();
+
+		const handlerClasses = this.authHandlerEntryMetadata.getClasses();
+		this.logger.debug(`Registering ${handlerClasses.length} auth handlers.`);
+
+		for (const HandlerClass of handlerClasses) {
+			let handler: IAuthHandler;
+			try {
+				handler = Container.get(HandlerClass);
+			} catch (error) {
+				this.logger.error(
+					`Failed to instantiate auth handler class "${HandlerClass.name}": ${(error as Error).message}`,
+					{ error },
+				);
+				continue;
+			}
+
+			if (this.handlerMap.has(handler.metadata.name)) {
+				this.logger.warn(
+					`Auth handler with name "${handler.metadata.name}" is already registered. Conflicting classes are "${this.handlerMap.get(handler.metadata.name)?.constructor.name}" and "${HandlerClass.name}". Skipping the latter.`,
+				);
+				continue;
+			}
+
+			if (handler.init) {
+				try {
+					await handler.init();
+				} catch (error) {
+					this.logger.error(
+						`Failed to initialize auth handler "${handler.metadata.name}": ${(error as Error).message}`,
+						{ error },
+					);
+					continue;
+				}
+			}
+			this.handlerMap.set(handler.metadata.name, handler);
+		}
 	}
 
-	get(authMethod: string): AuthHandler | undefined {
-		return this.handlers.get(authMethod);
+	/**
+	 * Retrieves a registered handler by its metadata name.
+	 * @returns The handler instance, or undefined if not found
+	 */
+	get(authMethod: string, type: AuthType): IAuthHandler | undefined {
+		const handler = this.handlerMap.get(authMethod);
+		if (!handler) {
+			return undefined;
+		}
+		if (handler.metadata.type !== type) {
+			return undefined;
+		}
+		// When new types are added, this cast will need to be updated
+		if (type === 'password') {
+			return handler as IPasswordAuthHandler;
+		}
+		return handler;
 	}
 
+	/**
+	 * Checks if a handler is registered for the given auth method.
+	 */
 	has(authMethod: string): boolean {
-		return this.handlers.has(authMethod);
+		return this.handlerMap.has(authMethod);
+	}
+
+	/**
+	 * Returns all successfully registered handler instances.
+	 */
+	getAllHandlers(): IAuthHandler[] {
+		return Array.from(this.handlerMap.values());
 	}
 }

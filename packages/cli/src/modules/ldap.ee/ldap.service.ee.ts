@@ -4,14 +4,15 @@ import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
-import { Service, Container } from '@n8n/di';
+import { Container } from '@n8n/di';
+import type { IPasswordAuthHandler } from '@n8n/decorators';
+import { AuthHandler } from '@n8n/decorators';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import type { AuthHandler } from '@/auth/auth-handler.registry';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -46,8 +47,9 @@ import {
 	getUserByLdapId,
 } from './helpers.ee';
 
-@Service()
-export class LdapService implements AuthHandler {
+@AuthHandler()
+export class LdapService implements IPasswordAuthHandler<User> {
+	readonly metadata = { name: 'ldap', type: 'password' as const };
 	private client: Client | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports

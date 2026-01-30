@@ -249,6 +249,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Initialize auth handler registry after modules are loaded
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		await Container.get(AuthHandlerRegistry).init();
+
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {

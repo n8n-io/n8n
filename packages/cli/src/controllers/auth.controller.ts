@@ -98,9 +98,9 @@ export class AuthController {
 				usedAuthenticationMethod = 'email';
 			} else {
 				// Check if an auth handler is registered for the current auth method
-				const authHandler = this.authHandlerRegistry.get(usedAuthenticationMethod);
+				const authHandler = this.authHandlerRegistry.get(usedAuthenticationMethod, 'password');
 				if (authHandler) {
-					user = await authHandler.handleLogin(emailOrLdapLoginId, password);
+					user = (await authHandler.handleLogin(emailOrLdapLoginId, password)) as User | undefined;
 				}
 			}
 		} else {
