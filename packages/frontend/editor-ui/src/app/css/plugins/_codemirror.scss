@@ -60,6 +60,7 @@
 			gap: var(--spacing--2xs);
 			scroll-padding: 40px;
 			scroll-margin: 40px;
+			cursor: pointer;
 
 			&.strikethrough {
 				text-decoration: line-through;
