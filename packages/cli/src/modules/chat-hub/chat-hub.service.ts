@@ -40,6 +40,7 @@ import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
+import { ChatHubTitleService } from './chat-hub-title.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
@@ -76,7 +77,8 @@ export class ChatHubService {
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatStreamService: ChatStreamService,
-		private readonly executionService: ChatHubExecutionService,
+		private readonly chatHubExecutionService: ChatHubExecutionService,
+		private readonly chatHubTitleService: ChatHubTitleService,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -393,7 +395,7 @@ export class ChatHubService {
 			throw new BadRequestError('Can only stop messages that are currently running');
 		}
 
-		await this.executionService.stop(message.execution.id, message.execution.workflowId);
+		await this.chatHubExecutionService.stop(message.execution.id, message.execution.workflowId);
 		await this.messageRepository.updateChatMessage(messageId, { status: 'cancelled' });
 	}
 
@@ -749,7 +751,7 @@ export class ChatHubService {
 				status: 'success',
 			});
 
-			void this.executionService.resumeChatExecution(
+			void this.chatHubExecutionService.resumeChatExecution(
 				execution,
 				message,
 				sessionId,
@@ -762,15 +764,13 @@ export class ChatHubService {
 		}
 
 		// Start the workflow execution with streaming
-		void this.executionService.executeChatWorkflowWithCleanup(
+		void this.executeChatWorkflowWithCleanup(
 			user,
 			model,
-			workflow.workflowData,
-			workflow.executionData,
+			workflow,
 			sessionId,
 			messageId,
 			null,
-			workflow.responseMode,
 			previousMessageId,
 			credentials,
 			message,
@@ -886,7 +886,7 @@ export class ChatHubService {
 			return;
 		}
 
-		const { workflowData, executionData, responseMode } = result.workflow;
+		const { workflow } = result;
 
 		// Broadcast message edit to all user connections for cross-client sync
 		await this.chatStreamService.sendMessageEdit({
@@ -903,15 +903,13 @@ export class ChatHubService {
 		});
 
 		// Start the workflow execution with streaming
-		void this.executionService.executeChatWorkflowWithCleanup(
+		void this.executeChatWorkflowWithCleanup(
 			user,
 			model,
-			workflowData,
-			executionData,
+			workflow,
 			sessionId,
 			messageId,
 			null,
-			responseMode,
 			null,
 			{},
 			'',
@@ -983,15 +981,13 @@ export class ChatHubService {
 			});
 
 		// Start the workflow execution with streaming (fire and forget)
-		void this.executionService.executeChatWorkflowWithCleanup(
+		void this.executeChatWorkflowWithCleanup(
 			user,
 			model,
-			workflow.workflowData,
-			workflow.executionData,
+			workflow,
 			sessionId,
 			previousMessageId,
 			retryOfMessageId,
-			workflow.responseMode,
 			null,
 			{},
 			'',
@@ -1028,6 +1024,46 @@ export class ChatHubService {
 					? pendingChunks[pendingChunks.length - 1].sequenceNumber
 					: lastReceivedSequence,
 		};
+	}
+
+	private async executeChatWorkflowWithCleanup(
+		user: User,
+		model: ChatHubConversationModel,
+		workflow: PreparedChatWorkflow,
+		sessionId: ChatSessionId,
+		previousMessageId: ChatMessageId,
+		retryOfMessageId: ChatMessageId | null,
+		originalPreviousMessageId: ChatMessageId | null,
+		credentials: INodeCredentials,
+		humanMessage: string,
+		processedAttachments: IBinaryData[],
+	) {
+		await this.chatHubExecutionService.executeChatWorkflowWithCleanup(
+			user,
+			model,
+			workflow.workflowData,
+			workflow.executionData,
+			sessionId,
+			previousMessageId,
+			retryOfMessageId,
+			workflow.responseMode,
+		);
+
+		// Generate title for the session on receiving the first human message
+		if (originalPreviousMessageId === null && humanMessage) {
+			try {
+				await this.chatHubTitleService.generateSessionTitle(
+					user,
+					sessionId,
+					humanMessage,
+					processedAttachments,
+					credentials,
+					model,
+				);
+			} catch (error) {
+				this.logger.warn(`Title generation failed: ${error}`);
+			}
+		}
 	}
 
 	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {

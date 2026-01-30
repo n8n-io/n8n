@@ -7,13 +7,11 @@ import { InstanceSettings } from 'n8n-core';
 import {
 	OperationalError,
 	ManualExecutionCancelledError,
-	type INodeCredentials,
 	type IWorkflowBase,
 	jsonParse,
 	jsonStringify,
 	StructuredChunk,
 	IRunExecutionData,
-	type IBinaryData,
 	WorkflowExecuteMode,
 	NodeConnectionTypes,
 	INodeExecutionData,
@@ -28,7 +26,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { ChatHubTitleService } from './chat-hub-title.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import {
 	EXECUTION_FINISHED_STATUSES,
@@ -54,126 +51,8 @@ export class ChatHubExecutionService {
 		private readonly chatStreamService: ChatStreamService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly messageRepository: ChatHubMessageRepository,
-		private readonly titleService: ChatHubTitleService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
-	}
-
-	async waitForExecutionCompletion(executionId: string): Promise<void> {
-		if (this.instanceSettings.isMultiMain) {
-			return await this.waitForExecutionPoller(executionId);
-		} else {
-			return await this.waitForExecutionPromise(executionId);
-		}
-	}
-
-	private async waitForExecutionPoller(executionId: string): Promise<void> {
-		return await new Promise<void>((resolve, reject) => {
-			const poller = setInterval(async () => {
-				try {
-					const execution = await this.executionRepository.findSingleExecution(executionId, {
-						includeData: false,
-						unflattenData: false,
-					});
-
-					// Stop polling when execution is done (or missing if instance doesn't save executions)
-					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
-						this.logger.debug(
-							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
-						);
-						clearInterval(poller);
-
-						if (execution?.status === 'canceled') {
-							reject(new ManualExecutionCancelledError(executionId));
-						} else {
-							resolve();
-						}
-					}
-				} catch (error) {
-					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
-					clearInterval(poller);
-
-					if (error instanceof Error) {
-						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
-							error,
-						});
-					} else {
-						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
-					}
-
-					if (error instanceof Error) {
-						reject(error);
-					} else {
-						reject(new Error('Unknown error while polling execution status'));
-					}
-				}
-			}, EXECUTION_POLL_INTERVAL);
-		});
-	}
-
-	private async waitForExecutionPromise(executionId: string): Promise<void> {
-		try {
-			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
-			const result = await this.activeExecutions.getPostExecutePromise(executionId);
-			if (!result) {
-				throw new OperationalError('There was a problem executing the chat workflow.');
-			}
-		} catch (error: unknown) {
-			if (error instanceof ExecutionNotFoundError) {
-				return;
-			}
-
-			if (error instanceof ManualExecutionCancelledError) {
-				throw error;
-			}
-
-			if (error instanceof Error) {
-				this.logger.error(`Error during chat workflow execution: ${error}`);
-			}
-			throw error;
-		}
-	}
-
-	/**
-	 * Wait for error details to be available in execution DB using exponential backoff
-	 * @param executionId - The execution ID to fetch error details from
-	 * @param workflowId - The workflow ID for the execution
-	 * @returns The error message if found, undefined otherwise
-	 */
-	private async waitForErrorDetails(
-		executionId: string,
-		workflowId: string,
-	): Promise<string | undefined> {
-		const maxRetries = 5;
-		let retries = 0;
-		let errorText: string | undefined;
-
-		while (!errorText) {
-			try {
-				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
-					workflowId,
-				]);
-				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
-					errorText = this.getErrorMessage(execution);
-					break;
-				}
-			} catch (error) {
-				this.logger.debug(
-					`Failed to fetch execution ${executionId} for error extraction: ${String(error)}`,
-				);
-			}
-
-			retries++;
-
-			if (maxRetries <= retries) {
-				break;
-			}
-
-			// Wait with exponential backoff (double wait time, cap at 2 second)
-			await sleep(Math.min(500 * Math.pow(2, retries), 2000));
-		}
-
-		return errorText;
 	}
 
 	async execute(user: User, workflowData: IWorkflowBase, executionData: IRunExecutionData) {
@@ -203,10 +82,6 @@ export class ChatHubExecutionService {
 		previousMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
-		originalPreviousMessageId: ChatMessageId | null,
-		credentials: INodeCredentials,
-		humanMessage: string,
-		processedAttachments: IBinaryData[],
 	) {
 		try {
 			const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
@@ -248,22 +123,6 @@ export class ChatHubExecutionService {
 		} finally {
 			if (model.provider !== 'n8n') {
 				await this.chatHubWorkflowService.deleteChatWorkflow(workflowData.id);
-			}
-		}
-
-		// Generate title for the session on receiving the first human message
-		if (originalPreviousMessageId === null && humanMessage) {
-			try {
-				await this.titleService.generateSessionTitle(
-					user,
-					sessionId,
-					humanMessage,
-					processedAttachments,
-					credentials,
-					model,
-				);
-			} catch (error) {
-				this.logger.warn(`Title generation failed: ${error}`);
 			}
 		}
 	}
@@ -726,6 +585,123 @@ export class ChatHubExecutionService {
 			chatInput: message,
 			sessionId,
 		});
+	}
+
+	async waitForExecutionCompletion(executionId: string): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			return await this.waitForExecutionPoller(executionId);
+		} else {
+			return await this.waitForExecutionPromise(executionId);
+		}
+	}
+
+	private async waitForExecutionPoller(executionId: string): Promise<void> {
+		return await new Promise<void>((resolve, reject) => {
+			const poller = setInterval(async () => {
+				try {
+					const execution = await this.executionRepository.findSingleExecution(executionId, {
+						includeData: false,
+						unflattenData: false,
+					});
+
+					// Stop polling when execution is done (or missing if instance doesn't save executions)
+					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+						this.logger.debug(
+							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
+						);
+						clearInterval(poller);
+
+						if (execution?.status === 'canceled') {
+							reject(new ManualExecutionCancelledError(executionId));
+						} else {
+							resolve();
+						}
+					}
+				} catch (error) {
+					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
+					clearInterval(poller);
+
+					if (error instanceof Error) {
+						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
+							error,
+						});
+					} else {
+						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
+					}
+
+					if (error instanceof Error) {
+						reject(error);
+					} else {
+						reject(new Error('Unknown error while polling execution status'));
+					}
+				}
+			}, EXECUTION_POLL_INTERVAL);
+		});
+	}
+
+	private async waitForExecutionPromise(executionId: string): Promise<void> {
+		try {
+			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
+			const result = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!result) {
+				throw new OperationalError('There was a problem executing the chat workflow.');
+			}
+		} catch (error: unknown) {
+			if (error instanceof ExecutionNotFoundError) {
+				return;
+			}
+
+			if (error instanceof ManualExecutionCancelledError) {
+				throw error;
+			}
+
+			if (error instanceof Error) {
+				this.logger.error(`Error during chat workflow execution: ${error}`);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Wait for error details to be available in execution DB using exponential backoff
+	 * @param executionId - The execution ID to fetch error details from
+	 * @param workflowId - The workflow ID for the execution
+	 * @returns The error message if found, undefined otherwise
+	 */
+	private async waitForErrorDetails(
+		executionId: string,
+		workflowId: string,
+	): Promise<string | undefined> {
+		const maxRetries = 5;
+		let retries = 0;
+		let errorText: string | undefined;
+
+		while (!errorText) {
+			try {
+				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+					errorText = this.getErrorMessage(execution);
+					break;
+				}
+			} catch (error) {
+				this.logger.debug(
+					`Failed to fetch execution ${executionId} for error extraction: ${String(error)}`,
+				);
+			}
+
+			retries++;
+
+			if (maxRetries <= retries) {
+				break;
+			}
+
+			// Wait with exponential backoff (double wait time, cap at 2 second)
+			await sleep(Math.min(500 * Math.pow(2, retries), 2000));
+		}
+
+		return errorText;
 	}
 
 	getErrorMessage(execution: IExecutionResponse): string | undefined {
