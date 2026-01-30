@@ -59,19 +59,19 @@ function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk
  * Callbacks are passed explicitly from the runner to ensure correct trace context
  * under high concurrency (avoids AsyncLocalStorage race conditions).
  *
- * IMPORTANT: This generator explicitly sets oneShotAgent: false to ensure the
+ * IMPORTANT: This generator explicitly sets codeWorkflowBuilder: false to ensure the
  * multi-agent system is used. The WorkflowBuilderAgent.chat() method defaults
- * to oneShotAgent: true, so we must override it here.
+ * to codeWorkflowBuilder: true, so we must override it here.
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow> {
-	// Ensure oneShotAgent is explicitly set to false for multi-agent evaluation
+	// Ensure codeWorkflowBuilder is explicitly set to false for multi-agent evaluation
 	const multiAgentFeatureFlags: BuilderFeatureFlags = {
 		...featureFlags,
-		oneShotAgent: false,
+		codeWorkflowBuilder: false,
 	};
 
 	return async (prompt: string, callbacks?: Callbacks): Promise<SimpleWorkflow> => {
@@ -135,7 +135,7 @@ function createCodeWorkflowBuilderGenerator(
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { oneShotAgent: true },
+			featureFlags: { codeWorkflowBuilder: true },
 		});
 
 		let workflow: SimpleWorkflow | null = null;
@@ -266,9 +266,9 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// ONE_SHOT uses CodeWorkflowBuilder (planning + coding agents)
+	// CODE_BUILDER uses CodeWorkflowBuilder (planning + coding agents)
 	const generateWorkflow =
-		args.agent === AGENT_TYPES.ONE_SHOT
+		args.agent === AGENT_TYPES.CODE_BUILDER
 			? createCodeWorkflowBuilderGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 

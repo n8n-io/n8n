@@ -1,6 +1,6 @@
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NodeTypeParser } from '../../utils/node-type-parser';
-import { createOneShotNodeSearchTool } from '../one-shot-node-search.tool';
+import { createCodeBuilderSearchTool } from '../code-builder-search.tool';
 
 // Mock node type with resource/operation pattern (like Freshservice)
 const mockFreshserviceNode: INodeTypeDescription = {
@@ -248,11 +248,11 @@ const mockOutputParserStructuredNode: INodeTypeDescription = {
 	properties: [],
 };
 
-describe('OneShotNodeSearchTool', () => {
+describe('CodeBuilderSearchTool', () => {
 	describe('builder hints in search results', () => {
 		it('should include builder hint for Form Trigger node', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockFormTriggerNode, mockFormNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['form trigger'] });
 
@@ -264,7 +264,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should automatically include related nodes in search results', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockRespondToWebhookNode, mockWebhookNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			// Search for "respond" which should only match respondToWebhook, not webhook
 			const result = await tool.invoke({ queries: ['respond'] });
@@ -277,7 +277,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should include builder hint for Respond to Webhook node', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockRespondToWebhookNode, mockWebhookNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['respond webhook'] });
 
@@ -289,7 +289,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should include builder hint for Form node', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockFormNode, mockFormTriggerNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['form'] });
 
@@ -300,7 +300,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should include builder hint for AI Agent node with outputParserStructured', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockAgentNode, mockOutputParserStructuredNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['agent'] });
 
@@ -313,7 +313,7 @@ describe('OneShotNodeSearchTool', () => {
 		it('should include outputParserStructured as related node when searching for AI Agent only', async () => {
 			// Only include Agent node, so outputParserStructured will be added as [RELATED]
 			const nodeTypeParser = new NodeTypeParser([mockAgentNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['AI Agent'] });
 
@@ -328,7 +328,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should show outputParserStructured as [RELATED] when both nodes available but only agent matches search', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockAgentNode, mockOutputParserStructuredNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			// Search specifically for "AI Agent" - should only match agent node directly
 			const result = await tool.invoke({ queries: ['AI Agent'] });
@@ -393,7 +393,7 @@ describe('OneShotNodeSearchTool', () => {
 			};
 
 			const nodeTypeParser = new NodeTypeParser([mockNodeA, mockNodeB, mockNodeC]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			// Search for "Chain Node A" - should only match nodeA directly
 			const result = await tool.invoke({ queries: ['Chain Node A'] });
@@ -447,7 +447,7 @@ describe('OneShotNodeSearchTool', () => {
 			};
 
 			const nodeTypeParser = new NodeTypeParser([mockNodeA, mockNodeB]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			// This should not hang or throw due to infinite recursion
 			const result = await tool.invoke({ queries: ['Node A'] });
@@ -463,7 +463,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should NOT duplicate related nodes if already in search results', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockFormTriggerNode, mockFormNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			// Search for both nodes - form should match both
 			const result = await tool.invoke({ queries: ['form'] });
@@ -476,7 +476,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should NOT include builder hint for nodes without hints', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['http'] });
 
@@ -492,7 +492,7 @@ describe('OneShotNodeSearchTool', () => {
 				mockCodeNode,
 				mockHttpRequestNode,
 			]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['freshservice'] });
 
@@ -522,7 +522,7 @@ describe('OneShotNodeSearchTool', () => {
 				mockCodeNode,
 				mockHttpRequestNode,
 			]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['code'] });
 
@@ -545,7 +545,7 @@ describe('OneShotNodeSearchTool', () => {
 				mockCodeNode,
 				mockHttpRequestNode,
 			]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['http request'] });
 
@@ -575,7 +575,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should provide correct usage example in the output', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockFreshserviceNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['freshservice'] });
 
@@ -584,10 +584,10 @@ describe('OneShotNodeSearchTool', () => {
 		});
 	});
 
-	describe('createOneShotNodeSearchTool', () => {
+	describe('createCodeBuilderSearchTool', () => {
 		it('should create tool with correct name', () => {
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 			expect(tool.name).toBe('search_nodes');
 		});
 
@@ -597,7 +597,7 @@ describe('OneShotNodeSearchTool', () => {
 				mockCodeNode,
 				mockHttpRequestNode,
 			]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['freshservice', 'code'] });
 
@@ -610,7 +610,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should handle queries with no results', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['nonexistent-node-xyz'] });
 
@@ -622,7 +622,7 @@ describe('OneShotNodeSearchTool', () => {
 	describe('mode discriminator with outputConnectionType and SDK function mapping', () => {
 		it('should show display name and SDK function for modes with outputConnectionType', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockVectorStoreNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['pinecone'] });
 
@@ -648,7 +648,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should show node() for modes without outputConnectionType', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockVectorStoreNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['pinecone'] });
 
@@ -666,7 +666,7 @@ describe('OneShotNodeSearchTool', () => {
 
 		it('should NOT show SDK function for nodes where all modes use node()', async () => {
 			const nodeTypeParser = new NodeTypeParser([mockCodeNode]);
-			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
 
 			const result = await tool.invoke({ queries: ['code'] });
 

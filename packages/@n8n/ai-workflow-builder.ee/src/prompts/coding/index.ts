@@ -13,7 +13,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { SDK_API_CONTENT } from '../one-shot/sdk-api';
+import { SDK_API_CONTENT } from './sdk-api';
 
 /**
  * Escape curly brackets for LangChain prompt templates

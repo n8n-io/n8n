@@ -20,7 +20,7 @@ import { parseWorkflowCodeToBuilder, validateWorkflow } from '@n8n/workflow-sdk'
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { buildCodingAgentPrompt } from './prompts/coding';
-import { createOneShotNodeGetTool } from './tools/one-shot-node-get.tool';
+import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 import { extractWorkflowCode } from './utils/extract-code';
 import type {
 	StreamOutput,
@@ -72,7 +72,7 @@ export class CodingAgent {
 		this.logger = config.logger;
 
 		// Create tools for the coding agent
-		const getTool = createOneShotNodeGetTool({ generatedTypesDir: config.generatedTypesDir });
+		const getTool = createCodeBuilderGetTool({ generatedTypesDir: config.generatedTypesDir });
 		this.tools = [getTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 

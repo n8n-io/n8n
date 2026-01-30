@@ -12,8 +12,8 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { inspect } from 'node:util';
 
-import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
-import { escapeCurlyBrackets, SDK_API_CONTENT } from './sdk-api';
+import type { NodeWithDiscriminators } from '../../../utils/node-type-parser';
+import { escapeCurlyBrackets, SDK_API_CONTENT } from '../../coding/sdk-api';
 
 /**
  * Debug logging helper for prompt builder

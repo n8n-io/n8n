@@ -1,7 +1,7 @@
 /**
- * Node Type Parser for One-Shot Workflow Code Agent
+ * Node Type Parser for CodeWorkflowBuilder
  *
- * Provides utilities to work with node types for the one-shot agent:
+ * Provides utilities to work with node types for the code builder:
  * - Extract node IDs for system prompt
  * - Search nodes by name/description
  * - Get detailed node type information
@@ -41,7 +41,7 @@ export interface NodeWithDiscriminators {
 
 /**
  * Node Type Parser class
- * Provides efficient access to node type data for the one-shot agent
+ * Provides efficient access to node type data for the code builder
  */
 export class NodeTypeParser {
 	private nodeTypes: INodeTypeDescription[];

@@ -1,7 +1,7 @@
 /**
- * Simplified Node Search Tool for One-Shot Workflow Code Agent
+ * Simplified Node Search Tool for CodeWorkflowBuilder
  *
- * Provides a simpler search interface optimized for the one-shot agent.
+ * Provides a simpler search interface optimized for the code builder.
  * Searches nodes by name/description without the complex query structure
  * of the multi-agent system's search tool.
  *
@@ -24,7 +24,7 @@ import { extractModeDiscriminator, type ModeInfo } from './utils/discriminator-u
  */
 function debugLog(message: string, data?: Record<string, unknown>): void {
 	const timestamp = new Date().toISOString();
-	const prefix = `[ONE-SHOT-AGENT][${timestamp}][SEARCH_TOOL]`;
+	const prefix = `[CODE-BUILDER][${timestamp}][SEARCH_TOOL]`;
 	if (data) {
 		const formatted = inspect(data, {
 			depth: null,
@@ -326,11 +326,11 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 }
 
 /**
- * Create the simplified node search tool for one-shot agent
+ * Create the simplified node search tool for code builder
  * Accepts multiple queries and returns separate results for each
  * Includes discriminator information for nodes with resource/operation or mode patterns
  */
-export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
+export function createCodeBuilderSearchTool(nodeTypeParser: NodeTypeParser) {
 	debugLog('Creating search_nodes tool');
 
 	return tool(

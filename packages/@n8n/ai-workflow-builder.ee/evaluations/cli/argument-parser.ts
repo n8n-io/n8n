@@ -6,7 +6,7 @@ import {
 	AVAILABLE_PROMPT_VERSIONS,
 	DEFAULT_PROMPT_VERSION,
 	type PromptVersionId,
-} from '@/prompts/one-shot';
+} from '@/prompts/builder/one-shot';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import type { LangsmithExampleFilters } from '../harness/harness-types';
@@ -15,7 +15,7 @@ import type { StageModels } from '../support/environment.js';
 
 export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';
-export type AgentType = 'multi-agent' | 'one-shot';
+export type AgentType = 'multi-agent' | 'code-builder';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
@@ -84,7 +84,7 @@ const cliSchema = z
 	.object({
 		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
-		agent: z.enum(['one-shot', 'multi-agent']).default('one-shot'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -165,7 +165,7 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'agent',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Agent type (one-shot|multi-agent)',
+		desc: 'Agent type (code-builder|multi-agent)',
 	},
 	'--max-examples': {
 		key: 'maxExamples',

@@ -14,11 +14,11 @@ import { SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import {
 	buildAvailableNodesSection,
 	buildRawSystemPrompt,
-} from '../src/prompts/one-shot-generator.prompt';
+} from '../src/prompts/builder/one-shot/v1-sonnet.prompt';
 import {
 	buildOpusAvailableNodesSection,
 	buildOpusRawSystemPrompt,
-} from '../src/prompts/one-shot-generator-opus.prompt';
+} from '../src/prompts/builder/one-shot/v2-opus.prompt';
 import type { NodeWithDiscriminators } from '../src/utils/node-type-parser';
 
 type PromptType = 'sonnet' | 'opus';

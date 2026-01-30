@@ -8,8 +8,8 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { ModelId } from '../../llm-config';
-import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
+import type { ModelId } from '../../../llm-config';
+import type { NodeWithDiscriminators } from '../../../utils/node-type-parser';
 
 // Import prompt builders from versioned files
 import { buildOneShotGeneratorPrompt, buildRawSystemPrompt } from './v1-sonnet.prompt';

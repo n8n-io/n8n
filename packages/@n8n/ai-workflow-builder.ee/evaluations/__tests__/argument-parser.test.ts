@@ -1,5 +1,5 @@
 import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser';
-import type { PromptVersionId } from '../../src/prompts/one-shot';
+import type { PromptVersionId } from '../../src/prompts/builder/one-shot';
 
 describe('argument-parser', () => {
 	describe('suite options', () => {

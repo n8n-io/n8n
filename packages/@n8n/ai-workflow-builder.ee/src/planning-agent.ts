@@ -19,7 +19,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { buildPlanningAgentPrompt } from './prompts/planning';
-import { createOneShotNodeSearchTool } from './tools/one-shot-node-search.tool';
+import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetBestPracticesTool } from './tools/get-best-practices.tool';
 import type { NodeTypeParser } from './utils/node-type-parser';
 import type { StreamOutput, ToolProgressChunk } from './types/streaming';
@@ -66,7 +66,7 @@ export class PlanningAgent {
 		this.logger = config.logger;
 
 		// Create tools for the planning agent
-		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
+		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
 		const bestPracticesTool = createGetBestPracticesTool();
 		this.tools = [searchTool, bestPracticesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));

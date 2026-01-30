@@ -1,6 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
+import type { NodeWithDiscriminators } from '../../../utils/node-type-parser';
 
 import {
 	AVAILABLE_PROMPT_VERSIONS,

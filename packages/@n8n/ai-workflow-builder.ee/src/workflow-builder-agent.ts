@@ -78,13 +78,13 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
-import type { PromptVersionId } from './prompts/one-shot';
+import type { PromptVersionId } from './prompts/builder/one-shot';
 import type { ModelId } from './llm-config';
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 	/** Enable CodeWorkflowBuilder (default: true). When false, uses legacy multi-agent system. */
-	oneShotAgent?: boolean;
+	codeWorkflowBuilder?: boolean;
 	/** Prompt version to use for generation */
 	promptVersion?: PromptVersionId;
 	/** Model ID to use for generation */
@@ -170,7 +170,7 @@ export class WorkflowBuilderAgent {
 		this.validateMessageLength(payload.message);
 
 		// Feature flag: Route to CodeWorkflowBuilder if enabled (default: true)
-		const useCodeWorkflowBuilder = payload.featureFlags?.oneShotAgent ?? true;
+		const useCodeWorkflowBuilder = payload.featureFlags?.codeWorkflowBuilder ?? true;
 
 		if (useCodeWorkflowBuilder) {
 			this.logger?.debug('Routing to CodeWorkflowBuilder', { userId });
