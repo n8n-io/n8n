@@ -453,4 +453,99 @@ describe('matchesDisplayOptions', () => {
 			expect(result).toBe(false);
 		});
 	});
+
+	describe('regex path handling', () => {
+		it('matches if ANY path in regex pattern exists', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {
+					guardrails: {
+						jailbreak: { value: { threshold: 0.7 } },
+					},
+				},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(true);
+		});
+
+		it('matches when second alternative in regex exists', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {
+					guardrails: {
+						nsfw: { value: { threshold: 0.8 } },
+					},
+				},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(true);
+		});
+
+		it('returns false when no paths match regex pattern', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {
+					guardrails: {
+						pii: { value: { type: 'all' } },
+						secretKeys: { value: { permissiveness: 'balanced' } },
+					},
+				},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(false);
+		});
+
+		it('returns false when guardrails is empty', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {
+					guardrails: {},
+				},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(false);
+		});
+
+		it('returns false when guardrails does not exist', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(false);
+		});
+
+		it('matches multiple LLM guardrails', () => {
+			const context: DisplayOptionsContext = {
+				parameters: {
+					guardrails: {
+						jailbreak: { value: { threshold: 0.7 } },
+						nsfw: { value: { threshold: 0.8 } },
+						custom: { guardrail: [{ name: 'test' }] },
+					},
+				},
+			};
+			const result = matchesDisplayOptions(context, {
+				show: {
+					'/guardrails.(jailbreak|nsfw|topicalAlignment|custom)': [{ _cnd: { exists: true } }],
+				},
+			});
+			expect(result).toBe(true);
+		});
+	});
 });
