@@ -322,12 +322,20 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		deleteUserById(params.id);
 	};
 
-	const fetchUsers = async () => {
+	const fetchUsers = async ({
+		take,
+		skip,
+		filter,
+	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
 		if (!hasPermission(['rbac'], { rbac: { scope: 'user:list' } })) {
 			return;
 		}
 
-		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, {
+			take: take ?? 50,
+			skip: skip ?? 0,
+			filter,
+		});
 		addUsers(items);
 	};
 
@@ -409,7 +417,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
 		await usersApi.updateGlobalRole(rootStore.restApiContext, { id, newRoleName });
-		await fetchUsers();
+		await fetchUsers({ filter: { ids: [id] } });
 	};
 
 	const submitContactEmail = async (email: string, agree: boolean) => {
