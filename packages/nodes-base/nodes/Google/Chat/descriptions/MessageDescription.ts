@@ -216,6 +216,35 @@ export const messageFields: INodeProperties[] = [
 				description:
 					'A unique request ID for this message. If a message has already been created in the space with this request ID, the subsequent request will return the existing message and no new message will be created.',
 			},
+			{
+				displayName: 'Message Reply Option',
+				name: 'messageReplyOption',
+				type: 'options',
+				noDataExpression: true,
+				default: 'MESSAGE_REPLY_OPTION_UNSPECIFIED',
+				description:
+					'Optional. Specifies whether a message starts a thread or replies to one. Only supported in named spaces. When responding to user interactions, this field is ignored. For interactions within a thread, the reply is created in the same thread. Otherwise, the reply is created as a new thread.',
+				options: [
+					{
+						name: 'MESSAGE_REPLY_OPTION_UNSPECIFIED',
+						value: 'MESSAGE_REPLY_OPTION_UNSPECIFIED',
+						description:
+							"Default. Starts a new thread. Using this option ignores any thread ID or threadKey that's included.",
+					},
+					{
+						name: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
+						value: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
+						description:
+							'Creates the message as a reply to the thread specified by thread ID or threadKey. If it fails, the message starts a new thread instead.',
+					},
+					{
+						name: 'REPLY_MESSAGE_OR_FAIL',
+						value: 'REPLY_MESSAGE_OR_FAIL',
+						description:
+							'Creates the message as a reply to the thread specified by thread ID or threadKey. If a new threadKey is used, a new thread is created. If the message creation fails, a NOT_FOUND error is returned instead.',
+					},
+				],
+			},
 		],
 	},
 
