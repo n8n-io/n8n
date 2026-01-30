@@ -7,7 +7,6 @@ export class VectorStoreModule implements ModuleInterface {
 	async init() {
 		await import('./vector-store-data.controller');
 
-		// Initialize repository (e.g., upgrade to pgvector if available)
 		const { VectorStoreDataService } = await import('./vector-store-data.service');
 		const service = Container.get(VectorStoreDataService);
 		await service.init();
