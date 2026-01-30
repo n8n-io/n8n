@@ -1,0 +1,82 @@
+{
+	"name": "Mindee Test Workflow enqueueAndGetInference",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "fileEnqueueAndPoll",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"name": "HTTP Request"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Upload a document and get the result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "150e8597-78e7-4bc8-85b0-81a5f75e64ec",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e0c08fe50a944235a7d16d1676bab14791196afa3348d9530be465241cbf6b09"
+	},
+	"id": "tgt9Smqa1iT3cU96",
+	"tags": []
+}
