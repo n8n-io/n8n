@@ -7,10 +7,10 @@ import { BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
-import { ChatHubMessageRepository } from './chat-message.repository';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { ChatHubMessageRepository } from './chat-message.repository';
 
 @Service()
 export class ChatHubAttachmentService {
