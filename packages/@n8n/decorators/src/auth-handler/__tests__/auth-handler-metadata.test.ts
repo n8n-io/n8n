@@ -12,8 +12,9 @@ describe('AuthHandlerEntryMetadata', () => {
 	});
 
 	it('should register handler classes', () => {
-		class TestHandler implements IPasswordAuthHandler {
+		class TestHandler implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
@@ -24,14 +25,16 @@ describe('AuthHandlerEntryMetadata', () => {
 	});
 
 	it('should return all registered entries', () => {
-		class Handler1 implements IPasswordAuthHandler {
+		class Handler1 implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test1', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
 		}
-		class Handler2 implements IPasswordAuthHandler {
+		class Handler2 implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test2', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
@@ -45,14 +48,16 @@ describe('AuthHandlerEntryMetadata', () => {
 	});
 
 	it('should return all registered classes', () => {
-		class Handler1 implements IPasswordAuthHandler {
+		class Handler1 implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test1', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
 		}
-		class Handler2 implements IPasswordAuthHandler {
+		class Handler2 implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test2', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
@@ -73,8 +78,9 @@ describe('@AuthHandler decorator', () => {
 
 	it('should register handler in metadata', () => {
 		@AuthHandler()
-		class TestAuthHandler implements IPasswordAuthHandler {
+		class TestAuthHandler implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
@@ -88,8 +94,9 @@ describe('@AuthHandler decorator', () => {
 
 	it('should enable dependency injection', () => {
 		@AuthHandler()
-		class TestAuthHandler implements IPasswordAuthHandler {
+		class TestAuthHandler implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test', type: 'password' as const };
+			readonly userClass = Object;
 			async handleLogin() {
 				return undefined;
 			}
@@ -110,9 +117,10 @@ describe('@AuthHandler decorator', () => {
 		}
 
 		@AuthHandler()
-		class TestAuthHandler implements IPasswordAuthHandler {
+		class TestAuthHandler implements IPasswordAuthHandler<object> {
 			metadata = { name: 'test', type: 'password' as const };
 			constructor(private logger: Logger) {}
+			readonly userClass = Object;
 
 			async handleLogin() {
 				this.logger.log('login');

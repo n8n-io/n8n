@@ -20,11 +20,14 @@ export interface AuthHandlerMetadata {
  * Base interface for all authentication handlers.
  * Contains common fields shared across all auth types.
  */
-interface IAuthHandlerBase {
+interface IAuthHandlerBase<TUser> {
 	/**
 	 * Metadata identifying this auth handler.
 	 */
 	readonly metadata: AuthHandlerMetadata;
+
+	/** The user type returned by the auth handler */
+	readonly userClass: Constructable<TUser>;
 
 	/**
 	 * Optional lifecycle hook called during handler initialization.
@@ -39,7 +42,7 @@ interface IAuthHandlerBase {
  *
  * @template TUser - The user type returned by the auth handler (typically from @n8n/db)
  */
-export interface IPasswordAuthHandler<TUser = unknown> extends IAuthHandlerBase {
+export interface IPasswordAuthHandler<TUser> extends IAuthHandlerBase<TUser> {
 	readonly metadata: AuthHandlerMetadata & { type: 'password' };
 
 	/**

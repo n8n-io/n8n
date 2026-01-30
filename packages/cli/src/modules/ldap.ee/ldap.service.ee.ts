@@ -2,9 +2,9 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { isValidEmail, SettingsRepository } from '@n8n/db';
-import type { User, RunningMode, SyncStatus } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { isValidEmail, SettingsRepository, User } from '@n8n/db';
+import type { RunningMode, SyncStatus } from '@n8n/db';
+import { Constructable, Container } from '@n8n/di';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -58,6 +58,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
 
 	config: LdapConfig;
+
+	readonly userClass: Constructable<User> = User;
 
 	constructor(
 		private readonly logger: Logger,

@@ -4,6 +4,10 @@ import type { AuthType, IAuthHandler, IPasswordAuthHandler } from '@n8n/decorato
 import { AuthHandlerEntryMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 
+function isUserHandler(handler: IAuthHandler): handler is IAuthHandler<User> {
+	return handler.userClass === User;
+}
+
 /**
  * Registry service for discovering, instantiating, and managing auth handler implementations.
  * Automatically discovers all classes decorated with @AuthHandler() and makes them available by name.
@@ -34,7 +38,14 @@ export class AuthHandlerRegistry {
 			try {
 				// We're casting here as we know all classes returned
 				// by getClasses() implement IAuthHandler<User>
-				handler = Container.get(HandlerClass) as IAuthHandler<User>;
+				const unknownHandler = Container.get(HandlerClass);
+				if (isUserHandler(unknownHandler)) {
+					handler = unknownHandler;
+				} else {
+					throw new Error(
+						`Handler user class mismatch. Expected User but got ${unknownHandler.userClass.name}`,
+					);
+				}
 			} catch (error) {
 				this.logger.error(
 					`Failed to instantiate auth handler class "${HandlerClass.name}": ${(error as Error).message}`,
