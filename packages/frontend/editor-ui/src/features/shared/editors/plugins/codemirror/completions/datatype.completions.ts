@@ -1283,6 +1283,9 @@ export const secretProvidersOptions = () => {
 			// group will be undefined if project secret development feature flag is disabled
 			// TODO: make group param mandatory once feature flag is removed
 			doc.section = section;
+			doc.description = i18n.baseText(
+				`codeNodeEditor.completer.$secrets.group.${section}.description`,
+			);
 		}
 
 		return createCompletionOption({
