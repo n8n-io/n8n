@@ -61,6 +61,10 @@ const alias = [
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
+	{
+		find: /^@n8n\/crdt$/,
+		replacement: resolve(packagesDir, '@n8n', 'crdt', 'src'),
+	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: `lodash/${name}`,

@@ -71,9 +71,10 @@ export class AuthService {
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
-			// we need to exclude push endpoint because we can't send custom header on websocket requests
+			// we need to exclude push and crdt endpoints because we can't send custom headers on websocket requests
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
 			`/${restEndpoint}/push`,
+			`/${restEndpoint}/crdt`,
 
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
 			`/${restEndpoint}/binary-data/`,

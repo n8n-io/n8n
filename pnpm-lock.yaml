@@ -1703,6 +1703,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../@n8n/constants
+      '@n8n/crdt':
+        specifier: workspace:*
+        version: link:../@n8n/crdt
       '@n8n/db':
         specifier: workspace:*
         version: link:../@n8n/db
@@ -2825,6 +2828,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../@n8n/constants
+      '@n8n/crdt':
+        specifier: workspace:*
+        version: link:../../@n8n/crdt
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
