@@ -391,7 +391,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: [],
 						description:
-							'List of databases that belong to another database. Multiples can be defined separated by comma.',
+							'List of database page IDs that belong to another database. Multiples can be defined separated by comma. Make sure to enable <a href="https://www.notion.com/help/relations-and-rollups#two-way-relations">two-way relations</a>.',
 					},
 					{
 						displayName: 'Checked',
