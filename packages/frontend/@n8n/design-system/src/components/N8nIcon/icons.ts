@@ -11,37 +11,6 @@ import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
-import NodeAggregate from './custom/node-icons-v2/aggregate.svg';
-import NodeAiAgent from './custom/node-icons-v2/ai-agent.svg';
-import NodeBasicLlmChain from './custom/node-icons-v2/basic-llm-chain.svg';
-import NodeChatTrigger from './custom/node-icons-v2/chat-trigger.svg';
-import NodeCode from './custom/node-icons-v2/code.svg';
-import NodeConvertToFile from './custom/node-icons-v2/convert-to-file.svg';
-import NodeEditFields from './custom/node-icons-v2/edit-fields.svg';
-import NodeExecuteSubWorkflow from './custom/node-icons-v2/execute-sub-workflow.svg';
-import NodeExtractFromFile from './custom/node-icons-v2/extract-from-file.svg';
-import NodeFilter from './custom/node-icons-v2/filter.svg';
-import NodeFormTrigger from './custom/node-icons-v2/form-trigger.svg';
-import NodeHttpRequest from './custom/node-icons-v2/http-request.svg';
-import NodeIf from './custom/node-icons-v2/if.svg';
-import NodeInformationExtractor from './custom/node-icons-v2/information-extractor.svg';
-import NodeLimit from './custom/node-icons-v2/limit.svg';
-import NodeLoopOverItems from './custom/node-icons-v2/loop-over-items.svg';
-import NodeManualTrigger from './custom/node-icons-v2/manual-trigger.svg';
-import NodeMerge from './custom/node-icons-v2/merge.svg';
-import NodeNoOperation from './custom/node-icons-v2/no-operation.svg';
-import NodeReadWriteFiles from './custom/node-icons-v2/read-write-files-from-disk.svg';
-import NodeRespondToWebhook from './custom/node-icons-v2/respond-to-webhook.svg';
-import NodeScheduleTrigger from './custom/node-icons-v2/schedule-trigger.svg';
-import NodeSendMail from './custom/node-icons-v2/send-mail.svg';
-import NodeSimpleMemory from './custom/node-icons-v2/simple-memory.svg';
-import NodeSplitOut from './custom/node-icons-v2/split-out.svg';
-import NodeStructuredOutputParser from './custom/node-icons-v2/structured-output-parser.svg';
-import NodeSubWorkflowTrigger from './custom/node-icons-v2/sub-workflow-trigger.svg';
-import NodeSwitch from './custom/node-icons-v2/switch.svg';
-import NodeTextClassifier from './custom/node-icons-v2/text-classifier.svg';
-import NodeWait from './custom/node-icons-v2/wait.svg';
-import NodeWebhookTrigger from './custom/node-icons-v2/webhook-trigger.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
@@ -66,6 +35,37 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import NodeAggregate from './nodes/aggregate.svg';
+import NodeAiAgent from './nodes/ai-agent.svg';
+import NodeBasicLlmChain from './nodes/basic-llm-chain.svg';
+import NodeChatTrigger from './nodes/chat-trigger.svg';
+import NodeCode from './nodes/code.svg';
+import NodeConvertToFile from './nodes/convert-to-file.svg';
+import NodeEditFields from './nodes/edit-fields.svg';
+import NodeExecuteSubWorkflow1 from './nodes/execute-sub-workflow-1.svg';
+import NodeExecuteSubWorkflow2 from './nodes/execute-sub-workflow-2.svg';
+import NodeExtractFromFile from './nodes/extract-from-file.svg';
+import NodeFilter from './nodes/filter.svg';
+import NodeFormTrigger from './nodes/form-trigger.svg';
+import NodeHttpRequest from './nodes/http-request.svg';
+import NodeIf from './nodes/if.svg';
+import NodeInformationExtractor from './nodes/information-extractor.svg';
+import NodeLimit from './nodes/limit.svg';
+import NodeLoopOverItems from './nodes/loop-over-items.svg';
+import NodeManualTrigger from './nodes/manual-trigger.svg';
+import NodeMerge from './nodes/merge.svg';
+import NodeNoOperation from './nodes/no-operation.svg';
+import NodeReadWriteFilesFromDisk from './nodes/read-write-files-from-disk.svg';
+import NodeRespondToWebhook from './nodes/respond-to-webhook.svg';
+import NodeScheduleTrigger from './nodes/schedule-trigger.svg';
+import NodeSendMail from './nodes/send-mail.svg';
+import NodeSimpleMemory from './nodes/simple-memory.svg';
+import NodeSplitOut from './nodes/split-out.svg';
+import NodeStructuredOutputParser from './nodes/structured-output-parser.svg';
+import NodeSwitch from './nodes/switch.svg';
+import NodeTextClassifier from './nodes/text-classifier.svg';
+import NodeWait from './nodes/wait.svg';
+import NodeWebhook from './nodes/webhook.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -525,39 +525,6 @@ export const updatedIconSet = {
 	form: Form,
 	webhook: Webhook,
 
-	// Node Icons V2
-	'node-aggregate': NodeAggregate,
-	'node-ai-agent': NodeAiAgent,
-	'node-basic-llm-chain': NodeBasicLlmChain,
-	'node-chat-trigger': NodeChatTrigger,
-	'node-code': NodeCode,
-	'node-convert-to-file': NodeConvertToFile,
-	'node-edit-fields': NodeEditFields,
-	'node-execute-sub-workflow': NodeExecuteSubWorkflow,
-	'node-extract-from-file': NodeExtractFromFile,
-	'node-filter': NodeFilter,
-	'node-form-trigger': NodeFormTrigger,
-	'node-http-request': NodeHttpRequest,
-	'node-if': NodeIf,
-	'node-information-extractor': NodeInformationExtractor,
-	'node-limit': NodeLimit,
-	'node-loop-over-items': NodeLoopOverItems,
-	'node-manual-trigger': NodeManualTrigger,
-	'node-merge': NodeMerge,
-	'node-no-operation': NodeNoOperation,
-	'node-read-write-files': NodeReadWriteFiles,
-	'node-respond-to-webhook': NodeRespondToWebhook,
-	'node-schedule-trigger': NodeScheduleTrigger,
-	'node-send-mail': NodeSendMail,
-	'node-simple-memory': NodeSimpleMemory,
-	'node-split-out': NodeSplitOut,
-	'node-structured-output-parser': NodeStructuredOutputParser,
-	'node-sub-workflow-trigger': NodeSubWorkflowTrigger,
-	'node-switch': NodeSwitch,
-	'node-text-classifier': NodeTextClassifier,
-	'node-wait': NodeWait,
-	'node-webhook-trigger': NodeWebhookTrigger,
-
 	// lucide
 	'align-right': IconLucideAlignRight,
 	archive: IconLucideArchive,
@@ -764,52 +731,51 @@ export const updatedIconSet = {
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
-export function isSupportedIconName(iconName?: string): iconName is IconName {
-	// support both deprecated and updated icon names
+export function isSupportedIconName(iconName?: string): iconName is IconName | NodeIconName {
+	// support deprecated, updated, and node icon names
 	return (
-		typeof iconName === 'string' && (iconName in updatedIconSet || iconName in deprecatedIconSet)
+		typeof iconName === 'string' &&
+		(iconName in updatedIconSet || iconName in deprecatedIconSet || iconName in nodeIconSet)
 	);
 }
 
-/**
- * Node Icons V2 - These icons have different sizing requirements:
- * - Canvas nodes: 48x48px (vs 40px for current icons)
- * - Node picker/NDV header: 24x24px (vs 20px for current icons)
- */
-export const nodeIconsV2Set = new Set<IconName>([
-	'node-aggregate',
-	'node-ai-agent',
-	'node-basic-llm-chain',
-	'node-chat-trigger',
-	'node-code',
-	'node-convert-to-file',
-	'node-edit-fields',
-	'node-execute-sub-workflow',
-	'node-extract-from-file',
-	'node-filter',
-	'node-form-trigger',
-	'node-http-request',
-	'node-if',
-	'node-information-extractor',
-	'node-limit',
-	'node-loop-over-items',
-	'node-manual-trigger',
-	'node-merge',
-	'node-no-operation',
-	'node-read-write-files',
-	'node-respond-to-webhook',
-	'node-schedule-trigger',
-	'node-send-mail',
-	'node-simple-memory',
-	'node-split-out',
-	'node-structured-output-parser',
-	'node-sub-workflow-trigger',
-	'node-switch',
-	'node-text-classifier',
-	'node-wait',
-	'node-webhook-trigger',
-]);
+// Node icons - these use the node: prefix convention
+export const nodeIconSet = {
+	'node:aggregate': NodeAggregate,
+	'node:ai-agent': NodeAiAgent,
+	'node:basic-llm-chain': NodeBasicLlmChain,
+	'node:chat-trigger': NodeChatTrigger,
+	'node:code': NodeCode,
+	'node:convert-to-file': NodeConvertToFile,
+	'node:edit-fields': NodeEditFields,
+	'node:execute-sub-workflow-1': NodeExecuteSubWorkflow1,
+	'node:execute-sub-workflow-2': NodeExecuteSubWorkflow2,
+	'node:extract-from-file': NodeExtractFromFile,
+	'node:filter': NodeFilter,
+	'node:form-trigger': NodeFormTrigger,
+	'node:http-request': NodeHttpRequest,
+	'node:if': NodeIf,
+	'node:information-extractor': NodeInformationExtractor,
+	'node:limit': NodeLimit,
+	'node:loop-over-items': NodeLoopOverItems,
+	'node:manual-trigger': NodeManualTrigger,
+	'node:merge': NodeMerge,
+	'node:no-operation': NodeNoOperation,
+	'node:read-write-files-from-disk': NodeReadWriteFilesFromDisk,
+	'node:respond-to-webhook': NodeRespondToWebhook,
+	'node:schedule-trigger': NodeScheduleTrigger,
+	'node:send-mail': NodeSendMail,
+	'node:simple-memory': NodeSimpleMemory,
+	'node:split-out': NodeSplitOut,
+	'node:structured-output-parser': NodeStructuredOutputParser,
+	'node:switch': NodeSwitch,
+	'node:text-classifier': NodeTextClassifier,
+	'node:wait': NodeWait,
+	'node:webhook': NodeWebhook,
+} as const;
 
-export function isNodeIconV2(iconName?: string): boolean {
-	return typeof iconName === 'string' && nodeIconsV2Set.has(iconName as IconName);
+export type NodeIconName = keyof typeof nodeIconSet;
+
+export function isNodeIcon(iconName?: string): iconName is NodeIconName {
+	return typeof iconName === 'string' && iconName in nodeIconSet;
 }

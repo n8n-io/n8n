@@ -1,14 +1,15 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconName } from './icons';
-import { deprecatedIconSet, updatedIconSet } from './icons';
+import type { IconName, NodeIconName } from './icons';
+import { deprecatedIconSet, updatedIconSet, nodeIconSet } from './icons';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
 	// component supports both deprecated and updated icon set to support project icons
 	// but only allow new icon names to be used in the future
-	icon: IconName;
+	// also supports node icons with the node: prefix
+	icon: IconName | NodeIconName;
 	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
@@ -91,10 +92,12 @@ const styles = computed(() => {
 <template>
 	<Component
 		:is="
+			nodeIconSet[icon as keyof typeof nodeIconSet] ??
 			updatedIconSet[icon as keyof typeof updatedIconSet] ??
 			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
 		"
 		v-if="
+			nodeIconSet[icon as keyof typeof nodeIconSet] ??
 			updatedIconSet[icon as keyof typeof updatedIconSet] ??
 			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
 		"
