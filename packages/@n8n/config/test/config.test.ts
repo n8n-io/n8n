@@ -254,6 +254,7 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 					dualStack: false,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
