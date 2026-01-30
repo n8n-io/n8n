@@ -49,7 +49,7 @@ The most important directories:
 
 - [/docker/images](/docker/images) - Dockerfiles to create n8n containers
 - [/packages](/packages) - The different n8n modules
-- [/packages/cli](/packages/cli) - CLI code to run front- & backend
+- [/packages/cli](/packages/cli) - CLI code to run front- & backend; this also contains the code for n8n's APIs
 - [/packages/core](/packages/core) - Core code which handles workflow
   execution, active webhooks and
   workflows. **Contact n8n before
@@ -78,7 +78,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.2 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -88,9 +88,12 @@ This automatically sets up file-links between modules which depend on each other
 
 #### corepack
 
-We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
+We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)  and pnpm with:
 
-You can install the correct version of pnpm using `corepack prepare --activate`.
+```bash
+corepack enable
+corepack prepare pnpm@10.22.0 --activate
+```
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -102,19 +105,19 @@ The packages which n8n uses depend on a few build tools:
 
 Debian/Ubuntu:
 
-```
+```bash
 apt-get install -y build-essential python
 ```
 
 CentOS:
 
-```
+```bash
 yum install gcc gcc-c++ make
 ```
 
 Windows:
 
-```
+```bash
 npm add -g windows-build-tools
 ```
 
@@ -127,7 +130,7 @@ No additional packages required.
 If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`), you'll need [actionlint](https://github.com/rhysd/actionlint) for workflow validation:
 
 **macOS (Homebrew):**
-```
+```bash
 brew install actionlint
 ```
 > **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
@@ -138,6 +141,8 @@ brew install actionlint
 
 Now that everything n8n requires to run is installed, the actual n8n code can be
 checked out and set up:
+
+#### For external contributors
 
 1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository.
 
@@ -159,13 +164,17 @@ checked out and set up:
    git remote add upstream https://github.com/n8n-io/n8n.git
    ```
 
-5. Install all dependencies of all modules and link them together:
+#### For everyone
+
+1. Go into the cloned repository folder
+
+2. Install all dependencies of all modules and link them together:
 
    ```
    pnpm install
    ```
 
-6. Build all the code:
+3. Build all the code:
    ```
    pnpm build
    ```
@@ -174,7 +183,7 @@ checked out and set up:
 
 To start n8n execute:
 
-```
+```bash
 pnpm start
 ```
 
@@ -183,13 +192,24 @@ pnpm start
 While iterating on n8n modules code, you can run `pnpm dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
+Given the size of the code base and the number of modules, we recommend only watching the modules you're
+actively working on.
 
-### Basic Development Workflow
+### Basic Development Workflow Example (most used within n8n)
+
+If you're working on API and FE, a lot of team members run the following steps:
 
 1. Start n8n in development mode:
-   ```
-   pnpm dev
-   ```
+```bash
+# Terminal 1: CLI code runs the backend
+cd packages/cli
+pnpm dev
+```
+```bash
+# Terminal 2: Vue frontend workflow editor
+cd packages/frontend/editor-ui
+pnpm dev
+```
 2. Hack, hack, hack
 3. Check if everything still runs in production mode:
    ```
@@ -203,18 +223,7 @@ automatically build your code, restart the backend and refresh the frontend
    ```
 6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
-### Hot Reload for Nodes (N8N_DEV_RELOAD)
-
-When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server:
-
-```bash
-N8N_DEV_RELOAD=true pnpm dev
-```
-
-**Performance considerations:**
-- File watching adds overhead to your system, especially on slower machines
-- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
-- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+Note: If you're changing code outside of `packages/cli` and `packages/frontend/editor-ui` in this setup, please re-run `pnpm build`
 
 ### Selective Package Development
 
@@ -232,7 +241,7 @@ Running all packages in development mode can be resource-intensive. For better p
   ```bash
   pnpm dev:fe
   ```
-  Runs the backend server and editor-ui development server
+  Runs editor-ui & design system development server
 
 - **AI/LangChain nodes development:**
   ```bash
@@ -275,6 +284,101 @@ pnpm watch
 cd packages/cli
 N8N_DEV_RELOAD=true pnpm dev
 ```
+
+#### Running the BE server with a clean database
+
+If you want to flush your existing database, you can delete the `~/.n8n` folder.
+However, there might be times where you want to test a feature in a clean n8n set-up without losing your existing local setup.
+In such use cases, you can specify another `N8N_USER_FOLDER`, e.g.:
+
+```bash
+packages/cli$ N8N_USER_FOLDER=~/.n8n3/ pnpm run dev
+packages/cli$ N8N_USER_FOLDER=~/.n8n4/ pnpm run dev
+```
+
+
+### Hot Reload for Nodes (N8N_DEV_RELOAD)
+
+When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server by setting
+
+```bash
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Performance considerations:**
+- File watching adds overhead to your system, especially on slower machines
+- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
+- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+
+### Run local instances in different configurations
+
+We use [**Testcontainers**](https://testcontainers.com/) to easily and quickly spin up a local instance with multiple different configurations for testing.
+
+**1. Get a Docker image**
+
+You can either build one from your own branch:
+
+```bash
+pnpm build:docker
+```
+
+or set an environment variable to use a different image:
+
+```bash
+N8N_DOCKER_IMAGE=n8nio/n8n:latest
+```
+
+**2. Run a stack**
+
+- **SQLite:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:sqlite
+  ```
+
+- **Postgres:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:postgres
+  ```
+
+- **Queue:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:queue
+  ```
+
+- **Multi-Main:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:multi-main
+  ```
+
+**3. Customize or scale**
+
+Customize with environment variables:
+
+```bash
+pnpm --filter n8n-containers stack --env N8N_ENABLED_MODULES=insights
+```
+
+Or scale up:
+
+```bash
+pnpm --filter n8n-containers stack --queue --mains 4 --workers 20
+```
+
+Each instance gets its own port, and the webhook URL matches the main URL. Multi-main stacks use a load balancer by default.
+
+>**Running testcontainers with docker alternatives**
+>- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
+>- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
+
+Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+
+### Work locally with syslog
+
+For manual testing of the event bus with syslog (TCP or UDP), see [packages/cli/test/integration/eventbus/README-manual-test-syslog.md](packages/cli/test/integration/eventbus/README-manual-test-syslog.md). An enterprise license is required to configure syslog in n8n.
 
 ### Performance Considerations
 
@@ -375,22 +479,6 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
 See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
-
-## Releasing
-
-To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then:
-
-1. Bump versions of packages that have changed or have dependencies that have changed
-2. Update the Changelog
-3. Create a new branch called `release/${VERSION}`, and
-4. Create a new pull-request to track any further changes that need to be included in this release
-
-Once ready to release, simply merge the pull-request.
-This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will:
-
-1. Build and publish the packages that have a new version in this release
-2. Create a new tag, and GitHub release from squashed release commit
-3. Merge the squashed release commit back into `master`
 
 ## Create custom nodes
 

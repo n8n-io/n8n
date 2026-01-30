@@ -39,19 +39,18 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { ExecutionDataRepository } from './execution-data.repository';
 import {
 	AnnotationTagEntity,
 	AnnotationTagMapping,
 	ExecutionAnnotation,
 	ExecutionData,
+	ExecutionDataStorageLocation,
 	ExecutionEntity,
 	ExecutionMetadata,
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
 import type {
-	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionBase,
 	IExecutionFlattedDb,
@@ -79,6 +78,15 @@ export interface IGetExecutionsQueryFilter {
 	startedAfter?: string;
 	startedBefore?: string;
 }
+
+export type ExecutionDeletionCriteria = {
+	filters: IGetExecutionsQueryFilter | undefined;
+	accessibleWorkflowIds: string[];
+	deleteConditions: {
+		deleteBefore?: Date;
+		ids?: string[];
+	};
+};
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -144,30 +152,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
-	}
-
-	// Find all executions that are in the 'new' state but do not have associated execution data.
-	// These executions are considered invalid and will be marked as 'crashed'.
-	// Since there is no join in this query the returned ids are unique.
-	async findQueuedExecutionsWithoutData(): Promise<ExecutionEntity[]> {
-		return await this.createQueryBuilder('execution')
-			.where('execution.status = :status', { status: 'new' })
-			.andWhere(
-				'NOT EXISTS (' +
-					this.manager
-						.createQueryBuilder()
-						.select('1')
-						.from(ExecutionData, 'execution_data')
-						.where('execution_data.executionId = execution.id')
-						.getQuery() +
-					')',
-			)
-			.select('execution.id')
-			.getMany();
 	}
 
 	async findMultipleExecutions(
@@ -352,29 +339,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	/**
-	 * Insert a new execution and its execution data using a transaction.
-	 */
-	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
-		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
-		const { connections, nodes, name, settings } = currentWorkflow ?? {};
-		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
-
-		return await this.manager.transaction(async (transactionManager) => {
-			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
-				...rest,
-				createdAt: new Date(),
-			});
-			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.createExecutionDataForExecution(
-				{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
-				transactionManager,
-			);
-			return String(executionId);
-		});
-	}
-
 	async markAsCrashed(executionIds: string | string[]) {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
@@ -392,16 +356,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;
 		}
-	}
-
-	/**
-	 * Permanently remove a single execution and its binary data.
-	 */
-	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return await Promise.all([
-			this.delete(ids.executionId),
-			this.binaryDataService.deleteMany([{ type: 'execution', ...ids }]),
-		]);
 	}
 
 	async setRunning(executionId: string) {
@@ -484,14 +438,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter(
-		filters: IGetExecutionsQueryFilter | undefined,
-		accessibleWorkflowIds: string[],
-		deleteConditions: {
-			deleteBefore?: Date;
-			ids?: string[];
-		},
-	) {
+	async deleteExecutionsByFilter({
+		filters,
+		accessibleWorkflowIds,
+		deleteConditions,
+	}: ExecutionDeletionCriteria): Promise<
+		Array<{ executionId: string; workflowId: string; storedAt: ExecutionDataStorageLocation }>
+	> {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
 			throw new UnexpectedError(
 				'Either "deleteBefore" or "ids" must be present in the request body',
@@ -499,7 +452,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const query = this.createQueryBuilder('execution')
-			.select(['execution.id', 'execution.workflowId'])
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (deleteConditions.deleteBefore) {
@@ -522,23 +475,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					executionIds: deleteConditions.ids,
 				});
 			}
-			return;
+			return [];
 		}
 
-		const ids = executions.map(({ id, workflowId }) => ({
-			type: 'execution' as const,
+		const refs = executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
+			storedAt,
 		}));
 
+		const toDelete = [...refs];
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = ids.splice(0, this.hardDeletionBatchSize);
+			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
 			await Promise.all([
 				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch),
+				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
 			]);
-		} while (ids.length > 0);
+		} while (toDelete.length > 0);
+
+		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -609,27 +565,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
-		const workflowIdsAndExecutionIds = (
-			await this.find({
-				select: ['workflowId', 'id'],
-				where: {
-					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
-				},
-				take: this.hardDeletionBatchSize,
+		const results = await this.find({
+			select: ['workflowId', 'id', 'storedAt'],
+			where: {
+				deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+			},
+			take: this.hardDeletionBatchSize,
 
-				/**
-				 * @important This ensures soft-deleted executions are included,
-				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
-				 */
-				withDeleted: true,
-			})
-		).map(({ id: executionId, workflowId }) => ({
-			type: 'execution' as const,
+			/**
+			 * @important This ensures soft-deleted executions are included,
+			 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
+			 */
+			withDeleted: true,
+		});
+
+		return results.map(({ id: executionId, workflowId, storedAt }) => ({
 			workflowId,
 			executionId,
+			storedAt,
 		}));
-
-		return workflowIdsAndExecutionIds;
 	}
 
 	async deleteByIds(executionIds: string[]) {
@@ -1129,8 +1083,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Sort the final result after the joins again, because there is no
 		// guarantee that the order is unchanged after performing joins. Especially
-		// postgres and MySQL returned to the natural order again, listing
-		// executions in the order they were created.
+		// postgres returned to the natural order again, listing executions in the
+		// order they were created.
 		if (query.kind === 'range') {
 			if (query.order?.startedAt === 'DESC') {
 				const table = qb.escape('e');

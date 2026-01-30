@@ -34,9 +34,17 @@ import {
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeMount,
+	onBeforeUnmount,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -56,6 +64,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import ChatGreetings from './components/ChatGreetings.vue';
+import { useChatPushHandler } from './composables/useChatPushHandler';
 
 const router = useRouter();
 const route = useRoute();
@@ -68,6 +77,17 @@ const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
 
+// Initialize WebSocket push handler for chat streaming
+const chatPushHandler = useChatPushHandler();
+
+onBeforeMount(() => {
+	chatPushHandler.initialize();
+});
+
+onBeforeUnmount(() => {
+	chatPushHandler.terminate();
+});
+
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');
@@ -77,9 +97,6 @@ const showCreditsClaimedCallout = ref(false);
 const hasAttemptedAutoClaim = ref(false);
 
 const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
-
-const scrollableSize = useElementSize(scrollableRef);
-
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
@@ -385,6 +402,18 @@ watch(
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
+
+				// Check for active stream after loading messages (handles page refresh during streaming)
+				const reconnectResult = await chatStore.reconnectToStream(id, 0);
+				if (reconnectResult?.hasActiveStream && reconnectResult.currentMessageId) {
+					// Initialize push handler to receive future chunks
+					chatPushHandler.initializeStreamState(
+						id,
+						reconnectResult.currentMessageId,
+						reconnectResult.lastSequenceNumber,
+					);
+					// Pending chunks are already replayed by reconnectToStream()
+				}
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
@@ -734,7 +763,6 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
-						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -818,15 +846,15 @@ function onFilesDropped(files: File[]) {
 
 .messageList {
 	width: 100%;
-	max-width: 55rem;
+	max-width: 78ch;
 	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	padding-top: 30px;
+	gap: var(--spacing--xl);
+	padding-top: var(--spacing--2xl);
 	padding-bottom: 200px;
-	padding-inline: 64px;
+	padding-inline: var(--spacing--xl);
 
 	.isMobileDevice & {
 		padding-inline: var(--spacing--md);

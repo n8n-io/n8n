@@ -162,7 +162,7 @@ describe('WorkflowIndexService', () => {
 			await service.updateIndexFor(workflow);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to update workflow dependency index for workflow workflow-123: Database error',
+				'Failed to update workflow draft dependency index for workflow workflow-123: Database error',
 			);
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
 		});
@@ -444,6 +444,9 @@ describe('WorkflowIndexService', () => {
 				.mockResolvedValueOnce([workflow1, workflow2])
 				.mockResolvedValueOnce([]);
 
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
+
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			await service.buildIndex();
@@ -491,6 +494,9 @@ describe('WorkflowIndexService', () => {
 				.mockResolvedValueOnce([workflows[0], workflows[1]]) // First batch: 2 workflows
 				.mockResolvedValueOnce([workflows[2], workflows[3]]) // Second batch: 2 workflows
 				.mockResolvedValueOnce([workflows[4]]); // Third batch: 1 workflow (partial, should stop)
+
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
 
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 

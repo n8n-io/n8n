@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ChatHubCredentialModal } from './components/ChatHubCredentialModal';
@@ -29,14 +29,15 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	async dismissWelcomeScreen(): Promise<void> {
-		// Wait for conversation list to load (indicates sessions are ready)
-		const conversationList = this.sidebar.getConversations();
-		await this.page.getByTestId('chat-conversation-list').waitFor({ state: 'visible' });
+		// Wait for sessions to load - either the welcome screen or the model selector will appear
+		const welcomeButton = this.getWelcomeStartNewChatButton();
+		const modelSelector = this.getModelSelectorButton();
 
-		// Only dismiss welcome screen if there are no existing conversations
-		const conversationCount = await conversationList.count();
-		if (conversationCount === 0) {
-			const welcomeButton = this.getWelcomeStartNewChatButton();
+		// Wait for either element to be visible (indicates sessions are loaded)
+		await expect(welcomeButton.or(modelSelector)).toBeVisible();
+
+		// If welcome screen is shown, click to dismiss it
+		if (await welcomeButton.isVisible()) {
 			await welcomeButton.click();
 			await welcomeButton.waitFor({ state: 'hidden' });
 		}
@@ -84,6 +85,52 @@ export class ChatHubChatPage extends BasePage {
 
 	getNextAlternativeButtonAt(index: number): Locator {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
+	}
+
+	async clickEditButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const editButton = this.getEditButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await editButton.waitFor({ state: 'visible' });
+		await expect(editButton).toBeEnabled();
+		await editButton.click({ force: true });
+	}
+
+	async clickRegenerateButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const regenerateButton = this.getRegenerateButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await regenerateButton.waitFor({ state: 'visible' });
+		await expect(regenerateButton).toBeEnabled();
+		await regenerateButton.click({ force: true });
+	}
+
+	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const prevButton = this.getPrevAlternativeButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await prevButton.waitFor({ state: 'visible' });
+		await expect(prevButton).toBeEnabled();
+		await prevButton.click({ force: true });
+	}
+
+	async clickNextAlternativeButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const nextButton = this.getNextAlternativeButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await nextButton.waitFor({ state: 'visible' });
+		await expect(nextButton).toBeEnabled();
+		await nextButton.click({ force: true });
+	}
+
+	/**
+	 * Hovers over the message content area to reveal hidden action buttons.
+	 * The action buttons are hidden by CSS until the content area is hovered.
+	 */
+	private async hoverMessageActionsAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await message.getByTestId('chat-message-actions').waitFor({ state: 'visible' });
 	}
 
 	getAttachButton(): Locator {

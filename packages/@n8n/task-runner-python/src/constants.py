@@ -77,6 +77,8 @@ ENV_SENTRY_DSN = "N8N_SENTRY_DSN"
 ENV_N8N_VERSION = "N8N_VERSION"
 ENV_ENVIRONMENT = "ENVIRONMENT"
 ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
+ENV_SENTRY_PROFILES_SAMPLE_RATE = "N8N_SENTRY_PROFILES_SAMPLE_RATE"
+ENV_SENTRY_TRACES_SAMPLE_RATE = "N8N_SENTRY_TRACES_SAMPLE_RATE"
 
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
@@ -174,10 +176,12 @@ ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disal
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
 ERROR_DANGEROUS_NAME = "Access to name '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_DANGEROUS_STRING_PATTERN = "String pattern accessing '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _ClassName__attr) is disallowed for security reasons."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
+ERROR_MATCH_PATTERN_ATTRIBUTE = "Match pattern extracting attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_WINDOWS_NOT_SUPPORTED = (
     "Error: This task runner is not supported on Windows. "
     "Please use a Unix-like system (Linux or macOS)."

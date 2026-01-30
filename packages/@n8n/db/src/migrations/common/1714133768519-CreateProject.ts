@@ -1,6 +1,5 @@
 import type { ProjectRole } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
 
 import type { User } from '../../entities';
 import { generateNanoId } from '../../utils/generators';
@@ -76,7 +75,6 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		relationTableName: RelationTable,
 		{
 			escape,
-			isMysql,
 			runQuery,
 			schemaBuilder: { addForeignKey, addColumns, addNotNull, createIndex, column },
 		}: MigrationContext,
@@ -97,11 +95,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				ON T.${c.userId} = S.${c.userId}
 				WHERE P.id IS NOT NULL
 		`;
-		const swQuery = isMysql
-			? `UPDATE ${relationTable}, (${subQuery}) as mapping
-				    SET ${relationTable}.${c.projectId} = mapping.${c.projectId}
-				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`
-			: `UPDATE ${relationTable}
+		const swQuery = `UPDATE ${relationTable}
 						SET ${c.projectId} = mapping.${c.projectId}
 				    FROM (${subQuery}) as mapping
 				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`;
@@ -237,7 +231,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		await this.alterSharedWorkflow(context);
 	}
 
-	async down({ isMysql, logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
+	async down({ logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
 		const { t, c } = escapeNames(escape);
 
 		// 0. check if all projects are personal projects
@@ -264,11 +258,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the current shared_workflow table's foreignKey for workflowId would
-				// clash with this one if we don't create a random name.
-				name: isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withForeignKey('userId', {
 				tableName: table.user,
@@ -302,11 +292,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				tableName: 'credentials_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the current shared_credentials table's foreignKey for credentialsId would
-				// clash with this one if we don't create a random name.
-				name: isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withForeignKey('userId', {
 				tableName: table.user,

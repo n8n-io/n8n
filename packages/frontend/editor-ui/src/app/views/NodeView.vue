@@ -23,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
@@ -142,6 +143,8 @@ import CanvasChatButton from '@/features/workflows/canvas/components/elements/bu
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -193,6 +196,7 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const settingsStore = useSettingsStore();
@@ -217,6 +221,8 @@ const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore()
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
+const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
+const chatPanelStore = useChatPanelStore();
 
 const workflowState = useWorkflowState();
 
@@ -349,7 +355,7 @@ async function initializeData() {
 		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
 		const promises: Array<Promise<unknown>> = [
-			workflowsStore.fetchActiveWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
 			credentialsStore.fetchCredentialTypes(true),
 			loadCredentials(),
 		];
@@ -359,7 +365,12 @@ async function initializeData() {
 		}
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-			promises.push(externalSecretsStore.fetchAllSecrets());
+			promises.push(externalSecretsStore.fetchGlobalSecrets());
+			const shouldFetchProjectSecrets =
+				route?.params?.projectId !== projectsStore.personalProject?.id;
+			if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
+				promises.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
+			}
 		}
 
 		return promises;
@@ -441,7 +452,7 @@ async function initializeRoute(force = false) {
 
 			// Check if we should initialize for a new workflow
 			if (isNewWorkflowRoute.value) {
-				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				const exists = await workflowsListStore.checkWorkflowExists(workflowId.value);
 				if (!exists && route.meta?.nodeView === true) {
 					return await initializeWorkspaceForNewWorkflow();
 				} else {
@@ -494,7 +505,7 @@ async function initializeWorkspaceForNewWorkflow() {
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
+		const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 		await openWorkflow(workflowData);
 
@@ -794,11 +805,11 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 }
 
 function addWorkflowSavedEventBindings() {
-	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 }
 
 function removeWorkflowSavedEventBindings() {
-	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
 }
 
@@ -1207,7 +1218,7 @@ function onClickReplaceNode(nodeId: string) {
 
 const workflowPermissions = computed(() => {
 	return workflowId.value
-		? getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow
+		? getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow
 		: {};
 });
 
@@ -1506,7 +1517,7 @@ async function onSourceControlPull() {
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {
-			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
+			const workflowData = await workflowsListStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				await openWorkflow(workflowData);
 			}
@@ -1821,6 +1832,18 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
+async function handlePendingBuilderPrompt() {
+	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
+	if (pendingPrompt) {
+		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+		await builderStore.sendChatMessage({
+			text: pendingPrompt,
+			initialGeneration: true,
+			source: 'empty-state',
+		});
+	}
+}
+
 /**
  * Routing
  */
@@ -2047,6 +2070,9 @@ onMounted(() => {
 				}, 500);
 
 				emitPostMessageReady();
+
+				// Check for pending builder prompt from empty state experiment
+				void handlePendingBuilderPrompt();
 			});
 
 		void usersStore.showPersonalizationSurvey();

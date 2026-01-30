@@ -137,6 +137,8 @@ import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-Ex
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
+import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -279,4 +281,6 @@ export const postgresMigrations: Migration[] = [
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateSecretsProviderConnectionTables1769433700000,
+	CreateWorkflowPublishedVersionTable1769698710000,
 ];
