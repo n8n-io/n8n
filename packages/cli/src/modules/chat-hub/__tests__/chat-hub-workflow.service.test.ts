@@ -32,6 +32,8 @@ describe('ChatHubWorkflowService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		logger.scoped.mockReturnValue(logger);
+
 		// Mock cipher encrypt to return a simple string
 		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 

@@ -8,6 +8,7 @@ import {
 	sendMessageApi,
 	editMessageApi,
 	regenerateMessageApi,
+	reconnectToSessionApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
@@ -36,7 +37,6 @@ import {
 	type ChatHubAgentDto,
 	type ChatHubCreateAgentRequest,
 	type ChatHubUpdateAgentRequest,
-	type MessageChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
 	type ChatHubLLMProvider,
@@ -44,6 +44,12 @@ import {
 	type AgentIconOrEmoji,
 	type ChatHubEditMessageRequest,
 	type ChatHubRegenerateMessageRequest,
+	type ChatHubStreamBegin,
+	type ChatHubStreamChunk,
+	type ChatHubStreamEnd,
+	type ChatHubStreamError,
+	type ChatHubExecutionBegin,
+	type ChatHubExecutionEnd,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -59,8 +65,7 @@ import {
 	isMatchedAgent,
 	createAiMessageFromStreamingState,
 	flattenModel,
-	createHumanMessageFromStreamingState,
-	promisifyStreamingApi,
+	unflattenModel,
 	createFakeAgent,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
@@ -383,32 +388,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		await fetchSessions(true);
 	}
 
-	function onBeginMessage() {
-		if (!streaming.value?.messageId) {
-			return;
-		}
-
-		if (!streaming.value.retryOfMessageId) {
-			addMessage(streaming.value.sessionId, createHumanMessageFromStreamingState(streaming.value));
-		}
-
-		if (!sessions.value.byId[streaming.value.sessionId]) {
-			sessions.value.byId[streaming.value.sessionId] = createSessionFromStreamingState(
-				streaming.value,
-			);
-			sessions.value.ids ??= [];
-			sessions.value.ids.unshift(streaming.value.sessionId);
-		}
-
-		const message = createAiMessageFromStreamingState(
-			streaming.value.sessionId,
-			streaming.value.messageId,
-			streaming.value,
-		);
-
-		addMessage(streaming.value.sessionId, message);
-	}
-
 	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -420,62 +399,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const newMessage = createAiMessageFromStreamingState(sessionId, messageId, streaming.value);
 
 		return addMessage(sessionId, newMessage);
-	}
-
-	function onChunk(chunk: string) {
-		if (streaming.value?.messageId) {
-			appendMessage(streaming.value.sessionId, streaming.value.messageId, chunk);
-		}
-	}
-
-	function onEndMessage() {
-		if (streaming.value?.messageId) {
-			updateMessage(streaming.value.sessionId, streaming.value.messageId, 'success');
-		}
-	}
-
-	function onStreamMessage(chunk: MessageChunk) {
-		if (!streaming.value) {
-			return;
-		}
-
-		const { sessionId } = streaming.value;
-
-		streaming.value = { ...streaming.value, ...chunk.metadata };
-
-		switch (chunk.type) {
-			case 'begin':
-				onBeginMessage();
-				break;
-			case 'item':
-				onChunk(chunk.content ?? '');
-				break;
-			case 'end':
-				onEndMessage();
-				break;
-			case 'error': {
-				// Ignore errors after cancellation
-				const message = ensureMessage(sessionId, chunk.metadata.messageId);
-
-				if (message.status === 'cancelled') {
-					return;
-				}
-
-				updateMessage(sessionId, chunk.metadata.messageId, 'error', chunk.content);
-				break;
-			}
-		}
-	}
-
-	async function onStreamDone() {
-		if (!streaming.value) {
-			return;
-		}
-
-		const { sessionId } = streaming.value;
-		streaming.value = undefined;
-
-		await fetchConversationTitle(sessionId);
 	}
 
 	function getErrorMessageByStatusCode(
@@ -498,7 +421,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		);
 	}
 
-	async function onStreamError(error: unknown) {
+	async function handleApiError(error: unknown) {
 		if (!streaming.value) {
 			return;
 		}
@@ -557,24 +480,36 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_session_id: sessionId,
 		});
 
-		await promisifyStreamingApi(sendMessageApi)(
-			rootStore.restApiContext,
-			{
-				model: agent.model,
-				messageId,
-				sessionId,
-				message,
-				credentials,
-				previousMessageId,
-				tools,
-				attachments,
-				agentName: agent.name,
-				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			},
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		const payload = {
+			model: agent.model,
+			messageId,
+			sessionId,
+			message,
+			credentials,
+			previousMessageId,
+			tools,
+			attachments,
+			agentName: agent.name,
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		};
+
+		try {
+			// Create session entry if new
+			if (!sessions.value.byId[sessionId]) {
+				sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+				sessions.value.ids ??= [];
+				sessions.value.ids.unshift(sessionId);
+			}
+
+			await sendMessageApi(rootStore.restApiContext, payload);
+
+			// Note: Actual streaming content comes via Push events using pushConnection store.
+			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
+			// Human message will be created by handleHumanMessageCreated event when it has been accepted by the server
+			// The messageId for the AI response will be set by handleWebSocketStreamBegin
+		} catch (error) {
+			await handleApiError(error);
+		}
 	}
 
 	async function editMessage(
@@ -642,13 +577,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: editId,
 		});
 
-		await promisifyStreamingApi(editMessageApi)(
-			rootStore.restApiContext,
-			{ sessionId, editId, payload },
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		try {
+			await editMessageApi(rootStore.restApiContext, {
+				sessionId,
+				editId,
+				payload,
+			});
+
+			// Note: Actual streaming content comes via Push events
+			// The messageId for the AI response will be set by handleWebSocketStreamBegin
+		} catch (error) {
+			await handleApiError(error);
+		}
 	}
 
 	async function regenerateMessage(
@@ -688,13 +628,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: retryId,
 		});
 
-		await promisifyStreamingApi(regenerateMessageApi)(
-			rootStore.restApiContext,
-			{ sessionId, retryId, payload },
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		try {
+			await regenerateMessageApi(rootStore.restApiContext, {
+				sessionId,
+				retryId,
+				payload,
+			});
+
+			// Note: Actual streaming content comes via Push events
+			// The messageId for the AI response will be set by handleWebSocketStreamBegin
+		} catch (error) {
+			await handleApiError(error);
+		}
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
@@ -703,7 +648,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		if (currentMessage && currentMessage.status === 'running') {
 			updateMessage(sessionId, currentMessage.id, 'cancelled');
 			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
-			await onStreamDone();
+
+			// Clear streaming state and fetch updated title
+			if (streaming.value?.sessionId === sessionId) {
+				streaming.value = undefined;
+				await fetchConversationTitle(sessionId);
+			}
 		}
 	}
 
@@ -903,6 +853,313 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return saved;
 	}
 
+	/**
+	 * Handle the beginning of a WebSocket stream
+	 */
+	function handleWebSocketStreamBegin(
+		data: Pick<
+			ChatHubStreamBegin['data'],
+			'sessionId' | 'messageId' | 'previousMessageId' | 'retryOfMessageId'
+		>,
+	) {
+		const { sessionId, messageId, previousMessageId, retryOfMessageId } = data;
+
+		// Update streaming state with message info (for both local and remote)
+		if (streaming.value?.sessionId === sessionId) {
+			streaming.value.messageId = messageId;
+			streaming.value.promptPreviousMessageId = previousMessageId;
+			streaming.value.retryOfMessageId = retryOfMessageId;
+		}
+
+		// Skip if we already have this message (e.g., from a previous stream begin)
+		const conversation = getConversation(sessionId);
+		if (conversation?.messages[messageId]) {
+			return;
+		}
+
+		// Create the AI message placeholder - use streaming state if available for this session
+		const streamingStateForSession =
+			streaming.value?.sessionId === sessionId ? streaming.value : undefined;
+		const message = createAiMessageFromStreamingState(
+			sessionId,
+			messageId,
+			streamingStateForSession,
+		);
+
+		// Always use server-provided previousMessageId and retryOfMessageId
+		// This ensures correct linking even for remote streams
+		message.previousMessageId = previousMessageId;
+		message.retryOfMessageId = retryOfMessageId;
+
+		addMessage(sessionId, message);
+	}
+
+	/**
+	 * Handle a WebSocket stream chunk
+	 */
+	function handleWebSocketStreamChunk(
+		data: Pick<ChatHubStreamChunk['data'], 'sessionId' | 'messageId' | 'content'>,
+	) {
+		const { sessionId, messageId, content } = data;
+
+		// Append the content to the message
+		const conversation = getConversation(sessionId);
+		if (!conversation?.messages[messageId]) {
+			// Message not found, might need to create it
+			ensureMessage(sessionId, messageId);
+		}
+
+		appendMessage(sessionId, messageId, content);
+	}
+
+	/**
+	 * Handle the end of a WebSocket stream (individual message stream ends, but execution may continue)
+	 */
+	function handleWebSocketStreamEnd(
+		data: Pick<ChatHubStreamEnd['data'], 'sessionId' | 'messageId' | 'status'>,
+	) {
+		const { sessionId, messageId, status } = data;
+
+		// Update the message status
+		updateMessage(sessionId, messageId, status);
+
+		// NOTE: Don't clear streaming state here - the execution may continue
+		// with more messages (e.g., tool calls). Streaming state is cleared
+		// by handleWebSocketExecutionEnd when the whole execution completes.
+	}
+
+	/**
+	 * Handle a WebSocket stream error (individual message has an error)
+	 */
+	function handleWebSocketStreamError(
+		data: Pick<ChatHubStreamError['data'], 'sessionId' | 'messageId' | 'error'>,
+	) {
+		const { sessionId, messageId, error } = data;
+
+		// Ensure the message exists
+		const message = ensureMessage(sessionId, messageId);
+
+		// Update the message with error content and status
+		if (message.content) {
+			message.content += '\n\n' + error;
+		} else {
+			message.content = error;
+		}
+		message.status = 'error';
+
+		updateMessage(sessionId, messageId, 'error', message.content);
+	}
+
+	/**
+	 * Handle execution begin (whole streaming session starts)
+	 */
+	function handleWebSocketExecutionBegin(data: Pick<ChatHubExecutionBegin['data'], 'sessionId'>) {
+		const { sessionId } = data;
+
+		// If we're already tracking this session locally, nothing to do
+		if (streaming.value?.sessionId === sessionId) {
+			return;
+		}
+
+		// This is a remote stream - set streaming state using session data
+		const session = sessions.value.byId[sessionId];
+		if (!session) {
+			// Session not loaded in this client, skip
+			return;
+		}
+
+		// Construct agent from session data
+		const model = unflattenModel(session);
+		if (!model) {
+			return;
+		}
+
+		const agent = getAgent(model, {
+			name: session.agentName,
+			icon: session.agentIcon,
+		});
+
+		// Set minimal streaming state for remote stream
+		streaming.value = {
+			promptPreviousMessageId: null, // Will be set by handleWebSocketStreamBegin
+			promptId: '', // Unknown until stream begin
+			promptText: '', // Not needed for UI
+			sessionId,
+			retryOfMessageId: null,
+			revisionOfMessageId: null,
+			tools: session.tools ?? [],
+			attachments: [],
+			agent,
+		};
+	}
+
+	/**
+	 * Handle execution end (whole streaming session ends)
+	 */
+	function handleWebSocketExecutionEnd(
+		data: Pick<ChatHubExecutionEnd['data'], 'sessionId' | 'status'>,
+	) {
+		const { sessionId, status } = data;
+
+		// Clear streaming state if this is the current session
+		if (streaming.value?.sessionId === sessionId) {
+			const currentSessionId = streaming.value.sessionId;
+
+			// Update the message status if we have a messageId
+			// This handles cases where streamEnd wasn't received (e.g., cancellation)
+			if (streaming.value.messageId) {
+				const conversation = getConversation(sessionId);
+				const message = conversation?.messages[streaming.value.messageId];
+				if (message && message.status === 'running') {
+					updateMessage(sessionId, streaming.value.messageId, status);
+				}
+			}
+
+			streaming.value = undefined;
+
+			// Show error toast if the execution failed
+			if (status === 'error') {
+				toast.showError(new Error('Execution failed'), i18n.baseText('chatHub.error.unknown'));
+			}
+
+			// Fetch updated conversation title
+			void fetchConversationTitle(currentSessionId);
+		}
+	}
+
+	/**
+	 * Reconnect to an active stream after WebSocket reconnection
+	 */
+	async function reconnectToStream(sessionId: ChatSessionId, lastSequenceNumber: number) {
+		try {
+			const response = await reconnectToSessionApi(
+				rootStore.restApiContext,
+				sessionId,
+				lastSequenceNumber,
+			);
+
+			// Replay any pending chunks
+			if (response.pendingChunks && response.pendingChunks.length > 0) {
+				for (const chunk of response.pendingChunks) {
+					if (response.currentMessageId) {
+						appendMessage(sessionId, response.currentMessageId, chunk.content);
+					}
+				}
+			}
+
+			return response;
+		} catch (error) {
+			// Reconnection failed, but don't throw - the stream might have completed
+			return null;
+		}
+	}
+
+	/**
+	 * Handle a human message created event
+	 */
+	function handleHumanMessageCreated(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+		timestamp: number;
+	}): void {
+		const conversation = conversationsBySession.value.get(data.sessionId);
+		if (!conversation) {
+			// Session not loaded in this client, skip
+			return;
+		}
+
+		// Skip if we already have this message (we sent it from this client)
+		if (conversation.messages[data.messageId]) {
+			return;
+		}
+
+		// Create and add the human message
+		const message: ChatMessage = {
+			id: data.messageId,
+			sessionId: data.sessionId,
+			type: 'human',
+			name: 'User',
+			content: data.content,
+			previousMessageId: data.previousMessageId,
+			retryOfMessageId: null,
+			revisionOfMessageId: null,
+			status: 'success',
+			attachments: data.attachments.map((a) => ({
+				fileName: a.fileName,
+				mimeType: a.mimeType,
+			})),
+			provider: null,
+			model: null,
+			workflowId: null,
+			agentId: null,
+			executionId: null,
+			createdAt: new Date(data.timestamp).toISOString(),
+			updatedAt: new Date(data.timestamp).toISOString(),
+			responses: [],
+			alternatives: [],
+		};
+
+		addMessage(data.sessionId, message);
+	}
+
+	/**
+	 * Handle a message edited event
+	 */
+	function handleMessageEdited(data: {
+		sessionId: ChatSessionId;
+		revisionOfMessageId: ChatMessageId;
+		messageId: ChatMessageId;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+		timestamp: number;
+	}): void {
+		const conversation = conversationsBySession.value.get(data.sessionId);
+		if (!conversation) {
+			// Session not loaded in this client, skip
+			// TODO: We could probably load the session, it should be one this user can access?
+			return;
+		}
+
+		// Skip if we already have this message (we sent it from this client)
+		if (conversation.messages[data.messageId]) {
+			return;
+		}
+
+		// Get the original message to inherit some properties
+		const originalMessage = conversation.messages[data.revisionOfMessageId];
+
+		// Create and add the edited message
+		const message: ChatMessage = {
+			id: data.messageId,
+			sessionId: data.sessionId,
+			type: 'human',
+			name: originalMessage?.name ?? 'User',
+			content: data.content,
+			previousMessageId: originalMessage?.previousMessageId ?? null,
+			retryOfMessageId: null,
+			revisionOfMessageId: data.revisionOfMessageId,
+			status: 'success',
+			attachments: data.attachments.map((a) => ({
+				fileName: a.fileName,
+				mimeType: a.mimeType,
+			})),
+			provider: originalMessage?.provider ?? null,
+			model: originalMessage?.model ?? null,
+			workflowId: originalMessage?.workflowId ?? null,
+			agentId: originalMessage?.agentId ?? null,
+			executionId: null,
+			createdAt: new Date(data.timestamp).toISOString(),
+			updatedAt: new Date(data.timestamp).toISOString(),
+			responses: [],
+			alternatives: [],
+		};
+
+		addMessage(data.sessionId, message);
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -930,6 +1187,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		updateSessionModel,
 		deleteSession,
 		updateToolsInSession,
+		conversationsBySession,
 
 		/**
 		 * conversation
@@ -958,5 +1216,26 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+
+		/**
+		 * WebSocket streaming handlers
+		 */
+		handleWebSocketExecutionBegin,
+		handleWebSocketExecutionEnd,
+		handleWebSocketStreamBegin,
+		handleWebSocketStreamChunk,
+		handleWebSocketStreamEnd,
+		handleWebSocketStreamError,
+
+		/**
+		 * Stream message actions
+		 */
+		handleHumanMessageCreated,
+		handleMessageEdited,
+
+		/**
+		 * Stream reconnection
+		 */
+		reconnectToStream,
 	};
 });
