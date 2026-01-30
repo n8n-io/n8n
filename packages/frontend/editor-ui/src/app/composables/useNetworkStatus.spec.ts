@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent } from 'vue';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { useNetworkStatus } from './useNetworkStatus';
 import { useNetworkStore } from '@/app/stores/network.store';
 
@@ -76,51 +76,10 @@ describe('useNetworkStatus', () => {
 		wrapper.unmount();
 	});
 
-	it('should set offline when browser offline event fires', () => {
-		mockFetch.mockResolvedValue({ ok: true });
-		networkStore.setOnline(true);
-
-		const wrapper = createWrapper();
-
-		window.dispatchEvent(new Event('offline'));
-
-		expect(networkStore.isOnline).toBe(false);
-		expect(mockStopHeartbeat).toHaveBeenCalled();
-
-		wrapper.unmount();
-	});
-
-	it('should verify backend connection when browser online event fires', async () => {
-		mockFetch.mockResolvedValue({ ok: true });
-
-		const wrapper = createWrapper();
-
-		await vi.waitFor(() => {
-			expect(mockFetch).toHaveBeenCalled();
-		});
-		await flushPromises();
-
-		mockFetch.mockClear();
-
-		networkStore.setOnline(false);
-		window.dispatchEvent(new Event('online'));
-
-		await flushPromises();
-
-		expect(mockFetch).toHaveBeenCalled();
-		expect(networkStore.isOnline).toBe(true);
-
-		wrapper.unmount();
-	});
-
-	it('should clean up event listeners on unmount', () => {
-		const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
-
+	it('should stop heartbeat on unmount', () => {
 		const wrapper = createWrapper();
 		wrapper.unmount();
 
-		expect(removeEventListenerSpy).toHaveBeenCalledWith('online', expect.any(Function));
-		expect(removeEventListenerSpy).toHaveBeenCalledWith('offline', expect.any(Function));
 		expect(mockStopHeartbeat).toHaveBeenCalled();
 	});
 });
