@@ -1006,6 +1006,83 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('hasRunError behavior', () => {
+		it('should not show error view in input panel even when workflow run has error', async () => {
+			// This test verifies that hasRunError is false for input panels.
+			// Without the !isPaneTypeInput check, the input panel would incorrectly
+			// show the NodeErrorView instead of normal data/schema.
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: { test: 'data' } }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error message',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+			});
+
+			// The error view should NOT be shown in input panel
+			// If hasRunError incorrectly returns true for input panels,
+			// NodeErrorView would be rendered instead of the schema
+			expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+
+			// Schema view should be shown instead
+			await waitFor(() => {
+				expect(getByTestId('run-data-schema-node')).toBeInTheDocument();
+			});
+		});
+
+		it('should show error view in output panel when workflow run has error', async () => {
+			// This test verifies that hasRunError is true for output panels with errors.
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: { test: 'data' } }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error message',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+			});
+
+			// The error view SHOULD be shown in output panel
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('schema view with mixed execution states', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1233,6 +1310,7 @@ describe('RunData', () => {
 			global: {
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
 					VirtualSchema: {
 						template: `
 							<div data-test-id="run-data-schema-node" :preview-execution="previewExecution">

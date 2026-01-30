@@ -388,7 +388,9 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
-const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
+const hasRunError = computed(
+	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+);
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
