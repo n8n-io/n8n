@@ -8,6 +8,7 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -24,6 +25,7 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
@@ -36,7 +38,8 @@ export const useExecutionDebugging = () => {
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflowObject = workflowsStore.workflowObject;
+		const workflowObject =
+			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 		const workflowNodes = workflowsStore.getNodes();
 
 		if (!execution?.data?.resultData) {
@@ -52,7 +55,10 @@ export const useExecutionDebugging = () => {
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
+		const workflowPinnedNodeNames = Object.keys(
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				?.pinData ?? {},
+		);
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);

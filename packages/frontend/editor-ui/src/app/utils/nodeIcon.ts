@@ -1,6 +1,6 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import {
 	isNodePreviewKey,
 	removePreviewToken,
@@ -39,7 +39,13 @@ const resolveIconExpression = (
 	node?: INode | null,
 ): string | null => {
 	try {
-		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentsStore = useWorkflowDocumentsStore();
+		const workflowObject =
+			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		if (!workflowObject) {
+			return null;
+		}
+
 		const defaults =
 			nodeType.defaults && 'parameters' in nodeType.defaults ? nodeType.defaults.parameters : {};
 		const parameters = node?.parameters ?? defaults ?? {};
@@ -47,7 +53,7 @@ const resolveIconExpression = (
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
 
-		const result = workflowsStore.workflowObject.expression.getParameterValue(
+		const result = workflowObject.expression.getParameterValue(
 			icon,
 			null,
 			0,

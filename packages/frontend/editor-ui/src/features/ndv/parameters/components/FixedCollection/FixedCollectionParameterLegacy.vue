@@ -16,7 +16,7 @@ import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
@@ -34,6 +34,8 @@ import {
 
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
+const ndvStore = useNDVStore();
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -60,9 +62,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
 }>();
-
-const workflowsStore = useWorkflowsStore();
-const ndvStore = useNDVStore();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -406,14 +405,16 @@ const onDragChange = (optionName: string) => {
 const trackWorkflowInputFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id:
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.id,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
 
 const trackWorkflowInputFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id:
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.id,
 		node_id: ndvStore.activeNode?.id,
 	});
 };

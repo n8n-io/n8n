@@ -14,6 +14,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { codeNodeEditorEventBus } from '@/app/event-bus';
@@ -42,6 +43,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
@@ -355,7 +357,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				? assistantHelpers.simplifyWorkflowForAssistant(
+						workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+					)
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -677,7 +681,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			codeDiffMessage.replacing = true;
 			const suggestionId = codeDiffMessage.suggestionId;
 
-			const workflowObject = workflowsStore.workflowObject;
+			const workflowObject =
+				workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
@@ -723,7 +728,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const suggestion = suggestions.value[suggestionId];
 			assert(suggestion);
 
-			const workflowObject = workflowsStore.workflowObject;
+			const workflowObject =
+				workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 

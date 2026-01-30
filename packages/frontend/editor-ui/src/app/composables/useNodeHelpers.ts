@@ -39,6 +39,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
@@ -64,6 +65,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = opts.workflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
@@ -74,7 +76,12 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');

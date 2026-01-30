@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { Workflow } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
@@ -8,7 +9,13 @@ import { computed, type ComputedRef } from 'vue';
 export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
+	const workflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
 		if (!node.value) {

@@ -2,6 +2,7 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -29,6 +30,7 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
@@ -65,9 +67,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		),
 	);
 	const hasChat = computed(() =>
-		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
-			nodes.some(isChatNode),
-		),
+		[
+			Object.values(workflow.value?.nodes ?? {}),
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				?.nodes,
+		].some((nodes) => nodes?.some(isChatNode)),
 	);
 
 	const entries = computed<LogEntry[]>(() => {

@@ -2,6 +2,7 @@
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
@@ -17,6 +18,7 @@ const enum FloatingNodePosition {
 }
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const nodeTypesStore = useNodeTypesStore();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
@@ -67,18 +69,19 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 	const rootName = props.rootNode.name;
 
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowObject?.getChildNodes(rootName, 'ALL_NON_MAIN') ?? [],
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject?.getChildNodes(rootName, NodeConnectionTypes.Main, 1) ?? [],
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject?.getParentNodes(rootName, NodeConnectionTypes.Main, 1) ?? [],
 		).reverse(),
 	};
 });

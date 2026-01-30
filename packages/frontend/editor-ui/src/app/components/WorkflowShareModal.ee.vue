@@ -11,6 +11,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -36,6 +37,7 @@ const props = defineProps<{
 const { data } = props;
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -54,7 +56,7 @@ const workflowSaving = useWorkflowSaving({ router });
 const workflow = ref(
 	data.id && workflowsListStore.workflowsById[data.id]
 		? workflowsListStore.workflowsById[data.id]
-		: workflowsStore.workflow,
+		: workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 );
 const loading = ref(true);
 const isDirty = ref(false);

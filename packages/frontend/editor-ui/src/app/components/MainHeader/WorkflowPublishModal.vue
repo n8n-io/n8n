@@ -5,6 +5,7 @@ import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
@@ -23,6 +24,7 @@ const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
@@ -33,6 +35,10 @@ const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('pu
 const description = ref('');
 const versionName = ref('');
 
+const workflowDocument = computed(
+	() => workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+);
+
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
 );
@@ -42,7 +48,7 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return workflowDocument.value.versionId !== workflowDocument.value.activeVersion?.versionId;
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -81,7 +87,7 @@ function onModalOpened() {
 
 onMounted(() => {
 	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+		versionName.value = generateVersionName(workflowDocument.value.versionId);
 	}
 	modalBus.on('opened', onModalOpened);
 });
@@ -128,7 +134,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflow.id);
+		const errorData = await workflowsStore.getActivationError(workflowDocument.value.id);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -162,8 +168,8 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflow.id,
-		workflowsStore.workflow.versionId,
+		workflowDocument.value.id,
+		workflowDocument.value.versionId,
 		{
 			name: versionName.value,
 			description: description.value,
@@ -182,7 +188,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflow.id,
+			workflow_id: workflowDocument.value.id,
 		});
 
 		// For now, just close the modal after successful activation
@@ -227,7 +233,7 @@ async function handlePublish() {
 						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
+								:to="`/workflow/${workflowDocument.id}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

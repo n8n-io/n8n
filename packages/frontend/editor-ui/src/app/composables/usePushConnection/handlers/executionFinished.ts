@@ -14,6 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -266,9 +267,11 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	router: ReturnType<typeof useRouter>;
 }) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 
 	const workflowSettings = workflowsStore.workflowSettings;
 	const saveManualExecutions =
@@ -302,9 +305,11 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 
 	documentTitle.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -397,10 +402,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	successToastAlreadyShown: boolean,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
 	const workflowName = workflowObject.name ?? '';
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');

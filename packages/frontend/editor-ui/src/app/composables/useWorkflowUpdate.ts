@@ -6,6 +6,7 @@
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -38,6 +39,7 @@ export type UpdateWorkflowResult =
 
 export function useWorkflowUpdate() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -189,7 +191,9 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowsStore.workflow.connections;
+		const existingConnections =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.connections;
 
 		// Convert to canvas format for comparison
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
@@ -271,7 +275,9 @@ export function useWorkflowUpdate() {
 		if (
 			name &&
 			isInitialGeneration &&
-			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+			workflowDocumentsStore.workflowDocumentsById[
+				workflowDocumentsStore.workflowDocumentId
+			].name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
 		) {
 			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
 		}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import { ViewableMimeTypes } from '@n8n/api-types';
@@ -17,6 +18,7 @@ const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const uiStore = useUIStore();
 const posthogStore = usePostHog();
 
@@ -28,7 +30,9 @@ const isV2Enabled = computed(() => {
 });
 
 const isLegacyBinaryMode = computed(
-	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
+	() =>
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			?.settings?.binaryMode !== BINARY_MODE_COMBINED,
 );
 
 function isViewable(index: number, key: string | number): boolean {

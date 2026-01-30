@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import type { WorkflowValidationIssue } from '@/Interface';
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER';
@@ -123,6 +124,7 @@ export function isPlaceholderValue(value: unknown): boolean {
  */
 export function useBuilderTodos() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const locale = useI18n();
 
 	/**
@@ -142,7 +144,9 @@ export function useBuilderTodos() {
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowsStore.workflow.nodes) {
+		for (const node of workflowDocumentsStore.workflowDocumentsById[
+			workflowDocumentsStore.workflowDocumentId
+		]?.nodes ?? []) {
 			if (!node?.parameters) continue;
 
 			const placeholders = findPlaceholderDetails(node.parameters);

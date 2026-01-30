@@ -56,6 +56,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -166,6 +167,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
@@ -200,8 +202,15 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
-	const editableWorkflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const editableWorkflow = computed<IWorkflowDb>(
+		() => workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+	);
+	const editableWorkflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;
@@ -528,7 +537,10 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const workflowObject = workflowsStore.workflowObject;
+		const workflowObject = editableWorkflowObject.value;
+		if (!workflowObject) {
+			return;
+		}
 
 		const inputNodeNames = replaceInputs
 			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))
@@ -1825,7 +1837,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = cloneDeep(workflowsStore.workflow.connections);
+		const connections = cloneDeep(editableWorkflow.value.connections);
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
@@ -1869,7 +1881,9 @@ export function useCanvasOperations() {
 			}
 		}
 
-		delete workflowsStore.workflow.connections[targetNode.name];
+		// Clean up the connections entry for this node as a source
+		// (destination connections were already removed by the deleteConnection calls above)
+		workflowsStore.removeAllNodeConnection(targetNode, { preserveInputConnections: true });
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -1933,8 +1947,8 @@ export function useCanvasOperations() {
 		}
 
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowsStore.workflow.connections,
-			workflowsStore.workflow.nodes,
+			editableWorkflow.value.connections,
+			editableWorkflow.value.nodes,
 		);
 
 		connections.forEach((connection) => {
@@ -2193,7 +2207,7 @@ export function useCanvasOperations() {
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
+			const nodeIndex = editableWorkflow.value.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
 			workflowState.updateNodeAtIndex(nodeIndex, node);
@@ -2713,7 +2727,7 @@ export function useCanvasOperations() {
 
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowsStore.workflow.meta,
+			...editableWorkflow.value.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2781,7 +2795,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflowObject = workflowsStore.workflowObject; // @TODO Check if we actually need workflowObject here
+		const workflowObject = editableWorkflowObject.value; // @TODO Check if we actually need workflowObject here
 
 		logsStore.toggleOpen(true);
 

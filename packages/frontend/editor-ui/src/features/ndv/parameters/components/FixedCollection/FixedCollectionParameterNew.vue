@@ -2,7 +2,7 @@
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import type { N8nDropdownOption } from '@n8n/design-system';
@@ -32,7 +32,7 @@ import FixedCollectionItemList from './FixedCollectionItemList.vue';
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -412,7 +412,8 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id:
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.id,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -420,7 +421,8 @@ const trackFieldAdded = () => {
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id:
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.id,
 		node_id: ndvStore.activeNode?.id,
 	});
 };

@@ -148,6 +148,8 @@ const workflow = createTestWorkflow({
 	isArchived: false,
 	scopes: [],
 	meta: {},
+	nodes: [],
+	connections: {},
 });
 
 describe('WorkflowDetails', () => {
@@ -166,6 +168,8 @@ describe('WorkflowDetails', () => {
 			'1': workflow,
 			'123': workflow,
 		};
+		workflowsStore.workflowId = '1';
+		workflowsStore.workflow = workflow as unknown as IWorkflowDb;
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;

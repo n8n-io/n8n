@@ -40,7 +40,7 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
@@ -97,7 +97,7 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 
 const message = useMessage();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -285,11 +285,12 @@ const indexToShowSlotAt = computed(() => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflowObject = workflowsStore.workflowObject;
-	const connectedNodes = workflowObject.getChildNodes(triggerName);
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+	const connectedNodes = workflowObject?.getChildNodes(triggerName) ?? [];
 
 	const hasFormPage = connectedNodes.some((nodeName) => {
-		const _node = workflowObject.getNode(nodeName);
+		const _node = workflowObject?.getNode(nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -330,11 +331,14 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+	if (!workflowObject) return parameters;
+
 	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 	if (!formTriggerName) return parameters;
 
@@ -369,11 +373,14 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject =
+		workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+	if (!workflowObject) return parameters;
+
 	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node]?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');

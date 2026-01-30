@@ -21,6 +21,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -93,6 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
@@ -181,7 +183,12 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowsStore.workflowObject.getParentNodes(
+		const workflowObject =
+			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
+		if (!workflowObject) {
+			return false;
+		}
+		const parentNodes = workflowObject.getParentNodes(
 			activeNode.value.name,
 			NodeConnectionTypes.Main,
 			1,
@@ -365,19 +372,26 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
 		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
-
-		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
-				return node.name === activeNode.name;
-			});
-
-			workflowState.updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...activeNode.issues,
-					...issues,
-				},
-			});
+		if (!activeNode) {
+			return;
 		}
+
+		const currentWorkflow =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId];
+		if (!currentWorkflow) {
+			return;
+		}
+
+		const nodeIndex = currentWorkflow.nodes.findIndex((node) => {
+			return node.name === activeNode.name;
+		});
+
+		workflowState.updateNodeAtIndex(nodeIndex, {
+			issues: {
+				...activeNode.issues,
+				...issues,
+			},
+		});
 	};
 
 	const setFocusedInputPath = (path: string) => {
