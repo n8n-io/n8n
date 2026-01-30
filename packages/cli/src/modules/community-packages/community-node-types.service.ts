@@ -1,7 +1,7 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError, NodeConnectionTypes } from 'n8n-workflow';
+import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import cloneDeep from 'lodash/cloneDeep';
 import {
@@ -134,7 +134,7 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => nodeType.nodeDescription.usableAsTool,
+			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {

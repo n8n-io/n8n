@@ -430,6 +430,31 @@ describe('CommunityNodeTypesService', () => {
 			expect(toolNode).toBeUndefined();
 		});
 
+		it('should not create AI tool version for node with tool in type', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.testTool',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-previewTool',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original
+
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+			expect(toolNode).toBeUndefined();
+		});
+
 		it('should use default "Other Tools" when codex subcategories are not defined', async () => {
 			const mockNodeTypes = [
 				{
