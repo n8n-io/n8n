@@ -142,7 +142,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
-	const responderAgent = new ResponderAgent({ llm: stageLLMs.responder });
+	const responderAgent = new ResponderAgent({
+		llm: stageLLMs.responder,
+		enableIntrospection: featureFlags?.enableIntrospection,
+	});
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();

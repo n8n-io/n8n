@@ -26,22 +26,26 @@ import {
 } from '../utils/coordination-log';
 import { extractDataTableInfo } from '../utils/data-table-helpers';
 
-const systemPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
+function createSystemPrompt(enableIntrospection: boolean): ChatPromptTemplate {
+	return ChatPromptTemplate.fromMessages([
 		[
-			{
-				type: 'text',
-				text: buildResponderPrompt(),
-				cache_control: { type: 'ephemeral' },
-			},
+			'system',
+			[
+				{
+					type: 'text',
+					text: buildResponderPrompt({ enableIntrospection }),
+					cache_control: { type: 'ephemeral' },
+				},
+			],
 		],
-	],
-	['placeholder', '{messages}'],
-]);
+		['placeholder', '{messages}'],
+	]);
+}
 
 export interface ResponderAgentConfig {
 	llm: BaseChatModel;
+	/** Enable introspection tool for diagnostic data collection. */
+	enableIntrospection?: boolean;
 }
 
 /**
@@ -67,19 +71,31 @@ export interface ResponderContext {
  * Handles conversational queries and explanations.
  */
 export class ResponderAgent {
-	private readonly tool: StructuredTool;
+	private readonly tool: StructuredTool | undefined;
 
 	private readonly llmWithTools: Runnable;
 
-	constructor(config: ResponderAgentConfig) {
-		// Create and bind the diagnostic tool
-		const introspectTool = createIntrospectTool();
-		this.tool = introspectTool.tool;
+	private readonly systemPrompt: ChatPromptTemplate;
 
-		if (typeof config.llm.bindTools === 'function') {
-			this.llmWithTools = config.llm.bindTools([this.tool]);
+	constructor(config: ResponderAgentConfig) {
+		const enableIntrospection = config.enableIntrospection === true;
+
+		// Create system prompt with conditional introspection section
+		this.systemPrompt = createSystemPrompt(enableIntrospection);
+
+		// Conditionally create and bind the introspect tool
+		if (enableIntrospection) {
+			const introspectTool = createIntrospectTool();
+			this.tool = introspectTool.tool;
+
+			if (typeof config.llm.bindTools === 'function') {
+				this.llmWithTools = config.llm.bindTools([this.tool]);
+			} else {
+				// Fallback for LLMs that don't support tools
+				this.llmWithTools = config.llm;
+			}
 		} else {
-			// Fallback for LLMs that don't support tools
+			this.tool = undefined;
 			this.llmWithTools = config.llm;
 		}
 	}
@@ -179,7 +195,7 @@ export class ResponderAgent {
 	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
 	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
-		const agent = systemPrompt.pipe(this.llmWithTools);
+		const agent = this.systemPrompt.pipe(this.llmWithTools);
 
 		const contextMessage = this.buildContextMessage(context);
 		let messagesToSend: BaseMessage[] = contextMessage
@@ -235,7 +251,7 @@ export class ResponderAgent {
 		const toolMessages: ToolMessage[] = [];
 
 		for (const toolCall of aiMessage.tool_calls) {
-			if (toolCall.name === this.tool.name) {
+			if (this.tool && toolCall.name === this.tool.name) {
 				try {
 					const result = await this.tool.invoke(toolCall.args ?? {}, {
 						...config,

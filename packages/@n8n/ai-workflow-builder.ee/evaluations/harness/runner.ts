@@ -489,21 +489,22 @@ async function runLocalDataset(params: {
 	// Use pLimit to control concurrency of example execution
 	const exampleLimiter = pLimit(concurrency);
 
-	const resultPromises = testCases.map((testCase, i) => {
+	const resultPromises = testCases.map(async (testCase, i) => {
 		const index = i + 1;
-		return exampleLimiter(() =>
-			runLocalExample({
-				index,
-				total: testCases.length,
-				testCase,
-				generateWorkflow,
-				evaluators,
-				globalContext,
-				passThreshold,
-				timeoutMs,
-				lifecycle,
-				artifactSaver,
-			}),
+		return await exampleLimiter(
+			async () =>
+				await runLocalExample({
+					index,
+					total: testCases.length,
+					testCase,
+					generateWorkflow,
+					evaluators,
+					globalContext,
+					passThreshold,
+					timeoutMs,
+					lifecycle,
+					artifactSaver,
+				}),
 		);
 	});
 

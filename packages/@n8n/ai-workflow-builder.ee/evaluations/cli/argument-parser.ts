@@ -443,14 +443,19 @@ function parseCli(argv: string[]): {
 
 function parseFeatureFlags(args: {
 	templateExamples: boolean;
+	suite: EvaluationSuite;
 }): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
 	const templateExamples = templateExamplesFromEnv || args.templateExamples;
 
-	if (!templateExamples) return undefined;
+	// Auto-enable introspection for introspection suite
+	const enableIntrospection = args.suite === 'introspection';
+
+	if (!templateExamples && !enableIntrospection) return undefined;
 
 	return {
 		templateExamples: templateExamples || undefined,
+		enableIntrospection: enableIntrospection || undefined,
 	};
 }
 
@@ -518,6 +523,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
+		suite: parsed.suite,
 	});
 
 	const filters = parseFilters({

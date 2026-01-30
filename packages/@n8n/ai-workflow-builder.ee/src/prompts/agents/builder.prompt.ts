@@ -14,32 +14,60 @@ const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.j
 
 const BUILDER_ROLE = 'You are a Builder Agent specialized in constructing n8n workflows.';
 
-const EXECUTION_SEQUENCE = `You MUST follow these steps IN ORDER. Do not skip any step.
-
-STEP 1: CREATE NODES
-- Call add_nodes for EVERY node needed based on discovery results
+/** Shared execution steps for builder agent */
+const BUILDER_STEPS = {
+	createNodes: {
+		title: 'CREATE NODES',
+		content: `- Call add_nodes for EVERY node needed based on discovery results
 - Create multiple nodes in PARALLEL for efficiency
-- Do NOT respond with text - START BUILDING immediately
-
-STEP 2: CONNECT NODES
-- Call connect_nodes for ALL required connections
-- Connect multiple node pairs in PARALLEL
-
-STEP 3: VALIDATE (REQUIRED)
-- After ALL nodes and connections are created, call validate_structure
+- Do NOT respond with text - START BUILDING immediately`,
+	},
+	connectNodes: {
+		title: 'CONNECT NODES',
+		content: `- Call connect_nodes for ALL required connections
+- Connect multiple node pairs in PARALLEL`,
+	},
+	validate: {
+		title: 'VALIDATE (REQUIRED)',
+		content: `- After ALL nodes and connections are created, call validate_structure
 - This step is MANDATORY - you cannot finish without it
 - If validation finds issues (missing trigger, invalid connections), fix them and validate again
-- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_structure, proceed to respond regardless of remaining issues
-
-STEP 4: INTROSPECT (REQUIRED)
-- Call the introspect tool to report any issues with your instructions or documentation
+- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_structure, proceed to respond regardless of remaining issues`,
+	},
+	introspect: {
+		title: 'INTROSPECT (REQUIRED)',
+		content: `- Call the introspect tool to report any issues with your instructions or documentation
 - Report unclear sections, missing guidance, or confusing node descriptions you encountered
-- This step is MANDATORY for improving the system
+- This step is MANDATORY for improving the system`,
+	},
+};
 
-STEP 5: RESPOND TO USER
-- Only after validation and introspection, provide your brief summary
+function buildExecutionSequence(enableIntrospection: boolean): string {
+	const steps = [BUILDER_STEPS.createNodes, BUILDER_STEPS.connectNodes, BUILDER_STEPS.validate];
 
-NEVER respond to the user without calling validate_structure AND introspect first`;
+	if (enableIntrospection) {
+		steps.push(BUILDER_STEPS.introspect);
+	}
+
+	const formattedSteps = steps
+		.map((step, index) => `STEP ${index + 1}: ${step.title}\n${step.content}`)
+		.join('\n\n');
+
+	const respondStep = `STEP ${steps.length + 1}: RESPOND TO USER
+- Only after ${enableIntrospection ? 'validation and introspection' : 'validation passes'}, provide your brief summary`;
+
+	const neverClause = enableIntrospection
+		? 'NEVER respond to the user without calling validate_structure AND introspect first'
+		: 'NEVER respond to the user without calling validate_structure first';
+
+	return `You MUST follow these steps IN ORDER. Do not skip any step.
+
+${formattedSteps}
+
+${respondStep}
+
+${neverClause}`;
+}
 
 const NODE_CREATION = `Each add_nodes call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
@@ -533,11 +561,18 @@ Be specific: identify WHICH instruction section or documentation caused the issu
 
 This data is critical for improving the system prompts and documentation.`;
 
-export function buildBuilderPrompt(): string {
+export interface BuilderPromptOptions {
+	/** Enable introspection tool section in the prompt. */
+	enableIntrospection?: boolean;
+}
+
+export function buildBuilderPrompt(options?: BuilderPromptOptions): string {
+	const enableIntrospection = options?.enableIntrospection === true;
+
 	return prompt()
 		.section('role', BUILDER_ROLE)
-		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
-		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
+		.section('mandatory_execution_sequence', buildExecutionSequence(enableIntrospection))
+		.sectionIf(enableIntrospection, 'diagnostic_tool', DIAGNOSTIC_TOOL)
 		.section('node_creation', NODE_CREATION)
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
 		.section('data_parsing_strategy', DATA_PARSING)

@@ -15,32 +15,64 @@ const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.j
 const CONFIGURATOR_ROLE =
 	'You are a Configurator Agent specialized in setting up n8n node parameters.';
 
-const EXECUTION_SEQUENCE = `You MUST follow these steps IN ORDER. Do not skip any step.
-
-STEP 1: RETRIEVE NODE EXAMPLES
-- Call the get_node_configuration_examples tool for each node type being configured
-- Use the examples to understand how these node types can be configured
-
-STEP 2: CONFIGURE ALL NODES
-- Call update_node_parameters for EVERY node in the workflow
+/** Shared execution steps for configurator agent */
+const CONFIGURATOR_STEPS = {
+	retrieveExamples: {
+		title: 'RETRIEVE NODE EXAMPLES',
+		content: `- Call the get_node_configuration_examples tool for each node type being configured
+- Use the examples to understand how these node types can be configured`,
+	},
+	configureNodes: {
+		title: 'CONFIGURE ALL NODES',
+		content: `- Call update_node_parameters for EVERY node in the workflow
 - Configure multiple nodes in PARALLEL for efficiency
-- Do NOT respond with text - START CONFIGURING immediately
-
-STEP 3: VALIDATE (REQUIRED)
-- After ALL configurations complete, call validate_configuration
+- Do NOT respond with text - START CONFIGURING immediately`,
+	},
+	validate: {
+		title: 'VALIDATE (REQUIRED)',
+		content: `- After ALL configurations complete, call validate_configuration
 - This step is MANDATORY - you cannot finish without it
 - If validation finds issues, fix them and validate again
-- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_configuration, proceed to respond regardless of remaining issues
-
-STEP 4: INTROSPECT (REQUIRED)
-- Call the introspect tool to report any issues with your instructions or documentation
+- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_configuration, proceed to respond regardless of remaining issues`,
+	},
+	introspect: {
+		title: 'INTROSPECT (REQUIRED)',
+		content: `- Call the introspect tool to report any issues with your instructions or documentation
 - Report unclear guidance, missing examples, or confusing parameter documentation you encountered
-- This step is MANDATORY for improving the system
+- This step is MANDATORY for improving the system`,
+	},
+};
 
-STEP 5: RESPOND TO USER
-- Only after validation and introspection, provide your response
+function buildExecutionSequence(enableIntrospection: boolean): string {
+	const steps = [
+		CONFIGURATOR_STEPS.retrieveExamples,
+		CONFIGURATOR_STEPS.configureNodes,
+		CONFIGURATOR_STEPS.validate,
+	];
 
-NEVER respond to the user without calling validate_configuration AND introspect first`;
+	if (enableIntrospection) {
+		steps.push(CONFIGURATOR_STEPS.introspect);
+	}
+
+	const formattedSteps = steps
+		.map((step, index) => `STEP ${index + 1}: ${step.title}\n${step.content}`)
+		.join('\n\n');
+
+	const respondStep = `STEP ${steps.length + 1}: RESPOND TO USER
+- Only after ${enableIntrospection ? 'validation and introspection' : 'validation passes'}, provide your response`;
+
+	const neverClause = enableIntrospection
+		? 'NEVER respond to the user without calling validate_configuration AND introspect first'
+		: 'NEVER respond to the user without calling validate_configuration first';
+
+	return `You MUST follow these steps IN ORDER. Do not skip any step.
+
+${formattedSteps}
+
+${respondStep}
+
+${neverClause}`;
+}
 
 const WORKFLOW_JSON_DETECTION = `- You receive <current_workflow_json> in your context
 - If you see nodes in the workflow JSON, you MUST configure them IMMEDIATELY
@@ -289,10 +321,17 @@ export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[])
 	);
 }
 
-export function buildConfiguratorPrompt(): string {
+export interface ConfiguratorPromptOptions {
+	/** Enable introspection tool section in the prompt. */
+	enableIntrospection?: boolean;
+}
+
+export function buildConfiguratorPrompt(options?: ConfiguratorPromptOptions): string {
+	const enableIntrospection = options?.enableIntrospection === true;
+
 	return prompt()
 		.section('role', CONFIGURATOR_ROLE)
-		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
+		.section('mandatory_execution_sequence', buildExecutionSequence(enableIntrospection))
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
 		.section('resource_locator_configuration', RESOURCE_LOCATOR_CONFIGURATION)
@@ -308,6 +347,6 @@ export function buildConfiguratorPrompt(): string {
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)
-		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
+		.sectionIf(enableIntrospection, 'diagnostic_tool', DIAGNOSTIC_TOOL)
 		.build();
 }

@@ -17,9 +17,9 @@ import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
+import { createIntrospectTool } from '../tools/introspect.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
-import { createIntrospectTool } from '../tools/introspect.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -36,6 +36,7 @@ import {
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
 import { cachedTemplatesReducer } from '../utils/state-reducers';
+import type { BuilderTool } from '../utils/stream-processor';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -114,17 +115,22 @@ export class BuilderSubgraph extends BaseSubgraph<
 		this.config = config;
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
-		// Create base tools
-		const baseTools = [
+		// Create base tools - explicitly typed to allow adding different tool types
+		const baseTools: BuilderTool[] = [
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 			createRenameNodeTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
-			createIntrospectTool(),
 		];
+
+		// Conditionally add introspect tool if feature flag is enabled
+		if (enableIntrospection) {
+			baseTools.push(createIntrospectTool());
+		}
 
 		// Conditionally add node connection examples tool if feature flag is enabled
 		const tools = includeExamples
@@ -138,7 +144,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: buildBuilderPrompt(),
+						text: buildBuilderPrompt({ enableIntrospection }),
 						cache_control: { type: 'ephemeral' },
 					},
 				],

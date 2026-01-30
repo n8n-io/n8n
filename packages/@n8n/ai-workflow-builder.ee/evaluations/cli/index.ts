@@ -7,6 +7,8 @@
 
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import pLimit from 'p-limit';
 
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -17,6 +19,7 @@ import { createLogger } from '../harness/logger';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
+	mergeLifecycles,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
@@ -27,6 +30,8 @@ import {
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
+	type ExampleResult,
+	type EvaluationLifecycle,
 } from '../index';
 import {
 	argsToStageModels,
@@ -42,6 +47,7 @@ import {
 } from './csv-prompt-loader';
 import { sendWebhookNotification } from './webhook';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { summarizeIntrospectionResults } from '../summarizers/introspection-summarizer';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
 
@@ -235,10 +241,24 @@ export async function runV2Evaluation(): Promise<void> {
 
 	const llmCallLimiter = pLimit(args.concurrency);
 
+	// Collect results for introspection summarization
+	const collectedResults: ExampleResult[] = [];
+	const resultCollectorLifecycle: Partial<EvaluationLifecycle> =
+		args.suite === 'introspection'
+			? {
+					onExampleComplete: (_index, result) => {
+						collectedResults.push(result);
+					},
+				}
+			: {};
+
+	// Merge console lifecycle with result collector
+	const mergedLifecycle = mergeLifecycles(lifecycle, resultCollectorLifecycle);
+
 	const baseConfig = {
 		generateWorkflow,
 		evaluators,
-		lifecycle,
+		lifecycle: mergedLifecycle,
 		logger,
 		outputDir: args.outputDir,
 		timeoutMs: args.timeoutMs,
@@ -292,6 +312,36 @@ export async function runV2Evaluation(): Promise<void> {
 			metadata: { ...buildCIMetadata() },
 			logger,
 		});
+	}
+
+	// If introspection suite, run LLM summarization
+	if (args.suite === 'introspection' && collectedResults.length > 0) {
+		logger.info('\n📊 Running introspection analysis...\n');
+
+		const summary = await summarizeIntrospectionResults(collectedResults, env.llms.judge);
+
+		logger.info('=== Introspection Analysis ===\n');
+		logger.info(`Total events: ${summary.totalEvents}`);
+		logger.info(`Category breakdown: ${JSON.stringify(summary.categoryBreakdown, null, 2)}`);
+		logger.info('\n--- LLM Analysis ---\n');
+		logger.info(summary.llmAnalysis);
+
+		// Save to output directory if specified
+		if (args.outputDir) {
+			const summaryContent = `# Introspection Summary
+
+## Overview
+- **Total Events:** ${summary.totalEvents}
+- **Category Breakdown:** ${JSON.stringify(summary.categoryBreakdown, null, 2)}
+
+## LLM Analysis
+
+${summary.llmAnalysis}
+`;
+			const summaryPath = path.join(args.outputDir, 'introspection-summary.md');
+			await fs.writeFile(summaryPath, summaryContent);
+			logger.info(`\nSummary saved to: ${summaryPath}`);
+		}
 	}
 
 	// Always exit 0 on successful completion - pass/fail is informational, not an error

@@ -26,15 +26,16 @@ import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
+import { createIntrospectTool } from '../tools/introspect.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
-import { createIntrospectTool } from '../tools/introspect.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
 import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
+import type { BuilderTool } from '../utils/stream-processor';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -160,14 +161,19 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
-		// Create base tools
-		const baseTools = [
+		// Create base tools - explicitly typed to allow adding different tool types
+		const baseTools: BuilderTool[] = [
 			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
-			createIntrospectTool(),
 		];
+
+		// Conditionally add introspect tool if feature flag is enabled
+		if (enableIntrospection) {
+			baseTools.push(createIntrospectTool());
+		}
 
 		// Conditionally add workflow examples tool if feature flag is enabled
 		const tools = includeExamples

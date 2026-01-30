@@ -60,6 +60,11 @@ Be specific: identify WHICH instruction section caused the issue (e.g., "workflo
 
 This data is critical for improving the system prompts and documentation.`;
 
+export interface ResponderPromptOptions {
+	/** Enable introspection tool section in the prompt. */
+	enableIntrospection?: boolean;
+}
+
 const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations
 - You help users design and configure workflows based on their requirements
@@ -147,11 +152,13 @@ function buildColumnInfo(table: DataTableInfo, isColumnOperation: boolean): stri
 	return 'Add columns based on the data you want to store';
 }
 
-export function buildResponderPrompt(): string {
+export function buildResponderPrompt(options?: ResponderPromptOptions): string {
+	const enableIntrospection = options?.enableIntrospection === true;
+
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
-		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
+		.sectionIf(enableIntrospection, 'diagnostic_tool', DIAGNOSTIC_TOOL)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

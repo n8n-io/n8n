@@ -77,6 +77,8 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
+	enableIntrospection?: boolean;
 }
 
 export interface ChatPayload {

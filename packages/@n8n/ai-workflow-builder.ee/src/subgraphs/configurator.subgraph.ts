@@ -45,6 +45,7 @@ import {
 	type RLCPrefetchResult,
 } from '../utils/rlc-prefetch';
 import { cachedTemplatesReducer } from '../utils/state-reducers';
+import type { BuilderTool } from '../utils/stream-processor';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -147,12 +148,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
 		// Use separate LLM for parameter updater if provided
 		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
 
-		// Create base tools
-		const baseTools = [
+		// Create base tools - explicitly typed to allow adding different tool types
+		const baseTools: BuilderTool[] = [
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
 				parameterUpdaterLLM, // Uses separate LLM for parameter updater chain
@@ -171,8 +173,12 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 						),
 					]
 				: []),
-			createIntrospectTool(),
 		];
+
+		// Conditionally add introspect tool if feature flag is enabled
+		if (enableIntrospection) {
+			baseTools.push(createIntrospectTool());
+		}
 
 		// Conditionally add node configuration examples tool if feature flag is enabled
 		const tools = includeExamples
@@ -186,7 +192,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: buildConfiguratorPrompt(),
+						text: buildConfiguratorPrompt({ enableIntrospection }),
 					},
 					{
 						type: 'text',
