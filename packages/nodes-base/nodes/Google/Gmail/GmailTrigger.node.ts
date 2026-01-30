@@ -155,7 +155,7 @@ export class GmailTrigger implements INodeType {
 						displayName: 'Read Status',
 						name: 'readStatus',
 						type: 'options',
-						default: 'unread',
+						default: 'both',
 						hint: 'Filter emails by whether they have been read or not',
 						options: [
 							{
