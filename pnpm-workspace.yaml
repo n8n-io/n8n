@@ -127,6 +127,7 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'tsdown@0.16.5'
   - eslint-plugin-storybook
+  - eslint-plugin-n8n-nodes-base
   - '@langchain/*'
   - 'langchain'
   - '@anthropic-ai/sdk'

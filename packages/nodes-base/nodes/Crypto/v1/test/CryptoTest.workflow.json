@@ -247,9 +247,7 @@
 			]
 		},
 		"No Operation, do nothing": {
-			"main": [
-				[]
-			]
+			"main": [[]]
 		},
 		"Read Binary Files": {
 			"main": [
