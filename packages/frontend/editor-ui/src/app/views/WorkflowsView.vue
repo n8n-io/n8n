@@ -587,8 +587,7 @@ const initialize = async () => {
 	await setFiltersFromQueryString();
 
 	currentFolderId.value = route.params.folderId as string | null;
-	const [, resourcesPage] = await Promise.all([
-		usersStore.fetchUsers(),
+	const [resourcesPage] = await Promise.all([
 		fetchWorkflows(),
 		workflowsListStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),

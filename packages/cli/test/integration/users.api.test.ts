@@ -286,6 +286,62 @@ describe('GET /users', () => {
 				});
 				expect(_response.body.data.items).toHaveLength(0);
 			});
+
+			test('should filter users by ids', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query(`filter={ "ids": ["${member1.id}", "${member2.id}"] }`)
+					.expect(200);
+
+				expect(response.body.data).toEqual({
+					count: 2,
+					items: expect.arrayContaining([]),
+				});
+				expect(response.body.data.items).toHaveLength(2);
+
+				const returnedIds = response.body.data.items.map((user: PublicUser) => user.id);
+				expect(returnedIds).toContain(member1.id);
+				expect(returnedIds).toContain(member2.id);
+			});
+
+			test('should filter users by isPending', async () => {
+				// Create a pending user (user without password)
+				const pendingUser = await createUser({
+					role: GLOBAL_MEMBER_ROLE,
+					email: 'pending-filter-test@n8n.io',
+					firstName: 'PendingFilter',
+					lastName: 'Test',
+					password: null,
+				});
+
+				try {
+					const response = await ownerAgent
+						.get('/users')
+						.query('filter={ "isPending": true }')
+						.expect(200);
+
+					expect(response.body.data.items.length).toBeGreaterThan(0);
+					const foundPendingUser = response.body.data.items.find(
+						(user: PublicUser) => user.id === pendingUser.id,
+					);
+					expect(foundPendingUser).toBeDefined();
+					expect(foundPendingUser!.email).toBe('pending-filter-test@n8n.io');
+
+					const _response = await ownerAgent
+						.get('/users')
+						.query('filter={ "isPending": false }')
+						.expect(200);
+
+					const nonPendingUserIds = _response.body.data.items.map((user: PublicUser) => user.id);
+					expect(nonPendingUserIds).not.toContain(pendingUser.id);
+					expect(nonPendingUserIds).toContain(member1.id);
+					expect(nonPendingUserIds).toContain(member2.id);
+					expect(nonPendingUserIds).toContain(owner.id);
+				} finally {
+					// Clean up the pending user
+					await userRepository.delete({ id: pendingUser.id });
+				}
+			});
 		});
 
 		describe('select', () => {
