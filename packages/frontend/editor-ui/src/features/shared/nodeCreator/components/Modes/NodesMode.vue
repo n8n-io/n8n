@@ -45,6 +45,9 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useNodeCreatorAiAssistStore, NoResultsAiPrompt } from '@/experiments/nodeCreatorAiAssist';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -52,6 +55,7 @@ export interface Props {
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	closeNodeCreator: [];
 }>();
 
 const i18n = useI18n();
@@ -63,6 +67,18 @@ const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView 
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
+
+const nodeCreatorAiAssistStore = useNodeCreatorAiAssistStore();
+
+async function onSubmitToAi(prompt: string) {
+	const chatPanelStore = useChatPanelStore();
+	const assistantStore = useAssistantStore();
+
+	emit('closeNodeCreator');
+
+	await chatPanelStore.open({ mode: 'assistant' });
+	await assistantStore.initSupportChat(prompt);
+}
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -320,7 +336,13 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 			<template v-if="isSearchResultEmpty" #empty>
+				<NoResultsAiPrompt
+					v-if="nodeCreatorAiAssistStore.isEnabled"
+					:search-term="activeViewStack.search"
+					@submit-to-ai="onSubmitToAi"
+				/>
 				<NoResults
+					v-else
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request

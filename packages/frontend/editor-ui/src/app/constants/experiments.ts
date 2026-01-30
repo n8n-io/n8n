@@ -67,6 +67,11 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantInspiration: 'variant-inspiration',
 });
 
+export const NODE_CREATOR_AI_ASSIST_EXPERIMENT = createExperiment('node_creator_ai_assist', {
+	control: 'control',
+	variant: 'variant',
+});
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -80,4 +85,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
+	NODE_CREATOR_AI_ASSIST_EXPERIMENT.name,
 ];

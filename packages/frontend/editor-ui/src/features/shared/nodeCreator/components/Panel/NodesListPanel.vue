@@ -250,7 +250,12 @@ function onBackButton() {
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
-				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
+				<NodesRenderer
+					v-else
+					:root-view="nodeCreatorView"
+					v-bind="$attrs"
+					@close-node-creator="$emit('closeNodeCreator')"
+				/>
 			</div>
 
 			<CommunityNodeFooter
