@@ -1,0 +1,140 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "advice",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        0
+      ],
+      "id": "f1db74ac-7252-4416-9317-5a1547661bad",
+      "name": "Webhook",
+      "webhookId": "dc96be87-12ad-4f96-8500-bb64d5cfa9f0"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $credentials.groqApiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messages[0].role",
+              "value": "system"
+            },
+            {
+              "name": "messages[0].content",
+              "value": "أنت مساعد عربي ودود. رد على كلام المستخدم مباشرة وبأسلوب بسيط وواضح."
+            },
+            {
+              "name": "messages[1].role",
+              "value": "user"
+            },
+            {
+              "name": "messages[1].content",
+              "value": "={{ $node[\"Webhook\"].json.body.message.text }}"
+            },
+            {
+              "name": "model",
+              "value": "llama-3.3-70b-versatile"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5ab62b1f-628c-4ffa-9d87-b530177cd7d2",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $credentials.telegramBotToken + '/sendMessage' }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $credentials.telegramChatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $node[\"HTTP Request1\"].json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        464,
+        0
+      ],
+      "id": "cc523935-ad0d-4e74-affa-0eb27123d9f1",
+      "name": "HTTP Request"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ac6638c0-206e-42b7-aef7-fdbe7ae01509",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9e3a3e2bceeaa39e231277c2525fd4cd4cce4e5d449efdc2ef2c822b1ed13c3f"
+  },
+  "id": "4BDduIk-HEbdrycBB05iy",
+  "tags": []
+}
