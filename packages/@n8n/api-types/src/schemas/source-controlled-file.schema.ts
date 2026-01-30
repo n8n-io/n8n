@@ -52,6 +52,7 @@ export const SourceControlledFileSchema = z.object({
 	isLocalPublished: z.boolean().optional(),
 	isRemoteArchived: z.boolean().optional(),
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
+	publishingError: z.string().optional(),
 });
 
 export type SourceControlledFile = z.infer<typeof SourceControlledFileSchema>;
