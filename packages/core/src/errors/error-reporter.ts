@@ -140,6 +140,8 @@ export class ErrorReporter {
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
 
+		// Most of the integrations are listed here:
+		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
 		const enabledIntegrations = new Set([
 			'InboundFilters',
 			'FunctionToString',
