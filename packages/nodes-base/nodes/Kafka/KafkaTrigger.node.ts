@@ -192,7 +192,7 @@ export class KafkaTrigger implements INodeType {
 							'Whether to process messages in parallel resolving offsets independently or in order resolving offsets after execution completion. In the manual mode, when execution started by clicking on Execute Workflow or Execute Step button, messages are processed in parallel resolving offsets immediately.',
 						displayOptions: {
 							show: {
-								'@version': [1.1],
+								'@version': [1.1, 1.2],
 							},
 						},
 					},
