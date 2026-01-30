@@ -13,6 +13,12 @@ import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n
 
 import { NodeTypes } from '@test/helpers';
 
+jest.mock('node:fs', () => ({
+	...jest.requireActual('node:fs'),
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
+
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';

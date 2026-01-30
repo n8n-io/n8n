@@ -55,6 +55,12 @@ import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
+jest.mock('node:fs', () => ({
+	...jest.requireActual('node:fs'),
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
+
 const nodeTypes = Helpers.NodeTypes();
 
 beforeEach(() => {
