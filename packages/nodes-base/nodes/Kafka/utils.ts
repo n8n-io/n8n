@@ -16,7 +16,11 @@ import type {
 	IBinaryKeyData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { ensureError, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+
+// Default delay in milliseconds before retrying after a failed offset resolution.
+// This prevents rapid retry loops that could overwhelm the Kafka broker
+const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -49,7 +53,7 @@ interface KafkaCredentials {
 	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
 }
 
-type ResolveOffsetMode = 'immediately' | 'onCompletion';
+type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 /**
  * Creates Kafka client configuration from n8n credentials
@@ -93,7 +97,11 @@ export async function createConfig(ctx: ITriggerFunctions) {
  * @param nodeVersion - The version of the Kafka trigger node
  * @returns Consumer configuration object
  */
-export function createConsumerConfig(ctx: ITriggerFunctions, options: KafkaTriggerOptions) {
+export function createConsumerConfig(
+	ctx: ITriggerFunctions,
+	options: KafkaTriggerOptions,
+	nodeVersion: number,
+) {
 	const groupId = ctx.getNodeParameter('groupId') as string;
 	const maxInFlightRequests = (
 		ctx.getNodeParameter('options.maxInFlightRequests', null) === 0
@@ -102,7 +110,12 @@ export function createConsumerConfig(ctx: ITriggerFunctions, options: KafkaTrigg
 	) as number;
 
 	const sessionTimeout = options.sessionTimeout ?? 30000;
-	const heartbeatInterval = options.heartbeatInterval ?? 3000;
+	let heartbeatInterval: number;
+	if (nodeVersion < 1.3) {
+		heartbeatInterval = options.heartbeatInterval ?? 3000;
+	} else {
+		heartbeatInterval = options.heartbeatInterval ?? 10000;
+	}
 
 	const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
 	const maxBytesPerPartition = options.fetchMaxBytes;
@@ -287,6 +300,7 @@ export function setSchemaRegistry(ctx: ITriggerFunctions) {
  * @returns The offset resolution mode
  */
 function getResolveOffsetMode(
+	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
 ): ResolveOffsetMode {
@@ -296,7 +310,7 @@ function getResolveOffsetMode(
 		if (options.parallelProcessing) return 'immediately';
 		return 'onCompletion';
 	}
-	return 'immediately';
+	return ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
 }
 
 /**
@@ -311,7 +325,7 @@ export function configureDataEmitter(
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
 ) {
-	const resolveOffsetMode = getResolveOffsetMode(options, nodeVersion);
+	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
@@ -321,15 +335,57 @@ export function configureDataEmitter(
 		};
 	}
 
+	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
+	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
+
+	const allowedStatuses: string[] = [];
+	if (resolveOffsetMode === 'onSuccess') {
+		allowedStatuses.push('success');
+	} else if (resolveOffsetMode === 'onStatus') {
+		const selectedStatuses = ctx.getNodeParameter('allowedStatuses', []) as string[];
+
+		if (Array.isArray(selectedStatuses) && selectedStatuses.length) {
+			allowedStatuses.push(...selectedStatuses);
+		} else {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'At least one execution status must be selected to resolve offsets on selected statuses.',
+			);
+		}
+	}
+
 	return async (dataArray: INodeExecutionData[]) => {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([dataArray], undefined, responsePromise);
 
-			await responsePromise.promise;
+			const timeoutPromise = new Promise<IRun>((_, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(
+						new NodeOperationError(
+							ctx.getNode(),
+							`Execution took longer than the configured workflow timeout of ${executionTimeoutInSeconds} seconds to complete, offsets not resolved.`,
+						),
+					);
+				}, executionTimeoutInSeconds * 1000);
+			});
+
+			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+
+			if (timeoutId) clearTimeout(timeoutId);
+
+			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					'Execution status is not allowed for resolving offsets, current status: ' + run.status,
+				);
+			}
 
 			return { success: true };
 		} catch (e) {
+			if (timeoutId) clearTimeout(timeoutId);
+			await sleep(errorRetryDelay);
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
@@ -344,8 +400,23 @@ export function configureDataEmitter(
  * @param nodeVersion - The version of the Kafka trigger node
  * @returns Object with auto-commit configuration
  */
-export function getAutoCommitSettings(options: KafkaTriggerOptions) {
-	const shouldAutoCommit = true;
+export function getAutoCommitSettings(
+	ctx: ITriggerFunctions,
+	options: KafkaTriggerOptions,
+	nodeVersion: number,
+) {
+	let shouldAutoCommit = true;
+
+	if (nodeVersion >= 1.3 && ctx.getMode() !== 'manual') {
+		const resolveOffset = ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
+		if (resolveOffset !== 'immediately') {
+			const disableAutoResolveOffset = ctx.getNodeParameter(
+				'disableAutoResolveOffset',
+				false,
+			) as boolean;
+			shouldAutoCommit = !disableAutoResolveOffset;
+		}
+	}
 
 	const autoCommitInterval = options.autoCommitInterval ?? undefined;
 	const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
