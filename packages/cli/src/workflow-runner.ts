@@ -460,7 +460,9 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					reject(error);
+					this.scalingService.popJobResult(executionId);
+
+					return reject(error);
 				}
 
 				const jobResult = this.scalingService.popJobResult(executionId);
