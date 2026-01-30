@@ -25,6 +25,11 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Delete a message',
 			},
 			{
+				name: 'Trash',
+				value: 'trash',
+				action: 'Trash a message',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				action: 'Get a message',
@@ -79,21 +84,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['get', 'delete', 'markAsRead', 'markAsUnread'],
-			},
-		},
-		placeholder: '172ce2c4a72cc243',
-	},
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
+				operation: ['get', 'delete', 'trash', 'reply', 'markAsRead', 'markAsUnread'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
