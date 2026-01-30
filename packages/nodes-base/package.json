@@ -82,6 +82,7 @@
       "dist/credentials/CortexApi.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/CrowdStrikeOAuth2Api.credentials.js",
+      "dist/credentials/Crypto.credentials.js",
       "dist/credentials/CurrentsApi.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/DatadogApi.credentials.js",
@@ -881,7 +882,7 @@
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
-    "eslint-plugin-n8n-nodes-base": "^1.16.3",
+    "eslint-plugin-n8n-nodes-base": "^1.16.5",
     "n8n-core": "workspace:*"
   },
   "dependencies": {

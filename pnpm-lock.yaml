@@ -1185,8 +1185,8 @@ importers:
         specifier: ^4.15.2
         version: 4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1))
       eslint-plugin-n8n-nodes-base:
-        specifier: 1.16.3
-        version: 1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
+        specifier: 1.16.5
+        version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3474,8 +3474,8 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.3
-        version: 1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
+        specifier: ^1.16.5
+        version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -11753,17 +11753,14 @@ packages:
       '@typescript-eslint/parser':
         optional: true
 
-  eslint-plugin-local@1.0.0:
-    resolution: {integrity: sha512-bcwcQnKL/Iw5Vi/F2lG1he5oKD2OGjhsLmrcctkWrWq5TujgiaYb0cj3pZgr3XI54inNVnneOFdAx1daLoYLJQ==}
-
   eslint-plugin-lodash@8.0.0:
     resolution: {integrity: sha512-7DA8485FolmWRzh+8t4S8Pzin2TTuWfb0ZW3j/2fYElgk82ZanFz8vDcvc4BBPceYdX1p/za+tkbO68maDBGGw==}
     engines: {node: '>=10'}
     peerDependencies:
       eslint: '>=9.0.0'
 
-  eslint-plugin-n8n-nodes-base@1.16.3:
-    resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
+  eslint-plugin-n8n-nodes-base@1.16.5:
+    resolution: {integrity: sha512-/Bx2xj1ZzwEN+KQmnf7i0QRzgNMuphythQI2qXHoJQd8nm6aJGC9ZyVmDBFkM9P1ZfVBgBK7bDdjNxcbIK8Hgw==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
   eslint-plugin-playwright@2.2.2:
@@ -29410,18 +29407,15 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-local@1.0.0: {}
-
   eslint-plugin-lodash@8.0.0(eslint@9.29.0(jiti@2.6.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)
       lodash: 4.17.21
 
-  eslint-plugin-n8n-nodes-base@1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2):
+  eslint-plugin-n8n-nodes-base@1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2):
     dependencies:
       '@typescript-eslint/utils': 6.21.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       camel-case: 4.1.2
-      eslint-plugin-local: 1.0.0
       indefinite: 2.5.1
       pascal-case: 3.1.2
       pluralize: 8.0.0
