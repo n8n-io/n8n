@@ -75,6 +75,7 @@ beforeAll(async () => {
 		nodeTypes,
 		webhookServiceMock,
 		mock(), // licenseState
+		mock(), // projectRepository
 	);
 });
 

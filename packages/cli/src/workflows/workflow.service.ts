@@ -16,6 +16,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
+	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -91,6 +92,7 @@ export class WorkflowService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async getMany(
@@ -109,7 +111,12 @@ export class WorkflowService {
 		let personalProjectOwnerId: string | null = null;
 
 		if (options?.filter?.projectId) {
-			const project = await this.projectService.getProject(options.filter.projectId as string);
+			const project = await this.projectRepository.findOneBy({
+				id: options.filter.projectId as string,
+			});
+			if (!project) {
+				return { workflows: [], count: 0 };
+			}
 			isPersonalProject = project.type === 'personal';
 			personalProjectOwnerId = project.creatorId;
 		}
