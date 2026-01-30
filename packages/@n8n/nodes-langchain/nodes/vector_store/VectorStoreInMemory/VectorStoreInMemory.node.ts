@@ -261,17 +261,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 		},
 	},
 	insertFields,
-	loadFields: [
-		{
-			displayName: 'Enable Persistence',
-			name: 'enablePersistence',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to load vectors from the instance database instead of memory',
-		},
-		warningBanner,
-		persistenceBanner,
-	],
+	loadFields: [warningBanner, persistenceBanner],
 	retrieveFields: [],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);

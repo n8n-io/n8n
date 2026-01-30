@@ -1,4 +1,4 @@
-import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -7,7 +7,6 @@ import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-p
 import { UserError } from 'n8n-workflow';
 import type { TlsOptions } from 'node:tls';
 import path from 'path';
-import * as sqliteVec from 'sqlite-vec';
 
 import { entities } from '../entities';
 import { postgresMigrations } from '../migrations/postgresdb';
@@ -20,7 +19,6 @@ export class DbConnectionOptions {
 		private readonly config: DatabaseConfig,
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly logger: Logger,
 	) {}
 
 	getPostgresOverrides() {
@@ -83,21 +81,6 @@ export class DbConnectionOptions {
 			...this.getCommonOptions(),
 			database: path.resolve(n8nFolder, sqliteConfig.database),
 			migrations: sqliteMigrations,
-			extensions: [
-				(db) =>
-					sqliteVec.load({
-						loadExtension: (fileName, _entrypoint) =>
-							// sqlite3 doesn't seem to accept entrypoint, which might become problematic if we load more extensions
-							// https://sqlite.org/loadext.html
-							db.loadExtension(fileName, (error) => {
-								if (error) {
-									this.logger.error('Could not load sqlite-vec', { error });
-								} else {
-									this.logger.debug('Extension sqlite-vec loaded');
-								}
-							}),
-					}),
-			],
 		};
 	}
 
