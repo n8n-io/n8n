@@ -22,7 +22,7 @@ const settingsStore = useSettingsStore();
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
-const isBulderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
+const isBuilderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
@@ -39,7 +39,7 @@ const aiSettingsDescription = computed(() => {
 });
 
 const confirmationMessage = computed(() => {
-	if (isBulderEnabled.value) {
+	if (isBuilderEnabled.value) {
 		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
 	}
 	return i18n.baseText('settings.ai.confirm.message.builderDisabled');
@@ -141,7 +141,6 @@ onMounted(async () => {
 .checkboxContainer {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--xs);
 	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: var(--radius);
 	padding: var(--spacing--md) var(--spacing--md) var(--spacing--xs);
@@ -162,7 +161,8 @@ onMounted(async () => {
 }
 
 .privacyNote {
-	display: flex;
-	gap: var(--spacing--4xs);
+	span + span {
+		margin-left: var(--spacing--4xs);
+	}
 }
 </style>
