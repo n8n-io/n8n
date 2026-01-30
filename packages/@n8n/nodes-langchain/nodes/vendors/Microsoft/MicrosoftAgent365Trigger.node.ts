@@ -220,6 +220,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			const activityCapture: ActivityCapture = {
 				input: '',
 				output: [],
+				activity: {},
 			};
 
 			const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);

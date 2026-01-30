@@ -170,6 +170,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					expect.objectContaining({
 						input: '',
 						output: [],
+						activity: {},
 					}),
 				);
 
@@ -207,6 +208,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					expect.objectContaining({
 						input: '',
 						output: [],
+						activity: {},
 					}),
 				);
 			});
@@ -357,6 +359,7 @@ describe('MicrosoftAgent365Trigger', () => {
 				expect(capturedActivityCapture).toBeDefined();
 				expect(capturedActivityCapture?.input).toBe('');
 				expect(capturedActivityCapture?.output).toEqual([]);
+				expect(capturedActivityCapture?.activity).toEqual({});
 
 				// Verify the full flow completed
 				expect(createMicrosoftAgentApplication).toHaveBeenCalled();

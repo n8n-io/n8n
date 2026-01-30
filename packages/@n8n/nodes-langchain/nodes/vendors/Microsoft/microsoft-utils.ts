@@ -44,10 +44,52 @@ export type MicrosoftAgent365Credentials = {
 	clientSecret: string;
 };
 
+export type ActivityInfo = {
+	id?: string;
+	type?: string;
+	channelId?: string;
+	conversationId?: string;
+	from?: {
+		id?: string;
+		name?: string;
+	};
+	recipient?: {
+		id?: string;
+		name?: string;
+	};
+	timestamp?: string;
+	locale?: string;
+};
+
 export type ActivityCapture = {
 	input: string;
 	output: string[];
+	activity: ActivityInfo;
 };
+
+export function extractActivityInfo(activity: Activity): ActivityInfo {
+	return {
+		id: activity.id,
+		type: activity.type,
+		channelId: activity.channelId,
+		conversationId: activity.conversation?.id,
+		from: activity.from
+			? {
+					id: activity.from.id,
+					name: activity.from.name,
+				}
+			: undefined,
+		recipient: activity.recipient
+			? {
+					id: activity.recipient.id,
+					name: activity.recipient.name,
+				}
+			: undefined,
+		timestamp:
+			activity.timestamp instanceof Date ? activity.timestamp.toISOString() : activity.timestamp,
+		locale: activity.locale,
+	};
+}
 
 export const microsoftMcpServers: INodePropertyOptions[] = [
 	{ name: 'Calendar', value: 'mcp_CalendarTools' },
@@ -299,6 +341,8 @@ export function configureAdapterProcessCallback(
 		try {
 			const originalSendActivity = turnContext.sendActivity.bind(turnContext);
 			activityCapture.input = turnContext.activity.text || '';
+			activityCapture.activity = extractActivityInfo(turnContext.activity);
+
 			const sendActivityWrapper = async (activityOrText: string | Activity) => {
 				if (typeof activityOrText === 'string') {
 					activityCapture.output.push(activityOrText);

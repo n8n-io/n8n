@@ -8,8 +8,10 @@ import {
 	getMicrosoftMcpTools,
 	configureActivityCallback,
 	microsoftMcpServers,
+	extractActivityInfo,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
+	type ActivityInfo,
 } from '../microsoft-utils';
 
 jest.mock('@microsoft/agents-hosting', () => ({
@@ -189,6 +191,7 @@ describe('microsoft-utils', () => {
 			activityCapture = {
 				input: '',
 				output: [],
+				activity: {},
 			};
 		});
 
@@ -886,6 +889,99 @@ describe('microsoft-utils', () => {
 
 		test('should have correct number of server options', () => {
 			expect(microsoftMcpServers).toHaveLength(8);
+		});
+	});
+
+	describe('extractActivityInfo', () => {
+		test('should extract all fields from a complete activity', () => {
+			const activity = {
+				id: 'activity-123',
+				type: 'message',
+				channelId: 'msteams',
+				conversation: { id: 'conv-456' },
+				from: { id: 'user-789', name: 'John Doe' },
+				recipient: { id: 'bot-abc', name: 'Test Bot' },
+				timestamp: new Date('2024-01-15T10:30:00Z'),
+				locale: 'en-US',
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result).toEqual({
+				id: 'activity-123',
+				type: 'message',
+				channelId: 'msteams',
+				conversationId: 'conv-456',
+				from: { id: 'user-789', name: 'John Doe' },
+				recipient: { id: 'bot-abc', name: 'Test Bot' },
+				timestamp: '2024-01-15T10:30:00.000Z',
+				locale: 'en-US',
+			});
+		});
+
+		test('should handle activity with missing optional fields', () => {
+			const activity = {
+				type: 'message',
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result).toEqual({
+				id: undefined,
+				type: 'message',
+				channelId: undefined,
+				conversationId: undefined,
+				from: undefined,
+				recipient: undefined,
+				timestamp: undefined,
+				locale: undefined,
+			});
+		});
+
+		test('should handle activity with string timestamp', () => {
+			const activity = {
+				type: 'message',
+				timestamp: '2024-01-15T10:30:00Z',
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result.timestamp).toBe('2024-01-15T10:30:00Z');
+		});
+
+		test('should handle activity with partial from/recipient data', () => {
+			const activity = {
+				type: 'message',
+				from: { id: 'user-123' },
+				recipient: { name: 'Bot Name' },
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result.from).toEqual({ id: 'user-123', name: undefined });
+			expect(result.recipient).toEqual({ id: undefined, name: 'Bot Name' });
+		});
+
+		test('should handle activity with null conversation', () => {
+			const activity = {
+				type: 'message',
+				conversation: null,
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result.conversationId).toBeUndefined();
+		});
+
+		test('should extract conversationId from conversation object', () => {
+			const activity = {
+				type: 'conversationUpdate',
+				conversation: { id: 'conversation-id-123', name: 'Test Conversation' },
+			};
+
+			const result: ActivityInfo = extractActivityInfo(activity as any);
+
+			expect(result.conversationId).toBe('conversation-id-123');
 		});
 	});
 });
