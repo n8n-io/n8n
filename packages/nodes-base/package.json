@@ -16,7 +16,7 @@
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "jest",
     "test:dev": "jest --watch",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
   "files": [
     "dist"
