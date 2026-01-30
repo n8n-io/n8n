@@ -9,6 +9,7 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 
 import { N8nActionToggle } from '@n8n/design-system';
 type Props = {
@@ -79,7 +80,7 @@ const onAction = async (action: string) => {
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {
 			const promptResponse = await message.confirm(
 				i18n.baseText('dataTable.delete.confirm.message', {
-					interpolate: { name: props.dataTable.name },
+					interpolate: { name: escapeHtml(props.dataTable.name) },
 				}),
 				i18n.baseText('dataTable.delete.confirm.title'),
 				{
