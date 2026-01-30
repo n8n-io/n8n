@@ -1,17 +1,19 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalScope, Get, RestController, Middleware } from '@n8n/decorators';
-import { Request, Response, NextFunction } from 'express';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
-@RestController('/secret-providers/autocomplete')
-export class SecretProvidersAutocompleteController {
-	// Returns also the secret keys for a specific project
+@RestController('/secret-providers/completions')
+export class SecretProvidersCompletionsController {
 	constructor(
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
+		private readonly connectionsService: SecretsProvidersConnectionsService,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -28,15 +30,17 @@ export class SecretProvidersAutocompleteController {
 	@GlobalScope('externalSecret:list')
 	async listGlobalSecrets() {
 		this.logger.debug('Listing global secrets');
-		//TODO implement
-		return await Promise.resolve();
+		return await this.connectionsService.getGlobalCompletions();
 	}
 
 	@Get('/secrets/project/:projectId')
 	@GlobalScope('externalSecret:list')
-	async listProjectSecrets() {
+	async listProjectSecrets(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	) {
 		this.logger.debug('Listing secrets for project');
-		//TODO implement
-		return await Promise.resolve();
+		return await this.connectionsService.getProjectCompletions(projectId);
 	}
 }

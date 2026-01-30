@@ -150,12 +150,12 @@ export class SecretsProvidersConnectionsService {
 		return [...projectSecrets, ...globalSecrets];
 	}
 
-	private async getGlobalCompletions(): Promise<SecretCompletionsResponse[]> {
+	async getGlobalCompletions(): Promise<SecretCompletionsResponse[]> {
 		const connections = await this.repository.findGlobalConnections();
 		return connections.map((connection) => this.toCompletionItem(connection, true));
 	}
 
-	private async getProjectCompletions(projectId: string): Promise<SecretCompletionsResponse[]> {
+	async getProjectCompletions(projectId: string): Promise<SecretCompletionsResponse[]> {
 		const connections = await this.repository.findByProjectId(projectId);
 		return connections.map((connection) => this.toCompletionItem(connection, false));
 	}

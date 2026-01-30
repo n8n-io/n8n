@@ -100,12 +100,12 @@ describe('Secret Providers Connections Service', () => {
 		});
 	});
 
-	describe('getSecretsCompletions', () => {
+	describe('getGlobalCompletions', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 		});
 
-		it('should return only global secrets when no projectId is provided', async () => {
+		it('should return completions for global connections', async () => {
 			const globalConnections = [
 				createConnection({ providerKey: 'global-aws', type: 'awsSecretsManager' }),
 				createConnection({ providerKey: 'global-vault', type: 'vault' }),
@@ -116,8 +116,9 @@ describe('Secret Providers Connections Service', () => {
 				.mockReturnValueOnce(['aws-secret-1', 'aws-secret-2'])
 				.mockReturnValueOnce(['vault-secret-1']);
 
-			const result = await service.getSecretsCompletions({});
+			const result = await service.getGlobalCompletions();
 
+			expect(mockRepository.findGlobalConnections).toHaveBeenCalledTimes(1);
 			expect(result).toEqual([
 				{
 					type: 'awsSecretsManager',
@@ -134,16 +135,37 @@ describe('Secret Providers Connections Service', () => {
 			]);
 		});
 
-		it('should return only project secrets when projectId is provided without includeGlobal', async () => {
+		it('should return empty array when no global connections exist', async () => {
+			mockRepository.findGlobalConnections.mockResolvedValue([]);
+
+			const result = await service.getGlobalCompletions();
+
+			expect(mockRepository.findGlobalConnections).toHaveBeenCalledTimes(1);
+			expect(result).toEqual([]);
+		});
+	});
+
+	describe('getProjectCompletions', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should return completions for project connections', async () => {
+			const projectId = 'project-123';
 			const projectConnections = [
 				createConnection({ providerKey: 'project-aws', type: 'awsSecretsManager' }),
+				createConnection({ providerKey: 'project-vault', type: 'vault' }),
 			];
 
 			mockRepository.findByProjectId.mockResolvedValue(projectConnections);
-			mockExternalSecretsManager.getSecretNames.mockReturnValue(['project-secret-1']);
+			mockExternalSecretsManager.getSecretNames
+				.mockReturnValueOnce(['project-secret-1'])
+				.mockReturnValueOnce(['project-secret-2', 'project-secret-3']);
 
-			const result = await service.getSecretsCompletions({ projectId: 'project-123' });
+			const result = await service.getProjectCompletions(projectId);
 
+			expect(mockRepository.findByProjectId).toHaveBeenCalledWith(projectId);
+			expect(mockRepository.findByProjectId).toHaveBeenCalledTimes(1);
 			expect(result).toEqual([
 				{
 					type: 'awsSecretsManager',
@@ -151,57 +173,23 @@ describe('Secret Providers Connections Service', () => {
 					secretCompletions: ['project-secret-1'],
 					isGlobal: false,
 				},
-			]);
-		});
-
-		it('should return both project and global secrets when projectId and includeGlobal are provided', async () => {
-			const projectConnections = [
-				createConnection({ providerKey: 'project-vault', type: 'vault' }),
-			];
-			const globalConnections = [
-				createConnection({ providerKey: 'global-aws', type: 'awsSecretsManager' }),
-			];
-
-			mockRepository.findByProjectId.mockResolvedValue(projectConnections);
-			mockRepository.findGlobalConnections.mockResolvedValue(globalConnections);
-			mockExternalSecretsManager.getSecretNames
-				.mockReturnValueOnce(['vault-project-secret'])
-				.mockReturnValueOnce(['aws-global-secret']);
-
-			const result = await service.getSecretsCompletions({
-				projectId: 'project-456',
-				includeGlobal: true,
-			});
-
-			expect(result).toEqual([
 				{
 					type: 'vault',
 					providerKey: 'project-vault',
-					secretCompletions: ['vault-project-secret'],
+					secretCompletions: ['project-secret-2', 'project-secret-3'],
 					isGlobal: false,
-				},
-				{
-					type: 'awsSecretsManager',
-					providerKey: 'global-aws',
-					secretCompletions: ['aws-global-secret'],
-					isGlobal: true,
 				},
 			]);
 		});
 
-		it('should return empty array when no connections exist', async () => {
-			mockRepository.findGlobalConnections.mockResolvedValue([]);
-
-			const result = await service.getSecretsCompletions({});
-
-			expect(result).toEqual([]);
-		});
-
-		it('should return empty array when no connections exist for project', async () => {
+		it('should return empty array when no project connections exist', async () => {
+			const projectId = 'project-456';
 			mockRepository.findByProjectId.mockResolvedValue([]);
 
-			const result = await service.getSecretsCompletions({ projectId: 'project-789' });
+			const result = await service.getProjectCompletions(projectId);
 
+			expect(mockRepository.findByProjectId).toHaveBeenCalledWith(projectId);
+			expect(mockRepository.findByProjectId).toHaveBeenCalledTimes(1);
 			expect(result).toEqual([]);
 		});
 	});
