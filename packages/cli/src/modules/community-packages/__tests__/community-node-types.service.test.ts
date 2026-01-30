@@ -451,7 +451,7 @@ describe('CommunityNodeTypesService', () => {
 
 			expect(result.length).toBe(1); // only original
 
-			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testToolTool');
 			expect(toolNode).toBeUndefined();
 		});
 
