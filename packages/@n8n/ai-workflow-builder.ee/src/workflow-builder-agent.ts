@@ -49,6 +49,7 @@ export interface StageLLMs {
 	builder: BaseChatModel;
 	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -77,6 +78,7 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	planMode?: boolean;
 }
 
 export interface ChatPayload {
@@ -91,6 +93,8 @@ export interface ChatPayload {
 	featureFlags?: BuilderFeatureFlags;
 	/** Version ID to store in message metadata for restore functionality */
 	versionId?: string;
+	/** Builder mode: 'build' for direct workflow generation, 'plan' for planning first */
+	mode?: 'build' | 'plan';
 }
 
 export class WorkflowBuilderAgent {
@@ -230,12 +234,14 @@ export class WorkflowBuilderAgent {
 				...(payload.id && { messageId: payload.id }),
 			},
 		});
+
 		const stream = await agent.stream(
 			{
 				messages: [humanMessage],
 				workflowJSON: this.getDefaultWorkflowJSON(payload),
 				workflowOperations: [],
 				workflowContext: payload.workflowContext,
+				mode: payload.mode ?? 'build',
 			},
 			streamConfig,
 		);

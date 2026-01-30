@@ -1,8 +1,55 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { ChatRequest } from '../assistant.types';
+import type { ChatRequest, PlanMode } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
+
+// Type guards for API Plan Mode messages
+function isApiQuestionsMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiQuestionsMessage {
+	return 'type' in msg && msg.type === 'questions' && 'questions' in msg;
+}
+
+/**
+ * Check if a text message contains user answers JSON (from session reload).
+ * Returns parsed answers if valid, null otherwise.
+ */
+function parseUserAnswersFromText(
+	msg: ChatRequest.MessageResponse,
+): PlanMode.QuestionResponse[] | null {
+	if (!('text' in msg) || msg.role !== 'user') return null;
+
+	try {
+		const parsed = JSON.parse(msg.text) as {
+			type?: string;
+			answers?: Array<Record<string, unknown>>;
+		};
+		if (parsed.type === 'question_answers' && Array.isArray(parsed.answers)) {
+			// Convert backend format to frontend format
+			return parsed.answers.map((a) => ({
+				questionId: String(a.questionId ?? ''),
+				question: String(a.question ?? ''),
+				selectedOptions: Array.isArray(a.selectedOptions) ? (a.selectedOptions as string[]) : [],
+				customText: String(a.customValue ?? a.customText ?? ''),
+				skipped: Boolean(a.skipped),
+			}));
+		}
+	} catch {
+		// Not JSON or invalid format
+	}
+	return null;
+}
+
+function isApiPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ApiPlanMessage {
+	return 'type' in msg && msg.type === 'plan' && 'plan' in msg;
+}
+
+function isApiAnswerSummaryMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiAnswerSummaryMessage {
+	return 'type' in msg && msg.type === 'answer_summary' && 'answers' in msg;
+}
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
@@ -173,6 +220,46 @@ export function useBuilderMessages() {
 				retry,
 			});
 			shouldClearThinking = true;
+		} else if (isApiQuestionsMessage(msg)) {
+			// Handle Plan Mode questions message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'questions',
+				data: {
+					questions: msg.questions,
+					introMessage: msg.introMessage,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isApiPlanMessage(msg)) {
+			// Handle Plan Mode plan message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: {
+					plan: msg.plan,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isApiAnswerSummaryMessage(msg)) {
+			// Handle Plan Mode answer summary message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'answer_summary',
+				data: {
+					answers: msg.answers,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
 		}
 
 		return shouldClearThinking;
@@ -323,6 +410,25 @@ export function useBuilderMessages() {
 		};
 	}
 
+	/**
+	 * Create a custom user message for displaying answers to plan mode questions.
+	 * This shows the user's answers in a nicely formatted way rather than raw JSON.
+	 */
+	function createUserAnswersMessage(
+		answers: PlanMode.QuestionResponse[],
+		id: string,
+	): PlanMode.UserAnswersMessage {
+		return {
+			id,
+			role: 'user',
+			type: 'custom',
+			customType: 'user_answers',
+			data: {
+				answers,
+			},
+		};
+	}
+
 	function createAssistantMessage(
 		content: string,
 		id: string,
@@ -387,6 +493,20 @@ export function useBuilderMessages() {
 		message: ChatRequest.MessageResponse,
 		id: string,
 	): ChatUI.AssistantMessage {
+		// Check if this is a user answers message (JSON in text field from session reload)
+		if (isTextMessage(message) && message.role === 'user') {
+			const parsedAnswers = parseUserAnswersFromText(message);
+			if (parsedAnswers) {
+				return {
+					id,
+					role: 'user',
+					type: 'custom',
+					customType: 'user_answers',
+					data: { answers: parsedAnswers },
+				} as PlanMode.UserAnswersMessage;
+			}
+		}
+
 		// Handle specific message types using type guards
 		if (isTextMessage(message)) {
 			return {
@@ -422,6 +542,49 @@ export function useBuilderMessages() {
 			} satisfies ChatUI.AssistantMessage;
 		}
 
+		// Handle Plan Mode questions message (from session reload)
+		if (isApiQuestionsMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'questions',
+				data: {
+					questions: message.questions,
+					introMessage: message.introMessage,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage;
+		}
+
+		// Handle Plan Mode plan message (from session reload)
+		if (isApiPlanMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: {
+					plan: message.plan,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage;
+		}
+
+		// Handle Plan Mode answer summary message (from session reload)
+		if (isApiAnswerSummaryMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'answer_summary',
+				data: {
+					answers: message.answers,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage;
+		}
+
 		// Handle event messages
 		if ('type' in message && message.type === 'event') {
 			return {
@@ -444,6 +607,7 @@ export function useBuilderMessages() {
 	return {
 		processAssistantMessages,
 		createUserMessage,
+		createUserAnswersMessage,
 		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,

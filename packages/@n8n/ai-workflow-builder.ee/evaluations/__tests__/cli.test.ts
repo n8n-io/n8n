@@ -116,6 +116,7 @@ function createMockEnvironment() {
 			builder: mockLlm,
 			configurator: mockLlm,
 			parameterUpdater: mockLlm,
+			planner: mockLlm,
 			judge: mockLlm,
 		},
 		lsClient: mock<Client>(),

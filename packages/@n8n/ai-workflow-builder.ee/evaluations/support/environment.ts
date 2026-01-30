@@ -58,6 +58,7 @@ export interface ResolvedStageLLMs {
 	builder: BaseChatModel;
 	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
 	judge: BaseChatModel;
 }
 
@@ -112,6 +113,7 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 		parameterUpdater: stageModels.parameterUpdater
 			? await setupLLM(stageModels.parameterUpdater)
 			: configuratorLLM,
+		planner: defaultLLM, // Planner uses default model (same as other agents)
 		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
 	};
 }
@@ -228,6 +230,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			builder: llms.builder,
 			configurator: llms.configurator,
 			parameterUpdater: llms.parameterUpdater,
+			planner: llms.planner,
 		},
 		checkpointer: new MemorySaver(),
 		tracer,

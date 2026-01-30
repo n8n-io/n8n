@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, AIMessage } from '@langchain/core/messages';
-import { isAIMessage } from '@langchain/core/messages';
+import { HumanMessage, isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
-import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import { Annotation, StateGraph, END, START } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
@@ -12,14 +12,9 @@ import { z } from 'zod';
 import { LLMServiceError } from '@/errors';
 import {
 	buildDiscoveryPrompt,
-	formatTechniqueList,
 	formatExampleCategorizations,
+	formatTechniqueList,
 } from '@/prompts/agents/discovery.prompt';
-import {
-	extractResourceOperations,
-	createResourceCacheKey,
-	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -33,12 +28,13 @@ import { createDiscoveryMetadata } from '../types/coordination';
 import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
+import { hydrateNodes } from '../utils/node-hydration';
+import type { ResourceOperationInfo } from '../utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
+import { executeSubgraphTools } from '../utils/subgraph-helpers';
 
 /**
  * Strict Output Schema for Discovery
- * Simplified to reduce token usage while maintaining utility for downstream subgraphs
  */
 const discoveryOutputSchema = z.object({
 	nodesFound: z
@@ -70,21 +66,26 @@ const discoveryOutputSchema = z.object({
 
 /**
  * Discovery Subgraph State
+ * Focused solely on discovering nodes for build mode.
  */
 export const DiscoverySubgraphState = Annotation.Root({
-	// Input: What the user wants to build
+	// Input
 	userRequest: Annotation<string>({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
 	}),
+	existingWorkflowSummary: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
 
-	// Internal: Conversation within this subgraph
+	// Internal
 	messages: Annotation<BaseMessage[]>({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
 	}),
 
-	// Output: Found nodes with version, reasoning, connection-changing parameters, and available resources
+	// Output
 	nodesFound: Annotation<
 		Array<{
 			nodeName: string;
@@ -107,26 +108,19 @@ export const DiscoverySubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => [],
 	}),
-
-	// Output: Best practices documentation
 	bestPractices: Annotation<string | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
-
-	// Output: Template IDs fetched from workflow examples for telemetry
 	templateIds: Annotation<number[]>({
 		reducer: appendArrayReducer,
 		default: () => [],
 	}),
 
-	// Cached workflow templates (passed from parent, updated by tools)
+	// Cache
 	cachedTemplates: Annotation<WorkflowMetadata[]>({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
-
-	// Cache for resource/operation info to avoid duplicate extraction
-	// Key: "nodeName:version", Value: ResourceOperationInfo or null
 	resourceOperationCache: Annotation<Record<string, ResourceOperationInfo | null>>({
 		reducer: (x, y) => ({ ...x, ...y }),
 		default: () => ({}),
@@ -148,7 +142,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	name = 'discovery_subgraph';
 	description = 'Discovers nodes and context for the workflow';
 
-	private agent!: Runnable;
+	private discoveryAgent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
 	private parsedNodeTypes!: INodeTypeDescription[];
@@ -157,35 +151,29 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
 
-		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
-		// Create base tools
 		const baseTools = [
 			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
 
-		// Conditionally add workflow examples tool if feature flag is enabled
 		const tools = includeExamples
 			? [...baseTools, createGetWorkflowExamplesTool(config.logger)]
 			: baseTools;
 
 		this.toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
 
-		// Define output tool
-		const submitTool = tool(() => {}, {
+		const submitDiscoveryTool = tool(() => {}, {
 			name: 'submit_discovery_results',
 			description: 'Submit the final discovery results',
 			schema: discoveryOutputSchema,
 		});
 
-		// Generate prompt based on feature flags
 		const discoveryPrompt = buildDiscoveryPrompt({ includeExamples });
 
-		// Create agent with tools bound (including submit tool)
-		const systemPrompt = ChatPromptTemplate.fromMessages([
+		const discoverySystemPrompt = ChatPromptTemplate.fromMessages([
 			[
 				'system',
 				[
@@ -206,40 +194,31 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			});
 		}
 
-		// Bind all tools including the output tool
-		const allTools = [...tools.map((bt) => bt.tool), submitTool];
-		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
+		const discoveryAllTools = [...tools.map((bt) => bt.tool), submitDiscoveryTool];
+		this.discoveryAgent = discoverySystemPrompt.pipe(config.llm.bindTools(discoveryAllTools));
 
-		// Build the subgraph
 		const subgraph = new StateGraph(DiscoverySubgraphState)
 			.addNode('agent', this.callAgent.bind(this))
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('format_output', this.formatOutput.bind(this))
-			.addEdge('__start__', 'agent')
-			// Conditional: tools if has tool calls, format_output if submit called
+			.addEdge(START, 'agent')
 			.addConditionalEdges('agent', this.shouldContinue.bind(this), {
 				tools: 'tools',
 				format_output: 'format_output',
-				end: END, // Fallback
+				end: END,
 			})
-			.addEdge('tools', 'agent') // After tools, go back to agent
-			.addEdge('format_output', END); // After formatting, END
+			.addEdge('tools', 'agent')
+			.addEdge('format_output', END);
 
 		return subgraph.compile();
 	}
 
-	/**
-	 * Agent node - calls discovery agent
-	 * Context is already in messages from transformInput
-	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
-		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
 			applySubgraphCacheMarkers(state.messages);
 		}
 
-		// Messages already contain context from transformInput
-		const response = (await this.agent.invoke({
+		const response = (await this.discoveryAgent.invoke({
 			messages: state.messages,
 			prompt: state.userRequest,
 			techniques: formatTechniqueList(),
@@ -249,120 +228,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return { messages: [response] };
 	}
 
-	/**
-	 * Format the output from the submit tool call
-	 * Hydrates availableResources for each node using node type definitions.
-	 */
-	private formatOutput(state: typeof DiscoverySubgraphState.State) {
-		const lastMessage = state.messages.at(-1);
-		let output: z.infer<typeof discoveryOutputSchema> | undefined;
-
-		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
-			const submitCall = lastMessage.tool_calls.find(
-				(tc) => tc.name === 'submit_discovery_results',
-			);
-			if (submitCall) {
-				// Use Zod safeParse for type-safe validation instead of casting
-				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
-				if (!parseResult.success) {
-					this.logger?.error(
-						'[Discovery] Invalid discovery output schema - returning empty results',
-						{
-							errors: parseResult.error.errors,
-							lastMessageContent:
-								typeof lastMessage?.content === 'string'
-									? lastMessage.content.substring(0, 200)
-									: JSON.stringify(lastMessage?.content)?.substring(0, 200),
-						},
-					);
-					return {
-						nodesFound: [],
-						templateIds: [],
-					};
-				}
-				output = parseResult.data;
-			}
-		}
-
-		if (!output) {
-			this.logger?.error(
-				'[Discovery] No submit_discovery_results tool call found - agent may have stopped early',
-				{
-					messageCount: state.messages.length,
-					lastMessageType: lastMessage?.getType(),
-				},
-			);
-			return {
-				nodesFound: [],
-				templateIds: [],
-			};
-		}
-
-		// Build lookup map for resource hydration
-		const nodeTypeMap = new Map<string, INodeTypeDescription>();
-		for (const nt of this.parsedNodeTypes) {
-			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
-			for (const v of versions) {
-				nodeTypeMap.set(`${nt.name}:${v}`, nt);
-			}
-		}
-
-		// Get the resource operation cache from state
-		const existingCache = state.resourceOperationCache ?? {};
-
-		// Hydrate nodesFound with availableResources from node type definitions or cache
-		const hydratedNodesFound = output.nodesFound.map((node) => {
-			const cacheKey = createResourceCacheKey(node.nodeName, node.version);
-
-			// Check cache first (populated by node_details tool during discovery)
-			if (cacheKey in existingCache) {
-				const cached = existingCache[cacheKey];
-				if (cached) {
-					return {
-						...node,
-						availableResources: cached.resources,
-					};
-				}
-				// Cached as null means no resources for this node
-				return node;
-			}
-
-			// Cache miss - extract fresh (O(1) lookup using pre-built map)
-			const nodeType = nodeTypeMap.get(cacheKey);
-
-			if (!nodeType) {
-				this.logger?.warn('[Discovery] Node type not found during resource hydration', {
-					nodeName: node.nodeName,
-					nodeVersion: node.version,
-				});
-				return node;
-			}
-
-			// Extract resource/operation info
-			const resourceOpInfo = extractResourceOperations(nodeType, node.version, this.logger);
-
-			if (!resourceOpInfo) {
-				return node;
-			}
-
-			// Add availableResources to the node
-			return {
-				...node,
-				availableResources: resourceOpInfo.resources,
-			};
-		});
-
-		// Return hydrated output with best practices from state (updated by get_documentation tool)
-		return {
-			nodesFound: hydratedNodesFound,
-			bestPractices: state.bestPractices,
-			templateIds: state.templateIds ?? [],
-		};
-	}
-
-	/**
-	 * Should continue with tools or finish?
-	 */
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages[state.messages.length - 1];
 
@@ -372,7 +237,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			lastMessage.tool_calls &&
 			lastMessage.tool_calls.length > 0
 		) {
-			// Check if the submit tool was called
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
@@ -382,41 +246,80 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			return 'tools';
 		}
 
-		// No tool calls = agent is done (or failed to call tool)
-		// In this pattern, we expect a tool call. If none, we might want to force it or just end.
-		// For now, let's treat it as an end, but ideally we'd reprompt.
-		this.logger?.warn(
-			'[Discovery] Agent stopped without calling submit_discovery_results - check if LLM is producing valid tool calls',
-		);
+		this.logger?.warn('[Discovery] Agent stopped without calling an output tool');
 		return 'end';
 	}
 
+	private formatOutput(state: typeof DiscoverySubgraphState.State) {
+		const lastMessage = state.messages.at(-1);
+		let output: z.infer<typeof discoveryOutputSchema> | undefined;
+
+		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
+			const submitCall = lastMessage.tool_calls.find(
+				(tc) => tc.name === 'submit_discovery_results',
+			);
+			if (submitCall) {
+				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
+				if (!parseResult.success) {
+					this.logger?.error(
+						'[Discovery] Invalid discovery output schema - returning empty results',
+						{ errors: parseResult.error.errors },
+					);
+					return { nodesFound: [], templateIds: [] };
+				}
+				output = parseResult.data;
+			}
+		}
+
+		if (!output) {
+			return { nodesFound: [], templateIds: [] };
+		}
+
+		// Use shared hydration utility
+		const hydratedNodesFound = hydrateNodes(
+			output.nodesFound,
+			this.parsedNodeTypes,
+			state.resourceOperationCache,
+			this.logger,
+		);
+
+		return {
+			nodesFound: hydratedNodesFound,
+			bestPractices: state.bestPractices,
+			templateIds: state.templateIds ?? [],
+		};
+	}
+
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userRequest = extractUserRequest(parentState.messages, 'Build a workflow');
+		// Standard Discovery Input (Build Mode only)
+		const userRequest =
+			(parentState.messages
+				.filter(
+					(m) =>
+						m instanceof HumanMessage && typeof m.content === 'string' && m.content.trim() !== '',
+				)
+				.pop()?.content as string) || '';
 
-		// Build context parts for Discovery
 		const contextParts: string[] = [];
-
-		// 1. User request (primary)
 		contextParts.push('<user_request>');
 		contextParts.push(userRequest);
 		contextParts.push('</user_request>');
 
-		// 2. Current workflow summary (just node names, to know what exists)
-		// Discovery doesn't need full JSON, just awareness of existing nodes
+		let existingWorkflowSummary = '';
 		if (parentState.workflowJSON.nodes.length > 0) {
+			existingWorkflowSummary = buildWorkflowSummary(parentState.workflowJSON);
 			contextParts.push('<existing_workflow_summary>');
-			contextParts.push(buildWorkflowSummary(parentState.workflowJSON));
+			contextParts.push(existingWorkflowSummary);
 			contextParts.push('</existing_workflow_summary>');
 		}
 
-		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
 
 		return {
 			userRequest,
-			messages: [contextMessage], // Context already in messages
+			messages: [contextMessage],
 			cachedTemplates: parentState.cachedTemplates,
+			existingWorkflowSummary,
 		};
 	}
 
@@ -426,12 +329,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
-		const discoveryContext = {
-			nodesFound,
-			bestPractices: subgraphOutput.bestPractices,
-		};
 
-		// Create coordination log entry (not a message)
 		const logEntry: CoordinationLogEntry = {
 			phase: 'discovery',
 			status: 'completed',
@@ -445,12 +343,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		};
 
 		return {
-			discoveryContext,
-			coordinationLog: [logEntry],
-			// Pass template IDs for telemetry
+			discoveryContext: {
+				nodesFound,
+				bestPractices: subgraphOutput.bestPractices,
+			},
 			templateIds,
-			// Propagate cached templates back to parent
 			cachedTemplates: subgraphOutput.cachedTemplates,
+			coordinationLog: [logEntry],
 		};
 	}
 }

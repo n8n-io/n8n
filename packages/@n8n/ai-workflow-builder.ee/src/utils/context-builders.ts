@@ -1,6 +1,7 @@
 import { HumanMessage } from '@langchain/core/messages';
 
 import type { DiscoveryContext } from '../types/discovery-types';
+import type { PlanOutput } from '../types/planner-types';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { trimWorkflowJSON } from './trim-workflow-context';
@@ -87,6 +88,62 @@ export function buildDiscoveryContextBlock(
 
 	if (includeBestPractices && discoveryContext.bestPractices) {
 		parts.push('', 'Best Practices:', discoveryContext.bestPractices);
+	}
+
+	return parts.join('\n');
+}
+
+// ============================================================================
+// PLAN CONTEXT BUILDERS
+// ============================================================================
+
+/**
+ * Build plan context block for Builder/Configurator
+ * Includes the plan summary, trigger, steps, and additional specifications
+ */
+export function buildPlanContextBlock(planOutput: PlanOutput | null): string {
+	if (!planOutput) return '';
+
+	const parts: string[] = [];
+
+	// Summary
+	parts.push(`<plan_summary>${planOutput.summary}</plan_summary>`);
+
+	// Trigger
+	if (planOutput.trigger) {
+		parts.push(`<plan_trigger>${planOutput.trigger}</plan_trigger>`);
+	}
+
+	// Steps with detailed instructions
+	if (planOutput.steps.length > 0) {
+		parts.push('<plan_steps>');
+		planOutput.steps.forEach((step, index) => {
+			const stepParts: string[] = [`${index + 1}. ${step.description}`];
+
+			// Sub-steps
+			if (step.subSteps && step.subSteps.length > 0) {
+				step.subSteps.forEach((subStep) => {
+					stepParts.push(`   - ${subStep}`);
+				});
+			}
+
+			// Suggested nodes for this step
+			if (step.suggestedNodes && step.suggestedNodes.length > 0) {
+				stepParts.push(`   Nodes: ${step.suggestedNodes.join(', ')}`);
+			}
+
+			parts.push(stepParts.join('\n'));
+		});
+		parts.push('</plan_steps>');
+	}
+
+	// Additional specifications
+	if (planOutput.additionalSpecs && planOutput.additionalSpecs.length > 0) {
+		parts.push('<additional_specifications>');
+		planOutput.additionalSpecs.forEach((spec) => {
+			parts.push(`- ${spec}`);
+		});
+		parts.push('</additional_specifications>');
 	}
 
 	return parts.join('\n');

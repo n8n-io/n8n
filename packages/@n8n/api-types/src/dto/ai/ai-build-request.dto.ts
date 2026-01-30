@@ -62,7 +62,9 @@ export class AiBuilderChatRequestDto extends Z.class({
 		featureFlags: z
 			.object({
 				templateExamples: z.boolean().optional(),
+				planMode: z.boolean().optional(),
 			})
 			.optional(),
+		mode: z.enum(['build', 'plan']).optional(),
 	}),
 }) {}

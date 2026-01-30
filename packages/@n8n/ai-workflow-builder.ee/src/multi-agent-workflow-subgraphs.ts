@@ -16,6 +16,7 @@ import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
+import { PlannerSubgraph } from './subgraphs/planner.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SubgraphPhase } from './types/coordination';
@@ -40,6 +41,7 @@ function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
+		planner: 'planner_subgraph',
 		builder: 'builder_subgraph',
 		configurator: 'configurator_subgraph',
 	};
@@ -145,11 +147,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const responderAgent = new ResponderAgent({ llm: stageLLMs.responder });
 
 	// Create subgraph instances
+	const plannerSubgraph = new PlannerSubgraph();
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
 	const configuratorSubgraph = new ConfiguratorSubgraph();
 
 	// Compile subgraphs with per-stage LLMs
+	const compiledPlanner = plannerSubgraph.create({
+		parsedNodeTypes,
+		llm: stageLLMs.planner,
+		logger,
+		featureFlags,
+	});
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.discovery,
@@ -257,6 +266,16 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			)
 			// Add Subgraph Nodes (using helper to reduce duplication)
 			.addNode(
+				'planner_subgraph',
+				createSubgraphNodeHandler(
+					plannerSubgraph,
+					compiledPlanner,
+					'planner_subgraph',
+					logger,
+					MAX_DISCOVERY_ITERATIONS, // Reuse discovery limit for now
+				),
+			)
+			.addNode(
 				'discovery_subgraph',
 				createSubgraphNodeHandler(
 					discoverySubgraph,
@@ -286,10 +305,61 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_CONFIGURATOR_ITERATIONS,
 				),
 			)
-			// Connect all subgraphs to process_operations
-			.addEdge('discovery_subgraph', 'process_operations')
+			// Mode-based routing node
+			.addNode('check_mode', (state) => {
+				// Route to planner when mode is 'plan'
+				if (state.mode === 'plan') {
+					logger?.debug('[check_mode] → planner');
+					return { nextPhase: 'planner' };
+				}
+
+				// If we have a plan with discovery context, skip discovery and go directly to builder
+				// This handles "Implement the plan" after plan mode completes
+				const hasValidPlanContext =
+					state.planOutput &&
+					state.discoveryContext?.nodesFound &&
+					state.discoveryContext.nodesFound.length > 0;
+
+				if (hasValidPlanContext) {
+					logger?.debug('[check_mode] → builder (has plan context with nodes)', {
+						nodeCount: state.discoveryContext?.nodesFound?.length,
+					});
+					return { nextPhase: 'builder' };
+				}
+
+				// Otherwise continue to supervisor for normal routing
+				logger?.debug('[check_mode] → supervisor (continue)');
+				return { nextPhase: 'continue' };
+			})
+			// Connect builder and configurator subgraphs to process_operations
 			.addEdge('builder_subgraph', 'process_operations')
 			.addEdge('configurator_subgraph', 'process_operations')
+			// Discovery now just goes to process_operations (no HITL)
+			.addEdge('discovery_subgraph', 'process_operations')
+			// Planner routing: HITL pause points for plan mode
+			.addConditionalEdges(
+				'planner_subgraph',
+				(state) => {
+					// If waiting for answers (questions generated), END to pause for user input
+					if (state.plannerPhase === 'waiting_for_answers') {
+						logger?.debug('[planner_subgraph routing] → END (waiting for answers)');
+						return 'end';
+					}
+
+					// If plan displayed, END (user will see plan and can click "implement")
+					if (state.plannerPhase === 'plan_displayed') {
+						logger?.debug('[planner_subgraph routing] → END (plan displayed)');
+						return 'end';
+					}
+
+					// Normal completion (or unexpected)
+					return 'process_operations';
+				},
+				{
+					end: END,
+					process_operations: 'process_operations',
+				},
+			)
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
@@ -301,21 +371,28 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					create_workflow_name: 'create_workflow_name',
 					auto_compact_messages: 'compact_messages', // Reuse same node
 					clear_error_state: 'clear_error_state',
-					continue: 'supervisor',
+					continue: 'check_mode', // Route through check_mode for mode-based routing
 				};
-				return routes[state.nextPhase] ?? 'supervisor';
+				return routes[state.nextPhase] ?? 'check_mode';
 			})
 			// Route after state modification nodes
 			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup
 			.addEdge('delete_messages', 'responder') // Clear → responder for acknowledgment
 			.addEdge('clear_error_state', 'check_state') // Re-check after clearing errors (AI-1812)
-			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
+			.addEdge('create_workflow_name', 'check_mode') // Continue after naming through mode check
 			// Compact has conditional routing: auto → continue, manual → responder
 			.addConditionalEdges('compact_messages', (state) => {
 				// Auto-compact preserves the last user message, manual /compact clears all
 				// If messages remain after compaction, it's auto-compact → continue processing
 				const hasMessages = state.messages.length > 0;
 				return hasMessages ? 'check_state' : 'responder';
+			})
+			// Conditional Edge for check_mode (mode-based routing)
+			.addConditionalEdges('check_mode', (state) => {
+				if (state.nextPhase === 'planner') return 'planner_subgraph';
+				if (state.nextPhase === 'discovery') return 'discovery_subgraph';
+				if (state.nextPhase === 'builder') return 'builder_subgraph';
+				return 'supervisor';
 			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
 			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))

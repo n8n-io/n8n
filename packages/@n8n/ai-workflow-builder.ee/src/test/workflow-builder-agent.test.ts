@@ -108,6 +108,7 @@ describe('WorkflowBuilderAgent', () => {
 				builder: mockLlm,
 				configurator: mockLlm,
 				parameterUpdater: mockLlm,
+				planner: mockLlm,
 			},
 			logger: mockLogger,
 			checkpointer: mockCheckpointer,

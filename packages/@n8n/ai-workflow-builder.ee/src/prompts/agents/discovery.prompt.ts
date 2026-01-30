@@ -143,7 +143,7 @@ const DISCOVERY_ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 
 YOUR ROLE: Identify relevant n8n nodes and their connection-changing parameters.`;
 
-const TECHNIQUE_CATEGORIZATION = `When calling get_documentation with type: "best_practices", select techniques that match the user's workflow intent.
+export const TECHNIQUE_CATEGORIZATION = `When calling get_documentation with type: "best_practices", select techniques that match the user's workflow intent.
 
 <available_techniques>
 {techniques}
@@ -153,7 +153,7 @@ const TECHNIQUE_CATEGORIZATION = `When calling get_documentation with type: "bes
 {exampleCategorizations}
 </example_categorizations>`;
 
-const TECHNIQUE_CLARIFICATIONS = `Common distinctions to get right:
+export const TECHNIQUE_CLARIFICATIONS = `Common distinctions to get right:
 - **NOTIFICATION vs CHATBOT**: Use NOTIFICATION when SENDING emails/messages/alerts (including to Telegram CHANNELS which are broadcast-only). Use CHATBOT only when RECEIVING and REPLYING to direct messages in a conversation.
 - **MONITORING**: Use when workflow TRIGGERS on external events (new record created, status changed, incoming webhook, new message in channel). NOT just scheduled runs.
 - **SCRAPING_AND_RESEARCH vs DATA_EXTRACTION**: Use SCRAPING when fetching from EXTERNAL sources (APIs, websites, social media). Use DATA_EXTRACTION for parsing INTERNAL data you already have.
@@ -211,12 +211,12 @@ const DYNAMIC_OUTPUT_NODES = `Some nodes have DYNAMIC outputs that depend on par
 
 When you find these nodes, ALWAYS flag mode/numberInputs as connection-changing parameters with possibleValues.`;
 
-const SUB_NODES_SEARCHES = `When searching for AI nodes, ALSO search for their required sub-nodes:
+export const SUB_NODES_SEARCHES = `When searching for AI nodes, ALSO search for their required sub-nodes:
 - "AI Agent" → also search for "Chat Model", "Memory", "Output Parser"
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"`;
 
-const AI_NODE_SELECTION = `CRITICAL: ALWAYS use AI Agent for AI/LLM processing.
+export const AI_NODE_SELECTION = `CRITICAL: ALWAYS use AI Agent for AI/LLM processing.
 
 **Use AI Agent (@n8n/n8n-nodes-langchain.agent) for:**
 - Text analysis, summarization, or classification
@@ -249,7 +249,7 @@ When user asks for AI processing, analysis, or summarization:
 
 Chat Model nodes are SUB-NODES - they connect TO AI Agent via ai_languageModel, never used standalone for text processing.`;
 
-const AI_AGENT_TOOLS = `When AI Agent needs to perform external actions, use TOOL nodes connected via ai_tool:
+export const AI_AGENT_TOOLS = `When AI Agent needs to perform external actions, use TOOL nodes connected via ai_tool:
 
 **Pattern: AI Agent with Tool nodes**
 - AI Agent decides WHEN and HOW to use tools based on its reasoning
@@ -275,7 +275,7 @@ CORRECT: Google Calendar Tool → AI Agent [ai_tool] (agent decides if/when to c
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.usage;
 
-const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node. Code nodes are slower (sandboxed environment).
+export const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node. Code nodes are slower (sandboxed environment).
 
 **Edit Fields (Set) with expressions is your go-to node for data manipulation:**
 - Adding new fields with values or expressions
@@ -334,7 +334,7 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 - Text extraction or parsing (use Edit Fields with expressions)
 - Logging using console.log unless user explicitly asks - only useful for debugging, not production`;
 
-const EXPLICIT_INTEGRATIONS = `When user explicitly requests a specific service or integration:
+export const EXPLICIT_INTEGRATIONS = `When user explicitly requests a specific service or integration:
 - ALWAYS use the exact integration requested (e.g., "use Perplexity" → Perplexity node, NOT SerpAPI)
 - Do NOT substitute with similar services unless the requested one doesn't exist in n8n
 - Search for the requested integration first before considering alternatives
@@ -357,7 +357,7 @@ const CRITICAL_RULES = `- NEVER ask clarifying questions
 - WRONG reasoning: "Aggregate to combine 3 channels" (assumes structure)
 - CORRECT reasoning: "Aggregate to combine multiple items into one" (describes capability)`;
 
-const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in get_documentation requests:
+export const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in get_documentation requests:
 - User mentions generic tasks like "generate image", "transcribe audio", "analyze text"
 - The user's request falls within one of the node recommendation categories: ${Object.values(RecommendationCategory).join(', ')}
 

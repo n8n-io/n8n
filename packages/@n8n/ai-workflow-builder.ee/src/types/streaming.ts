@@ -36,13 +36,60 @@ export interface ExecutionRequestChunk {
 }
 
 /**
+ * Questions chunk for Plan Mode streaming
+ */
+export interface QuestionsChunk {
+	type: 'questions';
+	introMessage?: string;
+	questions: Array<{
+		id: string;
+		question: string;
+		type: 'single' | 'multi' | 'text';
+		options?: string[];
+		allowCustom?: boolean;
+	}>;
+}
+
+/**
+ * Plan chunk for Plan Mode streaming
+ */
+export interface PlanChunk {
+	type: 'plan';
+	plan: {
+		summary: string;
+		trigger: string;
+		steps: Array<{
+			description: string;
+			subSteps?: string[];
+			suggestedNodes?: string[];
+		}>;
+		additionalSpecs?: string[];
+	};
+}
+
+/**
+ * Answer summary chunk for Plan Mode streaming (shows user's answers)
+ */
+export interface AnswerSummaryChunk {
+	type: 'answer_summary';
+	answers: Array<{
+		questionId: string;
+		question: string;
+		answer: string;
+	}>;
+}
+
+/**
  * Union type for all stream chunks
  */
 export type StreamChunk =
 	| AgentMessageChunk
 	| ToolProgressChunk
 	| WorkflowUpdateChunk
-	| ExecutionRequestChunk;
+	| ExecutionRequestChunk
+	| QuestionsChunk
+	| PlanChunk
+	| AnswerSummaryChunk;
 
 /**
  * Stream output containing messages
