@@ -76,4 +76,11 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
 	enableGitNodeAllConfigKeys: boolean = false;
+
+	/**
+	 * Comma-separated list of hosts, IPs, or patterns to block in HTTP Request node.
+	 * Supports shortcuts: `cloud-metadata`, `apipa`, `private-ip`, `localhost`.
+	 */
+	@Env('N8N_HTTP_REQUEST_BLOCK')
+	httpRequestBlock: string = '';
 }

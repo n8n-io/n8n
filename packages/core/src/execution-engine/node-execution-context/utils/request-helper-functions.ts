@@ -14,7 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import { AiConfig } from '@n8n/config';
+import { AiConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -67,6 +67,7 @@ import { Readable } from 'stream';
 
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
+import { validateUrlAgainstBlocklist } from '@/url-blocklist';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
@@ -666,6 +667,12 @@ export async function proxyRequestToAxios(
 		configObject = uriOrObject ?? {};
 	}
 
+	const urlToCheck = configObject.uri ?? configObject.url;
+	if (urlToCheck) {
+		const securityConfig = Container.get(SecurityConfig);
+		validateUrlAgainstBlocklist(urlToCheck, securityConfig.httpRequestBlock);
+	}
+
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
 	try {
@@ -862,6 +869,11 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	if (requestOptions.url) {
+		const securityConfig = Container.get(SecurityConfig);
+		validateUrlAgainstBlocklist(requestOptions.url, securityConfig.httpRequestBlock);
+	}
+
 	removeEmptyBody(requestOptions);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions);
