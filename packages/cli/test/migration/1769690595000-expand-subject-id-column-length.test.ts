@@ -44,7 +44,8 @@ describe('ExpandSubjectIDColumnLength Migration', () => {
 		await dbConnection.init();
 
 		dataSource = Container.get(DataSource);
-
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
@@ -68,7 +69,7 @@ describe('ExpandSubjectIDColumnLength Migration', () => {
 				 WHERE table_name = $1 AND column_name = $2`,
 				[`${context.tablePrefix}${tableName}`, columnName],
 			);
-			return result[0]?.data_type || 'unknown';
+			return `${result[0]?.data_type}(${result[0]?.character_maximum_length})`;
 		} else if (context.isSqlite) {
 			const result = await context.queryRunner.query(
 				`PRAGMA table_info(${context.escape.tableName(tableName)})`,
@@ -339,7 +340,7 @@ describe('ExpandSubjectIDColumnLength Migration', () => {
 			await postContext.queryRunner.release();
 		});
 
-		it('should change subject_id column type from varchar(16) to TEXT', async () => {
+		it('should change subject_id column type from varchar(16) to varchar(2048)', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 
 			const context = createTestMigrationContext(dataSource);
@@ -348,9 +349,9 @@ describe('ExpandSubjectIDColumnLength Migration', () => {
 			const columnType = await getColumnType(context, 'dynamic_credential_entry', 'subject_id');
 
 			if (context.isPostgres) {
-				expect(columnType).toBe('text');
+				expect(columnType).toBe('character varying(2048)');
 			} else if (context.isSqlite) {
-				expect(columnType.toUpperCase()).toBe('TEXT');
+				expect(columnType.toUpperCase()).toBe('VARCHAR(2048)');
 			}
 
 			await context.queryRunner.release();

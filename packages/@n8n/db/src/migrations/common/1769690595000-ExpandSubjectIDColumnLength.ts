@@ -23,7 +23,7 @@ export class ExpandSubjectIDColumnLength1769690595000 implements IrreversibleMig
 		await createTable(tmpTableName)
 			.withColumns(
 				column('credential_id').varchar(16).primary.notNull,
-				column('subject_id').text.primary.notNull,
+				column('subject_id').varchar(2048).primary.notNull,
 				column('resolver_id').varchar(16).primary.notNull,
 				column('data').text.notNull,
 			)
