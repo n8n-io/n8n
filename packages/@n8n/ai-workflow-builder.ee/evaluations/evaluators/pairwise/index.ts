@@ -21,7 +21,7 @@ export interface PairwiseEvaluatorOptions {
 
 /**
  * Create a pairwise evaluator that uses a panel of judges.
- * Each judge evaluates the workflow against dos/donts criteria.
+ * Each judge evaluates the workflow against specs criteria.
  *
  * @param llm - Language model for evaluation
  * @param options - Configuration options
@@ -30,7 +30,7 @@ export interface PairwiseEvaluatorOptions {
  * @example
  * ```typescript
  * const evaluator = createPairwiseEvaluator(llm, { numJudges: 3 });
- * const feedback = await evaluator.evaluate(workflow, { dos, donts });
+ * const feedback = await evaluator.evaluate(workflow, { specs });
  * ```
  */
 export function createPairwiseEvaluator(
@@ -44,8 +44,7 @@ export function createPairwiseEvaluator(
 
 		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			const evalCriteria: EvalCriteria = {
-				dos: ctx?.dos,
-				donts: ctx?.donts,
+				specs: ctx?.specs,
 			};
 
 			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {

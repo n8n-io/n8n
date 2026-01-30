@@ -92,8 +92,7 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 		testCase: undefined,
 		promptsCsv: undefined,
 		maxExamples: undefined,
-		dos: undefined,
-		donts: undefined,
+		specs: undefined,
 		numJudges: 3,
 		experimentName: undefined,
 		repetitions: 1,
@@ -213,8 +212,7 @@ describe('CLI', () => {
 				mockParseEvaluationArgs.mockReturnValue(
 					createMockArgs({
 						prompt: 'Create a workflow',
-						dos: 'Use Slack',
-						donts: 'No HTTP',
+						specs: 'Use Slack\nDo not use HTTP',
 					}),
 				);
 
@@ -227,7 +225,7 @@ describe('CLI', () => {
 						dataset: [
 							{
 								prompt: 'Create a workflow',
-								context: { dos: 'Use Slack', donts: 'No HTTP' },
+								context: { specs: 'Use Slack\nDo not use HTTP' },
 							},
 						],
 					}),

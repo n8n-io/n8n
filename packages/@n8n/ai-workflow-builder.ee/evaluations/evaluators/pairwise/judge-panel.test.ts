@@ -36,7 +36,7 @@ describe('runJudgePanel()', () => {
 		const llm = mock<BaseChatModel>();
 		const workflow = createMockWorkflow();
 
-		await runJudgePanel(llm, workflow, { dos: 'Do X', donts: 'Do not Y' }, 5, {
+		await runJudgePanel(llm, workflow, { specs: 'Do X\nDo not Y' }, 5, {
 			llmCallLimiter: pLimit(2),
 		});
 

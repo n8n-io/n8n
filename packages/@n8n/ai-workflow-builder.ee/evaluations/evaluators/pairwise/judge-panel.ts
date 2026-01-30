@@ -14,10 +14,10 @@ import type { EvaluationContext } from '../../harness/harness-types';
 // Types
 // ============================================================================
 
-/** Evaluation criteria - at least one of dos or donts should be provided */
+/** Evaluation criteria as unified specifications */
 export interface EvalCriteria {
-	dos?: string;
-	donts?: string;
+	/** Newline-separated list of evaluation specifications */
+	specs?: string;
 }
 
 export interface JudgePanelTiming {
@@ -71,7 +71,7 @@ export interface JudgePanelOptions {
  *
  * @param llm - Language model for evaluation
  * @param workflow - Workflow to evaluate
- * @param evalCriteria - Evaluation criteria (dos/donts)
+ * @param evalCriteria - Evaluation criteria (specs)
  * @param numJudges - Number of judges to run
  * @param options - Optional metadata for tracing
  * @returns Aggregated judge panel results

@@ -63,7 +63,17 @@ If a criterion says "do not use provider-specific nodes" or similar, the presenc
 When evaluating whether a specific node type has been used:
 - The "@n8n/" prefix in node types is OPTIONAL - ignore it when comparing
 - "@n8n/n8n-nodes-langchain.chatTrigger" and "n8n-nodes-langchain.chatTrigger" are the SAME node type
-- This applies regardless of which form appears in the criteria or the workflow`,
+- This applies regardless of which form appears in the criteria or the workflow
+
+CASE INSENSITIVITY:
+- Node names, model names, and parameter values should be compared case-insensitively
+- "SoRa", "sora", "SORA" are all the same model
+- "gpt-4o-mini", "GPT-4o-Mini" are the same model
+
+CONNECTION PATTERNS:
+- "followed by" means the output of node A connects to the input of node B (directly, not through other nodes)
+- "connected to" means a direct edge exists between two nodes
+- "connected to both X and Y" means the same node instance has direct connections to both targets`,
 	)
 	.section(
 		'constraints',
@@ -83,28 +93,29 @@ const humanTemplate = prompt()
 	.section('workflow_candidate', '{generatedWorkflow}')
 	.section(
 		'instructions',
-		`1. Read the <evaluation_criteria> carefully. It contains <do> and <dont> criteria.
-2. For each criterion:
+		`1. Read each <spec> criterion carefully.
+2. For each specification:
+    - Determine its intent from the text (requirement vs prohibition).
     - Search for evidence in the <workflow_candidate>.
-    - Classify as PASS or VIOLATION using the rules below.
-    - Provide a clear 'justification' citing the evidence (e.g., "Node 'HTTP Request' has method set to 'GET'").
-3. Output the result as a structured JSON with 'violations' and 'passes'.`,
+    - Classify as PASS or VIOLATION based on the criterion's semantics.
+    - Provide a clear 'justification' citing specific evidence (e.g., "Node 'HTTP Request' has method set to 'GET'").
+3. Output the result as structured JSON with 'violations' and 'passes'.`,
 	)
 	.section(
 		'classification_rules',
-		`CRITICAL: Understand how to classify each criterion correctly:
+		`CRITICAL: Interpret each criterion's intent from its text:
 
-For <do> criteria (positive requirements like "Use X" or "Include Y"):
-- PASS: The required element IS present in the workflow
-- VIOLATION: The required element is NOT present in the workflow
+For REQUIREMENT criteria (positive phrasing like "Use X", "Include Y", "Must have Z"):
+- PASS: The required element IS present and correctly configured
+- VIOLATION: The required element is NOT present or misconfigured
 
-For <dont> criteria (anti-patterns to avoid):
-- PASS: The forbidden element is NOT present (the anti-pattern was avoided)
-- VIOLATION: The forbidden element IS present (the anti-pattern was used)
+For PROHIBITION criteria (negative phrasing like "Do not use X", "Avoid Y", "No Z"):
+- PASS: The forbidden element is NOT present (prohibition honored)
+- VIOLATION: The forbidden element IS present (prohibition violated)
 
-Example: <dont>Use code node to organize data</dont>
-- If NO code node exists for organizing data → PASS (anti-pattern avoided)
-- If a code node IS used for organizing data → VIOLATION (anti-pattern present)`,
+Example specifications:
+- "Use the Slack node" → PASS if Slack node exists, VIOLATION if missing
+- "Do not use HTTP Request" → PASS if no HTTP Request, VIOLATION if present`,
 	)
 	.build();
 
@@ -113,18 +124,12 @@ export async function evaluateWorkflowPairwise(
 	input: PairwiseEvaluationInput,
 	config?: RunnableConfig,
 ): Promise<PairwiseEvaluationResult> {
-	const dos = input.evalCriteria?.dos ?? '';
-	const donts = input.evalCriteria?.donts ?? '';
-
-	const doLines = dos.split('\n').filter((line) => line.trim().length > 0);
-	const dontLines = donts.split('\n').filter((line) => line.trim().length > 0);
+	const specs = input.evalCriteria?.specs ?? '';
+	const specLines = specs.split('\n').filter((line) => line.trim().length > 0);
 
 	const criteriaBuilder = prompt({ format: 'xml' });
-	for (const line of doLines) {
-		criteriaBuilder.section('do', line.trim());
-	}
-	for (const line of dontLines) {
-		criteriaBuilder.section('dont', line.trim());
+	for (const line of specLines) {
+		criteriaBuilder.section('spec', line.trim());
 	}
 	const criteriaList = criteriaBuilder.build();
 
