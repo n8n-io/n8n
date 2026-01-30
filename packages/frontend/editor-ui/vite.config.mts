@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve, sep as pathSep } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -23,10 +23,17 @@ const { NODE_ENV } = process.env;
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
+const cloudExtensionsDir = resolve(packagesDir, 'cloud-extensions');
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+
+	{
+		find: /^@n8n\/ce-([^/]+)(\/.*)$/,
+		replacement: resolve(cloudExtensionsDir, '$1', 'src$2'),
+	},
+
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{

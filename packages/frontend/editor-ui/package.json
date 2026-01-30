@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist .turbo .build",
+    "prebuild": "pnpm generate-cloud-extension-registry",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "build:coverage": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=14000\" BUILD_WITH_COVERAGE=true vite build",
     "typecheck": "vue-tsc --noEmit",
@@ -19,7 +20,8 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../.prettierignore",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
     "test": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "generate-cloud-extension-registry": "node scripts/generate-cloud-extension-registry.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
@@ -43,6 +45,7 @@
     "@n8n/composables": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/extension-sdk": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",

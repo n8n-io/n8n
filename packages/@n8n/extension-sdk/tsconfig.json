@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "./tsconfig.frontend.json"
+		},
+		{
+			"path": "./tsconfig.cloud.json"
 		}
 	]
 }

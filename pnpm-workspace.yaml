@@ -4,6 +4,7 @@ packages:
   - packages/frontend/**
   - packages/extensions/**
   - packages/testing/**
+  - packages/cloud-extensions/**
 
 catalog:
   '@codemirror/autocomplete': 6.20.0
