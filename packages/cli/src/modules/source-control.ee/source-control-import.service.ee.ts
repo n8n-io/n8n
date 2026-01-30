@@ -21,7 +21,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
-	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -30,13 +29,11 @@ import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialE
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -141,7 +138,6 @@ export class SourceControlImportService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly variablesService: VariablesService,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -158,7 +154,6 @@ export class SourceControlImportService {
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -207,6 +202,7 @@ export class SourceControlImportService {
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: project ? getOwnerFromProject(project) : undefined,
+					isRemoteArchived: remote.isArchived,
 				};
 			});
 
@@ -638,7 +634,11 @@ export class SourceControlImportService {
 		};
 	}
 
-	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	async importWorkflowFromWorkFolder(
+		candidates: SourceControlledFile[],
+		userId: string,
+		autoPublish: AutoPublishMode = 'none',
+	) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
@@ -657,79 +657,109 @@ export class SourceControlImportService {
 		// as project creation might cause constraint issues.
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
-			this.logger.debug(`Importing workflow file ${candidate.file}`);
-
-			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
-
-			if (!importedWorkflow?.id) {
-				continue;
-			}
-			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-
-			// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
-			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
-			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
-			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			if (existingWorkflow) {
-				if (importedWorkflow.isArchived) {
-					importedWorkflow.active = false;
-					importedWorkflow.activeVersionId = null;
-				} else {
-					importedWorkflow.active = !!existingWorkflow.activeVersionId;
-					importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
-				}
-			} else {
-				importedWorkflow.active = false;
-				importedWorkflow.activeVersionId = null;
-				importedWorkflow.versionId = importedWorkflow.versionId ?? uuid();
-			}
-
-			const parentFolderId = importedWorkflow.parentFolderId ?? '';
-
-			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-
-			const upsertResult = await this.workflowRepository.upsert(
-				{
-					...importedWorkflow,
-					parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
-				},
-				['id'],
-			);
-			if (upsertResult?.identifiers?.length !== 1) {
-				throw new UnexpectedError('Failed to upsert workflow', {
-					extra: { workflowId: importedWorkflow.id ?? 'new' },
-				});
-			}
-
-			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
-
-			const localOwner = allSharedWorkflows.find(
-				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
-			);
-
-			await this.syncResourceOwnership({
-				resourceId: importedWorkflow.id,
-				remoteOwner: importedWorkflow.owner,
-				localOwner,
-				fallbackProject: personalProject,
-				repository: this.sharedWorkflowRepository,
-			});
-
-			await this.activateImportedWorkflowIfAlreadyActive(
-				{ existingWorkflow, importedWorkflow },
+			const result = await this.importSingleWorkflowFromFile(
+				candidate,
 				userId,
+				autoPublish,
+				existingWorkflows,
+				existingFolderIds,
+				allSharedWorkflows,
+				personalProject,
 			);
 
-			importWorkflowsResult.push({
-				id: importedWorkflow.id ?? 'unknown',
-				name: candidate.file,
+			if (result) {
+				importWorkflowsResult.push(result);
+			}
+		}
+
+		return importWorkflowsResult;
+	}
+
+	private async importSingleWorkflowFromFile(
+		candidate: SourceControlledFile,
+		userId: string,
+		autoPublish: AutoPublishMode,
+		existingWorkflows: WorkflowEntity[],
+		existingFolderIds: string[],
+		allSharedWorkflows: Array<{ workflowId: string; role: string; projectId: string }>,
+		personalProject: Project,
+	) {
+		this.logger.debug(`Importing workflow file ${candidate.file}`);
+
+		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
+
+		const { versionId, nodes, connections, id, owner } = importedWorkflow;
+
+		if (!id || !versionId || !nodes || !connections) {
+			this.logger.error(
+				`Workflow file ${candidate.file} is missing required fields (id, versionId, nodes, connections)`,
+			);
+			// Skip invalid workflow file
+			return;
+		}
+		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
+			existingWorkflow,
+			importedWorkflow,
+			autoPublish,
+			userId,
+		);
+
+		let finalPublishingError = publishingError;
+
+		const parentFolderId = importedWorkflow.parentFolderId ?? '';
+
+		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
+
+		const upsertResult = await this.workflowRepository.upsert(
+			{
+				...importedWorkflow,
+				parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
+			},
+			['id'],
+		);
+		if (upsertResult?.identifiers?.length !== 1) {
+			throw new UnexpectedError('Failed to upsert workflow', {
+				extra: { workflowId: id ?? 'new' },
 			});
 		}
 
-		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
-			id: string;
-			name: string;
-		}>;
+		try {
+			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+		} catch (error) {
+			const e = ensureError(error);
+			this.logger.error(`Failed to save or update workflow history for workflow ${id}`, {
+				error: e,
+			});
+			return;
+		}
+
+		const localOwner = allSharedWorkflows.find(
+			(w) => w.workflowId === id && w.role === 'workflow:owner',
+		);
+
+		await this.syncResourceOwnership({
+			resourceId: id,
+			remoteOwner: owner,
+			localOwner,
+			fallbackProject: personalProject,
+			repository: this.sharedWorkflowRepository,
+		});
+
+		// Now publish the workflow if needed (after history is saved)
+		if (shouldPublishAfterImport) {
+			const publishResult = await this.publishWorkflow(id, versionId, userId);
+			if (!publishResult.success) {
+				finalPublishingError = publishResult.error;
+			}
+		}
+
+		return {
+			id,
+			name: candidate.file,
+			publishingError: finalPublishingError,
+		};
 	}
 
 	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {
@@ -745,50 +775,75 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflowIfAlreadyActive(
-		{
-			existingWorkflow,
-			importedWorkflow,
-		}: {
-			existingWorkflow?: WorkflowEntity;
-			importedWorkflow: IWorkflowToImport;
-		},
-		userId: string,
-	) {
-		if (!existingWorkflow?.activeVersionId) return;
-		let didAdd = false;
-		const newVersionId = importedWorkflow.versionId ?? uuid();
+	private shouldAutoPublishWorkflow(
+		existingWorkflow: WorkflowEntity | undefined,
+		importedWorkflow: IWorkflowToImport,
+		autoPublish: AutoPublishMode,
+	): boolean {
+		return shouldAutoPublishWorkflow({
+			isNewWorkflow: !existingWorkflow,
+			isLocalPublished: !!existingWorkflow?.activeVersionId,
+			isRemoteArchived: !!importedWorkflow.isArchived,
+			autoPublish,
+		});
+	}
+
+	private mustUnpublishLocalWorkflow(
+		isLocalPublished: boolean,
+		isRemoteArchived: boolean,
+		shouldAutoPublishRemote: boolean,
+	): boolean {
+		if (!isLocalPublished) {
+			return false;
+		}
+
+		if (isRemoteArchived) {
+			return true;
+		}
+
+		return shouldAutoPublishRemote;
+	}
+
+	private async unpublishWorkflow(workflowId: string, userId: string): Promise<boolean> {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+		if (!user) {
+			this.logger.error(`User ${userId} not found, cannot unpublish workflow ${workflowId}`);
+			return false;
+		}
 
 		try {
-			// remove active pre-import workflow
-			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-			await this.activeWorkflowManager.remove(existingWorkflow.id);
-
-			// If the workflow should be active (was active before and not archived),
-			// reactivate it with the new version
-			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
-				// Activate the workflow with the new published version
-				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
-				didAdd = true;
-			}
+			this.logger.debug(`Unpublishing workflow id ${workflowId} before import`);
+			await this.workflowService.deactivateWorkflow(user, workflowId);
+			return true;
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
-		} finally {
-			// update the versionId of the workflow to match the imported workflow
-			await this.workflowRepository.update(
-				{ id: existingWorkflow.id },
-				{ versionId: newVersionId },
-			);
+			this.logger.error(`Failed to unpublish workflow ${workflowId}`, { error });
+			return false;
+		}
+	}
 
-			// Add record to workflow publish history
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId: existingWorkflow.id,
-				versionId: didAdd ? newVersionId : existingWorkflow.activeVersionId,
-				event: didAdd ? 'activated' : 'deactivated',
-				userId,
+	private async publishWorkflow(
+		workflowId: string,
+		versionId: string,
+		userId: string,
+	): Promise<{ success: boolean; error?: string }> {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+		if (!user) {
+			const errorMessage = `User ${userId} not found, cannot publish workflow ${workflowId}`;
+			this.logger.error(errorMessage);
+			return { success: false, error: errorMessage };
+		}
+
+		try {
+			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
+			await this.workflowService.activateWorkflow(user, workflowId, {
+				versionId,
 			});
+			return { success: true };
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to publish workflow ${workflowId}`, { error });
+			return { success: false, error: error.message };
 		}
 	}
 
@@ -1333,68 +1388,119 @@ export class SourceControlImportService {
 	 * - If versionId exists with same content: No action
 	 */
 	private async saveOrUpdateWorkflowHistory(
-		importedWorkflow: IWorkflowToImport,
+		importedWorkflow: {
+			versionId: string;
+			nodes: IWorkflowToImport['nodes'];
+			connections: IWorkflowToImport['connections'];
+			id: string;
+		},
 		userId: string,
 	): Promise<void> {
-		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
-			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
-			return;
-		}
+		const { versionId, nodes, connections, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
-		const authors = user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+		const authors = user ? `import by ${user.firstName} ${user.lastName}` : 'import';
 
-		try {
-			const existingVersion = await this.workflowHistoryService.findVersion(
-				importedWorkflow.id,
-				importedWorkflow.versionId,
-			);
+		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 
-			if (existingVersion) {
-				// Check if nodes or connections changed
-				const nodesChanged = !isEqual(existingVersion.nodes, importedWorkflow.nodes);
-				const connectionsChanged = !isEqual(
-					existingVersion.connections,
-					importedWorkflow.connections,
-				);
+		if (existingVersion) {
+			// Check if nodes or connections changed
+			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
+			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 
-				if (nodesChanged || connectionsChanged) {
-					this.logger.debug(
-						`Updating workflow history for versionId ${importedWorkflow.versionId}`,
-					);
-
-					await this.workflowHistoryService.updateVersion(
-						importedWorkflow.versionId,
-						importedWorkflow.id,
-						{
-							nodes: importedWorkflow.nodes,
-							connections: importedWorkflow.connections,
-							authors,
-						},
-					);
-				} else {
-					this.logger.debug(
-						`Workflow history unchanged for versionId ${importedWorkflow.versionId}`,
-					);
-				}
-			} else {
-				// Create new version history record
-				this.logger.debug(
-					`Creating new workflow history for versionId ${importedWorkflow.versionId}`,
-				);
-
-				await this.workflowHistoryService.saveVersion(
+			if (nodesChanged || connectionsChanged) {
+				await this.workflowHistoryService.updateVersion(versionId, id, {
+					nodes,
+					connections,
 					authors,
-					importedWorkflow as unknown as IWorkflowBase,
-					importedWorkflow.id,
-				);
+				});
 			}
-		} catch (error) {
-			this.logger.error(
-				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
-				{ error: ensureError(error) },
-			);
+		} else {
+			// Create new version history record
+			await this.workflowHistoryService.saveVersion(authors, { versionId, nodes, connections }, id);
+		}
+	}
+
+	/**
+	 * Prepares the publish state for importing a workflow.
+	 * Determines if auto-publish should occur, handles unpublishing if needed,
+	 * and resolves the final publish status for the workflow upsert.
+	 *
+	 * @param existingWorkflow - The existing workflow entity, if it exists
+	 * @param importedWorkflow - The workflow being imported (mutated by this method)
+	 * @param autoPublish - The auto-publish mode
+	 * @param userId - The ID of the user performing the import
+	 * @returns Object indicating whether to publish after import and any activation error
+	 */
+	private async preparePublishStateForImport(
+		existingWorkflow: WorkflowEntity | undefined,
+		importedWorkflow: IWorkflowToImport,
+		autoPublish: AutoPublishMode,
+		userId: string,
+	): Promise<{ shouldPublishAfterImport: boolean; publishingError?: string }> {
+		const shouldAutoPublishRemote = this.shouldAutoPublishWorkflow(
+			existingWorkflow,
+			importedWorkflow,
+			autoPublish,
+		);
+
+		const isLocalPublished = !!existingWorkflow?.activeVersionId;
+		const isRemoteArchived = !!importedWorkflow.isArchived;
+
+		const mustUnpublishLocal = this.mustUnpublishLocalWorkflow(
+			isLocalPublished,
+			isRemoteArchived,
+			shouldAutoPublishRemote,
+		);
+
+		let unpublishedLocal = false;
+		let publishingError: string | undefined;
+		if (mustUnpublishLocal && existingWorkflow) {
+			unpublishedLocal = await this.unpublishWorkflow(existingWorkflow.id, userId);
+			if (!unpublishedLocal) {
+				publishingError = 'Failed to unpublish workflow before import';
+			}
+		}
+
+		const shouldPublishAfterImport =
+			shouldAutoPublishRemote && (!mustUnpublishLocal || unpublishedLocal);
+
+		this.resolvePublishedStatus(
+			importedWorkflow,
+			existingWorkflow?.activeVersionId,
+			mustUnpublishLocal,
+			unpublishedLocal,
+		);
+
+		return { shouldPublishAfterImport, publishingError };
+	}
+
+	/**
+	 * Resolves the publish status for the upsert of the imported workflow.
+	 * We set active to false here and handle publishing after upsert.
+	 * @param importedWorkflow The imported workflow.
+	 * @param existingWorkflowActiveVersionId The existing workflow active version id, if it exists.
+	 * @param mustUnpublishLocal Whether the local workflow must be unpublished.
+	 * @param unpublishedLocal Whether the local workflow was unpublished.
+	 */
+	private resolvePublishedStatus(
+		// Note: Workflow's active status is not saved in the remote workflow files,
+		// and the field is missing despite IWorkflowToImport having it typed as boolean.
+		importedWorkflow: IWorkflowToImport,
+		existingWorkflowActiveVersionId: string | null | undefined,
+		mustUnpublishLocal: boolean,
+		unpublishedLocal: boolean,
+	) {
+		const shouldPreserve =
+			!!existingWorkflowActiveVersionId && (!mustUnpublishLocal || !unpublishedLocal);
+
+		if (shouldPreserve) {
+			importedWorkflow.active = !!existingWorkflowActiveVersionId;
+			importedWorkflow.activeVersionId = existingWorkflowActiveVersionId;
+		} else {
+			importedWorkflow.active = false;
+			importedWorkflow.activeVersionId = null;
 		}
 	}
 }

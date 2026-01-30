@@ -8,6 +8,8 @@ import {
 	type TagRepository,
 	type User,
 	type Variables,
+	type WorkflowEntity,
+	type WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -29,6 +31,7 @@ describe('getStatus', () => {
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();
 	const folderRepository = mock<FolderRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	const preferencesService = new SourceControlPreferencesService(
 		Container.get(InstanceSettings),
@@ -44,6 +47,7 @@ describe('getStatus', () => {
 		preferencesService,
 		tagRepository,
 		folderRepository,
+		workflowRepository,
 		mock<EventService>(),
 	);
 
@@ -91,6 +95,7 @@ describe('getStatus', () => {
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
 		folderRepository.find.mockResolvedValue([]);
+		workflowRepository.findByIds.mockResolvedValue([]);
 
 		jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(true);
 	});
@@ -1428,6 +1433,113 @@ describe('getStatus', () => {
 
 				if (Array.isArray(result)) fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(0);
+			});
+		});
+
+		describe('workflow isLocalPublished and isRemoteArchived fields', () => {
+			it('should populate isLocalPublished and isRemoteArchived for new workflows', async () => {
+				const remoteWorkflow: SourceControlWorkflowVersionId = {
+					id: 'wf-new',
+					name: 'New Workflow',
+					versionId: 'v1',
+					filename: 'workflows/wf-new.json',
+					parentFolderId: null,
+					updatedAt: '2024-01-01T00:00:00.000Z',
+					isRemoteArchived: true,
+				};
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+				workflowRepository.findByIds.mockResolvedValue([]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				expect(result).toHaveLength(1);
+				const workflow = result.find((f) => f.id === 'wf-new');
+				expect(workflow).toBeDefined();
+				expect(workflow?.isLocalPublished).toBe(false);
+				expect(workflow?.isRemoteArchived).toBe(true);
+			});
+
+			it('should populate isLocalPublished for modified published workflows', async () => {
+				const workflowId = 'wf-published';
+				const localWorkflow: SourceControlWorkflowVersionId = {
+					id: workflowId,
+					name: 'Published Workflow',
+					versionId: 'v1',
+					filename: 'workflows/wf-published.json',
+					parentFolderId: null,
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteWorkflow: SourceControlWorkflowVersionId = {
+					...localWorkflow,
+					versionId: 'v2', // Different version to trigger "modified" status
+					isRemoteArchived: false,
+				};
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([localWorkflow]);
+				const publishedWorkflow: Partial<WorkflowEntity> = {
+					id: workflowId,
+					activeVersionId: 'active-v1',
+				};
+				workflowRepository.findByIds.mockResolvedValue([publishedWorkflow as WorkflowEntity]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				expect(result).toHaveLength(1);
+				const workflow = result.find((f) => f.id === workflowId);
+				expect(workflow).toBeDefined();
+				expect(workflow?.isLocalPublished).toBe(true);
+				expect(workflow?.isRemoteArchived).toBe(false);
+			});
+
+			it('should populate isLocalPublished=false for modified unpublished workflows', async () => {
+				const workflowId = 'wf-unpublished';
+				const localWorkflow: SourceControlWorkflowVersionId = {
+					id: workflowId,
+					name: 'Unpublished Workflow',
+					versionId: 'v1',
+					filename: 'workflows/wf-unpublished.json',
+					parentFolderId: null,
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteWorkflow: SourceControlWorkflowVersionId = {
+					...localWorkflow,
+					versionId: 'v2', // Different version
+					isRemoteArchived: false,
+				};
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([localWorkflow]);
+
+				const unpublishedWorkflow: Partial<WorkflowEntity> = {
+					id: workflowId,
+					activeVersionId: null,
+				};
+				workflowRepository.findByIds.mockResolvedValue([unpublishedWorkflow as WorkflowEntity]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				expect(result).toHaveLength(1);
+				const workflow = result.find((f) => f.id === workflowId);
+				expect(workflow).toBeDefined();
+				expect(workflow?.isLocalPublished).toBe(false);
+				expect(workflow?.isRemoteArchived).toBe(false);
 			});
 		});
 	});

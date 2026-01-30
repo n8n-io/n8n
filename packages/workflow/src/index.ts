@@ -86,6 +86,7 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './workflow-environments-helper';
 
 export type {
 	DocMetadata,

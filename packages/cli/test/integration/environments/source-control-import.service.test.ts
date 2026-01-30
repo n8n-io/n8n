@@ -88,7 +88,6 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 			credentialsRepository,
 			projectRepository,
 			mock(),
@@ -105,7 +104,6 @@ describe('SourceControlImportService', () => {
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 			sourceControlScopedService,
-			mock(),
 			workflowHistoryService,
 		);
 	});
@@ -1678,7 +1676,9 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(workflow.nodes);
 				expect(historyRecord?.connections).toEqual(workflow.connections);
-				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+				expect(historyRecord?.authors).toBe(
+					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+				);
 			});
 
 			it('should update workflow history when versionId exists but nodes changed', async () => {
@@ -1737,7 +1737,9 @@ describe('SourceControlImportService', () => {
 
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(updatedNodes);
-				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+				expect(historyRecord?.authors).toBe(
+					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+				);
 			});
 
 			it('should not update workflow history when versionId exists and content unchanged', async () => {
@@ -1788,6 +1790,63 @@ describe('SourceControlImportService', () => {
 				expect(historyAfter).toBeTruthy();
 				expect(historyAfter?.authors).toBe(historyBefore?.authors); // Should not have changed
 				expect(historyAfter?.updatedAt?.getTime()).toBe(historyBefore?.updatedAt?.getTime());
+			});
+
+			it('should skip workflow when missing versionId', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				delete workflow.versionId;
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
+			});
+
+			it('should skip workflow when missing nodes', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				const { nodes, ...workflowWithoutNodes } = workflow;
+				const file = putWorkflowFile(workflow.id, workflowWithoutNodes as IWorkflowToImport);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
+			});
+
+			it('should skip workflow when missing connections', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				const { connections, ...workflowWithoutConnections } = workflow;
+				const file = putWorkflowFile(workflow.id, workflowWithoutConnections as IWorkflowToImport);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
 			});
 		});
 	});
