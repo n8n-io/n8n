@@ -260,7 +260,8 @@ const sharedOperations: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description:
+			'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	{
@@ -281,7 +282,8 @@ const sharedOperations: INodeProperties[] = [
 				displayName: 'Echo Prompt',
 				name: 'echo',
 				type: 'boolean',
-				description: 'Whether the prompt should be echo back in addition to the completion',
+				description:
+					'Whether the prompt should be echo back in addition to the completion',
 				default: false,
 				displayOptions: {
 					show: {
@@ -391,18 +393,46 @@ const sharedOperations: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Reasoning Effort',
+				name: 'reasoning_effort',
+				type: 'options',
+				description:
+					'Constrains effort on reasoning for reasoning models. Currently supported values are low, medium, and high. Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response. (o1 models only)',
+				options: [
+					{
+						name: 'Low',
+						value: 'low',
+					},
+					{
+						name: 'Medium',
+						value: 'medium',
+					},
+					{
+						name: 'High',
+						value: 'high',
+					},
+				],
+				default: 'medium',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'reasoning_effort',
+					},
+				},
+			},
 		],
 	},
 ];
 
 export const chatFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                               chat:complete                        */
+	/*                               chat:complete                               */
 	/* -------------------------------------------------------------------------- */
 	...completeOperations,
 
 	/* -------------------------------------------------------------------------- */
-	/*                                chat:ALL                                    */
+	/*                                chat:ALL                                  */
 	/* -------------------------------------------------------------------------- */
 	...sharedOperations,
 ];
