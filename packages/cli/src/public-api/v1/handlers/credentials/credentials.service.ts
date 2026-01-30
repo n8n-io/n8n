@@ -135,11 +135,6 @@ export async function updateCredential(
 
 	// If data is provided, encrypt it
 	if (updateData.data !== undefined) {
-		// Never allow changing oauthTokenData via API
-		if (updateData.data?.oauthTokenData) {
-			delete updateData.data.oauthTokenData;
-		}
-
 		const credentialsService = Container.get(CredentialsService);
 
 		// Decrypt existing data to access oauthTokenData
@@ -161,11 +156,6 @@ export async function updateCredential(
 		} else {
 			// isPartialData is false or undefined (default): replace entire data object
 			dataToEncrypt = updateData.data;
-		}
-
-		// Preserve oauthTokenData from existing credential
-		if (decryptedData.oauthTokenData) {
-			dataToEncrypt.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
 		const newCredential = new CredentialsEntity();
