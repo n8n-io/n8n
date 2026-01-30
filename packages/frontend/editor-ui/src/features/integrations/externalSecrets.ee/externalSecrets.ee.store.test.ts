@@ -242,10 +242,6 @@ describe('externalSecretsStore', () => {
 				...expectedGlobalSecretsObject,
 				...expectedProjectSecretsObject,
 			});
-			//expect(result).toMatchObject(expectedProjectSecretsObject);
-			//const totalKeys =
-			//	Object.keys(mockGlobalSecrets).length + Object.keys(mockProjectSecrets).length;
-			//expect(Object.keys(result)).toHaveLength(totalKeys);
 		});
 
 		it('should mask all secret values as "*********"', () => {
