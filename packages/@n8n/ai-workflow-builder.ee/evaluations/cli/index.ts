@@ -9,7 +9,7 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { OneShotWorkflowCodeAgent } from '@/one-shot-workflow-code-agent';
+import { CodeWorkflowBuilder } from '@/code-workflow-builder';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { TokenUsage, GenerationError } from '../harness/harness-types.js';
@@ -108,29 +108,27 @@ function createWorkflowGenerator(
 }
 
 /**
- * Create a one-shot workflow generator function.
- * Uses the OneShotWorkflowCodeAgent which generates workflows via TypeScript SDK code
- * and emits workflow JSON directly in the stream.
+ * Create a two-agent workflow generator function.
+ * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
+ * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
  * Returns GenerationResult including the source code for artifact saving.
  *
  * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
  *                    aborted if it exceeds this duration. This ensures the generator
  *                    actually stops instead of continuing to run after timeout rejection.
- * @param captureLog - When true, captures debug logs for artifact saving.
  */
-function createOneShotWorkflowGenerator(
+function createTwoAgentWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
-	captureLog?: boolean,
 ): (prompt: string, callbacks?: Callbacks) => Promise<GenerationResult> {
 	return async (prompt: string): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
-		const agent = new OneShotWorkflowCodeAgent({
-			llm: llms.builder,
+		const builder = new CodeWorkflowBuilder({
+			planningLLM: llms.builder,
+			codingLLM: llms.builder,
 			nodeTypes: parsedNodeTypes,
-			captureLog,
 		});
 
 		const payload = getChatPayload({
@@ -154,12 +152,12 @@ function createOneShotWorkflowGenerator(
 
 		if (timeoutMs !== undefined && timeoutMs > 0) {
 			timeoutId = setTimeout(() => {
-				abortController.abort(new Error(`One-shot agent timed out after ${timeoutMs}ms`));
+				abortController.abort(new Error(`Two-agent builder timed out after ${timeoutMs}ms`));
 			}, timeoutMs);
 		}
 
 		try {
-			for await (const output of agent.chat(
+			for await (const output of builder.chat(
 				payload,
 				EVAL_USERS.LANGSMITH,
 				abortController.signal,
@@ -187,14 +185,11 @@ function createOneShotWorkflowGenerator(
 			}
 		}
 
-		// Get captured logs if log capture was enabled
-		const logs = captureLog ? agent.getCapturedLogs() : undefined;
-
 		if (!workflow) {
-			throw new WorkflowGenerationError('One-shot agent did not produce a workflow', logs);
+			throw new WorkflowGenerationError('Two-agent builder did not produce a workflow');
 		}
 
-		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
+		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
 	};
 }
 
@@ -271,15 +266,10 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// Enable log capture for one-shot agent when outputDir is set
+	// ONE_SHOT now uses the two-agent architecture (planning + coding agents)
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.ONE_SHOT
-			? createOneShotWorkflowGenerator(
-					env.parsedNodeTypes,
-					env.llms,
-					args.timeoutMs,
-					!!args.outputDir,
-				)
+			? createTwoAgentWorkflowGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on suite (using judge LLM for evaluation)

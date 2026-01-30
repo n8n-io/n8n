@@ -17,9 +17,9 @@ import {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants';
 
+import { CodeWorkflowBuilder } from './code-workflow-builder';
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
-import { OneShotWorkflowCodeAgent } from './one-shot-workflow-code-agent';
 import { SessionManagerService } from './session-manager.service';
 import type { SimpleWorkflow } from './types/workflow';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
@@ -169,23 +169,22 @@ export class WorkflowBuilderAgent {
 	) {
 		this.validateMessageLength(payload.message);
 
-		// Feature flag: Route to one-shot agent if enabled (default: true for POC)
-		const useOneShotAgent = payload.featureFlags?.oneShotAgent ?? true;
+		// Feature flag: Route to two-agent architecture if enabled (default: true)
+		const useTwoAgentArchitecture = payload.featureFlags?.oneShotAgent ?? true;
 
-		if (useOneShotAgent) {
-			this.logger?.debug('Routing to one-shot workflow code agent', { userId });
+		if (useTwoAgentArchitecture) {
+			this.logger?.debug('Routing to two-agent architecture (CodeWorkflowBuilder)', { userId });
 
-			// Use the one-shot agent
-			const oneShotAgent = new OneShotWorkflowCodeAgent({
-				llm: this.stageLLMs.builder,
+			// Use the two-agent architecture (planning + coding agents)
+			const codeWorkflowBuilder = new CodeWorkflowBuilder({
+				planningLLM: this.stageLLMs.builder,
+				codingLLM: this.stageLLMs.builder,
 				nodeTypes: this.parsedNodeTypes,
 				logger: this.logger,
 				generatedTypesDir: this.generatedTypesDir,
-				promptVersion: payload.featureFlags?.promptVersion,
-				modelId: payload.featureFlags?.modelId,
 			});
 
-			yield* oneShotAgent.chat(payload, userId ?? 'unknown', abortSignal);
+			yield* codeWorkflowBuilder.chat(payload, userId ?? 'unknown', abortSignal);
 			return;
 		}
 
