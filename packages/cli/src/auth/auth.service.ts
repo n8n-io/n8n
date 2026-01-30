@@ -30,6 +30,8 @@ interface AuthJwtPayload {
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+	/** Issued at timestamp (in seconds) - automatically added by jsonwebtoken */
+	iat: number;
 }
 
 interface PasswordResetToken {
@@ -201,6 +203,17 @@ export class AuthService {
 		}
 	}
 
+	/**
+	 * Invalidate all sessions for a user by setting tokensValidAfter to the current time.
+	 * Any token issued before this timestamp will be rejected during validation.
+	 * Tokens issued at or after (including the new cookie issued immediately after) will be valid.
+	 * Use this for security-sensitive changes like disabling MFA, SSO changes, etc.
+	 */
+	async invalidateAllUserSessions(userId: string) {
+		const currentTimestamp = Math.floor(Date.now() / 1000);
+		await this.userRepository.update(userId, { tokensValidAfter: currentTimestamp });
+	}
+
 	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
@@ -299,7 +312,9 @@ export class AuthService {
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
 			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user)
+			jwtPayload.hash !== this.createJWTHash(user) ||
+			// or, If the token was issued before a security-sensitive change (e.g., MFA disabled)
+			(user.tokensValidAfter !== null && jwtPayload.iat < user.tokensValidAfter)
 		) {
 			throw new AuthError('Unauthorized');
 		}

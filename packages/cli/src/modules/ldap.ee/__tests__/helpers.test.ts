@@ -33,7 +33,10 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
+			expect(userRepository.save).toHaveBeenCalledWith(
+				{ id: user.id, ...data },
+				{ transaction: true },
+			);
 			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});

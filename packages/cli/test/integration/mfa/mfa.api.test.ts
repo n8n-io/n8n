@@ -3,9 +3,11 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
+import request from 'supertest';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
@@ -146,6 +148,39 @@ describe('Enable MFA setup', () => {
 			expect(user.mfaSecret).toBeDefined();
 		});
 
+		test('POST /enable should invalidate sessions across browsers', async () => {
+			const password = randomValidPassword();
+			let user = await createUser({ password });
+			const testBrowserId = 'test-browser-id';
+			const authService = Container.get(AuthService);
+
+			// Create a token BEFORE MFA is enabled (simulating Browser A)
+			const preMfaToken = authService.issueJWT(user, false, testBrowserId);
+
+			// Enable MFA using another session (Browser B)
+			const qrResponse = await testServer.authAgentFor(user).get('/mfa/qr').expect(200);
+			const { secret } = qrResponse.body.data;
+			const mfaCode = new TOTPService().generateTOTP(secret);
+			await testServer.authAgentFor(user).post('/mfa/enable').send({ mfaCode }).expect(200);
+
+			// Verify MFA is enabled and tokensValidAfter is set
+			user = await Container.get(UserRepository).findOneOrFail({
+				where: { id: user.id },
+				relations: ['role'],
+			});
+			expect(user.mfaEnabled).toBe(true);
+			expect(user.tokensValidAfter).not.toBe(null);
+
+			// Browser A's old token should now be rejected
+			const response = await request(testServer.app)
+				.patch('/rest/me/settings')
+				.send({})
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${preMfaToken}`)
+				.set('browser-id', testBrowserId);
+
+			expect(response.status).toBe(401);
+		});
+
 		test('POST /enable should not enable MFA if pre check fails', async () => {
 			// This test is to make sure owners verify their email before enabling MFA in cloud
 
@@ -219,6 +254,100 @@ describe('Disable MFA setup', () => {
 		const { user } = await createUserWithMfaEnabled();
 
 		await testServer.authAgentFor(user).post('/mfa/disable').send({ anotherParam: '' }).expect(400);
+	});
+
+	test('POST /disable should invalidate sessions across browsers', async () => {
+		const { user, rawSecret } = await createUserWithMfaEnabled();
+
+		// Use the same browserId as the test server to avoid browserId mismatch failures
+		const testBrowserId = 'test-browser-id';
+
+		// Simulate Browser A: Create a token while MFA is enabled
+		// The token hash includes the MFA secret: hash(email:password:mfaSecret[0:3])
+		const authService = Container.get(AuthService);
+		const browserAToken = authService.issueJWT(user, true, testBrowserId);
+
+		// Simulate Browser B: Disable MFA
+		// This sets mfaEnabled=false and mfaSecret=null in the database
+		const mfaCode = new TOTPService().generateTOTP(rawSecret);
+		await testServer.authAgentFor(user).post('/mfa/disable').send({ mfaCode }).expect(200);
+
+		// Verify MFA is disabled in database
+		const dbUser = await Container.get(UserRepository).findOneOrFail({
+			where: { id: user.id },
+		});
+		expect(dbUser.mfaEnabled).toBe(false);
+		expect(dbUser.mfaSecret).toBe(null);
+
+		// Simulate Browser A: Try to use the old token on an authenticated endpoint
+		// The old token's hash was: hash(email:password:mfaSecret[0:3])
+		// The new hash (with MFA disabled) is: hash(email:password)
+		// These hashes don't match, so the token should be invalid
+		const response = await request(testServer.app)
+			.patch('/rest/me/settings')
+			.send({})
+			.set('Cookie', `${AUTH_COOKIE_NAME}=${browserAToken}`)
+			.set('browser-id', testBrowserId);
+
+		expect(response.status).toBe(401);
+	});
+
+	test('POST /disable should invalidate tokens issued before MFA was enabled', async () => {
+		// Create a user without MFA
+		const password = randomValidPassword();
+		let user = await createUser({ password });
+		const testBrowserId = 'test-browser-id';
+		const authService = Container.get(AuthService);
+
+		// Create a token BEFORE MFA is enabled
+		// Token hash = hash(email:password)
+		const preMfaToken = authService.issueJWT(user, false, testBrowserId);
+
+		// Wait 1 second to ensure the token's iat is before tokensValidAfter
+		await new Promise((resolve) => setTimeout(resolve, 1100));
+
+		// Enable MFA for the user
+		const qrResponse = await testServer.authAgentFor(user).get('/mfa/qr').expect(200);
+		const { secret } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+		await testServer.authAgentFor(user).post('/mfa/enable').send({ mfaCode }).expect(200);
+
+		// Refresh user object after MFA is enabled
+		user = await Container.get(UserRepository).findOneOrFail({
+			where: { id: user.id },
+			relations: ['role'],
+		});
+		expect(user.mfaEnabled).toBe(true);
+		expect(user.mfaSecret).not.toBe(null);
+
+		// Now disable MFA using the updated user
+		const newMfaCode = new TOTPService().generateTOTP(secret);
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({ mfaCode: newMfaCode })
+			.expect(200);
+
+		// Verify MFA is disabled
+		user = await Container.get(UserRepository).findOneOrFail({
+			where: { id: user.id },
+			relations: ['role'],
+		});
+		expect(user.mfaEnabled).toBe(false);
+		expect(user.mfaSecret).toBe(null);
+
+		// The pre-MFA token's hash was: hash(email:password)
+		// After MFA is disabled, the new hash is also: hash(email:password)
+		// The hashes would match, but tokensValidAfter is now set to the current time,
+		// so all tokens issued before MFA was disabled are rejected
+		const response = await request(testServer.app)
+			.patch('/rest/me/settings')
+			.send({})
+			.set('Cookie', `${AUTH_COOKIE_NAME}=${preMfaToken}`)
+			.set('browser-id', testBrowserId);
+
+		// With tokensValidAfter, even pre-MFA tokens are now properly invalidated
+		expect(response.status).toBe(401);
 	});
 });
 
