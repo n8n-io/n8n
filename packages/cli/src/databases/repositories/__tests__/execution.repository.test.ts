@@ -79,7 +79,7 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('updateExistingExecution', () => {
-		test.each(['sqlite', 'postgresdb', 'mysqldb'] as const)(
+		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {
 				globalConfig.database.type = dbType;

@@ -30,7 +30,6 @@ import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import * as onboardingApi from '@/app/api/workflow-webhooks';
-import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
@@ -323,12 +322,20 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		deleteUserById(params.id);
 	};
 
-	const fetchUsers = async () => {
+	const fetchUsers = async ({
+		take,
+		skip,
+		filter,
+	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
 		if (!hasPermission(['rbac'], { rbac: { scope: 'user:list' } })) {
 			return;
 		}
 
-		const { items } = await usersApi.getUsers(rootStore.restApiContext, { take: -1, skip: 0 });
+		const { items } = await usersApi.getUsers(rootStore.restApiContext, {
+			take: take ?? 50,
+			skip: skip ?? 0,
+			filter,
+		});
 		addUsers(items);
 	};
 
@@ -410,7 +417,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
 		await usersApi.updateGlobalRole(rootStore.restApiContext, { id, newRoleName });
-		await fetchUsers();
+		await fetchUsers({ filter: { ids: [id] } });
 	};
 
 	const submitContactEmail = async (email: string, agree: boolean) => {
@@ -423,18 +430,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			);
 		}
 		return null;
-	};
-
-	const submitContactInfo = async (email: string) => {
-		try {
-			return await promptsApi.submitContactInfo(
-				rootStore.instanceId,
-				currentUserId.value ?? '',
-				email,
-			);
-		} catch (error) {
-			return;
-		}
 	};
 
 	const usersList = useAsyncState(
@@ -509,7 +504,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isCalloutDismissed,
 		setCalloutDismissed,
 		submitContactEmail,
-		submitContactInfo,
 		setUserQuota,
 		usersList,
 	};
