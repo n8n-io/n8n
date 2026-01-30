@@ -168,7 +168,4 @@ export const defaultSettings: FrontendSettings = {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
 	},
-	setupPanel: {
-		enabled: false,
-	},
 };
