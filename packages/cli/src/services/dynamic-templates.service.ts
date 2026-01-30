@@ -15,6 +15,9 @@ export class DynamicTemplatesService {
 	) {}
 
 	async fetchDynamicTemplates(): Promise<DynamicTemplate[]> {
+		if (!this.globalConfig.templates.dynamicTemplatesHost) {
+			return [];
+		}
 		try {
 			const response = await axios.get<{ templates: DynamicTemplate[] }>(
 				this.globalConfig.templates.dynamicTemplatesHost,
