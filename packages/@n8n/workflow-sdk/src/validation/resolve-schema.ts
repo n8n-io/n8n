@@ -122,6 +122,8 @@ export type ResolveSchemaConfig = {
 	displayOptions: DisplayOptions;
 	/** Default values for properties referenced in displayOptions (used when property is not set) */
 	defaults?: Record<string, unknown>;
+	/** Whether this node is a tool (for @tool conditions in displayOptions) */
+	isToolNode?: boolean;
 };
 
 export type ResolveSchemaFn = (config: ResolveSchemaConfig) => z.ZodTypeAny;
@@ -151,8 +153,9 @@ export function resolveSchema({
 	required,
 	displayOptions,
 	defaults = {},
+	isToolNode,
 }: ResolveSchemaConfig): z.ZodTypeAny {
-	const context: DisplayOptionsContext = { parameters, defaults };
+	const context: DisplayOptionsContext = { parameters, defaults, isToolNode };
 	const isVisible = matchesDisplayOptionsCore(context, displayOptions);
 
 	if (isVisible) {
