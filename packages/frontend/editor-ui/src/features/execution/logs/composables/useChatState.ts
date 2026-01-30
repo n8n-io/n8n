@@ -9,7 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { ChatOptionsSymbol, MessageComponentKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
+import type { Chat, ChatMessage, ChatOptions, SendMessageResponse } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, toValue, watch } from 'vue';
@@ -305,11 +305,14 @@ export function useChatState(
 				}
 
 				// Extract bot message from non-streaming response
-				const botMessage = response.output ?? response.text ?? response.message;
-				if (botMessage && typeof botMessage === 'string') {
+				if (response) {
+					let botMessage: string | SendMessageResponse | undefined =
+						response.output ?? response.text ?? response.message;
+					botMessage ??= response;
+
 					logsStore.addChatMessage({
 						id: uuid(),
-						text: botMessage,
+						text: typeof botMessage === 'string' ? botMessage : JSON.stringify(botMessage),
 						sender: 'bot',
 					});
 				}
