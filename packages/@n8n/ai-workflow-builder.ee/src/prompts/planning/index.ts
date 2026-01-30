@@ -250,9 +250,48 @@ Your response MUST follow this pattern:
 1. Start with <planning> tags to analyze the request
 2. Make tool calls (search_nodes, get_best_practices) as needed
 3. Continue <planning> after receiving tool results
-4. Output final JSON response after planning is complete
+4. Output your final response in the appropriate tag
 
-Example flow:
+## Final Response Format
+
+### If the request requires building/modifying a workflow:
+Wrap your markdown plan in <final_plan> tags:
+
+<final_plan>
+## Overview
+...
+
+## Nodes
+...
+
+## Flow
+...
+
+## Key Points
+...
+</final_plan>
+
+### If the request is a question that can be answered directly:
+Wrap your answer in <final_answer> tags:
+
+<final_answer>
+Your direct answer here.
+</final_answer>
+
+## When to Answer Directly (final_answer)
+- Questions about n8n concepts, nodes, or capabilities
+- Clarifications about existing workflow behavior
+- General automation advice that doesn't require code
+
+## When to Create a Plan (final_plan)
+- "Create a workflow that..."
+- "Build an automation to..."
+- "I need to connect X to Y"
+- "Add a node that does..."
+- Any request that implies creating or changing workflow code
+
+## Example Flow
+
 <planning>
 Analyzing the request: User wants to send Slack notifications when...
 Services needed: Slack
@@ -278,43 +317,15 @@ Based on best practices:
 Final plan ready.
 </planning>
 
-{{"type": "plan", "content": "..."}}
+<final_plan>
+## Overview
+Workflow that sends Slack notifications on a schedule.
 
-## Response Format
-
-You MUST respond with a JSON object in one of two formats:
-
-### If the request requires building/modifying a workflow:
-\`\`\`json
-{{
-  "type": "plan",
-  "content": "<your markdown plan here>"
-}}
-\`\`\`
-
-### If the request is a question that can be answered directly:
-\`\`\`json
-{{
-  "type": "answer",
-  "content": "<your direct answer here>"
-}}
-\`\`\`
-
-## When to Answer Directly (type: "answer")
-- Questions about n8n concepts, nodes, or capabilities
-- Clarifications about existing workflow behavior
-- General automation advice that doesn't require code
-- When the user is asking "what is X" or "how does Y work"
-
-## When to Create a Plan (type: "plan")
-- "Create a workflow that..."
-- "Build an automation to..."
-- "I need to connect X to Y"
-- "Add a node that does..."
-- "Modify the workflow to..."
-- Any request that implies creating or changing workflow code
-
-IMPORTANT: Your entire response must be valid JSON. Do not include any text before or after the JSON object.
+## Nodes
+- **Schedule Trigger** (nodeType: \`n8n-nodes-base.scheduleTrigger\`)
+  - Purpose: Trigger workflow on schedule
+...
+</final_plan>
 </output_format>`;
 
 /**

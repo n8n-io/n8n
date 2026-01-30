@@ -82,13 +82,10 @@ describe('PlanningAgent', () => {
 	});
 
 	describe('run', () => {
-		it('should return "answer" type for direct questions', async () => {
+		it('should return "answer" type for direct questions with <final_answer> tag', async () => {
 			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
 
-			const answerResponse = JSON.stringify({
-				type: 'answer',
-				content: 'n8n is a workflow automation tool.',
-			});
+			const answerResponse = '<final_answer>n8n is a workflow automation tool.</final_answer>';
 
 			const config: PlanningAgentConfig = {
 				llm: createMockLLM(answerResponse) as unknown as PlanningAgentConfig['llm'],
@@ -113,14 +110,11 @@ describe('PlanningAgent', () => {
 			expect(finalResponse?.content).toBe('n8n is a workflow automation tool.');
 		});
 
-		it('should return "plan" type for workflow requests', async () => {
+		it('should return "plan" type for workflow requests with <final_plan> tag', async () => {
 			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
 
-			const planResponse = JSON.stringify({
-				type: 'plan',
-				content:
-					'## Overview\nA test plan\n\n## Nodes\n- Node\n\n## Flow\nA → B\n\n## Key Points\nNone',
-			});
+			const planResponse =
+				'<final_plan>\n## Overview\nA test plan\n\n## Nodes\n- Node\n\n## Flow\nA → B\n\n## Key Points\nNone\n</final_plan>';
 
 			const config: PlanningAgentConfig = {
 				llm: createMockLLM(planResponse) as unknown as PlanningAgentConfig['llm'],
@@ -144,6 +138,82 @@ describe('PlanningAgent', () => {
 			expect(finalResponse?.content).toContain('Overview');
 		});
 
+		it('should handle <planning> tags interleaved with <final_plan>', async () => {
+			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
+
+			// Response with planning tags followed by final_plan tag
+			const responseWithPlanning = `<planning>
+Analyzing the request...
+</planning>
+
+<final_plan>
+## Overview
+A workflow with planning.
+
+## Nodes
+- **Node** (nodeType: \`test\`)
+
+## Flow
+A → B
+
+## Key Points
+None
+</final_plan>`;
+
+			const config: PlanningAgentConfig = {
+				llm: createMockLLM(responseWithPlanning) as unknown as PlanningAgentConfig['llm'],
+				nodeTypeParser,
+			};
+
+			const agent = new PlanningAgent(config);
+			const generator = agent.run('Create a workflow');
+
+			let finalResponse;
+			while (true) {
+				const result = await generator.next();
+				if (result.done) {
+					finalResponse = result.value;
+					break;
+				}
+			}
+
+			expect(finalResponse).toBeDefined();
+			expect(finalResponse?.type).toBe('plan');
+			expect(finalResponse?.content).toContain('Overview');
+			expect(finalResponse?.content).not.toContain('<planning>');
+		});
+
+		it('should fall back to legacy JSON parsing for backwards compatibility', async () => {
+			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
+
+			// Legacy JSON format
+			const legacyJsonResponse = JSON.stringify({
+				type: 'answer',
+				content: 'Legacy JSON response.',
+			});
+
+			const config: PlanningAgentConfig = {
+				llm: createMockLLM(legacyJsonResponse) as unknown as PlanningAgentConfig['llm'],
+				nodeTypeParser,
+			};
+
+			const agent = new PlanningAgent(config);
+			const generator = agent.run('What is n8n?');
+
+			let finalResponse;
+			while (true) {
+				const result = await generator.next();
+				if (result.done) {
+					finalResponse = result.value;
+					break;
+				}
+			}
+
+			expect(finalResponse).toBeDefined();
+			expect(finalResponse?.type).toBe('answer');
+			expect(finalResponse?.content).toBe('Legacy JSON response.');
+		});
+
 		it('should yield stream output chunks for tool calls', async () => {
 			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
 
@@ -161,7 +231,7 @@ describe('PlanningAgent', () => {
 			};
 
 			const finalResponse = {
-				content: JSON.stringify({ type: 'answer', content: 'Found email nodes.' }),
+				content: '<final_answer>Found email nodes.</final_answer>',
 				tool_calls: [],
 				response_metadata: { usage: { input_tokens: 100, output_tokens: 50 } },
 			};
@@ -217,10 +287,7 @@ describe('PlanningAgent', () => {
 				connections: {},
 			};
 
-			const planResponse = JSON.stringify({
-				type: 'plan',
-				content: '## Modified plan',
-			});
+			const planResponse = '<final_plan>## Modified plan</final_plan>';
 
 			const config: PlanningAgentConfig = {
 				llm: createMockLLM(planResponse) as unknown as PlanningAgentConfig['llm'],
@@ -264,10 +331,10 @@ describe('PlanningAgent', () => {
 			}).rejects.toThrow('Aborted');
 		});
 
-		it('should handle JSON response wrapped in code block', async () => {
+		it('should handle legacy JSON response wrapped in code block', async () => {
 			const nodeTypeParser = new NodeTypeParser(mockNodeTypes);
 
-			// Response with JSON in markdown code block
+			// Response with JSON in markdown code block (legacy format)
 			const wrappedResponse = '```json\n{"type": "answer", "content": "Test answer"}\n```';
 
 			const config: PlanningAgentConfig = {

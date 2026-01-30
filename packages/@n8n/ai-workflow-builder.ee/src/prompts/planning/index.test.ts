@@ -91,7 +91,7 @@ describe('Planning Agent Prompt', () => {
 			expect(systemContent).toContain('## Key Points');
 		});
 
-		it('should include output format with JSON structure', async () => {
+		it('should instruct to use <final_plan> and <final_answer> tags', async () => {
 			const prompt = buildPlanningAgentPrompt();
 
 			const messages = await prompt.formatMessages({
@@ -100,8 +100,11 @@ describe('Planning Agent Prompt', () => {
 
 			const systemContent = messages[0].content as string;
 			expect(systemContent).toContain('<output_format>');
-			expect(systemContent).toContain('"type": "plan"');
-			expect(systemContent).toContain('"type": "answer"');
+			expect(systemContent).toContain('<final_plan>');
+			expect(systemContent).toContain('<final_answer>');
+			// Should no longer use JSON format
+			expect(systemContent).not.toContain('"type": "plan"');
+			expect(systemContent).not.toContain('"type": "answer"');
 		});
 
 		it('should include user message in human message', async () => {

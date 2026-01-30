@@ -184,7 +184,7 @@ export class PlanningAgent {
 					const textContent = this.extractTextContent(response);
 
 					if (textContent) {
-						const parsed = this.parseJsonResponse(textContent);
+						const parsed = this.parseTaggedResponse(textContent);
 						if (parsed) {
 							finalResponse = parsed;
 							this.debugLog('RUN', 'Final response parsed successfully', {
@@ -198,7 +198,7 @@ export class PlanningAgent {
 							messages.push({
 								type: 'human',
 								content:
-									'Your response must be valid JSON with "type" and "content" fields. Please format your response correctly.',
+									'Your response must include either a <final_plan> tag (for workflow plans) or a <final_answer> tag (for direct answers). Please format your response correctly.',
 							} as BaseMessage);
 						}
 					}
@@ -248,9 +248,35 @@ export class PlanningAgent {
 	}
 
 	/**
-	 * Parse JSON response from the LLM
+	 * Parse response from the LLM by extracting tagged content
 	 */
-	private parseJsonResponse(content: string): PlanningAgentResponse | null {
+	private parseTaggedResponse(content: string): PlanningAgentResponse | null {
+		// Try to extract <final_plan> tag
+		const planMatch = content.match(/<final_plan>([\s\S]*?)<\/final_plan>/);
+		if (planMatch) {
+			return {
+				type: 'plan',
+				content: planMatch[1].trim(),
+			};
+		}
+
+		// Try to extract <final_answer> tag
+		const answerMatch = content.match(/<final_answer>([\s\S]*?)<\/final_answer>/);
+		if (answerMatch) {
+			return {
+				type: 'answer',
+				content: answerMatch[1].trim(),
+			};
+		}
+
+		// Fallback: try JSON parsing for backwards compatibility
+		return this.parseJsonResponseLegacy(content);
+	}
+
+	/**
+	 * Legacy JSON parsing for backwards compatibility
+	 */
+	private parseJsonResponseLegacy(content: string): PlanningAgentResponse | null {
 		try {
 			// Try to extract JSON from markdown code blocks if present
 			const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
