@@ -119,6 +119,7 @@ import {
 } from '@/app/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import DemoModeTooltip from '@/features/workflows/canvas/components/elements/DemoModeTooltip.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -153,7 +154,13 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nButton,
+} from '@n8n/design-system';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -330,6 +337,7 @@ const isNDVV2 = computed(() => true);
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
+		isTemplateDemoMode.value ||
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
@@ -340,7 +348,7 @@ const isCanvasReadOnly = computed(() => {
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
-const keyBindingsEnabled = computed(() => {
+const isCanvasInteractable = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
@@ -718,7 +726,7 @@ async function onCopyNodes(ids: string[]) {
 async function onClipboardPaste(plainTextData: string): Promise<void> {
 	if (
 		getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW ||
-		!keyBindingsEnabled.value ||
+		!isCanvasInteractable.value ||
 		!checkIfEditingIsAllowed()
 	) {
 		return;
@@ -828,7 +836,7 @@ async function onOpenRenameNodeModal(id: string) {
 		return;
 	}
 
-	if (!keyBindingsEnabled.value || document.querySelector('.rename-prompt')) return;
+	if (!isCanvasInteractable.value || document.querySelector('.rename-prompt')) return;
 
 	try {
 		const promptResponsePromise = message.prompt(
@@ -1223,6 +1231,24 @@ const projectPermissions = computed(() => {
 		: (projectsStore.currentProject ?? projectsStore.personalProject);
 	return getResourcePermissions(project?.scopes);
 });
+
+/**
+ * Template demo mode
+ */
+
+const hideDemoTooltip = ref(false);
+const exitedDemoMode = ref(false);
+const templateId = computed(() => workflowsStore.workflow.meta?.templateId);
+const isTemplateDemoMode = computed(
+	() =>
+		!exitedDemoMode.value &&
+		!!templateId.value &&
+		!!useTemplatesStore().getFullTemplateById(templateId.value)?.readyToDemo,
+);
+function onExitDemo() {
+	workflowsStore.unpinAllData();
+	exitedDemoMode.value = true;
+}
 
 /**
  * Executions
@@ -2121,9 +2147,9 @@ onBeforeUnmount(() => {
 			:fallback-nodes="fallbackNodes"
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
-			:read-only="isCanvasReadOnly"
+			:read-only="isCanvasReadOnly || isTemplateDemoMode"
 			:executing="isWorkflowRunning"
-			:key-bindings="keyBindingsEnabled"
+			:key-bindings="isCanvasInteractable"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			:hide-controls="hideCanvasControls"
 			@update:nodes:position="onUpdateNodesPosition"
@@ -2171,23 +2197,37 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
 		>
-			<Suspense v-if="!isCanvasReadOnly">
+			<Suspense v-if="!isCanvasReadOnly || isTemplateDemoMode">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
-			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
-				<CanvasRunWorkflowButton
+			<div v-if="!isCanvasReadOnly || isTemplateDemoMode" :class="$style.executionButtons">
+				<DemoModeTooltip
 					v-if="isRunWorkflowButtonVisible"
-					:waiting-for-webhook="isExecutionWaitingForWebhook"
-					:disabled="isExecutionDisabled"
-					:executing="isWorkflowRunning"
-					:trigger-nodes="triggerNodes"
-					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
-					@mouseenter="onRunWorkflowButtonMouseEnter"
-					@mouseleave="onRunWorkflowButtonMouseLeave"
-					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
-				/>
+					:is-template-demo-mode="isTemplateDemoMode"
+					:hide-demo-tooltip="hideDemoTooltip"
+					:is-canvas-interactable="isCanvasInteractable"
+				>
+					<CanvasRunWorkflowButton
+						:waiting-for-webhook="isExecutionWaitingForWebhook"
+						:disabled="isExecutionDisabled"
+						:executing="isWorkflowRunning"
+						:trigger-nodes="triggerNodes"
+						:get-node-type="nodeTypesStore.getNodeType"
+						:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+						:label="isTemplateDemoMode ? i18n.baseText('template.readyToDemo.button') : undefined"
+						:hide-icon="isTemplateDemoMode"
+						:hide-tooltip="isTemplateDemoMode"
+						@mouseenter="onRunWorkflowButtonMouseEnter"
+						@mouseleave="onRunWorkflowButtonMouseLeave"
+						@execute="
+							() => {
+								hideDemoTooltip = true;
+								runEntireWorkflow('main');
+							}
+						"
+						@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					/>
+				</DemoModeTooltip>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
@@ -2218,6 +2258,9 @@ onBeforeUnmount(() => {
 					v-if="isStopWaitingForWebhookButtonVisible"
 					@click="onStopWaitingForWebhook"
 				/>
+				<N8nButton v-if="isTemplateDemoMode" size="large" type="secondary" @click="onExitDemo"
+					>{{ i18n.baseText('template.readyToDemo.exitDemo') }}
+				</N8nButton>
 			</div>
 
 			<N8nCallout
