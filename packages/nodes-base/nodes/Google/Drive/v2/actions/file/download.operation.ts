@@ -5,11 +5,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
+import { DRIVE } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -205,6 +207,15 @@ export async function execute(
 		{},
 		{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 	);
+
+	// If user accidentally provides a folder ID, throw a clear, actionable error
+	if (file?.mimeType === DRIVE.FOLDER) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'The provided ID refers to a folder. Please provide a file ID to download.',
+			{ itemIndex: i },
+		);
+	}
 	let response;
 
 	if (file.mimeType?.includes('vnd.google-apps')) {
