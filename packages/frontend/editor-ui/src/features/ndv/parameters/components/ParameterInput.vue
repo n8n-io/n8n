@@ -693,6 +693,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 }
 
 function getPlaceholder(): string {
+	if (props.parameter.placeholder != undefined) {
+		return props.parameter.placeholder;
+	}
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
 		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
