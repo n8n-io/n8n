@@ -426,35 +426,26 @@ onMounted(() => {
 														</RouterLink>
 														<span v-else>{{ file.name }}</span>
 													</N8nText>
-													<N8nText
-														v-if="file.updatedAt"
-														tag="p"
-														class="mt-0"
-														color="text-light"
-														size="small"
-													>
-														{{ renderUpdatedAt(file) }}
-													</N8nText>
-													<N8nText
-														v-if="file.willBeAutoPublished"
-														tag="p"
-														class="mt-2xs"
-														color="success"
-														size="small"
-														bold
-													>
-														{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublishing') }}
-													</N8nText>
-													<N8nText
-														v-if="file.isRemoteArchived"
-														tag="p"
-														class="mt-2xs"
-														color="warning"
-														size="small"
-														bold
-													>
-														{{ i18n.baseText('settings.sourceControl.modals.pull.willBeArchived') }}
-													</N8nText>
+													<div :class="$style.statusLine">
+														<N8nText v-if="file.updatedAt" color="text-light" size="small">
+															{{ renderUpdatedAt(file) }}
+														</N8nText>
+														<N8nText
+															v-if="file.willBeAutoPublished"
+															color="success"
+															size="small"
+															bold
+														>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
+															}}
+														</N8nText>
+														<N8nText v-if="file.isRemoteArchived" color="warning" size="small" bold>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
+															}}
+														</N8nText>
+													</div>
 												</div>
 												<span :class="[$style.badges]">
 													<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
@@ -676,5 +667,11 @@ onMounted(() => {
 
 .select {
 	width: 210px;
+}
+
+.statusLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 </style>
