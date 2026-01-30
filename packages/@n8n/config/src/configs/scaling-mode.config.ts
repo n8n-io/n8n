@@ -88,6 +88,10 @@ class RedisConfig {
 	/** TCP keep-alive interval in milliseconds. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
 	keepAliveInterval: number = 5000;
+
+	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
+	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
+	reconnectOnFailover: boolean = true;
 }
 
 @Config

@@ -69,4 +69,17 @@ describe('RedisClientService', () => {
 			}),
 		);
 	});
+
+	it('should set reconnectOnFailover when configured', () => {
+		globalConfig.queue.bull.redis.reconnectOnFailover = true;
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		expect(Redis).toHaveBeenCalledWith(
+			expect.objectContaining({
+				reconnectOnError: expect.any(Function),
+			}),
+		);
+	});
 });
