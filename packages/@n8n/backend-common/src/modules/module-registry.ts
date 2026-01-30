@@ -30,6 +30,7 @@ export class ModuleRegistry {
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		'browser-api',
 		'insights',
 		'external-secrets',
 		'community-packages',

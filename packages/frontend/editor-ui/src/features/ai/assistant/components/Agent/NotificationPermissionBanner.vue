@@ -9,7 +9,7 @@ const i18n = useI18n();
 const builderStore = useBuilderStore();
 
 async function onNotifyClick() {
-	const { permission } = await requestPermission();
+	const { permission } = await requestPermission({ force: false });
 
 	if (permission === 'denied' || permission === 'granted') {
 		resetMetadata();

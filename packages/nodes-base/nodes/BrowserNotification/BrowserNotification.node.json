@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.browserNotification",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Send native browser notifications from your workflows. Get alerted when important events happen, workflows complete, or errors occur. Requires browser notification permissions to be enabled.",
+
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.browsernotification/"
+			}
+		]
+	},
+	"alias": ["notification", "alert", "browser", "toast", "popup", "notify", "message"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
