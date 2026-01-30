@@ -37,6 +37,7 @@ import {
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -64,6 +65,7 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
+		private readonly externalHooks: ExternalHooks,
 	) {}
 
 	/** The process did error */
@@ -461,24 +463,57 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
-				if (!fullExecutionData) {
-					return reject(new Error(`Could not find execution with id "${executionId}"`));
+				const jobResult = this.scalingService.popJobResult(executionId);
+
+				if (!jobResult) {
+					return reject(new Error(`Could not find job result for execution ${executionId}`));
 				}
 
-				const runData: IRun = {
-					finished: fullExecutionData.finished,
-					mode: fullExecutionData.mode,
-					startedAt: fullExecutionData.startedAt,
-					stoppedAt: fullExecutionData.stoppedAt,
-					status: fullExecutionData.status,
-					data: fullExecutionData.data,
-					jobId: job.id.toString(),
-					storedAt: fullExecutionData.storedAt,
-				};
+				const needsFullData = this.needsFullExecutionData(data.executionMode, executionId);
+
+				let runData: IRun;
+
+				if (needsFullData) {
+					const fullExecutionData = await this.executionRepository.findSingleExecution(
+						executionId,
+						{
+							includeData: true,
+							unflattenData: true,
+						},
+					);
+					if (!fullExecutionData) {
+						return reject(new Error(`Could not find execution with id "${executionId}"`));
+					}
+
+					runData = {
+						finished: fullExecutionData.finished,
+						mode: fullExecutionData.mode,
+						startedAt: fullExecutionData.startedAt,
+						stoppedAt: fullExecutionData.stoppedAt,
+						status: fullExecutionData.status,
+						data: fullExecutionData.data,
+						jobId: job.id.toString(),
+						storedAt: fullExecutionData.storedAt,
+					};
+				} else {
+					runData = {
+						finished: jobResult.success,
+						mode: data.executionMode,
+						startedAt: jobResult.startedAt,
+						stoppedAt: jobResult.stoppedAt,
+						status: jobResult.status,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								lastNodeExecuted: jobResult.lastNodeExecuted,
+								error: jobResult.error,
+								metadata: jobResult.metadata,
+							},
+						}),
+						jobId: job.id.toString(),
+						storedAt: this.storageConfig.modeTag,
+					};
+				}
 
 				this.activeExecutions.finalizeExecution(executionId, runData);
 
@@ -497,5 +532,18 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+	}
+
+	/**
+	 * Whether main must retrieve full execution data from the DB on job completion.
+	 */
+	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
+
+		return (
+			executionMode === 'integrated' ||
+			this.activeExecutions.getResponseMode(executionId) === 'lastNode' ||
+			this.externalHooks.hasHook('workflow.postExecute')
+		);
 	}
 }

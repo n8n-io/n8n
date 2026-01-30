@@ -631,6 +631,8 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
+		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;
 			additionalKeys.$execution = {

@@ -2,6 +2,7 @@ import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
 import type {
 	ExecutionError,
+	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	StructuredChunk,
@@ -24,7 +25,6 @@ export type JobData = {
 
 export type JobResult = {
 	success: boolean;
-	error?: ExecutionError;
 };
 
 export type JobStatus = Bull.JobStatus;
@@ -52,13 +52,23 @@ export type RespondToWebhookMessage = {
 	workerId: string;
 };
 
-/** Message sent by worker to main to report a job has finished successfully. */
+export type JobFinishedProps = {
+	success: boolean;
+	error?: ExecutionError;
+	status: ExecutionStatus;
+	lastNodeExecuted?: string;
+	usedDynamicCredentials?: boolean;
+	metadata?: Record<string, string>;
+	startedAt: Date;
+	stoppedAt: Date;
+};
+
+/** Message sent by worker to main to report a job has finished. */
 export type JobFinishedMessage = {
 	kind: 'job-finished';
 	executionId: string;
 	workerId: string;
-	success: boolean;
-};
+} & JobFinishedProps;
 
 export type SendChunkMessage = {
 	kind: 'send-chunk';
