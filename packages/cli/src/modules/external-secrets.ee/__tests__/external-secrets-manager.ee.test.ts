@@ -11,6 +11,8 @@ import type { ExternalSecretsRetryManager } from '../retry-manager.service';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { ExternalSecretsSettingsStore } from '../settings-store.service';
 import type { ExternalSecretsSettings } from '../types';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
+import { Cipher } from 'n8n-core';
 
 describe('ExternalSecretsManager', () => {
 	jest.useFakeTimers();
@@ -25,6 +27,8 @@ describe('ExternalSecretsManager', () => {
 	let mockProviderLifecycle: jest.Mocked<ExternalSecretsProviderLifecycle>;
 	let mockRetryManager: jest.Mocked<ExternalSecretsRetryManager>;
 	let mockSecretsCache: jest.Mocked<ExternalSecretsSecretsCache>;
+	let mockSecretsProviderConnectionRepository: jest.Mocked<SecretsProviderConnectionRepository>;
+	let mockCipher: jest.Mocked<Cipher>;
 
 	const mockSettings: ExternalSecretsSettings = {
 		dummy: {
@@ -87,6 +91,13 @@ describe('ExternalSecretsManager', () => {
 		mockSecretsCache.getSecretNames.mockReturnValue([]);
 		mockSecretsCache.getAllSecretNames.mockReturnValue({});
 
+		// Mock SecretsProviderConnectionRepository
+		mockSecretsProviderConnectionRepository = mock<SecretsProviderConnectionRepository>();
+		mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([]);
+
+		// Mock Cipher
+		mockCipher = mock<Cipher>();
+
 		manager = new ExternalSecretsManager(
 			mockLogger(),
 			mockConfig,
@@ -98,6 +109,8 @@ describe('ExternalSecretsManager', () => {
 			mockProviderLifecycle,
 			mockRetryManager,
 			mockSecretsCache,
+			mockSecretsProviderConnectionRepository,
+			mockCipher,
 		);
 	});
 
