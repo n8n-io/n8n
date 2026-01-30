@@ -61,6 +61,13 @@ export class MicrosoftSql implements ICredentialType {
 			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 		{
+			displayName: 'AG Multisubnet',
+			name: 'agMultiSubnet',
+			type: 'boolean',
+			default: false,
+			description: 'Enable multisubnet failover awareness for SQL connection object. To be used when AG servers span more than one network (Production<->DR)',
+		},
+		{
 			displayName: 'Connect Timeout',
 			name: 'connectTimeout',
 			type: 'number',
