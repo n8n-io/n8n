@@ -36,6 +36,12 @@ class TaskRunnerSentry:
                     "Install with: uv sync --all-extras"
                 )
 
+        is_tracing_enabled = self.config.traces_sample_rate > 0
+        if is_profiling_enabled and not is_tracing_enabled:
+            self.logger.warning(
+                "Profiling is enabled but tracing is disabled. Profiling will not work."
+            )
+
         init_options = {
             "dsn": self.config.dsn,
             "release": f"n8n@{self.config.n8n_version}",

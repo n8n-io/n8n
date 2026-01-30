@@ -18,7 +18,7 @@ export class SentryConfig {
 	/**
 	 * Sample rate for Sentry traces (0.0 to 1.0).
 	 * This determines whether tracing is enabled and what percentage of
-	 * transactions are profiled.
+	 * transactions are traced.
 	 *
 	 * @default 0 (disabled)
 	 */

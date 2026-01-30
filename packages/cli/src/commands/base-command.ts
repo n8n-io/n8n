@@ -96,6 +96,14 @@ export abstract class BaseCommand<F = never> {
 			withEventLoopBlockDetection: true,
 			tracesSampleRate,
 			profilesSampleRate,
+			eligibleIntegrations: {
+				Express: true,
+				Http: true,
+				Postgres: this.globalConfig.database.type === 'postgresdb',
+				Redis:
+					this.globalConfig.executions.mode === 'queue' ||
+					this.globalConfig.cache.backend === 'redis',
+			},
 		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));

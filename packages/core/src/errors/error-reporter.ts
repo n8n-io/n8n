@@ -8,6 +8,8 @@ import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
+
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
 	dsn: string;
@@ -30,6 +32,12 @@ type ErrorReporterInitOptions = {
 	 * Return true if the error should be filtered out.
 	 */
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
+
+	/**
+	 * Integrations eligible for enablement. `tracesSampleRate` still determines
+	 * whether they are actually enabled or not.
+	 */
+	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
 };
 
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -96,6 +104,7 @@ export class ErrorReporter {
 		withEventLoopBlockDetection,
 		profilesSampleRate,
 		tracesSampleRate,
+		eligibleIntegrations = {},
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -137,12 +146,14 @@ export class ErrorReporter {
 			'LinkedErrors',
 			'OnUnhandledRejection',
 			'ContextLines',
-			'LinkedErrors',
 		]);
 
 		const isTracingEnabled = tracesSampleRate > 0;
 		if (isTracingEnabled) {
-			enabledIntegrations.add('Http').add('Postgres').add('Redis').add('Express');
+			const tracingIntegrations: SentryIntegration[] = ['Http', 'Postgres', 'Redis', 'Express'];
+			tracingIntegrations
+				.filter((integrationName) => !!eligibleIntegrations[integrationName])
+				.forEach((integrationName) => enabledIntegrations.add(integrationName));
 		}
 
 		const isProfilingEnabled = profilesSampleRate > 0;
