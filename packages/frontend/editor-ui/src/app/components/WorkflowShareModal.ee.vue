@@ -10,7 +10,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -40,7 +39,6 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
@@ -209,7 +207,7 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
+		await projectsStore.getAllProjects();
 
 		// Fetch workflow if it exists and is not new
 		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {

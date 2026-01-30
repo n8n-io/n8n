@@ -1,3 +1,4 @@
+import { screen } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
 import type { SecretProviderConnection } from '@n8n/api-types';
@@ -28,20 +29,20 @@ describe('SecretsProviderConnectionCard', () => {
 
 	it('should render provider name in header', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(getByText('aws-production')).toBeInTheDocument();
+		expect(getByTestId('secrets-provider-name')).toHaveTextContent('aws-production');
 	});
 
 	it('should display provider display name', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(getByText('AWS Secrets Manager')).toBeInTheDocument();
+		expect(getByTestId('secrets-provider-display-name')).toHaveTextContent('AWS Secrets Manager');
 	});
 
 	it('should render provider image component', () => {
@@ -61,11 +62,11 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: providerWithNoSecrets, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('0 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('0 secrets');
 	});
 
 	it('should display singular "secret" for count of 1', () => {
@@ -76,21 +77,20 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: providerWithOneSecret, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('1 secret');
-		expect(container.textContent).not.toContain('1 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('1 secret');
 	});
 
 	it('should display plural "secrets" for count greater than 1', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('5 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('5 secrets');
 	});
 
 	it('should format date correctly for different dates', () => {
@@ -100,12 +100,12 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: recentProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		const expectedDate = DateTime.fromISO('2024-12-25T10:30:00.000Z').toFormat('dd LLL yyyy');
-		expect(container.textContent).toContain(expectedDate);
+		expect(getByTestId('secrets-provider-created-at')).toHaveTextContent(expectedDate);
 	});
 
 	it('should show disconnected badge when state is error', () => {
@@ -115,43 +115,42 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: disconnectedProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(getByText('Disconnected')).toBeInTheDocument();
+		expect(getByTestId('disconnected-badge')).toHaveTextContent('Disconnected');
 	});
 
 	it('should not show badge when connection is in connected state', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { queryByText } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(queryByText('Disconnected')).not.toBeInTheDocument();
+		expect(queryByTestId('disconnected-badge')).not.toBeInTheDocument();
 	});
 
 	it('should show edit action when user has update permission', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		// Action toggle should be present
-		const actionToggle = document.querySelector('[data-test-id="action-toggle"]');
-		expect(actionToggle).toBeTruthy();
+		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		expect(screen.getByTestId('action-edit')).toBeInTheDocument();
 	});
 
 	it('should not show edit action when user lacks update permission', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: false },
 		});
 
-		// Action toggle should not have any options - with no options, the toggle shouldn't be interactive
-		// We're just verifying the component renders without the actions
+		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
 });
