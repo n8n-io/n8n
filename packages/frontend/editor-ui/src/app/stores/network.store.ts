@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { readonly, ref } from 'vue';
 
 /**
  * Store for tracking app-wide network connectivity status.
@@ -12,7 +12,7 @@ export const useNetworkStore = defineStore('network', () => {
 	}
 
 	return {
-		isOnline,
+		isOnline: readonly(isOnline),
 		setOnline,
 	};
 });
