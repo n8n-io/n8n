@@ -7,7 +7,7 @@ export const useSetupPanelStore = defineStore(STORES.SETUP_PANEL, () => {
 	const settingsStore = useSettingsStore();
 
 	const isFeatureEnabled = computed(() => {
-		return settingsStore.settings.setupPanel.enabled;
+		return true;
 	});
 
 	return {

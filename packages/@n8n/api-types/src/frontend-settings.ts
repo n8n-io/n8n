@@ -195,9 +195,6 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
-	setupPanel: {
-		enabled: boolean;
-	};
 	banners: {
 		dismissed: string[];
 	};

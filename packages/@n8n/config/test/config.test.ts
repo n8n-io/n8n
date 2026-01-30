@@ -286,9 +286,6 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 		},
-		setupPanel: {
-			enabled: false,
-		},
 		logging: {
 			level: 'info',
 			format: 'text',
