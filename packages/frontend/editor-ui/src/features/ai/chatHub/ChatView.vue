@@ -36,7 +36,15 @@ import {
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeMount,
+	onBeforeUnmount,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -56,6 +64,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import ChatGreetings from './components/ChatGreetings.vue';
+import { useChatPushHandler } from './composables/useChatPushHandler';
 
 const router = useRouter();
 const route = useRoute();
@@ -67,6 +76,17 @@ const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
+
+// Initialize WebSocket push handler for chat streaming
+const chatPushHandler = useChatPushHandler();
+
+onBeforeMount(() => {
+	chatPushHandler.initialize();
+});
+
+onBeforeUnmount(() => {
+	chatPushHandler.terminate();
+});
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
@@ -382,6 +402,18 @@ watch(
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
+
+				// Check for active stream after loading messages (handles page refresh during streaming)
+				const reconnectResult = await chatStore.reconnectToStream(id, 0);
+				if (reconnectResult?.hasActiveStream && reconnectResult.currentMessageId) {
+					// Initialize push handler to receive future chunks
+					chatPushHandler.initializeStreamState(
+						id,
+						reconnectResult.currentMessageId,
+						reconnectResult.lastSequenceNumber,
+					);
+					// Pending chunks are already replayed by reconnectToStream()
+				}
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });

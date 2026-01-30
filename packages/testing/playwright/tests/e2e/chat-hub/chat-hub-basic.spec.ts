@@ -73,6 +73,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages().nth(2)).toContainText('How are you?');
 		await expect(page.getChatMessages().nth(3)).toContainText("I'm doing well");
+		await expect(page.getChatMessages().nth(3)).toContainText("What's on your mind?");
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: regenerate response to first prompt
