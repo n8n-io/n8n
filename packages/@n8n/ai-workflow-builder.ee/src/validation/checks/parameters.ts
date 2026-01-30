@@ -145,7 +145,14 @@ function validateRequiredParameters(
 ): void {
 	for (const property of nodeType.properties) {
 		if (property.required !== true) continue;
-		if (property.type === 'collection' || property.type === 'fixedCollection') continue;
+		// Skip types the workflow builder can't configure
+		if (
+			property.type === 'collection' ||
+			property.type === 'fixedCollection' ||
+			property.type === 'credentialsSelect'
+		) {
+			continue;
+		}
 		if (isPropertyHiddenForContext(property.displayOptions, nodeVersion, nodeParameters)) continue;
 
 		const paramValue = nodeParameters[property.name];

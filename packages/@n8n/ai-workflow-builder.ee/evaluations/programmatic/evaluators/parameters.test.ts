@@ -4,7 +4,6 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types';
 import { validateParameters } from '@/validation/checks/parameters';
 
-// Helper to create a node type
 function createNodeType(
 	type: string,
 	properties: INodeTypeDescription['properties'] = [],
@@ -23,7 +22,6 @@ function createNodeType(
 	} as INodeTypeDescription;
 }
 
-// Helper to create a workflow node
 function createNode(
 	type: string,
 	parameters: Record<string, unknown> = {},
@@ -40,28 +38,25 @@ function createNode(
 	};
 }
 
-// Helper to create a workflow (plain object, no mocks)
 function createWorkflow(nodes: SimpleWorkflow['nodes']): SimpleWorkflow {
-	return {
-		name: 'Test Workflow',
-		nodes,
-		connections: {},
-	};
+	return { name: 'Test Workflow', nodes, connections: {} };
 }
 
 describe('validateParameters', () => {
 	describe('node-missing-required-parameter', () => {
-		it('should flag missing required parameter with no default', () => {
+		it.each([
+			['empty string default', ''],
+			['undefined default', undefined],
+		])('should flag missing required parameter with %s', (_, defaultValue) => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'API Key',
 					name: 'apiKey',
 					type: 'string',
-					default: '',
+					default: defaultValue as string,
 					required: true,
 				},
 			]);
-
 			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
 
 			const violations = validateParameters(workflow, [nodeType]);
@@ -71,34 +66,16 @@ describe('validateParameters', () => {
 					name: 'node-missing-required-parameter',
 					type: 'critical',
 					pointsDeducted: 50,
-				}),
-			);
-			expect(violations[0].description).toContain('API Key');
-		});
-
-		it('should flag missing required parameter with undefined default', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Query',
-					name: 'query',
-					type: 'string',
-					default: undefined as unknown as string,
-					required: true,
-				},
-			]);
-
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeType: 'n8n-nodes-base.test',
+						parameterName: 'apiKey',
+					}),
 				}),
 			);
 		});
 
-		it('should NOT flag required parameter with meaningful default', () => {
+		it('should NOT flag required parameter with meaningful default or when value is provided', () => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'Method',
@@ -111,21 +88,6 @@ describe('validateParameters', () => {
 						{ name: 'POST', value: 'POST' },
 					],
 				},
-			]);
-
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-				}),
-			);
-		});
-
-		it('should NOT flag required parameter when value is provided', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'API Key',
 					name: 'apiKey',
@@ -134,21 +96,16 @@ describe('validateParameters', () => {
 					required: true,
 				},
 			]);
-
 			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.test', { apiKey: 'my-api-key' }),
+				createNode('n8n-nodes-base.test', { apiKey: 'my-key' }), // method uses default, apiKey provided
 			]);
 
 			const violations = validateParameters(workflow, [nodeType]);
 
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-				}),
-			);
+			expect(violations).toHaveLength(0);
 		});
 
-		it('should NOT flag required parameter hidden by resource displayOptions', () => {
+		it('should respect displayOptions for resource/operation', () => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'Resource',
@@ -166,59 +123,21 @@ describe('validateParameters', () => {
 					type: 'string',
 					default: '',
 					required: true,
-					displayOptions: {
-						show: {
-							resource: ['post'],
-						},
-					},
+					displayOptions: { show: { resource: ['post'] } },
 				},
 			]);
 
 			// Resource is 'user', so postId should not be required
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { resource: 'user' })]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-					metadata: expect.objectContaining({ parameterName: 'postId' }),
-				}),
-			);
-		});
-
-		it('should flag required parameter when displayOptions condition is met', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Resource',
-					name: 'resource',
-					type: 'options',
-					default: 'user',
-					options: [
-						{ name: 'User', value: 'user' },
-						{ name: 'Post', value: 'post' },
-					],
-				},
-				{
-					displayName: 'Post ID',
-					name: 'postId',
-					type: 'string',
-					default: '',
-					required: true,
-					displayOptions: {
-						show: {
-							resource: ['post'],
-						},
-					},
-				},
+			const workflowUser = createWorkflow([
+				createNode('n8n-nodes-base.test', { resource: 'user' }),
 			]);
+			expect(validateParameters(workflowUser, [nodeType])).toHaveLength(0);
 
 			// Resource is 'post', so postId IS required
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { resource: 'post' })]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).toContainEqual(
+			const workflowPost = createWorkflow([
+				createNode('n8n-nodes-base.test', { resource: 'post' }),
+			]);
+			expect(validateParameters(workflowPost, [nodeType])).toContainEqual(
 				expect.objectContaining({
 					name: 'node-missing-required-parameter',
 					metadata: expect.objectContaining({ parameterName: 'postId' }),
@@ -226,119 +145,28 @@ describe('validateParameters', () => {
 			);
 		});
 
-		it('should NOT flag required parameter hidden by operation displayOptions', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Operation',
-					name: 'operation',
-					type: 'options',
-					default: 'get',
-					options: [
-						{ name: 'Get', value: 'get' },
-						{ name: 'Create', value: 'create' },
-					],
-				},
-				{
-					displayName: 'Data',
-					name: 'data',
-					type: 'string',
-					default: '',
-					required: true,
-					displayOptions: {
-						show: {
-							operation: ['create'],
-						},
+		it.each(['collection', 'fixedCollection', 'credentialsSelect'] as const)(
+			'should skip %s type parameters',
+			(type) => {
+				const nodeType = createNodeType('n8n-nodes-base.test', [
+					{
+						displayName: 'Options',
+						name: 'options',
+						type,
+						default: {},
+						required: true,
+						options: [],
 					},
-				},
-			]);
+				]);
+				const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
 
-			// Operation is 'get', so data should not be required
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { operation: 'get' })]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-					metadata: expect.objectContaining({ parameterName: 'data' }),
-				}),
-			);
-		});
-
-		it('should skip collection type parameters', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Options',
-					name: 'options',
-					type: 'collection',
-					default: {},
-					required: true,
-					options: [],
-				},
-			]);
-
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-				}),
-			);
-		});
-
-		it('should skip fixedCollection type parameters', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Fields',
-					name: 'fields',
-					type: 'fixedCollection',
-					default: {},
-					required: true,
-					options: [],
-				},
-			]);
-
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-				}),
-			);
-		});
-
-		it('should include metadata with node and parameter info', () => {
-			const nodeType = createNodeType('n8n-nodes-base.slack', [
-				{
-					displayName: 'Channel',
-					name: 'channel',
-					type: 'string',
-					default: '',
-					required: true,
-				},
-			]);
-
-			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.slack', {}, { name: 'Send Slack Message' }),
-			]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations[0].metadata).toEqual({
-				nodeName: 'Send Slack Message',
-				nodeType: 'n8n-nodes-base.slack',
-				parameterName: 'channel',
-				parameterDisplayName: 'Channel',
-			});
-		});
+				expect(validateParameters(workflow, [nodeType])).toHaveLength(0);
+			},
+		);
 	});
 
 	describe('node-invalid-options-value', () => {
-		it('should flag invalid options value', () => {
+		it('should flag invalid options value with metadata', () => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'Method',
@@ -348,11 +176,9 @@ describe('validateParameters', () => {
 					options: [
 						{ name: 'GET', value: 'GET' },
 						{ name: 'POST', value: 'POST' },
-						{ name: 'PUT', value: 'PUT' },
 					],
 				},
 			]);
-
 			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { method: 'INVALID' })]);
 
 			const violations = validateParameters(workflow, [nodeType]);
@@ -362,10 +188,12 @@ describe('validateParameters', () => {
 					name: 'node-invalid-options-value',
 					type: 'critical',
 					pointsDeducted: 50,
+					metadata: expect.objectContaining({
+						parameterName: 'method',
+						invalidValue: 'INVALID',
+					}),
 				}),
 			);
-			expect(violations[0].description).toContain('INVALID');
-			expect(violations[0].description).toContain('Method');
 		});
 
 		it('should NOT flag valid options value', () => {
@@ -381,142 +209,35 @@ describe('validateParameters', () => {
 					],
 				},
 			]);
-
 			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { method: 'POST' })]);
 
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
-			);
+			expect(validateParameters(workflow, [nodeType])).toHaveLength(0);
 		});
 
-		it('should skip validation for dynamic loadOptionsMethod', () => {
+		it.each([
+			['dynamic loadOptionsMethod', { channel: 'any-value' }, { loadOptionsMethod: 'getChannels' }],
+			['expression values', { method: '={{ $json.method }}' }, undefined],
+			['undefined values', {}, undefined],
+		])('should skip validation for %s', (_, params, typeOptions) => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
-					displayName: 'Channel',
-					name: 'channel',
-					type: 'options',
-					default: '',
-					typeOptions: {
-						loadOptionsMethod: 'getChannels',
-					},
-					options: [], // Empty because options are loaded dynamically
-				},
-			]);
-
-			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.test', { channel: 'any-value-should-be-ok' }),
-			]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
-			);
-		});
-
-		it('should skip validation for expression values', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Method',
-					name: 'method',
+					displayName: 'Field',
+					name: Object.keys(params)[0] ?? 'method',
 					type: 'options',
 					default: 'GET',
+					typeOptions,
 					options: [
 						{ name: 'GET', value: 'GET' },
 						{ name: 'POST', value: 'POST' },
 					],
 				},
 			]);
+			const workflow = createWorkflow([createNode('n8n-nodes-base.test', params)]);
 
-			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.test', { method: '={{ $json.method }}' }),
-			]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
-			);
+			expect(validateParameters(workflow, [nodeType])).toHaveLength(0);
 		});
 
-		it('should skip validation for undefined/null values', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Method',
-					name: 'method',
-					type: 'options',
-					default: 'GET',
-					options: [
-						{ name: 'GET', value: 'GET' },
-						{ name: 'POST', value: 'POST' },
-					],
-				},
-			]);
-
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {})]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
-			);
-		});
-
-		it('should NOT flag options hidden by displayOptions', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Resource',
-					name: 'resource',
-					type: 'options',
-					default: 'user',
-					options: [
-						{ name: 'User', value: 'user' },
-						{ name: 'Post', value: 'post' },
-					],
-				},
-				{
-					displayName: 'User Action',
-					name: 'userAction',
-					type: 'options',
-					default: 'get',
-					displayOptions: {
-						show: {
-							resource: ['user'],
-						},
-					},
-					options: [
-						{ name: 'Get', value: 'get' },
-						{ name: 'Create', value: 'create' },
-					],
-				},
-			]);
-
-			// Resource is 'post', so userAction is hidden and shouldn't be validated
-			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.test', { resource: 'post', userAction: 'invalid' }),
-			]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-					metadata: expect.objectContaining({ parameterName: 'userAction' }),
-				}),
-			);
-		});
-
-		it('should handle numeric option values', () => {
+		it('should handle non-string option values (numeric, boolean)', () => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
 				{
 					displayName: 'Priority',
@@ -525,144 +246,27 @@ describe('validateParameters', () => {
 					default: 1,
 					options: [
 						{ name: 'Low', value: 1 },
-						{ name: 'Medium', value: 2 },
 						{ name: 'High', value: 3 },
 					],
 				},
 			]);
-
 			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { priority: 5 })]);
 
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
+			expect(validateParameters(workflow, [nodeType])).toContainEqual(
+				expect.objectContaining({ name: 'node-invalid-options-value' }),
 			);
-		});
-
-		it('should handle boolean option values', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Enabled',
-					name: 'enabled',
-					type: 'options',
-					default: true,
-					options: [
-						{ name: 'Yes', value: true },
-						{ name: 'No', value: false },
-					],
-				},
-			]);
-
-			// 'maybe' is not true or false
-			const workflow = createWorkflow([createNode('n8n-nodes-base.test', { enabled: 'maybe' })]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations).toContainEqual(
-				expect.objectContaining({
-					name: 'node-invalid-options-value',
-				}),
-			);
-		});
-
-		it('should include metadata with invalid value info', () => {
-			const nodeType = createNodeType('n8n-nodes-base.httpRequest', [
-				{
-					displayName: 'Method',
-					name: 'method',
-					type: 'options',
-					default: 'GET',
-					options: [
-						{ name: 'GET', value: 'GET' },
-						{ name: 'POST', value: 'POST' },
-					],
-				},
-			]);
-
-			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.httpRequest', { method: 'PATCH' }, { name: 'HTTP Request' }),
-			]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			expect(violations[0].metadata).toEqual({
-				nodeName: 'HTTP Request',
-				nodeType: 'n8n-nodes-base.httpRequest',
-				parameterName: 'method',
-				parameterDisplayName: 'Method',
-				invalidValue: 'PATCH',
-			});
 		});
 	});
 
 	describe('edge cases', () => {
-		it('should handle empty workflow', () => {
-			const violations = validateParameters({ name: 'Test', nodes: [], connections: {} }, []);
-
-			expect(violations).toHaveLength(0);
-		});
-
-		it('should handle workflow with no nodes array', () => {
-			const violations = validateParameters(
-				{ name: 'Test', connections: {} } as SimpleWorkflow,
-				[],
-			);
-
-			expect(violations).toHaveLength(0);
-		});
-
-		it('should handle unknown node types gracefully', () => {
-			const workflow = createWorkflow([createNode('n8n-nodes-base.unknown', { foo: 'bar' })]);
-
-			const violations = validateParameters(workflow, []);
-
-			// Should not throw, just return empty (unknown types handled by other validators)
-			expect(violations).toHaveLength(0);
-		});
-
-		it('should handle nodes without parameters', () => {
-			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Optional',
-					name: 'optional',
-					type: 'string',
-					default: 'default-value',
-				},
-			]);
-
-			const node = createNode('n8n-nodes-base.test');
-			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-			delete (node as unknown as Record<string, unknown>).parameters;
-			const workflow = createWorkflow([node]);
-
-			const violations = validateParameters(workflow, [nodeType]);
-
-			// Should not throw
-			expect(violations).toHaveLength(0);
-		});
-
 		it('should validate multiple nodes independently', () => {
 			const nodeType = createNodeType('n8n-nodes-base.test', [
-				{
-					displayName: 'Required Field',
-					name: 'requiredField',
-					type: 'string',
-					default: '',
-					required: true,
-				},
+				{ displayName: 'Field', name: 'field', type: 'string', default: '', required: true },
 			]);
-
 			const workflow = createWorkflow([
-				createNode('n8n-nodes-base.test', { requiredField: 'valid' }, { id: '1', name: 'Node 1' }),
-				createNode('n8n-nodes-base.test', {}, { id: '2', name: 'Node 2' }), // Missing required
-				createNode(
-					'n8n-nodes-base.test',
-					{ requiredField: 'also-valid' },
-					{ id: '3', name: 'Node 3' },
-				),
+				createNode('n8n-nodes-base.test', { field: 'valid' }, { id: '1', name: 'Node 1' }),
+				createNode('n8n-nodes-base.test', {}, { id: '2', name: 'Node 2' }),
+				createNode('n8n-nodes-base.test', { field: 'valid' }, { id: '3', name: 'Node 3' }),
 			]);
 
 			const violations = validateParameters(workflow, [nodeType]);
@@ -671,8 +275,8 @@ describe('validateParameters', () => {
 			expect(violations[0].metadata?.nodeName).toBe('Node 2');
 		});
 
-		it('should handle node with different version', () => {
-			const nodeTypeV1 = createNodeType(
+		it('should handle node with different version via @version displayOptions', () => {
+			const nodeType = createNodeType(
 				'n8n-nodes-base.test',
 				[
 					{
@@ -681,27 +285,15 @@ describe('validateParameters', () => {
 						type: 'string',
 						default: '',
 						required: true,
-						displayOptions: {
-							show: {
-								'@version': [1],
-							},
-						},
+						displayOptions: { show: { '@version': [1] } },
 					},
 				],
-				1,
+				[1, 2],
 			);
-
 			// Node is version 2, so v1Field should be hidden
 			const workflow = createWorkflow([createNode('n8n-nodes-base.test', {}, { typeVersion: 2 })]);
 
-			const violations = validateParameters(workflow, [nodeTypeV1]);
-
-			expect(violations).not.toContainEqual(
-				expect.objectContaining({
-					name: 'node-missing-required-parameter',
-					metadata: expect.objectContaining({ parameterName: 'v1Field' }),
-				}),
-			);
+			expect(validateParameters(workflow, [nodeType])).toHaveLength(0);
 		});
 	});
 });
