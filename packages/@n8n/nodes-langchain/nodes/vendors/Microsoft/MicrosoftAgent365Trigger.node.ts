@@ -71,7 +71,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Agent 365 is currently only available for Microsoft customers that have opted into the Copilot Frontier program. <a href="https://adoption.microsoft.com/en-us/copilot/frontier-program/" target="_blank">Learn more</a>.',
+					'This is an early preview for building Agents with Microsoft Agent 365 and n8n. You need to be part of the <a href="https://adoption.microsoft.com/copilot/frontier-program/" target="_blank">Frontier preview program</a> to get early access to Microsoft Agent 365. <a href="https://github.com/microsoft/Agent365-Samples/tree/main/nodejs/n8n/sample-agent" target="_blank">Learn more</a>',
 				name: 'previewNotice',
 				type: 'notice',
 				default: '',
