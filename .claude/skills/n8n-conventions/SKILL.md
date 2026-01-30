@@ -32,7 +32,7 @@ n8n uses a TypeScript monorepo with pnpm workspaces and Turbo build system.
 ### Strict Typing Rules
 
 - **Never use `any`** - Use `unknown` or proper types
-- **Avoid type casting with `as`** - Use `satisfies` instead
+- **Avoid type casting with `as`** - Use `satisfies` instead (except in test code where `as` is acceptable)
 - **Use type guards** when runtime checks are needed
 - **Define shared interfaces in `@n8n/api-types`** for cross-package communication
 
@@ -220,8 +220,8 @@ Add translations to `packages/@n8n/i18n`.
 
 - Use **Vitest** for unit tests
 - Use **@testing-library/vue** for component tests
-- Use **Playwright** for E2E tests (not Cypress)
-- Add `data-test-id` attributes for E2E selectors (no spaces)
+- Use **Playwright** for E2E tests
+- Add `data-testid` attributes for E2E selectors (no spaces)
 
 ```typescript
 import { render, screen } from '@testing-library/vue';
@@ -254,7 +254,9 @@ export class Workflow {
 
 ### Multi-Database Support
 
-Support SQLite, PostgreSQL, and MySQL. Avoid database-specific features.
+n8n application supports SQLite and PostgreSQL. Avoid database-specific features in application code.
+
+**Note:** When working on database nodes (MySQL Node, PostgreSQL Node, etc.), database-specific features are expected.
 
 ## Security Guidelines
 
