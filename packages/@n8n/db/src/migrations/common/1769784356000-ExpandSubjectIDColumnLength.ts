@@ -3,7 +3,7 @@ import type { MigrationContext, IrreversibleMigration } from '../migration-types
 const tmpTableName = 'tmp_dynamic_credential_entry';
 const tableName = 'dynamic_credential_entry';
 
-export class ExpandSubjectIDColumnLength1769690595000 implements IrreversibleMigration {
+export class ExpandSubjectIDColumnLength1769784356000 implements IrreversibleMigration {
 	async up({
 		copyTable,
 		escape,

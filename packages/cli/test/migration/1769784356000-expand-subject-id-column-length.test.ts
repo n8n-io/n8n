@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
-const MIGRATION_NAME = 'ExpandSubjectIDColumnLength1769690595000';
+const MIGRATION_NAME = 'ExpandSubjectIDColumnLength1769784356000';
 
 interface DynamicCredentialEntry {
 	credential_id: string;
