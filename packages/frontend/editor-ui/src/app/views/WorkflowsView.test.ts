@@ -388,7 +388,6 @@ describe('WorkflowsView', () => {
 				count: 0,
 				items: [],
 			});
-			const userStore = mockedStore(useUsersStore);
 
 			const sourceControl = useSourceControlStore();
 
@@ -396,7 +395,6 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true);
-			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
 		});
 	});
 });

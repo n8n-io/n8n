@@ -10,8 +10,7 @@ import {
 	mockGetSecretProviderTypes,
 } from './useSecretsProviders.mock';
 
-export function useSecretsProviders(options?: { useMockApi?: boolean }) {
-	// TODO: Set to false when backend API is ready and remove mock file
+export function useSecretsProvidersList(options?: { useMockApi?: boolean }) {
 	const USE_MOCK_API = options?.useMockApi ?? true;
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -22,6 +21,10 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 	const activeConnections = ref<SecretProviderConnection[]>([]);
 	const isLoadingProviderTypes = ref(false);
 	const isLoadingActiveConnections = ref(false);
+
+	// RBAC permissions
+	const canCreate = computed(() => rbacStore.hasScope('externalSecretsProvider:create'));
+	const canUpdate = computed(() => rbacStore.hasScope('externalSecretsProvider:update'));
 
 	async function fetchProviderTypes() {
 		isLoadingProviderTypes.value = true;
@@ -48,7 +51,6 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 			if (USE_MOCK_API) {
 				activeConnections.value = await mockGetSecretProviderConnections();
 			} else {
-				// TODO: Update when backend API returns SecretProviderConnection[]
 				activeConnections.value = await secretsProviderApi.getSecretProviderConnections(
 					rootStore.restApiContext,
 				);
@@ -69,9 +71,7 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 	);
 
 	const activeProviders = computed(() => {
-		return ([...activeConnections.value] as SecretProviderConnection[])
-			.filter((provider) => provider.isEnabled && provider.state === 'connected')
-			.sort((a, b) => b.name.localeCompare(a.name));
+		return [...activeConnections.value].sort((a, b) => b.name.localeCompare(a.name));
 	});
 
 	return {
@@ -79,6 +79,8 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 		fetchProviderTypes,
 		activeProviders,
 		fetchActiveConnections,
+		canCreate,
+		canUpdate,
 		isLoading,
 		isEnterpriseExternalSecretsEnabled,
 		secrets: computed(() => secrets.value),
