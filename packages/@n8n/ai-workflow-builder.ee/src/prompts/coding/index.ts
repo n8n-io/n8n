@@ -10,8 +10,10 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { generateWorkflowCode, SDK_API_CONTENT } from '@n8n/workflow-sdk';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
+import { SDK_API_CONTENT } from '../one-shot/sdk-api';
 
 /**
  * Escape curly brackets for LangChain prompt templates
@@ -160,7 +162,7 @@ return workflow('id', 'name')
   )));
 \`\`\`
 
-### AI Agent
+### AI Agent (Basic)
 \`\`\`typescript
 const openAiModel = languageModel({{
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -181,6 +183,153 @@ const aiAgent = node({{
 
 return workflow('id', 'name')
   .add(startTrigger.to(aiAgent));
+\`\`\`
+
+### AI Agent with Tools
+\`\`\`typescript
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {{
+    name: 'OpenAI Model',
+    parameters: {{}},
+    credentials: {{ openAiApi: newCredential('OpenAI') }},
+    position: [540, 500]
+  }}
+}});
+
+const calculatorTool = tool({{
+  type: '@n8n/n8n-nodes-langchain.toolCalculator',
+  version: 1,
+  config: {{ name: 'Calculator', parameters: {{}}, position: [700, 500] }}
+}});
+
+const aiAgent = node({{
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {{
+    name: 'Math Agent',
+    parameters: {{ promptType: 'define', text: 'You can use tools to help users' }},
+    subnodes: {{ model: openAiModel, tools: [calculatorTool] }},
+    position: [540, 300]
+  }}
+}});
+
+return workflow('ai-calculator', 'AI Calculator')
+  .add(startTrigger.to(aiAgent));
+\`\`\`
+
+### AI Agent with $fromAI (AI-Driven Parameters)
+\`\`\`typescript
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {{
+    name: 'OpenAI Model',
+    parameters: {{}},
+    credentials: {{ openAiApi: newCredential('OpenAI') }},
+    position: [540, 500]
+  }}
+}});
+
+const gmailTool = tool({{
+  type: 'n8n-nodes-base.gmailTool',
+  version: 1,
+  config: ($) => ({{
+    name: 'Gmail Tool',
+    parameters: {{
+      sendTo: $.fromAI('recipient', 'Email address'),
+      subject: $.fromAI('subject', 'Email subject'),
+      message: $.fromAI('body', 'Email content')
+    }},
+    credentials: {{ gmailOAuth2: newCredential('Gmail') }},
+    position: [700, 500]
+  }})
+}});
+
+const aiAgent = node({{
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {{
+    name: 'Email Agent',
+    parameters: {{ promptType: 'define', text: 'You can send emails' }},
+    subnodes: {{ model: openAiModel, tools: [gmailTool] }},
+    position: [540, 300]
+  }}
+}});
+
+return workflow('ai-email', 'AI Email Sender')
+  .add(startTrigger.to(aiAgent));
+\`\`\`
+
+### Multiple Triggers (Separate Chains)
+\`\`\`typescript
+// Each trigger has its own processing chain
+const webhookTrigger = trigger({{
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: {{ name: 'Webhook', position: [240, 200] }}
+}});
+
+const processWebhook = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Webhook', parameters: {{}}, position: [540, 200] }}
+}});
+
+const scheduleTrigger = trigger({{
+  type: 'n8n-nodes-base.scheduleTrigger',
+  version: 1.3,
+  config: {{ name: 'Daily Schedule', parameters: {{}}, position: [240, 500] }}
+}});
+
+const processSchedule = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Schedule', parameters: {{}}, position: [540, 500] }}
+}});
+
+return workflow('id', 'name')
+  .add(webhookTrigger.to(processWebhook))
+  .add(scheduleTrigger.to(processSchedule));
+\`\`\`
+
+### Fan-In (Multiple Triggers, Shared Processing)
+\`\`\`typescript
+// Each trigger's execution runs in COMPLETE ISOLATION.
+// Different branches have no effect on each other.
+// Never duplicate chains for "isolation" - it's already guaranteed.
+
+const webhookTrigger = trigger({{
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: {{ name: 'Webhook Trigger', position: [240, 200] }}
+}});
+
+const scheduleTrigger = trigger({{
+  type: 'n8n-nodes-base.scheduleTrigger',
+  version: 1.3,
+  config: {{ name: 'Daily Schedule', position: [240, 500] }}
+}});
+
+// Processing chain defined ONCE
+const processData = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Data', parameters: {{}}, position: [540, 350] }}
+}});
+
+const sendNotification = node({{
+  type: 'n8n-nodes-base.slack',
+  version: 2.3,
+  config: {{ name: 'Notify Slack', parameters: {{}}, position: [840, 350] }}
+}});
+
+// Both triggers connect to the SAME processing chain
+return workflow('id', 'name')
+  .add(webhookTrigger.to(processData))
+  .add(scheduleTrigger.to(processData))
+  .add(processData.to(sendNotification));
 \`\`\`
 </code_patterns>`;
 
@@ -237,14 +386,25 @@ return workflow('unique-id', 'Workflow Name')
   .add(startTrigger.to(processData));
 \`\`\`
 
+## CRITICAL RULES
+
+**NO IMPORT STATEMENTS** - This is a common error that WILL cause failures:
+- NEVER include \`import\` statements at the top of your code
+- All functions (workflow, trigger, node, etc.) are already pre-loaded and available
+- Just use them directly: \`const myTrigger = trigger({{...}})\`
+
+**NO UNDEFINED VARIABLES** - Another common error:
+- Do not reference variables that don't exist (like \`runOnceForAllItems\`)
+- Only use the SDK functions documented in the API reference
+- If you need a specific mode, pass it as a parameter, don't reference it as a variable
+
 ## Important Reminders
 
 1. **Get node details first** - ALWAYS call get_node_details before generating code
 2. **Define nodes first** - Declare all nodes as constants before the return statement
-3. **No imports** - Never include import statements (functions are pre-loaded)
-4. **No $env** - Use placeholder() for user input values
-5. **Use credentials** - Use newCredential('Name') for authentication
-6. **Follow the plan** - Generate code that matches the plan structure exactly
+3. **No $env** - Use placeholder() for user input values
+4. **Use credentials** - Use newCredential('Name') for authentication
+5. **Follow the plan** - Generate code that matches the plan structure exactly
 </output_format>`;
 
 /**
