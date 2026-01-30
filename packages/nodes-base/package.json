@@ -55,6 +55,7 @@
       "dist/credentials/BitlyApi.credentials.js",
       "dist/credentials/BitlyOAuth2Api.credentials.js",
       "dist/credentials/BitwardenApi.credentials.js",
+      "dist/credentials/BoondManagerJwtClientApi.credentials.js",
       "dist/credentials/BoxOAuth2Api.credentials.js",
       "dist/credentials/BrandfetchApi.credentials.js",
       "dist/credentials/BubbleApi.credentials.js",
