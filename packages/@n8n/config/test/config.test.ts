@@ -68,14 +68,6 @@ describe('GlobalConfig', () => {
 				maxQueryExecutionTime: 0,
 				options: 'error',
 			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
-				poolSize: 10,
-			},
 			postgresdb: {
 				database: 'n8n',
 				host: 'localhost',
@@ -84,6 +76,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,7 +86,6 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -288,6 +281,8 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
 		},
 		logging: {
 			level: 'info',
@@ -456,7 +451,6 @@ describe('GlobalConfig', () => {
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
