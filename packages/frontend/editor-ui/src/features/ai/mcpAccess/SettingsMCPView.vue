@@ -16,14 +16,23 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nTabs,
+	N8nTooltip,
+	N8nButton,
+	N8nText,
+	N8nLink,
+	N8nInputLabel,
+	N8nInput,
+} from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 
-type MCPTabs = 'workflows' | 'oauth';
+type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -47,6 +56,10 @@ const tabs = ref<Array<TabOptions<MCPTabs>>>([
 		label: i18n.baseText('settings.mcp.tabs.oauth'),
 		value: 'oauth',
 	},
+	{
+		label: i18n.baseText('settings.mcp.tabs.oauthSettings'),
+		value: 'settings',
+	},
 ]);
 
 const workflowsLoading = ref(false);
@@ -54,6 +67,10 @@ const availableWorkflows = ref<WorkflowListItem[]>([]);
 
 const oAuthClientsLoading = ref(false);
 const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
+
+const redirectUrisInput = ref('');
+const redirectUrisError = ref('');
+const redirectUrisLoading = ref(false);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
@@ -71,6 +88,8 @@ const onTabSelected = async (tab: MCPTabs) => {
 	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
 		await fetchoAuthCLients();
 		telemetry.track('User clicked connected clients tab');
+	} else if (tab === 'settings' && mcpStore.allowedRedirectUris.length === 0) {
+		await loadRedirectUris();
 	}
 };
 
@@ -194,6 +213,89 @@ const openConnectWorkflowsModal = () => {
 	telemetry.track('User clicked connect workflows from mcp settings');
 };
 
+const loadRedirectUris = async () => {
+	try {
+		const uris = await mcpStore.fetchAllowedRedirectUris();
+		redirectUrisInput.value = uris.join(', ');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.allowedRedirectUris.error.loading'));
+	}
+};
+
+const validateRedirectUris = (urisString: string): { valid: boolean; error?: string } => {
+	const uris = urisString
+		.split(',')
+		.map((uri) => uri.trim())
+		.filter((uri) => uri.length > 0);
+
+	// Empty list is valid (backward compatible - no restrictions)
+	if (uris.length === 0) {
+		return { valid: true };
+	}
+
+	for (const uri of uris) {
+		try {
+			const url = new URL(uri);
+
+			if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+				return {
+					valid: false,
+					error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.invalidProtocol', {
+						interpolate: { url: uri },
+					}),
+				};
+			}
+
+			const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+			if (!isLocalhost && url.protocol !== 'https:') {
+				return {
+					valid: false,
+					error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.httpsRequired', {
+						interpolate: { url: uri },
+					}),
+				};
+			}
+		} catch (error) {
+			return {
+				valid: false,
+				error: i18n.baseText('settings.mcp.allowedRedirectUris.validation.invalidUrl', {
+					interpolate: { url: uri },
+				}),
+			};
+		}
+	}
+
+	return { valid: true };
+};
+
+const saveRedirectUris = async () => {
+	redirectUrisError.value = '';
+
+	const validation = validateRedirectUris(redirectUrisInput.value);
+	if (!validation.valid) {
+		redirectUrisError.value = validation.error ?? '';
+		return;
+	}
+
+	try {
+		redirectUrisLoading.value = true;
+		const uris = redirectUrisInput.value
+			.split(',')
+			.map((uri) => uri.trim())
+			.filter((uri) => uri.length > 0);
+
+		await mcpStore.setAllowedRedirectUris(uris);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.allowedRedirectUris.success'),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.allowedRedirectUris.error.saving'));
+	} finally {
+		redirectUrisLoading.value = false;
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (!mcpStore.mcpAccessEnabled) {
@@ -282,6 +384,40 @@ onMounted(async () => {
 					@revoke-client="revokeClientAccess"
 					@refresh="onTableRefresh"
 				/>
+				<section
+					v-else-if="selectedTab === 'settings'"
+					:class="$style['oauth-settings-content']"
+					data-test-id="mcp-oauth-settings-tab"
+				>
+					<div :class="$style['settings-description']">
+						<N8nText color="text-light" size="small">
+							{{ i18n.baseText('settings.mcp.allowedRedirectUris.description') }}
+						</N8nText>
+					</div>
+					<N8nInputLabel :label="i18n.baseText('settings.mcp.allowedRedirectUris.label')">
+						<N8nInput
+							v-model="redirectUrisInput"
+							type="textarea"
+							:rows="6"
+							:placeholder="i18n.baseText('settings.mcp.allowedRedirectUris.placeholder')"
+							:disabled="!canToggleMCP"
+							data-test-id="mcp-redirect-uris-input"
+						/>
+					</N8nInputLabel>
+					<div v-if="redirectUrisError" :class="$style['error-message']">
+						<N8nText color="danger" size="small">{{ redirectUrisError }}</N8nText>
+					</div>
+					<div :class="$style['save-button-container']">
+						<N8nButton
+							:label="i18n.baseText('settings.mcp.allowedRedirectUris.save')"
+							:loading="redirectUrisLoading"
+							:disabled="!canToggleMCP"
+							size="small"
+							data-test-id="mcp-redirect-uris-save-button"
+							@click="saveRedirectUris"
+						/>
+					</div>
+				</section>
 			</main>
 		</div>
 	</div>
@@ -320,5 +456,26 @@ onMounted(async () => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+.oauth-settings-content {
+	padding: var(--spacing--lg);
+	max-width: 800px;
+}
+
+.settings-description {
+	margin-bottom: var(--spacing--lg);
+	padding: var(--spacing--sm);
+	background-color: var(--color--background--light-2);
+	border-radius: var(--radius);
+	border-left: calc(var(--border-width) * 3) solid var(--color--primary);
+}
+
+.error-message {
+	margin-top: var(--spacing--2xs);
+}
+
+.save-button-container {
+	margin-top: var(--spacing--sm);
 }
 </style>

@@ -10,8 +10,10 @@ import {
 	Param,
 	ProjectScope,
 } from '@n8n/decorators';
+import { ensureError } from 'n8n-workflow';
 import type { Response } from 'express';
 
+import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -66,6 +68,26 @@ export class McpSettingsController {
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
+	}
+
+	@GlobalScope('mcp:manage')
+	@Get('/oauth/allowed-redirect-uris')
+	async getAllowedRedirectUris() {
+		const uris = await this.mcpSettingsService.getAllowedRedirectUris();
+		return { uris };
+	}
+
+	@GlobalScope('mcp:manage')
+	@Patch('/oauth/allowed-redirect-uris')
+	async updateAllowedRedirectUris(@Body dto: UpdateAllowedRedirectUrisDto) {
+		try {
+			await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
+			return { success: true };
+		} catch (error) {
+			const errorForSure = ensureError(error);
+			this.logger.error('Failed to update allowed redirect URIs', { error: errorForSure });
+			throw new BadRequestError(errorForSure.message);
+		}
 	}
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })
