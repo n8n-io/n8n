@@ -46,26 +46,10 @@ export class Postgres implements ICredentialType {
 				'Make sure this value times the number of workers you have is lower than the maximum number of connections your postgres instance allows.',
 		},
 		{
-			displayName: 'Ignore SSL Issues (Insecure)',
-			name: 'allowUnauthorizedCerts',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to connect even if SSL certificate validation is not possible',
-		},
-		{
 			displayName: 'SSL',
 			name: 'ssl',
 			type: 'options',
-			displayOptions: {
-				show: {
-					allowUnauthorizedCerts: [false],
-				},
-			},
 			options: [
-				{
-					name: 'Allow',
-					value: 'allow',
-				},
 				{
 					name: 'Disable',
 					value: 'disable',
@@ -76,6 +60,79 @@ export class Postgres implements ICredentialType {
 				},
 			],
 			default: 'disable',
+		},
+		{
+			displayName: 'Ignore SSL Issues (Insecure)',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible.',
+			displayOptions: {
+				show: {
+					ssl: ['require'],
+				},
+			},
+		},
+		{
+			displayName: 'Server name override for SSL',
+			name: 'servername',
+			type: 'string',
+			default: '',
+			description:
+				'Override the server name used to verify the certificate. Use this when the host is an IP but has a certificate from a recognized CA.',
+			displayOptions: {
+				show: {
+					ssl: ['require'],
+				},
+			},
+		},
+		{
+			displayName: 'CA Certificate',
+			name: 'caCert',
+			type: 'string',
+			default: '',
+			description:
+				'Certificate for the CA root that should be used to verify the server certificate. By default, all system roots are used.',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['require'],
+				},
+			},
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'clientCert',
+			type: 'string',
+			default: '',
+			description:
+				'Client certificate to provide to the server, in case the server requires client certificates.',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['require'],
+				},
+			},
+		},
+		{
+			displayName: 'Client Key',
+			name: 'clientKey',
+			type: 'string',
+			default: '',
+			description: 'Client key corresponding to the client certificate',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['require'],
+				},
+			},
 		},
 		{
 			displayName: 'Port',
