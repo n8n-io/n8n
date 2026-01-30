@@ -19,6 +19,13 @@ import { KafkaTrigger } from '../KafkaTrigger.node';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
+jest.mock('n8n-workflow', () => {
+	const actual = jest.requireActual('n8n-workflow');
+	return {
+		...actual,
+		sleep: jest.fn().mockResolvedValue(undefined),
+	};
+});
 
 describe('KafkaTrigger Node', () => {
 	let mockKafka: jest.Mocked<Kafka>;
@@ -70,20 +77,36 @@ describe('KafkaTrigger Node', () => {
 			}),
 		);
 
+		// Helper to publish a single message using eachBatch (since we now always use eachBatch)
 		publishMessage = async (message: Partial<KafkaMessage>) => {
-			await mockEachMessageHolder.handler({
-				message: {
-					attributes: 1,
-					key: Buffer.from('messageKey'),
-					offset: '0',
-					timestamp: new Date().toISOString(),
-					value: Buffer.from('message'),
-					headers: {} as IHeaders,
-					...message,
-				} as RecordBatchEntry,
-				partition: 0,
-				topic: 'test-topic',
+			await mockEachBatchHolder.handler({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: [
+						{
+							attributes: 1,
+							key: Buffer.from('messageKey'),
+							offset: '0',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message'),
+							headers: {} as IHeaders,
+							...message,
+						},
+					] as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => '0',
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: jest.fn(),
 				heartbeat: jest.fn(),
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: jest.fn(() => true),
+				isStale: jest.fn(() => false),
 				pause: jest.fn(),
 			});
 		};
@@ -139,6 +162,7 @@ describe('KafkaTrigger Node', () => {
 		const { close, emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -369,6 +393,7 @@ describe('KafkaTrigger Node', () => {
 		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
 			mode: 'manual',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -397,6 +422,38 @@ describe('KafkaTrigger Node', () => {
 		await publishMessage({ value: Buffer.from('test') });
 
 		expect(emit).toHaveBeenCalledWith([[{ json: { message: 'test', topic: 'test-topic' } }]]);
+	});
+
+	it('should use immediate emit in manual mode even when parallelProcessing is false (v1.1)', async () => {
+		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
+			mode: 'manual',
+			node: {
+				typeVersion: 1.1,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						parallelProcessing: false,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await manualTriggerFunction?.();
+
+		await publishMessage({ value: Buffer.from('test-message') });
+
+		expect(emit).toHaveBeenCalledWith([
+			[{ json: { message: 'test-message', topic: 'test-topic' } }],
+		]);
+		expect(emit.mock.calls[0][2]).toBeUndefined();
 	});
 
 	it('should handle sequential processing when parallelProcessing is false', async () => {
@@ -738,6 +795,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -908,6 +966,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -1023,6 +1082,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
