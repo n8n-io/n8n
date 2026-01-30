@@ -10,6 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	Mysql2Pool,
+	Mysql2PoolConnection,
 	ParameterMatch,
 	QueryMode,
 	QueryValues,
@@ -320,7 +321,17 @@ export function configureQueryRunner(
 		let returnData: INodeExecutionData[] = [];
 		const mode = (options.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
-		const connection = await pool.getConnection();
+		let connection: Mysql2PoolConnection;
+		try {
+			connection = await pool.getConnection();
+		} catch (e) {
+			const error = parseMySqlError.call(this, e);
+			if (!this.continueOnFail()) {
+				throw error;
+			}
+
+			return [{ json: { message: error.message, error: { ...error } } }];
+		}
 
 		if (mode === BATCH_MODE.SINGLE) {
 			const formattedQueries = queries.map(({ query, values }) => connection.format(query, values));
@@ -533,7 +544,7 @@ export function addWhereClauses(
 		}${valueReplacement}${operator}`;
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [`${query}${whereQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function addSortRules(
@@ -552,7 +563,7 @@ export function addSortRules(
 		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${direction}${endWith}`;
 	});
 
-	return [`${query}${orderByQuery}`, replacements.concat(...values)];
+	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function replaceEmptyStringsByNulls(

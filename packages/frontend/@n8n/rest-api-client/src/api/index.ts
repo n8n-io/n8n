@@ -13,7 +13,6 @@ export * from './nodeTypes';
 export * from './npsSurvey';
 export * from './orchestration';
 export * from './provisioning';
-export * from './prompts';
 export * from './roles';
 export * from './settings';
 export * from './module-settings';
