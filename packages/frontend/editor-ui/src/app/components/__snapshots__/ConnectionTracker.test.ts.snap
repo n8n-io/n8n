@@ -1,0 +1,173 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ConnectionTracker > should not render error when connected and online 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    
+    
+  </span>
+</div>
+`;
+
+exports[`ConnectionTracker > should not render error when push connected and connection not requested 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    
+    
+  </span>
+</div>
+`;
+
+exports[`ConnectionTracker > should render network error when both offline and push disconnected 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    <div
+      class="connection-lost"
+      data-v-f4a2fe1d=""
+    >
+      
+      
+      
+      <span
+        class=""
+        data-grace-area-trigger=""
+        data-state="closed"
+      >
+        
+        
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
+          <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
+            icon="triangle-alert"
+            spin="false"
+          />
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Offline
+            
+          </span>
+        </span>
+        
+        
+      </span>
+      <!--v-if-->
+      
+      
+      
+    </div>
+  </span>
+</div>
+`;
+
+exports[`ConnectionTracker > should render network error when offline 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    <div
+      class="connection-lost"
+      data-v-f4a2fe1d=""
+    >
+      
+      
+      
+      <span
+        class=""
+        data-grace-area-trigger=""
+        data-state="closed"
+      >
+        
+        
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
+          <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
+            icon="triangle-alert"
+            spin="false"
+          />
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Offline
+            
+          </span>
+        </span>
+        
+        
+      </span>
+      <!--v-if-->
+      
+      
+      
+    </div>
+  </span>
+</div>
+`;
+
+exports[`ConnectionTracker > should render push error when push disconnected and online 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    <div
+      class="connection-lost"
+      data-v-f4a2fe1d=""
+    >
+      
+      
+      
+      <span
+        class=""
+        data-grace-area-trigger=""
+        data-state="closed"
+      >
+        
+        
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
+          <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
+            icon="triangle-alert"
+            spin="false"
+          />
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Connection lost
+            
+          </span>
+        </span>
+        
+        
+      </span>
+      <!--v-if-->
+      
+      
+      
+    </div>
+  </span>
+</div>
+`;

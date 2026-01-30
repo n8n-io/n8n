@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
-import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
+import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
-		<PushConnectionTracker class="actions">
+		<ConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
@@ -464,7 +464,7 @@ onBeforeUnmount(() => {
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
 			/>
-		</PushConnectionTracker>
+		</ConnectionTracker>
 	</div>
 </template>
 
