@@ -5,6 +5,7 @@ import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/app/constants';
 
 import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/app/utils/nodeViewUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSource, getNodeIconSize } from '@/app/utils/nodeIcon';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
@@ -41,6 +42,12 @@ const actionData = computed(() => getActionData(props.action));
 
 const isTriggerAction = (action: ActionTypeDescription) =>
 	action.name?.toLowerCase().includes('trigger') || action.name === WEBHOOK_NODE_TYPE;
+
+const iconSize = computed(() => {
+	const iconSource = getNodeIconSource(props.action);
+	const iconName = iconSource?.type === 'icon' ? iconSource.name : undefined;
+	return getNodeIconSize('nodeList', iconName);
+});
 
 function onDragStart(event: DragEvent): void {
 	/**
@@ -115,7 +122,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 			</div>
 		</template>
 		<template #icon>
-			<NodeIcon :node-type="action" :size="20" />
+			<NodeIcon :node-type="action" :size="iconSize" />
 		</template>
 	</N8nNodeCreatorNode>
 </template>
@@ -126,6 +133,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 	--node-creator--name--font-weight: var(--font-weight--regular);
 	--trigger-icon--color--background: #{$trigger-icon-background-color};
 	--trigger-icon--border-color: #{$trigger-icon-border-color};
+	--node--icon--size: 20px;
 	--node--icon--margin-right: var(--spacing--xs);
 
 	margin-left: var(--spacing--sm);

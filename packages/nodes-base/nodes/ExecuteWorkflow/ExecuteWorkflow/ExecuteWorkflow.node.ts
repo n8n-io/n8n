@@ -17,8 +17,7 @@ export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Sub-workflow',
 		name: 'executeWorkflow',
-		icon: 'icon:node-execute-sub-workflow',
-		iconColor: 'orange-red',
+		icon: 'node:execute-sub-workflow-2',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',

@@ -14,6 +14,7 @@ import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
@@ -79,7 +80,15 @@ const classes = computed(() => {
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+const iconName = computed(() => {
+	const source = renderOptions.value.icon;
+	return source?.type === 'icon' ? source.name : undefined;
+});
+
+const iconSize = computed(() => {
+	if (renderOptions.value.configuration) return 30;
+	return getNodeIconSize('canvas', iconName.value);
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(

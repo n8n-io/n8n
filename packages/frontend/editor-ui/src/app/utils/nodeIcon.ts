@@ -13,7 +13,25 @@ import {
 	type IWorkflowDataProxyAdditionalKeys,
 	isExpression,
 } from 'n8n-workflow';
+import { isNodeIcon } from '@n8n/design-system';
 import { getThemedValue } from './nodeTypesUtils';
+import { getNodeCategoryColorVar } from './nodeCategoryColor';
+
+export { isNodeIcon } from '@n8n/design-system';
+
+// Icon sizes for different contexts - new node icons are larger than legacy icons
+export const NODE_ICON_SIZES = {
+	canvas: { new: 48, old: 40 },
+	nodeList: { new: 24, old: 20 },
+	ndvHeader: { new: 24, old: 20 },
+} as const;
+
+export type NodeIconContext = keyof typeof NODE_ICON_SIZES;
+
+export function getNodeIconSize(context: NodeIconContext, iconName?: string): number {
+	const sizes = NODE_ICON_SIZES[context];
+	return isNodeIcon(iconName) ? sizes.new : sizes.old;
+}
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
 type NodeIconSourceFile = {
@@ -95,7 +113,18 @@ export const getBadgeIconUrl = (
 	return getThemedValue(nodeType.badgeIconUrl, useUIStore().appliedTheme);
 };
 
-const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
+const getNodeIconColor = (nodeType: IconNodeType, iconName?: string): string | undefined => {
+	// For new node icons, derive color from category
+	if (iconName && isNodeIcon(iconName)) {
+		// Get the full node type with codex info if available
+		const fullNodeType =
+			'name' in nodeType && nodeType.name ? useNodeTypesStore().getNodeType(nodeType.name) : null;
+		if (fullNodeType) {
+			return getNodeCategoryColorVar(fullNodeType);
+		}
+	}
+
+	// Legacy icon color logic
 	if ('iconColor' in nodeType && nodeType.iconColor) {
 		return `var(--node--icon--color--${nodeType.iconColor})`;
 	}
@@ -121,7 +150,7 @@ const createFileIconSource = (src: string, nodeType: IconNodeType): NodeIconSour
 const createNamedIconSource = (name: string, nodeType: IconNodeType): NodeIconSource => ({
 	type: 'icon',
 	name,
-	color: getNodeIconColor(nodeType),
+	color: getNodeIconColor(nodeType, name),
 	badge: getNodeBadgeIconSource(nodeType),
 });
 
@@ -182,7 +211,10 @@ export function getNodeIconSource(
 			return undefined;
 		}
 
-		return createNamedIconSource(iconName, fullNodeType);
+		// For node icons (node:*), pass the full icon string including prefix
+		// For other icon types (fa:*, icon:*), pass just the icon name
+		const resolvedIconName = type === 'node' ? icon : iconName;
+		return createNamedIconSource(resolvedIconName, fullNodeType);
 	}
 
 	return undefined;

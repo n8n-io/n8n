@@ -43,7 +43,7 @@ export class Webhook extends Node {
 
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
-		icon: 'icon:node-webhook-trigger',
+		icon: 'node:webhook',
 		name: 'webhook',
 		group: ['trigger'],
 		version: [1, 1.1, 2, 2.1],

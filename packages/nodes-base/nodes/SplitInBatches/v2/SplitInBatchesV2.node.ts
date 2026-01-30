@@ -11,7 +11,7 @@ export class SplitInBatchesV2 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split In Batches',
 		name: 'splitInBatches',
-		icon: 'fa:th-large',
+		icon: 'node:loop-over-items',
 		group: ['organization'],
 		version: 2,
 		description: 'Split data into batches and iterate over each batch',

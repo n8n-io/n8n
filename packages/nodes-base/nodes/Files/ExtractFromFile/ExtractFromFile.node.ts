@@ -15,7 +15,7 @@ export class ExtractFromFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Extract from File',
 		name: 'extractFromFile',
-		icon: 'icon:node-extract-from-file',
+		icon: 'node:extract-from-file',
 		group: ['input'],
 		version: [1, 1.1],
 		description: 'Convert binary data to JSON',

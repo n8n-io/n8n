@@ -10,7 +10,7 @@ export class Limit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Limit',
 		name: 'limit',
-		icon: 'icon:node-limit',
+		icon: 'node:limit',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

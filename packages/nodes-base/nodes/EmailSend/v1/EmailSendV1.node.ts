@@ -14,7 +14,7 @@ import { prepareBinariesDataList } from '../../../utils/binary';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'fa:envelope',
+	icon: 'node:send-mail',
 	group: ['output'],
 	version: 1,
 	description: 'Sends an Email',

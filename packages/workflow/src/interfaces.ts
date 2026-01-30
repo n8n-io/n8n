@@ -2048,7 +2048,6 @@ export type ThemeIconColor =
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
-	| 'file-blue'
 	| 'orange'
 	| 'orange-red'
 	| 'pink-red'
@@ -2057,12 +2056,10 @@ export type ThemeIconColor =
 	| 'green'
 	| 'dark-green'
 	| 'azure'
-	| 'cyan'
 	| 'purple'
-	| 'crimson'
-	| 'code-orange';
+	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}` | `icon:${string}`;
+export type IconRef = `fa:${string}` | `node:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 

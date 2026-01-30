@@ -24,7 +24,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow Trigger',
 		name: 'executeWorkflowTrigger',
-		icon: 'icon:node-sub-workflow-trigger',
+		icon: 'node:execute-sub-workflow-1',
 		group: ['trigger'],
 		version: [1, 1.1],
 		description:

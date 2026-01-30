@@ -31,8 +31,7 @@ export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
 		name: 'outputParserStructured',
-		icon: 'icon:node-structured-output-parser',
-		iconColor: 'black',
+		icon: 'node:structured-output-parser',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		defaultVersion: 1.3,

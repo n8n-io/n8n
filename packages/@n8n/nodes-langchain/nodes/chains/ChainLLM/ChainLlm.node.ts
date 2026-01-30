@@ -24,13 +24,13 @@ export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
-		icon: 'icon:node-basic-llm-chain',
-		iconColor: 'black',
+		icon: 'node:basic-llm-chain',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],

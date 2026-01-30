@@ -11,6 +11,7 @@ import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/commu
 import { computed, ref } from 'vue';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSource, getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
@@ -143,6 +144,12 @@ const tag = computed(() => {
 	return undefined;
 });
 
+const iconSize = computed(() => {
+	const iconSource = getNodeIconSource(props.nodeType);
+	const iconName = iconSource?.type === 'icon' ? iconSource.name : undefined;
+	return getNodeIconSize('nodeList', iconName);
+});
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -191,7 +198,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon
 				:class="$style.nodeIcon"
 				:node-type="nodeType"
-				:size="20"
+				:size="iconSize"
 				color-default="var(--color--foreground--shade-2)"
 			/>
 		</template>

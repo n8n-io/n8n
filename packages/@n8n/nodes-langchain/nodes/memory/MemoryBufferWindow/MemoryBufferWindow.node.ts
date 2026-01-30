@@ -76,8 +76,7 @@ export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
-		icon: 'icon:node-simple-memory',
-		iconColor: 'black',
+		icon: 'node:simple-memory',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',

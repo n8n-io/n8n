@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import N8nNodeIcon from '.';
 import N8nIcon from '../N8nIcon';
-import type { IconName } from '../N8nIcon/icons';
+import type { IconName, NodeIconName } from '../N8nIcon/icons';
 import { isSupportedIconName } from '../N8nIcon/icons';
 
 type IconType = 'file' | 'icon' | 'unknown';
@@ -50,7 +50,7 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 
-const supportedIconName = computed((): IconName | undefined => {
+const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 	return isSupportedIconName(props.name) ? props.name : undefined;
 });
 </script>
