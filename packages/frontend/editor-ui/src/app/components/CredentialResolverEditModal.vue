@@ -383,7 +383,7 @@ onMounted(async () => {
 			<div :class="$style.header">
 				<div :class="$style.resolverInfo">
 					<div :class="$style.resolverIcon">
-						<N8nIconButton icon="database" type="tertiary" size="large" :disabled="true" />
+						<N8nIconButton variant="subtle" icon="database" size="large" :disabled="true" />
 					</div>
 					<div :class="$style.resolverName">
 						<N8nInlineTextEdit
@@ -399,10 +399,10 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.resolverActions">
 					<N8nIconButton
+						variant="subtle"
 						v-if="isEditMode"
 						:title="i18n.baseText('credentialResolverEdit.delete')"
 						icon="trash-2"
-						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						data-test-id="credential-resolver-delete-button"

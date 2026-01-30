@@ -44,14 +44,14 @@ const handleClearSelection = () => {
 			{{ getSelectedText() }}
 		</span>
 		<N8nButton
-			type="tertiary"
+			variant="subtle"
 			data-test-id="delete-selected-button"
 			:label="i18n.baseText('generic.delete')"
 			:class="$style.button"
 			@click="handleDeleteSelected"
 		/>
 		<N8nButton
-			type="tertiary"
+			variant="subtle"
 			data-test-id="clear-selection-button"
 			:label="getClearSelectionText()"
 			:class="$style.button"

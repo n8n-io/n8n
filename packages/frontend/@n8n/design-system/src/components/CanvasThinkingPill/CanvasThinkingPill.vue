@@ -34,8 +34,8 @@ const $style = useCssModule();
 			v-if="showStop"
 			:class="$style.stopButton"
 			:label="'Stop'"
-			type="secondary"
-			size="mini"
+			variant="subtle"
+			size="xsmall"
 			@click="emit('stop')"
 		/>
 	</N8nCanvasPill>

@@ -149,7 +149,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		<N8nText :class="$style.newMessage" color="text-light">
 			{{ locale.baseText('executionDetails.newMessage') }}
 		</N8nText>
-		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+		<N8nButton variant="subtle" class="mt-l" @click="handleStopClick">
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
@@ -161,9 +161,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
 		<N8nButton
+			variant="subtle"
 			data-test-id="stop-execution"
 			class="mt-l"
-			type="tertiary"
 			:disabled="!workflowPermissions.execute"
 			@click="handleStopClick"
 		>
@@ -270,8 +270,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					}"
 				>
 					<N8nButton
+						variant="ghost"
 						size="medium"
-						:type="debugButtonData.type"
 						:class="$style.debugLink"
 						:disabled="!workflowPermissions.update"
 					>
@@ -291,8 +291,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				>
 					<span class="retry-button">
 						<N8nIconButton
+							variant="subtle"
 							size="medium"
-							type="tertiary"
 							:title="locale.baseText('executionsList.retryExecution')"
 							:disabled="!workflowPermissions.update"
 							icon="redo-2"
@@ -318,11 +318,11 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				/>
 
 				<N8nIconButton
+					variant="subtle"
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!workflowPermissions.update"
 					icon="trash-2"
 					size="medium"
-					type="tertiary"
 					data-test-id="execution-preview-delete-button"
 					@click="onDeleteExecution"
 				/>

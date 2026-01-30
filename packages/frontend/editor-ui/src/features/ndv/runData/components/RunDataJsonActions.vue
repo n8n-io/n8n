@@ -196,10 +196,10 @@ function handleCopyClick(commandData: { command: string }) {
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<N8nIconButton
+			variant="subtle"
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
-			type="tertiary"
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
@@ -213,9 +213,9 @@ function handleCopyClick(commandData: { command: string }) {
 		>
 			<span class="el-dropdown-link">
 				<N8nIconButton
+					variant="subtle"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
-					type="tertiary"
 					:circle="false"
 				/>
 			</span>

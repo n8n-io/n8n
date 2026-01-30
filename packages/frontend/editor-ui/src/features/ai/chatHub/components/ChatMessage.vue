@@ -317,18 +317,16 @@ onBeforeMount(() => {
 				<div :class="$style.editFooter">
 					<N8nIconButton
 						v-if="message.type === 'human'"
-						native-type="button"
-						type="secondary"
+						variant="ghost"
 						icon="paperclip"
-						text
 						@click.stop="handleAttachClick"
 					/>
 					<div :class="$style.editActions">
-						<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						<N8nButton variant="subtle" size="small" @click="handleCancelEdit">
 							{{ i18n.baseText('chatHub.message.edit.cancel') }}
 						</N8nButton>
 						<N8nButton
-							type="primary"
+							variant="solid"
 							size="small"
 							:disabled="!editedText.trim() || isEditSubmitting"
 							:loading="isEditSubmitting"

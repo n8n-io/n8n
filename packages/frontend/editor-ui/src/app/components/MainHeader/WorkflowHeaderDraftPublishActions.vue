@@ -308,9 +308,9 @@ defineExpose({
 					</div>
 				</template>
 				<N8nButton
+					variant="subtle"
 					:loading="autoSaveForPublish"
 					:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
-					type="secondary"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
 				>

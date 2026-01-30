@@ -5,7 +5,7 @@ import Button from './Button.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 const meta = {
-	title: 'Components v2/Button',
+	title: 'Deprecated/Button (v2 standalone)',
 	component: Button,
 	argTypes: {
 		variant: {

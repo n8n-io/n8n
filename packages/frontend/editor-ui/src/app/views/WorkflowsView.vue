@@ -1806,9 +1806,9 @@ const onNameSubmit = async (name: string) => {
 					</span>
 				</template>
 				<N8nButton
+					variant="subtle"
 					size="small"
 					icon="folder-plus"
-					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
 					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
@@ -1827,9 +1827,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="createAIStarterWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}
@@ -1865,9 +1865,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}

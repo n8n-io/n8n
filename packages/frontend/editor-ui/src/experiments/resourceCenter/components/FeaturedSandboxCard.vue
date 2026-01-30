@@ -73,8 +73,8 @@ const handleClick = () => {
 			</div>
 			<div :class="$style.actions">
 				<N8nButton
+					variant="subtle"
 					:label="i18n.baseText('experiments.resourceCenter.sandbox.tryItNow')"
-					type="secondary"
 					size="small"
 					@click.stop="handleClick"
 				/>

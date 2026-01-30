@@ -244,20 +244,20 @@ onMounted(async () => {
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 				<div :class="$style.actions">
 					<N8nButton
+						variant="solid"
 						v-if="showConnectWorkflowsButton"
 						:label="i18n.baseText('settings.mcp.connectWorkflows')"
 						data-test-id="mcp-connect-workflows-header-button"
 						size="small"
-						type="primary"
 						@click="openConnectWorkflowsModal"
 					/>
 					<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
 						<N8nButton
+							variant="subtle"
+							iconOnly
 							data-test-id="mcp-workflows-refresh-button"
 							size="small"
-							type="tertiary"
 							icon="refresh-cw"
-							:square="true"
 							@click="onTableRefresh"
 						/>
 					</N8nTooltip>

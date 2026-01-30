@@ -379,8 +379,8 @@ onMounted(() => {
 								{{ i18n.baseText('settings.users.actions.generateInviteLink') }}
 							</template>
 							<N8nIconButton
+								variant="subtle"
 								icon="link"
-								type="tertiary"
 								data-test-id="generate-invite-link-button"
 								@click="onCopyInviteLink(user)"
 							></N8nIconButton>
@@ -390,8 +390,8 @@ onMounted(() => {
 								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>
 							<N8nIconButton
+								variant="subtle"
 								icon="link"
-								type="tertiary"
 								data-test-id="copy-invite-link-button"
 								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"

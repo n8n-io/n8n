@@ -659,9 +659,9 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="refresh-cw"
-					type="secondary"
 					:loading="state.refreshInProgress"
 					@click="initFetching(true)"
 				>

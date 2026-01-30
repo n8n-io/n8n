@@ -347,9 +347,9 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 			<N8nButton
+				variant="subtle"
 				:disabled="!isTestEnabled"
 				size="large"
-				type="tertiary"
 				data-test-id="sso-test"
 				@click="onTest"
 			>

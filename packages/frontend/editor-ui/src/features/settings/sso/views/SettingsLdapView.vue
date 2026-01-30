@@ -734,8 +734,8 @@ onMounted(async () => {
 			</div>
 			<div class="pb-3xl">
 				<N8nButton
+					variant="subtle"
 					:label="i18n.baseText('settings.ldap.dryRun')"
-					type="secondary"
 					size="large"
 					class="mr-s"
 					:disabled="hasAnyChanges || !readyToSubmit"

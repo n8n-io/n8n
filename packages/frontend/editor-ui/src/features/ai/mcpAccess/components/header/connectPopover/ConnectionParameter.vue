@@ -71,10 +71,10 @@ const handleCopy = async (value: string) => {
 					placement="bottom"
 				>
 					<N8nButton
+						variant="subtle"
+						iconOnly
 						v-if="props.allowCopy && isSupported"
-						type="tertiary"
 						:icon="copied ? 'check' : 'copy'"
-						:square="true"
 						:class="$style['copy-button']"
 						:disabled="props.valueLoading"
 						@click="handleCopy(props.value)"

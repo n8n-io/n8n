@@ -221,7 +221,7 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.isWorkflowRunning = true;
 
 		const { getByRole } = renderComponent();
-		expect(getByRole('button').querySelector('.n8n-spinner')).toBeVisible();
+		expect(getByRole('button')).toHaveAttribute('aria-busy', 'true');
 	});
 
 	it('should be disabled if the node is disabled and show tooltip', async () => {

@@ -129,9 +129,8 @@ function onFocusNode() {
 				:content="i18n.baseText('ndv.execute.deactivated')"
 			>
 				<N8nIconButton
+					variant="ghost"
 					data-test-id="execute-node-button"
-					type="tertiary"
-					text
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
@@ -140,30 +139,27 @@ function onFocusNode() {
 				/>
 			</N8nTooltip>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
-				type="tertiary"
-				text
 				size="small"
 				icon="node-power"
 				:title="nodeDisabledTitle"
 				@click.stop="onToggleNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
 				@click.stop="onDeleteNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isFocusNodeVisible"
-				type="tertiary"
 				size="small"
-				text
 				icon="crosshair"
 				@click.stop="onFocusNode"
 			/>
@@ -173,10 +169,9 @@ function onFocusNode() {
 				@update="onChangeStickyColor"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				data-test-id="overflow-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-ellipsis"
 				@click.stop="onOpenContextMenu"
 			/>

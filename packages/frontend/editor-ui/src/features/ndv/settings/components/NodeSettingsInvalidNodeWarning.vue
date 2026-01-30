@@ -109,9 +109,9 @@ watch(isNodeDefined, () => {
 			</I18nT>
 			<div v-if="isOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
+					variant="solid"
 					v-if="isOwner"
 					icon="hard-drive-download"
-					type="primary"
 					data-test-id="install-community-node-button"
 					:loading="loading"
 					:disabled="loading"
@@ -120,8 +120,8 @@ watch(isNodeDefined, () => {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installButton.label') }}
 				</N8nButton>
 				<N8nButton
+					variant="subtle"
 					icon="external-link"
-					type="secondary"
 					@click="onViewDetailsClick"
 					data-test-id="view-details-button"
 				>

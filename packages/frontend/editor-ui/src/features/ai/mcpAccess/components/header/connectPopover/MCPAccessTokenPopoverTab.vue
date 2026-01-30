@@ -147,9 +147,9 @@ onMounted(async () => {
 						:show-after="MCP_TOOLTIP_DELAY"
 					>
 						<N8nButton
-							type="tertiary"
+							variant="subtle"
+							iconOnly
 							icon="refresh-cw"
-							:square="true"
 							:disabled="keyRotating"
 							@click="rotateKey"
 						/>
@@ -171,9 +171,9 @@ onMounted(async () => {
 				>
 					<N8nButton
 						v-if="isSupported && !loadingApiKey && !keyRotating"
-						type="tertiary"
+						variant="subtle"
+						iconOnly
 						:icon="copied ? 'check' : 'copy'"
-						:square="true"
 						:class="$style['copy-json-button']"
 						data-test-id="mcp-json-copy-button"
 						@click="handleConnectionStringCopy"

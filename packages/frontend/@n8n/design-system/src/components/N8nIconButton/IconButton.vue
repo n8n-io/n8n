@@ -4,16 +4,12 @@ import N8nButton from '../N8nButton';
 
 defineOptions({ name: 'N8nIconButton' });
 withDefaults(defineProps<IconButtonProps>(), {
-	type: 'primary',
 	size: 'medium',
 	loading: false,
-	outline: false,
-	text: false,
 	disabled: false,
-	active: false,
 });
 </script>
 
 <template>
-	<N8nButton square v-bind="{ ...$attrs, ...$props }" />
+	<N8nButton icon-only v-bind="{ ...$attrs, ...$props }" />
 </template>

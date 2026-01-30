@@ -124,8 +124,8 @@ const handlePublish = async () => {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						variant="subtle"
 						:disabled="publishing"
-						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-history-publish-cancel-button"
 						@click="onCancel"

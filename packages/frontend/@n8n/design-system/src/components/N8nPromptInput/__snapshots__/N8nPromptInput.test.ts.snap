@@ -28,13 +28,23 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
           <button
             aria-disabled="true"
             aria-live="polite"
-            class="button button primary small disabled withIcon square sendButton sendButton"
+            class="button button solid small iconOnly disabled withIcon sendButton"
             data-test-id="send-message-button"
             disabled=""
+            type="button"
           >
-            <span
-              class="icon"
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
             >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
               <svg
                 aria-hidden="true"
                 class="n8n-icon"
@@ -54,10 +64,11 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
                   stroke-width="2"
                 />
               </svg>
-            </span>
-            
-            
-            
+              
+              
+              
+              
+            </div>
           </button>
         </div>
       </div>
@@ -96,12 +107,22 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
         >
           <button
             aria-live="polite"
-            class="button button primary small withIcon square stopButton stopButton"
+            class="button button solid small iconOnly withIcon stopButton"
             data-test-id="send-message-button"
+            type="button"
           >
-            <span
-              class="icon"
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
             >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
               <svg
                 aria-hidden="true"
                 class="n8n-icon"
@@ -122,8 +143,10 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
                   width="10"
                 />
               </svg>
-            </span>
-            <!--v-if-->
+              
+              
+              
+            </div>
           </button>
         </div>
       </div>

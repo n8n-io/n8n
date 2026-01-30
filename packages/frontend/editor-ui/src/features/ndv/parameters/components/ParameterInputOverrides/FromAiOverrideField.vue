@@ -25,8 +25,8 @@ const emit = defineEmits<{
 			/>
 		</div>
 		<N8nIconButton
+			variant="subtle"
 			v-if="!isReadOnly"
-			type="tertiary"
 			:class="['n8n-input', $style.overrideCloseButton]"
 			:outline="false"
 			icon="x"

@@ -358,13 +358,13 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
-				<N8nButton type="secondary" text class="mr-2xs" :disabled="loading" @click="closeModal">
+				<N8nButton variant="ghost" class="mr-2xs" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
+					variant="solid"
 					:loading="loading"
 					:disabled="!projectId || loading"
-					type="primary"
 					data-test-id="project-move-resource-modal-button"
 					@click="moveResource"
 				>

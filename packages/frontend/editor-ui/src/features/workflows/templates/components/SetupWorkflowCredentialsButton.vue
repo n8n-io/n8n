@@ -93,12 +93,12 @@ onMounted(() => {
 
 <template>
 	<N8nButton
+		variant="subtle"
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		data-test-id="setup-credentials-button"
 		size="large"
 		icon="package-open"
-		type="secondary"
 		@click="openSetupModal()"
 	/>
 </template>

@@ -253,10 +253,10 @@ onMounted(() => {
 					@click="onSaveClick"
 				/>
 				<N8nButton
+					variant="subtle"
 					float="left"
 					:label="i18.baseText('mfa.button.back')"
 					size="large"
-					type="tertiary"
 					@click="onBackClick"
 				/>
 			</div>

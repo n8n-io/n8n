@@ -75,22 +75,22 @@ watch(runningTestRun, (run) => {
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
 			<N8nButton
+				variant="subtle"
 				v-if="runningTestRun"
 				:disabled="cancellingTestRun"
 				:class="$style.runOrStopTestButton"
 				size="small"
 				data-test-id="stop-test-button"
 				:label="locale.baseText('evaluation.stopTest')"
-				type="secondary"
 				@click="stopTest"
 			/>
 			<N8nButton
+				variant="solid"
 				v-else
 				:class="$style.runOrStopTestButton"
 				size="small"
 				data-test-id="run-test-button"
 				:label="locale.baseText('evaluation.runTest')"
-				type="primary"
 				@click="runTest"
 			/>
 		</div>

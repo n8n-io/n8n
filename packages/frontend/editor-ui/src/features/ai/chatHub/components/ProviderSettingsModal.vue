@@ -276,11 +276,11 @@ watch(
 						/>
 						<N8nIconButton
 							v-if="settings.credentialId"
-							native-type="button"
+							type="button"
+							variant="outline"
 							:title="i18n.baseText('settings.chatHub.providers.modal.edit.credential.clearButton')"
 							icon="x"
 							icon-size="large"
-							type="secondary"
 							@click="onCredentialDeselect"
 						/>
 					</div>
@@ -340,10 +340,10 @@ watch(
 		<template #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel">
+					<N8nButton variant="subtle" @click="onCancel">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
 					</N8nButton>
-					<N8nButton type="primary" @click="onConfirm" :disabled="isConfirmDisabled">
+					<N8nButton variant="solid" @click="onConfirm" :disabled="isConfirmDisabled">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.confirm') }}
 					</N8nButton>
 				</div>

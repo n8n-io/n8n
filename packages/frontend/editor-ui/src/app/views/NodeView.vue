@@ -2196,7 +2196,7 @@ onBeforeUnmount(() => {
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
-						type="tertiary"
+						variant="ghost"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
 						@click="logsStore.toggleOpen(false)"
@@ -2207,7 +2207,7 @@ onBeforeUnmount(() => {
 						:shortcut="{ keys: ['c'] }"
 					>
 						<CanvasChatButton
-							:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
+							:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
 							:label="i18n.baseText('chat.open')"
 							:class="$style.chatButton"
 							@click="onOpenChat"

@@ -218,8 +218,8 @@ watch(
 				:placement="'top'"
 			>
 				<N8nIconButton
+					variant="subtle"
 					icon="pen"
-					type="secondary"
 					:class="{
 						[$style.edit]: true,
 						[$style.invisible]: !props.selectedCredentialId,
@@ -242,7 +242,7 @@ watch(
 					:title="i18n.baseText('nodeCredentials.deleteCredential')"
 					icon="trash-2"
 					icon-size="large"
-					type="secondary"
+					variant="outline"
 					:disabled="!credentialPermissions.delete"
 					@click="deleteCredential()"
 				/>

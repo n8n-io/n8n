@@ -533,12 +533,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -612,10 +611,9 @@ watch(
 											:disabled="mappingEnabled || collapsingColumnIndex === i"
 										>
 											<N8nIconButton
+												variant="ghost"
 												:class="$style.collapseColumnButton"
-												type="tertiary"
-												size="xmini"
-												text
+												size="xsmall"
 												:icon="
 													collapsingColumnIndex === i ? 'chevrons-up-down' : 'chevrons-down-up'
 												"
@@ -699,12 +697,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"

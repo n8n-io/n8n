@@ -51,6 +51,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		@visible-change="onDropdownVisibleChange"
 	>
 		<N8nButton
+			variant="subtle"
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
 			icon="list-checks"
@@ -60,7 +61,6 @@ function onDropdownVisibleChange(visible: boolean) {
 				[$style.highlightDataButtonOpen]: isDropdownVisible,
 			}"
 			size="small"
-			type="secondary"
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>

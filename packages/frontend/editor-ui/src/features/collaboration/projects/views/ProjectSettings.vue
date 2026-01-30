@@ -549,7 +549,7 @@ onMounted(async () => {
 				</N8nText>
 				<div :class="$style.headerButtons">
 					<N8nButton
-						type="secondary"
+						variant="subtle"
 						native-type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
@@ -559,7 +559,7 @@ onMounted(async () => {
 					>
 					<N8nButton
 						:disabled="!isValid || !isDirty"
-						type="primary"
+						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
 						>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
@@ -678,7 +678,7 @@ onMounted(async () => {
 					i18n.baseText('projects.settings.danger.message')
 				}}</small>
 				<N8nButton
-					type="tertiary"
+					variant="subtle"
 					size="large"
 					native-type="button"
 					data-test-id="project-settings-delete-button"
