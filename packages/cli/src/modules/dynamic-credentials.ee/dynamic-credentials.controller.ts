@@ -74,7 +74,10 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
 	}
 
-	@Delete('/:id/revoke', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
+	@Delete('/:id/revoke', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
@@ -108,7 +111,10 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
 	}
 
-	@Post('/:id/authorize', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
+	@Post('/:id/authorize', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);

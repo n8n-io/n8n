@@ -40,7 +40,7 @@ export class WorkflowStatusController {
 	 * @throws {BadRequestError} When authorization header is missing or malformed
 	 */
 	@Get('/:workflowId/execution-status', {
-		skipAuth: true,
+		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
 	})
 	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {

@@ -157,7 +157,7 @@ export class AuthService {
 	}
 
 	getCookieToken(req: Request) {
-		// This models the behavior of
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
 		if (typeof req.cookies === 'object' && req.cookies !== null) {
 			const cookies = req.cookies as Record<string, string | undefined>;
 			return cookies[AUTH_COOKIE_NAME];
