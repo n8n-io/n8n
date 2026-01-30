@@ -1,11 +1,25 @@
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const asyncExecFile = promisify(execFile);
 
 const REQUEST_TIMEOUT = 30000;
+
+const NPM_ERROR_PATTERNS = {
+	PACKAGE_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR],
+	NO_VERSION_AVAILABLE: [NPM_COMMAND_TOKENS.NPM_NO_VERSION_AVAILABLE],
+	PACKAGE_VERSION_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR],
+	DISK_NO_SPACE: [NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE],
+	DISK_INSUFFICIENT_SPACE: [NPM_COMMAND_TOKENS.NPM_DISK_INSUFFICIENT_SPACE],
+} as const;
+
+interface NpmCommandOptions {
+	cwd?: string;
+	doNotHandleError?: boolean;
+}
 
 function isDnsError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
@@ -24,6 +38,65 @@ function isNpmError(error: unknown): boolean {
 
 function sanitizeRegistryUrl(registryUrl: string): string {
 	return registryUrl.replace(/\/+$/, '');
+}
+
+function matchesErrorPattern(message: string, patterns: readonly string[]): boolean {
+	return patterns.some((pattern) => message.includes(pattern));
+}
+
+/**
+ * Executes an npm command with proper error handling.
+ * @param args - Array of npm command arguments
+ * @param options - Execution options (cwd, throwOnError)
+ * @returns The stdout from the npm command
+ * @throws {UnexpectedError} When the command fails and throwOnError is true
+ */
+export async function executeNpmCommand(
+	args: string[],
+	options: NpmCommandOptions = {},
+): Promise<string> {
+	const { cwd, doNotHandleError } = options;
+
+	try {
+		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
+		return typeof stdout === 'string' ? stdout : stdout.toString();
+	} catch (error) {
+		if (doNotHandleError) {
+			throw error;
+		}
+
+		const errorMessage = error instanceof Error ? error.message : String(error);
+
+		LoggerProxy.warn('Failed to execute npm command', { errorMessage });
+
+		// Check for specific error patterns
+		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_NOT_FOUND)) {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
+		}
+
+		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.NO_VERSION_AVAILABLE)) {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
+		}
+
+		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_VERSION_NOT_FOUND)) {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND);
+		}
+
+		if (
+			matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.DISK_NO_SPACE) ||
+			matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.DISK_INSUFFICIENT_SPACE)
+		) {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL);
+		}
+
+		if (isDnsError(error)) {
+			throw new UnexpectedError(
+				'Network error: Unable to reach npm registry. Please check your internet connection.',
+			);
+		}
+
+		throw new UnexpectedError('Failed to execute npm command', { cause: error });
+	}
 }
 
 export async function verifyIntegrity(
@@ -46,13 +119,16 @@ export async function verifyIntegrity(
 		return;
 	} catch (error) {
 		try {
-			const { stdout } = await asyncExecFile('npm', [
-				'view',
-				`${packageName}@${version}`,
-				'dist.integrity',
-				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-				'--json',
-			]);
+			const stdout = await executeNpmCommand(
+				[
+					'view',
+					`${packageName}@${version}`,
+					'dist.integrity',
+					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
+					'--json',
+				],
+				{ doNotHandleError: true },
+			);
 
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
@@ -84,13 +160,16 @@ export async function checkIfVersionExistsOrThrow(
 		return true;
 	} catch (error) {
 		try {
-			const { stdout } = await asyncExecFile('npm', [
-				'view',
-				`${packageName}@${version}`,
-				'version',
-				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-				'--json',
-			]);
+			const stdout = await executeNpmCommand(
+				[
+					'view',
+					`${packageName}@${version}`,
+					'version',
+					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
+					'--json',
+				],
+				{ doNotHandleError: true },
+			);
 
 			const versionInfo = jsonParse(stdout);
 			if (versionInfo === version) {

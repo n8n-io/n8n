@@ -11,7 +11,7 @@ const CONNECTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
-	connectionId?: string;
+	providerKey?: Ref<string>;
 	useMockApi?: boolean;
 }
 
@@ -32,11 +32,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const toast = useToast();
 
 	// State
-	const connectionId = ref(options.connectionId);
+	const providerKey = ref<string | undefined>(options.providerKey?.value);
+	const connectionId = ref<string | undefined>(undefined);
 	const connectionName = ref('');
-	const connectionNameBlurred = ref(false);
 	const originalConnectionName = ref('');
-	const selectedProviderType = ref<SecretProviderTypeResponse | undefined>(providerTypes.value[0]);
+	const connectionNameBlurred = ref(false);
+	const selectedProviderType = ref<SecretProviderTypeResponse | undefined>(undefined);
 	const connectionSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const originalSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const isSaving = ref(false);
@@ -72,7 +73,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const canUpdate = computed(() => rbacStore.hasScope('externalSecretsProvider:update'));
 
 	// Computed - State
-	const isEditMode = computed(() => !!connectionId.value);
+	const isEditMode = computed(() => !!providerKey.value);
 
 	const providerTypeOptions = computed(() =>
 		providerTypes.value.map((type) => ({
@@ -199,17 +200,18 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		selectedProviderType.value = provider;
 		initializeSettings(provider);
-		connectionName.value = hyphenateConnectionName(selectedProviderType.value.type);
 	}
 
 	async function loadConnection() {
-		if (!connectionId.value) return;
+		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings } = await connection.getConnection(connectionId.value);
+			const { id, name, type, settings } = await connection.getConnection(providerKey.value);
 
+			connectionId.value = id;
 			connectionName.value = name;
 			originalConnectionName.value = name;
+			connectionNameBlurred.value = true;
 			connectionSettings.value = { ...settings };
 			originalSettings.value = { ...settings };
 
@@ -238,6 +240,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Transition to edit mode after successful creation
 		connectionId.value = createdConnection.id;
+		providerKey.value = connectionName.value.trim();
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
@@ -255,7 +258,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	 * Updates an existing secrets provider connection
 	 */
 	async function updateExistingConnection(): Promise<boolean> {
-		if (!connectionId.value || !selectedProviderType.value) return false;
+		if (!providerKey.value || !connectionId.value || !selectedProviderType.value) return false;
 
 		const updateData = {
 			isGlobal: true,
@@ -263,7 +266,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: [],
 		};
 
-		await connection.updateConnection(connectionId.value, updateData);
+		await connection.updateConnection(providerKey.value, updateData);
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
@@ -308,12 +311,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		} finally {
 			isSaving.value = false;
 		}
-	}
-
-	// Initialize settings and default name for the default provider type (only for new connections)
-	if (selectedProviderType.value && !connectionId.value) {
-		initializeSettings(selectedProviderType.value);
-		connectionName.value = hyphenateConnectionName(selectedProviderType.value.type);
 	}
 
 	return {

@@ -115,6 +115,10 @@ catalogs:
     eslint-plugin-playwright: 2.2.2
     playwright: 1.57.0
     playwright-core: 1.57.0
+  sentry:
+    '@sentry/node': '^10.36.0'
+    '@sentry/node-native': '^10.36.0'
+    '@sentry/profiling-node': '^10.36.0'
 
 minimumReleaseAge: 4320
 
@@ -123,6 +127,7 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'tsdown@0.16.5'
   - eslint-plugin-storybook
+  - eslint-plugin-n8n-nodes-base
   - '@langchain/*'
   - 'langchain'
   - '@anthropic-ai/sdk'

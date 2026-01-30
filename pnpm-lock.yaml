@@ -66,9 +66,6 @@ catalogs:
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.20.0
       version: 1.20.0
-    '@sentry/node':
-      specifier: ^10.36.0
-      version: 10.36.0
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -251,6 +248,16 @@ catalogs:
     vue-router:
       specifier: ^4.5.0
       version: 4.5.0
+  sentry:
+    '@sentry/node':
+      specifier: ^10.36.0
+      version: 10.36.0
+    '@sentry/node-native':
+      specifier: ^10.36.0
+      version: 10.36.0
+    '@sentry/profiling-node':
+      specifier: ^10.36.0
+      version: 10.36.0
   storybook:
     '@chromatic-com/storybook':
       specifier: ^4.1.3
@@ -958,7 +965,7 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       '@sentry/node':
-        specifier: 'catalog:'
+        specifier: catalog:sentry
         version: 10.36.0
 
   packages/@n8n/eslint-config:
@@ -1178,8 +1185,8 @@ importers:
         specifier: ^4.15.2
         version: 4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@2.6.1))
       eslint-plugin-n8n-nodes-base:
-        specifier: 1.16.3
-        version: 1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
+        specifier: 1.16.5
+        version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -1579,7 +1586,7 @@ importers:
         specifier: workspace:*
         version: link:../errors
       '@sentry/node':
-        specifier: 'catalog:'
+        specifier: catalog:sentry
         version: 10.36.0
       acorn:
         specifier: 8.14.0
@@ -1739,7 +1746,7 @@ importers:
         specifier: 3.0.0
         version: 3.0.0
       '@sentry/node':
-        specifier: 'catalog:'
+        specifier: catalog:sentry
         version: 10.36.0
       aws4:
         specifier: 1.11.0
@@ -2091,10 +2098,13 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/di
       '@sentry/node':
-        specifier: 'catalog:'
+        specifier: catalog:sentry
         version: 10.36.0
       '@sentry/node-native':
-        specifier: ^10.36.0
+        specifier: catalog:sentry
+        version: 10.36.0
+      '@sentry/profiling-node':
+        specifier: catalog:sentry
         version: 10.36.0
       axios:
         specifier: 1.12.0
@@ -3464,8 +3474,8 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
-        specifier: ^1.16.3
-        version: 1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
+        specifier: ^1.16.5
+        version: 1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -7462,6 +7472,10 @@ packages:
     resolution: {integrity: sha512-zPjz7AbcxEyx8AHj8xvp28fYtPTPWU1XcNtymhAHJLS9CXOblqSC7W02Jxz6eo3eR1/pLyOo6kJBUjvLe9EoFA==}
     engines: {node: '>=18'}
 
+  '@sentry-internal/node-cpu-profiler@2.2.0':
+    resolution: {integrity: sha512-oLHVYurqZfADPh5hvmQYS5qx8t0UZzT2u6+/68VXsFruQEOnYJTODKgU3BVLmemRs3WE6kCJjPeFdHVYOQGSzQ==}
+    engines: {node: '>=18'}
+
   '@sentry-internal/node-native-stacktrace@0.3.0':
     resolution: {integrity: sha512-ef0M2y2JDrC/H0AxMJJQInGTdZTlnwa6AAVWR4fMOpJRubkfdH2IZXE/nWU0Nj74oeJLQgdPtS6DeijLJtqq8Q==}
     engines: {node: '>=18'}
@@ -7571,6 +7585,11 @@ packages:
       '@opentelemetry/core': ^1.30.1 || ^2.1.0
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.1.0
       '@opentelemetry/semantic-conventions': ^1.37.0
+
+  '@sentry/profiling-node@10.36.0':
+    resolution: {integrity: sha512-lKaFPFN/XgX2LjUstSPWhp0xyifMC71MG8OFbgpy23n1Nnl5TExZehm7Ppaoad/Rhc2cfF3WJByOKgsHasX1Rg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@sentry/vite-plugin@4.3.0':
     resolution: {integrity: sha512-MeTAHMmTOgBPMAjeW7/ONyXwgScZdaFFtNiALKcAODnVqC7eoHdSRIWeH5mkLr2Dvs7nqtBaDpKxRjUBgfm9LQ==}
@@ -11734,17 +11753,14 @@ packages:
       '@typescript-eslint/parser':
         optional: true
 
-  eslint-plugin-local@1.0.0:
-    resolution: {integrity: sha512-bcwcQnKL/Iw5Vi/F2lG1he5oKD2OGjhsLmrcctkWrWq5TujgiaYb0cj3pZgr3XI54inNVnneOFdAx1daLoYLJQ==}
-
   eslint-plugin-lodash@8.0.0:
     resolution: {integrity: sha512-7DA8485FolmWRzh+8t4S8Pzin2TTuWfb0ZW3j/2fYElgk82ZanFz8vDcvc4BBPceYdX1p/za+tkbO68maDBGGw==}
     engines: {node: '>=10'}
     peerDependencies:
       eslint: '>=9.0.0'
 
-  eslint-plugin-n8n-nodes-base@1.16.3:
-    resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
+  eslint-plugin-n8n-nodes-base@1.16.5:
+    resolution: {integrity: sha512-/Bx2xj1ZzwEN+KQmnf7i0QRzgNMuphythQI2qXHoJQd8nm6aJGC9ZyVmDBFkM9P1ZfVBgBK7bDdjNxcbIK8Hgw==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
   eslint-plugin-playwright@2.2.2:
@@ -14654,9 +14670,6 @@ packages:
     resolution: {integrity: sha512-FeVc50FTfVVQnolk/WQT8MX+2WVcDnTGiq6Wo+/+lJ2ET1bRVi3HG3YlJUfqagNMc/kUlFSoR96AJkxGpKz13g==}
     engines: {node: '>=18'}
     hasBin: true
-
-  module-details-from-path@1.0.3:
-    resolution: {integrity: sha512-ySViT69/76t8VhE1xXHK6Ch4NcDd26gx0MzKXLO+F7NOtnqH68d9zF94nT8ZWSxXh8ELOERsnJO/sWt1xZYw5A==}
 
   module-details-from-path@1.0.4:
     resolution: {integrity: sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w==}
@@ -23983,6 +23996,11 @@ snapshots:
     dependencies:
       '@sentry/core': 10.36.0
 
+  '@sentry-internal/node-cpu-profiler@2.2.0':
+    dependencies:
+      detect-libc: 2.1.2
+      node-abi: 3.75.0
+
   '@sentry-internal/node-native-stacktrace@0.3.0':
     dependencies:
       detect-libc: 2.1.2
@@ -24140,6 +24158,14 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.5.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.39.0
       '@sentry/core': 10.36.0
+
+  '@sentry/profiling-node@10.36.0':
+    dependencies:
+      '@sentry-internal/node-cpu-profiler': 2.2.0
+      '@sentry/core': 10.36.0
+      '@sentry/node': 10.36.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@sentry/vite-plugin@4.3.0(encoding@0.1.13)':
     dependencies:
@@ -25451,7 +25477,7 @@ snapshots:
   '@ts-morph/common@0.27.0':
     dependencies:
       fast-glob: 3.3.3
-      minimatch: 10.0.3
+      minimatch: 10.1.1
       path-browserify: 1.0.1
 
   '@tsconfig/node10@1.0.11':
@@ -29381,18 +29407,15 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-local@1.0.0: {}
-
   eslint-plugin-lodash@8.0.0(eslint@9.29.0(jiti@2.6.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)
       lodash: 4.17.21
 
-  eslint-plugin-n8n-nodes-base@1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2):
+  eslint-plugin-n8n-nodes-base@1.16.5(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2):
     dependencies:
       '@typescript-eslint/utils': 6.21.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       camel-case: 4.1.2
-      eslint-plugin-local: 1.0.0
       indefinite: 2.5.1
       pascal-case: 3.1.2
       pluralize: 8.0.0
@@ -33234,8 +33257,6 @@ snapshots:
       ast-module-types: 6.0.1
       node-source-walk: 7.0.1
 
-  module-details-from-path@1.0.3: {}
-
   module-details-from-path@1.0.4: {}
 
   module-lookup-amd@9.0.5:
@@ -35046,7 +35067,7 @@ snapshots:
   require-in-the-middle@8.0.1:
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
-      module-details-from-path: 1.0.3
+      module-details-from-path: 1.0.4
     transitivePeerDependencies:
       - supports-color
 

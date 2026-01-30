@@ -16,27 +16,23 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { valid } from 'semver';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-	UNKNOWN_FAILURE_REASON,
-} from '@/constants';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
+import { getCommunityNodeTypes, type StrapiCommunityNodeType } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
-import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
-import { valid } from 'semver';
+import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+
+const asyncExecFile = promisify(execFile);
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -47,23 +43,7 @@ const NPM_INSTALL_ARGS = [
 	'--package-lock=false',
 ];
 
-const {
-	PACKAGE_NAME_NOT_PROVIDED,
-	DISK_IS_FULL,
-	PACKAGE_FAILED_TO_INSTALL,
-	PACKAGE_VERSION_NOT_FOUND,
-	PACKAGE_NOT_FOUND,
-} = RESPONSE_ERROR_MESSAGES;
-
-const {
-	NPM_PACKAGE_NOT_FOUND_ERROR,
-	NPM_NO_VERSION_AVAILABLE,
-	NPM_DISK_NO_SPACE,
-	NPM_DISK_INSUFFICIENT_SPACE,
-	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR,
-} = NPM_COMMAND_TOKENS;
-
-const asyncExecFile = promisify(execFile);
+const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
@@ -160,44 +140,6 @@ export class CommunityPackagesService {
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
 
 		return { packageName, scope, version, rawString };
-	}
-
-	/** @deprecated */
-	async executeNpmCommand(args: string[], options?: { doNotHandleError?: boolean }) {
-		const execOptions = {
-			cwd: this.downloadFolder,
-			env: {
-				NODE_PATH: process.env.NODE_PATH,
-				PATH: process.env.PATH,
-				APPDATA: process.env.APPDATA,
-				NODE_ENV: 'production',
-			},
-		};
-
-		try {
-			const commandResult = await asyncExecFile('npm', args, execOptions);
-			return commandResult.stdout;
-		} catch (error) {
-			if (options?.doNotHandleError) throw error;
-
-			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
-
-			const map = {
-				[NPM_PACKAGE_NOT_FOUND_ERROR]: PACKAGE_NOT_FOUND,
-				[NPM_NO_VERSION_AVAILABLE]: PACKAGE_NOT_FOUND,
-				[NPM_PACKAGE_VERSION_NOT_FOUND_ERROR]: PACKAGE_VERSION_NOT_FOUND,
-				[NPM_DISK_NO_SPACE]: DISK_IS_FULL,
-				[NPM_DISK_INSUFFICIENT_SPACE]: DISK_IS_FULL,
-			};
-
-			Object.entries(map).forEach(([npmMessage, n8nMessage]) => {
-				if (errorMessage.includes(npmMessage)) throw new UnexpectedError(n8nMessage);
-			});
-
-			this.logger.warn('npm command failed', { errorMessage });
-
-			throw new UnexpectedError(PACKAGE_FAILED_TO_INSTALL);
-		}
 	}
 
 	matchPackagesWithUpdates(
@@ -470,7 +412,9 @@ export class CommunityPackagesService {
 			// Remove this package since loading it failed
 			try {
 				await this.deletePackageDirectory(packageName);
-			} catch {}
+			} catch {
+				// Ignore cleanup errors
+			}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
@@ -499,7 +443,9 @@ export class CommunityPackagesService {
 			// Remove this package since it contains no loadable nodes
 			try {
 				await this.deletePackageDirectory(packageName);
-			} catch {}
+			} catch {
+				// Ignore cleanup errors
+			}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
@@ -549,8 +495,7 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-		const { stdout: tarOutput } = await asyncExecFile(
-			'npm',
+		const tarOutput = await executeNpmCommand(
 			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
 			{ cwd: this.downloadFolder },
 		);
@@ -581,7 +526,7 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await asyncExecFile('npm', ['install', ...this.getNpmInstallArgs()], {
+			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
 				cwd: packageDirectory,
 			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
