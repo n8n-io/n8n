@@ -3965,6 +3965,7 @@
 	"projects.settings.member.removed.title": "Member removed successfully",
 	"projects.settings.member.remove.error.title": "An error occurred while removing member",
 	"projects.settings.member.added.title": "Member added successfully",
+	"projects.settings.users.search.error": "An error occurred while searching for users",
 	"projects.sharing.allUsers": "All users and projects",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
 	"projects.sharing.noMatchingUsers": "No matching users or projects",
