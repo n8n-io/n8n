@@ -5,6 +5,8 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
@@ -16,12 +18,46 @@ import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenRouter implements INodeType {
+	methods = {
+		listSearch: {
+			async getModels(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
+
+				const response = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${credentials.url}/models`,
+					headers: {
+						Authorization: `Bearer ${credentials.apiKey}`,
+					},
+				})) as { data: Array<{ id: string }> };
+
+				const filteredModels = (response.data || []).filter((model: { id: string }) => {
+					if (!filter) return true;
+					return model.id.toLowerCase().includes(filter.toLowerCase());
+				});
+
+				// Sort models alphabetically for better user experience
+				filteredModels.sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id));
+
+				return {
+					results: filteredModels.map((model: { id: string }) => ({
+						name: model.id,
+						value: model.id,
+					})),
+				};
+			},
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'OpenRouter Chat Model',
 		name: 'lmChatOpenRouter',
 		icon: { light: 'file:openrouter.svg', dark: 'file:openrouter.dark.svg' },
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenRouter Chat Model',
@@ -115,6 +151,59 @@ export class LmChatOpenRouter implements INodeType {
 					},
 				},
 				default: 'openai/gpt-4.1-mini',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			// Newer resourceLocator model selector (shown for >=1.1)
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'openai/gpt-4.1-mini' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'getModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Custom Model ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '@preset/gpt-oss-120b-cerebras',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '(.+)',
+									errorMessage: 'Model ID cannot be empty',
+								},
+							},
+						],
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify a custom model ID including @preset/ models.',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1.0 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -162,6 +251,7 @@ export class LmChatOpenRouter implements INodeType {
 									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 							},
 						],
+						hint: 'Enter custom model IDs like @preset/ models or any OpenRouter model',
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -204,6 +294,37 @@ export class LmChatOpenRouter implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Reasoning Effort Level',
+						name: 'reasoningEffort',
+						default: 'low',
+						type: 'options',
+						description:
+							'Controls the amount of reasoning effort the model should use. Higher effort may improve reasoning but increase response time and cost.',
+						options: [
+							{
+								name: 'Minimal',
+								value: 'minimal',
+								description:
+									'Minimal reasoning effort for much faster responses (only available on GPT-5)',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Low reasoning effort for faster responses',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'Balanced reasoning effort',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Maximum reasoning effort for complex tasks',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -212,7 +333,14 @@ export class LmChatOpenRouter implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const version = this.getNode().typeVersion;
+
+		// Determine modelName based on node version only; rest of the flow is compatible
+		const modelName =
+			version >= 1.1
+				? (this.getNodeParameter('model.value', itemIndex) as string) ||
+					(this.getNodeParameter('model', itemIndex) as string)
+				: (this.getNodeParameter('model', itemIndex) as string);
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
@@ -223,6 +351,7 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'low' | 'medium' | 'high' | 'minimal';
 		};
 
 		const timeout = options.timeout;
@@ -234,7 +363,30 @@ export class LmChatOpenRouter implements INodeType {
 					bodyTimeout: timeout,
 				}),
 			},
+			defaultHeaders: {
+				'HTTP-Referer': 'https://n8n.io',
+				'X-Title': 'n8n',
+			},
 		};
+
+		// Extra options to send to OpenRouter, that are not directly supported by LangChain
+		const modelKwargs: {
+			response_format?: object;
+			reasoning_effort?: 'low' | 'medium' | 'high' | 'minimal';
+		} = {};
+
+		// Add response format if specified
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+
+		// Add reasoning effort if specified and valid
+		if (
+			options.reasoningEffort &&
+			['low', 'medium', 'high', 'minimal'].includes(options.reasoningEffort)
+		) {
+			modelKwargs.reasoning_effort = options.reasoningEffort;
+		}
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
@@ -244,11 +396,7 @@ export class LmChatOpenRouter implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
