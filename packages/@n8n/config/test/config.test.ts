@@ -233,6 +233,7 @@ describe('GlobalConfig', () => {
 				active: false,
 				port: 5678,
 				address: '::',
+				checkInterval: 0,
 			},
 			bull: {
 				redis: {
