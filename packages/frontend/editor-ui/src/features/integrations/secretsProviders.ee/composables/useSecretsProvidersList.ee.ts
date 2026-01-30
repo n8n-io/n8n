@@ -71,9 +71,7 @@ export function useSecretsProvidersList(options?: { useMockApi?: boolean }) {
 	);
 
 	const activeProviders = computed(() => {
-		return ([...activeConnections.value] as SecretProviderConnection[]).sort((a, b) =>
-			b.name.localeCompare(a.name),
-		);
+		return [...activeConnections.value].sort((a, b) => b.name.localeCompare(a.name));
 	});
 
 	return {

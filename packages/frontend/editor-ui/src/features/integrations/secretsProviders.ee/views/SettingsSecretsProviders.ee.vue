@@ -33,13 +33,13 @@ function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
 }
 
-function openConnectionModal(connectionId?: string) {
+function openConnectionModal(providerKey?: string) {
 	const existingNames = secretsProviders.activeProviders.value.map((provider) => provider.name);
 
 	uiStore.openModalWithData({
 		name: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 		data: {
-			connectionId,
+			providerKey,
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
 			onClose: async () => {
@@ -49,8 +49,8 @@ function openConnectionModal(connectionId?: string) {
 	});
 }
 
-function handleEdit(connectionId: string) {
-	openConnectionModal(connectionId);
+function handleEdit(providerKey: string) {
+	openConnectionModal(providerKey);
 }
 
 onMounted(async () => {

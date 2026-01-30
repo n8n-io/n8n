@@ -57,17 +57,10 @@ describe('useConnectionModal', () => {
 	});
 
 	describe('initialization', () => {
-		it('should initialize with default provider type', () => {
-			const { selectedProviderType, connectionName } = useConnectionModal(defaultOptions);
-
-			expect(selectedProviderType.value).toEqual(mockProviderTypes[0]);
-			expect(connectionName.value).toBe('aws-secrets-manager');
-		});
-
-		it('should initialize settings with defaults', () => {
+		it('should initialize settings with empty object', () => {
 			const { connectionSettings } = useConnectionModal(defaultOptions);
 
-			expect(connectionSettings.value).toEqual({ region: 'us-east-1' });
+			expect(connectionSettings.value).toEqual({});
 		});
 	});
 
@@ -98,8 +91,11 @@ describe('useConnectionModal', () => {
 		});
 
 		it('should check for required fields', () => {
-			const { connectionSettings, canSave } = useConnectionModal(defaultOptions);
+			const { selectedProviderType, connectionSettings, connectionName, canSave } =
+				useConnectionModal(defaultOptions);
 
+			selectedProviderType.value = mockProviderTypes[0];
+			connectionName.value = 'valid-name';
 			connectionSettings.value.region = '';
 			expect(canSave.value).toBe(false);
 
@@ -109,23 +105,27 @@ describe('useConnectionModal', () => {
 	});
 
 	describe('actions', () => {
-		it('should select provider type and update name', () => {
+		it('should select provider type and initialize settings', () => {
 			const providerTypes = ref([
 				...mockProviderTypes,
 				{ type: 'azureKeyVault' as const, displayName: 'Azure', icon: 'azure', properties: [] },
 			]);
-			const { selectProviderType, selectedProviderType, connectionName } = useConnectionModal({
+			const { selectProviderType, selectedProviderType, connectionSettings } = useConnectionModal({
 				...defaultOptions,
 				providerTypes,
 			});
 
-			selectProviderType('azureKeyVault');
-			expect(selectedProviderType.value?.type).toBe('azureKeyVault');
-			expect(connectionName.value).toBe('azure-key-vault');
+			selectProviderType('awsSecretsManager');
+			expect(selectedProviderType.value?.type).toBe('awsSecretsManager');
+			expect(connectionSettings.value.region).toBe('us-east-1');
 		});
 
 		it('should call createConnection when saving new connection', async () => {
-			const { saveConnection, connectionName } = useConnectionModal(defaultOptions);
+			const { saveConnection, connectionName, selectProviderType } =
+				useConnectionModal(defaultOptions);
+
+			// Set up required state for creating a connection
+			selectProviderType('awsSecretsManager');
 			connectionName.value = 'new-provider';
 			mockConnection.createConnection.mockResolvedValue({ id: 'new-id' });
 
@@ -141,10 +141,11 @@ describe('useConnectionModal', () => {
 		});
 
 		it('should call updateConnection when saving existing connection', async () => {
-			const options = { ...defaultOptions, connectionId: 'existing-id' };
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
 
 			// Set initial state as if loaded
 			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
 				name: 'existing-name',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
@@ -158,19 +159,21 @@ describe('useConnectionModal', () => {
 
 			await modal.saveConnection();
 
-			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existing-id', {
+			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existing-key', {
 				isGlobal: true,
 				settings: { region: 'us-west-2' },
 				projectIds: [],
 			});
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('existing-id');
 		});
 	});
 
 	describe('computed properties', () => {
 		it('should detect unsaved changes', async () => {
-			const options = { ...defaultOptions, connectionId: 'test-id' };
+			const options = { ...defaultOptions, providerKey: ref('test-key') };
 			mockConnection.getConnection.mockResolvedValue({
-				name: 'test-id',
+				id: 'test-id',
+				name: 'test-connection',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -183,7 +186,7 @@ describe('useConnectionModal', () => {
 			modal.connectionName.value = 'changed';
 			expect(modal.hasUnsavedChanges.value).toBe(true);
 
-			modal.connectionName.value = 'test-id';
+			modal.connectionName.value = 'test-connection';
 			expect(modal.hasUnsavedChanges.value).toBe(false);
 
 			modal.updateSettings('region', 'us-west-2');

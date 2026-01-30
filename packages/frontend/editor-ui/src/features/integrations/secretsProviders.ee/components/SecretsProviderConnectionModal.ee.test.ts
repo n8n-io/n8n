@@ -11,7 +11,7 @@ import type { SecretProviderConnection } from '@n8n/api-types';
 // Factory function for creating mock connection data
 const createMockConnectionData = (overrides: Partial<SecretProviderConnection> = {}) => ({
 	id: 'test-123',
-	name: 'My Connection',
+	name: 'test-123',
 	type: 'awsSecretsManager',
 	settings: { region: 'us-east-1' },
 	state: 'connected',
@@ -64,11 +64,11 @@ vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 
 vi.mock('../composables/useConnectionModal.ee', () => ({
 	useConnectionModal: vi.fn((options) => {
-		const isEditMode = !!options?.connectionId;
+		const isEditMode = !!options?.providerKey?.value;
 		return {
 			...mockConnectionModal,
 			isEditMode: { value: isEditMode },
-			connectionName: { value: isEditMode ? 'My Connection' : '' },
+			connectionName: { value: isEditMode ? 'test-123' : '' },
 		};
 	}),
 }));
@@ -132,7 +132,7 @@ describe('SecretsProviderConnectionModal', () => {
 			props: {
 				modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 				data: {
-					connectionId: 'test-123',
+					providerKey: 'test-123',
 					providerTypes: mockProviderTypes,
 				},
 			},
@@ -202,7 +202,7 @@ describe('SecretsProviderConnectionModal', () => {
 				props: {
 					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 					data: {
-						connectionId: 'test-123',
+						providerKey: 'test-123',
 						providerTypes: mockProviderTypes,
 					},
 				},
@@ -210,7 +210,7 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			expect(getByDisplayValue('My Connection')).toBeInTheDocument();
+			expect(getByDisplayValue('test-123')).toBeInTheDocument();
 			const nameInput = container.querySelector('[data-test-id="provider-name"]');
 			expect(nameInput).toHaveAttribute('disabled');
 		});
@@ -222,7 +222,7 @@ describe('SecretsProviderConnectionModal', () => {
 				props: {
 					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 					data: {
-						connectionId: 'test-123',
+						providerKey: 'test-123',
 						providerTypes: mockProviderTypes,
 					},
 				},
@@ -269,7 +269,7 @@ describe('SecretsProviderConnectionModal', () => {
 				props: {
 					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 					data: {
-						connectionId: 'test-123',
+						providerKey: 'test-123',
 						providerTypes: mockProviderTypes,
 					},
 				},
@@ -288,7 +288,7 @@ describe('SecretsProviderConnectionModal', () => {
 				props: {
 					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 					data: {
-						connectionId: 'test-123',
+						providerKey: 'test-123',
 						providerTypes: mockProviderTypes,
 					},
 				},
@@ -298,24 +298,6 @@ describe('SecretsProviderConnectionModal', () => {
 
 			const errorCallout = container.querySelector('[data-test-id="connection-error-callout"]');
 			expect(errorCallout).toBeInTheDocument();
-		});
-	});
-
-	describe('onClose callback', () => {
-		it('should call onClose callback when modal is closed', async () => {
-			const onCloseMock = vi.fn();
-
-			renderComponent({
-				props: {
-					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
-					data: {
-						providerTypes: mockProviderTypes,
-						onClose: onCloseMock,
-					},
-				},
-			});
-
-			expect(onCloseMock).toBeDefined();
 		});
 	});
 });

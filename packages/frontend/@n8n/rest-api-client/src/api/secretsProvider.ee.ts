@@ -10,11 +10,7 @@ import { makeRestApiRequest } from '../utils';
 export const getSecretProviderTypes = async (
 	context: IRestApiContext,
 ): Promise<SecretProviderTypeResponse[]> => {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		'/secret-providers/secrets-provider-connection-type',
-	);
+	return await makeRestApiRequest(context, 'GET', '/secret-providers/types');
 };
 
 export const getSecretProviderConnections = async (
@@ -23,7 +19,7 @@ export const getSecretProviderConnections = async (
 	return await makeRestApiRequest(context, 'GET', '/secret-providers/connections');
 };
 
-export const getSecretProviderConnectionById = async (
+export const getSecretProviderConnectionByKey = async (
 	context: IRestApiContext,
 	providerKey: string,
 ): Promise<SecretProviderConnection> => {

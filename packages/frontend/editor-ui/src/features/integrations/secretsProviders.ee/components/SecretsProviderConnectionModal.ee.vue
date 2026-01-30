@@ -14,6 +14,7 @@ import ParameterInputExpanded from '@/features/ndv/parameters/components/Paramet
 import { useConnectionModal } from '@/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee';
 import {
 	N8nCallout,
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nLoading,
@@ -30,7 +31,7 @@ import { useElementSize } from '@vueuse/core';
 const props = defineProps<{
 	modalName: string;
 	data?: {
-		connectionId?: string;
+		providerKey?: string;
 		providerTypes?: SecretProviderTypeResponse[];
 		existingProviderNames?: string[];
 		onClose?: () => void;
@@ -51,11 +52,12 @@ const SECRETS_COUNT = 0;
 
 // Modal state
 const providerTypes = computed(() => props.data?.providerTypes ?? []);
+const providerKey = computed(() => props.data?.providerKey ?? '');
 const existingProviderNames = computed(() => props.data?.existingProviderNames ?? []);
 
 const modal = useConnectionModal({
 	providerTypes,
-	connectionId: props.data?.connectionId,
+	providerKey,
 	existingProviderNames,
 });
 
@@ -91,16 +93,15 @@ function handleSettingChange(update: IUpdateInformation) {
 }
 
 async function handleSave() {
-	console.log('handleSave', modal.canSave.value);
 	await modal.saveConnection();
 }
 
 async function handleBeforeClose() {
 	if (modal.hasUnsavedChanges.value) {
 		const result = await confirm(
-			i18n.baseText('settings.secretsProviderConnections.modal.unsavedChanges'),
+			i18n.baseText('settings.secretsProviderConnections.modal.unsavedChanges.text'),
 			{
-				title: i18n.baseText('settings.secretsProviderConnections.modal.unsavedChanges'),
+				title: i18n.baseText('settings.secretsProviderConnections.modal.unsavedChanges.title'),
 				confirmButtonText: i18n.baseText('generic.keepEditing'),
 				cancelButtonText: i18n.baseText('generic.close'),
 			},
@@ -146,12 +147,17 @@ const { width } = useElementSize(nameRef);
 							v-if="modal.selectedProviderType.value"
 							:provider="modal.selectedProviderType.value"
 							:class="$style.headerIcon"
-						/>
+						/><N8nIcon v-else icon="vault" width="24" height="24" />
 					</div>
 					<div ref="nameRef" :class="$style.name">
 						<div :class="$style.nameRow">
 							<N8nText size="large">
-								{{ modal.selectedProviderType.value?.displayName }}
+								{{
+									modal.selectedProviderType.value?.displayName ??
+									i18n.baseText(
+										'settings.secretsProviderConnections.modal.providerType.placeholder',
+									)
+								}}
 							</N8nText>
 						</div>
 					</div>
@@ -243,30 +249,12 @@ const { width } = useElementSize(nameRef);
 									}}
 								</N8nCallout>
 
-								<!-- Provider Type Selector -->
-								<div class="mb-l">
-									<N8nInputLabel
-										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerType')"
-									/>
-									<N8nSelect
-										data-test-id="provider-type-select"
-										:model-value="modal.selectedProviderType.value?.type"
-										:disabled="modal.isEditMode.value"
-										@update:model-value="handleProviderTypeChange"
-									>
-										<N8nOption
-											v-for="option in modal.providerTypeOptions.value"
-											:key="option.value"
-											:label="option.label"
-											:value="option.value"
-										/>
-									</N8nSelect>
-								</div>
-
 								<!-- Provider Name Input -->
 								<div class="mb-l">
 									<N8nInputLabel
-										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerKey')"
+										:label="
+											i18n.baseText('settings.secretsProviderConnections.modal.connectionName')
+										"
 									/>
 									<N8nInput
 										data-test-id="provider-name"
@@ -275,6 +263,7 @@ const { width } = useElementSize(nameRef);
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
+										placeholder="vault-project-x-y-z"
 										@update:model-value="handleConnectionNameUpdate"
 										@blur="handleConnectionNameBlur"
 									/>
@@ -300,6 +289,26 @@ const { width } = useElementSize(nameRef);
 											i18n.baseText('settings.secretsProviderConnections.modal.connectionName.hint')
 										}}
 									</N8nText>
+								</div>
+
+								<!-- Provider Type Selector -->
+								<div class="mb-l">
+									<N8nInputLabel
+										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerType')"
+									/>
+									<N8nSelect
+										data-test-id="provider-type-select"
+										:model-value="modal.selectedProviderType.value?.type"
+										:disabled="modal.isEditMode.value"
+										@update:model-value="handleProviderTypeChange"
+									>
+										<N8nOption
+											v-for="option in modal.providerTypeOptions.value"
+											:key="option.value"
+											:label="option.label"
+											:value="option.value"
+										/>
+									</N8nSelect>
 								</div>
 
 								<!-- Dynamic Fields -->
@@ -334,6 +343,7 @@ const { width } = useElementSize(nameRef);
 .secretsProviderConnectionModal {
 	--dialog--max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
+	--dialog--min-height: 600px;
 	--dialog--max-height: 600px;
 
 	:global(.el-dialog__header) {
@@ -350,6 +360,7 @@ const { width } = useElementSize(nameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
+	padding-bottom: 60px;
 }
 
 .icon {
@@ -433,8 +444,6 @@ const { width } = useElementSize(nameRef);
 
 .expressionExample {
 	display: block;
-	padding: var(--spacing--2xs);
-	border-radius: var(--radius);
-	margin-top: var(--spacing--xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>
