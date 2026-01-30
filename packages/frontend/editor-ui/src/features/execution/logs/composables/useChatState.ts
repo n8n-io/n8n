@@ -12,7 +12,7 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
-import { computed, provide, ref, watch } from 'vue';
+import { computed, provide, ref, toValue, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
@@ -52,7 +52,10 @@ interface ChatState {
 	isRegistering: Ref<boolean>;
 }
 
-export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState {
+export function useChatState(
+	isReadOnly: boolean,
+	sessionId?: Ref<string | undefined> | (() => string | undefined),
+): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
@@ -70,7 +73,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 	const currentSessionId = computed(() => logsStore.chatSessionId);
 
 	// Use provided sessionId or fall back to logsStore sessionId
-	const effectiveSessionId = computed(() => sessionId ?? currentSessionId.value);
+	const effectiveSessionId = computed(() => toValue(sessionId) ?? currentSessionId.value);
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);

@@ -54,7 +54,7 @@ const {
 	allowedFilesMimeTypes,
 	isWorkflowReadyForChat,
 	chatOptions,
-} = useChatState(props.isReadOnly, props.sessionId);
+} = useChatState(props.isReadOnly, () => props.sessionId);
 
 let chatApp: App | null = null;
 
