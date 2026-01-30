@@ -1,5 +1,8 @@
+import asyncio
+
 import pytest
 from unittest.mock import patch, Mock
+
 from websockets.exceptions import InvalidStatus
 
 from src.task_runner import TaskRunner
@@ -67,3 +70,36 @@ class TestTaskRunnerConnectionRetry:
             assert "Authentication failed with status 403" in args
 
             assert mock_connect.call_count == 1
+
+
+class TestTaskRunnerDrain:
+    @pytest.fixture
+    def config(self):
+        return TaskRunnerConfig(
+            grant_token="test-token",
+            task_broker_uri="http://127.0.0.1:5679",
+            max_concurrency=5,
+            max_payload_size=1024 * 1024,
+            task_timeout=60,
+            auto_shutdown_timeout=0,
+            graceful_shutdown_timeout=10,
+            stdlib_allow={"*"},
+            external_allow={"*"},
+            builtins_deny=set(),
+            env_deny=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_drain_stops_sending_offers(self, config):
+        runner = TaskRunner(config)
+        runner.can_send_offers = True
+
+        async def wait_forever():
+            await asyncio.sleep(1000)
+
+        runner.offers_coroutine = asyncio.create_task(wait_forever())
+
+        await runner._handle_drain()
+
+        assert runner.can_send_offers is False
+        assert runner.offers_coroutine.cancelled()

@@ -206,6 +206,8 @@ describe('JS TaskRunner execution on internal mode', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});
 

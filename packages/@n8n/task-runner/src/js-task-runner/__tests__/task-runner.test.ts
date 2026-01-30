@@ -338,4 +338,16 @@ describe('TestRunner', () => {
 			expect(runner.nodeTypesRequests.size).toBe(0);
 		});
 	});
+
+	describe('drain', () => {
+		it('should stop sending offers on drain message', () => {
+			runner = newTestRunner();
+			runner.onMessage({ type: 'broker:runnerregistered' });
+			expect(runner.canSendOffers).toBe(true);
+
+			runner.onMessage({ type: 'broker:drain' });
+
+			expect(runner.canSendOffers).toBe(false);
+		});
+	});
 });
