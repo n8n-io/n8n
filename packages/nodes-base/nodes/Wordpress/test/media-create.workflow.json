@@ -1,0 +1,114 @@
+{
+	"name": "Wordpress Media Create",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "test content"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "set",
+			"name": "Set Data"
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"useSourceProperty": true,
+				"sourceKey": "data",
+				"destinationKey": "data",
+				"options": {
+					"mimeType": "image/png"
+				}
+			},
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "convert",
+			"name": "Convert to File"
+		},
+		{
+			"parameters": {
+				"resource": "media",
+				"operation": "create",
+				"fileName": "image.png",
+				"binaryPropertyName": "data"
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"id": "wordpress",
+			"name": "Wordpress",
+			"credentials": {
+				"wordpressApi": {
+					"id": "cred",
+					"name": "Wordpress account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Set Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Data": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Wordpress",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Wordpress": [
+			{
+				"json": {
+					"id": 123,
+					"title": {
+						"rendered": "image"
+					},
+					"source_url": "http://example.com/wp-content/uploads/2023/10/image.png"
+				}
+			}
+		]
+	}
+}
