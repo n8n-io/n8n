@@ -1,5 +1,11 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import type {
+	KafkaConfig,
+	SASLOptions,
+	EachBatchPayload,
+	KafkaMessage,
+	ConsumerConfig,
+} from 'kafkajs';
 import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 import type {
 	ITriggerFunctions,
@@ -8,6 +14,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	IRun,
+	IBinaryKeyData,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import {
 	jsonParse,
@@ -16,13 +24,34 @@ import {
 	TriggerCloseError,
 } from 'n8n-workflow';
 
+interface KafkaTriggerOptions {
+	allowAutoTopicCreation?: boolean;
+	autoCommitThreshold?: number;
+	autoCommitInterval?: number;
+	batchSize?: number;
+	fetchMaxBytes?: number;
+	fetchMinBytes?: number;
+	heartbeatInterval?: number;
+	maxInFlightRequests?: number;
+	fromBeginning?: boolean;
+	jsonParseMessage?: boolean;
+	keepBinaryData?: boolean;
+	parallelProcessing?: boolean;
+	partitionsConsumedConcurrently?: number;
+	onlyMessage?: boolean;
+	returnHeaders?: boolean;
+	rebalanceTimeout?: number;
+	sessionTimeout?: number;
+	nodeVersion?: number;
+}
+
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -87,7 +116,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non exisiting topic',
+						description: 'Whether to allow sending message to a previously non-existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',
@@ -105,6 +134,30 @@ export class KafkaTrigger implements INodeType {
 						description:
 							'The consumer will commit offsets after a given period, for example, five seconds',
 						hint: 'Value in milliseconds',
+					},
+					{
+						displayName: 'Batch Size',
+						name: 'batchSize',
+						type: 'number',
+						default: 1,
+						description:
+							'Number of messages to process in each batch, when set to 1, message-by-message processing is enabled',
+					},
+					{
+						displayName: 'Fetch Max Bytes',
+						name: 'fetchMaxBytes',
+						type: 'number',
+						default: 1048576,
+						description:
+							'Maximum amount of data the server should return for a fetch request. In bytes. Default is 1MB. Higher values allow fetching more messages at once.',
+					},
+					{
+						displayName: 'Fetch Min Bytes',
+						name: 'fetchMinBytes',
+						type: 'number',
+						default: 1,
+						description:
+							'Minimum amount of data the server should return for a fetch request. In bytes. Server will wait up to fetchMaxWaitTime for this amount to accumulate.',
 					},
 					{
 						displayName: 'Heartbeat Interval',
@@ -137,6 +190,19 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to try to parse the message to an object',
 					},
 					{
+						displayName: 'Keep Binary Data',
+						name: 'keepBinaryData',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'@version': [1.2],
+							},
+						},
+						description:
+							'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
+					},
+					{
 						displayName: 'Parallel Processing',
 						name: 'parallelProcessing',
 						type: 'boolean',
@@ -148,6 +214,15 @@ export class KafkaTrigger implements INodeType {
 						},
 						description:
 							'Whether to process messages in parallel or by keeping the message in order',
+					},
+					{
+						displayName: 'Partitions Consumed Concurrently',
+						name: 'partitionsConsumedConcurrently',
+						type: 'number',
+						default: 0,
+						description:
+							'Number of Kafka partitions to process in parallel. Controls how many partitions are processed concurrently by the consumer.',
+						hint: 'Set to 0 to process all partitions sequentially',
 					},
 					{
 						displayName: 'Only Message',
@@ -201,9 +276,10 @@ export class KafkaTrigger implements INodeType {
 
 		const ssl = credentials.ssl as boolean;
 
-		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 
-		options.nodeVersion = this.getNode().typeVersion;
+		const nodeVersion = this.getNode().typeVersion;
+		options.nodeVersion = nodeVersion;
 
 		const config: KafkaConfig = {
 			clientId,
@@ -233,19 +309,108 @@ export class KafkaTrigger implements INodeType {
 		) as number;
 
 		const parallelProcessing = options.parallelProcessing as boolean;
+		const batchSize = options.batchSize ?? 1;
+		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
+		const sessionTimeout = options.sessionTimeout ?? 30000;
+		const heartbeatInterval = options.heartbeatInterval ?? 3000;
+		const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
+		const maxBytesPerPartition = options.fetchMaxBytes;
+		const minBytes = options.fetchMinBytes;
 
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
-
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
 
 		const kafka = new apacheKafka(config);
-		const consumer = kafka.consumer({
+
+		const consumerConfig: ConsumerConfig = {
 			groupId,
 			maxInFlightRequests,
-			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
-			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
-			rebalanceTimeout: this.getNodeParameter('options.rebalanceTimeout', 600000) as number,
-		});
+			sessionTimeout,
+			heartbeatInterval,
+			rebalanceTimeout,
+		};
+
+		if (maxBytesPerPartition !== undefined) {
+			consumerConfig.maxBytesPerPartition = maxBytesPerPartition;
+		}
+
+		if (minBytes !== undefined) {
+			consumerConfig.minBytes = minBytes;
+		}
+
+		const consumer = kafka.consumer(consumerConfig);
+
+		const processMessage = async (
+			message: KafkaMessage,
+			messageTopic: string,
+		): Promise<INodeExecutionData> => {
+			let data: IDataObject = {};
+			let value = message.value?.toString() as string;
+			const binary: IBinaryKeyData = {};
+
+			if (options.jsonParseMessage) {
+				try {
+					value = jsonParse(value);
+				} catch (error) {
+					this.logger.warn('Could not parse message to JSON, returning as string', { error });
+				}
+			}
+
+			if (useSchemaRegistry) {
+				try {
+					const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+					value = await registry.decode(message.value as Buffer);
+				} catch (error) {
+					this.logger.warn(
+						'Could not decode message with Schema Registry, returning original message',
+						{ error },
+					);
+				}
+			}
+
+			// Preserve raw binary data for downstream processing (only in v1.2+)
+			if (nodeVersion >= 1.2 && options.keepBinaryData && message.value) {
+				const binaryData = await this.helpers.prepareBinaryData(
+					message.value as Buffer,
+					'message',
+					'application/octet-stream',
+				);
+				binary.data = binaryData;
+			}
+
+			if (options.returnHeaders && message.headers) {
+				data.headers = Object.fromEntries(
+					Object.entries(message.headers).map(([headerKey, headerValue]) => [
+						headerKey,
+						headerValue?.toString('utf8') ?? '',
+					]),
+				);
+			}
+
+			data.message = value;
+			data.topic = messageTopic;
+
+			if (options.onlyMessage) {
+				data = value as unknown as IDataObject;
+			}
+
+			// Return with binary data if present (only in v1.2+)
+			if (nodeVersion >= 1.2 && options.keepBinaryData && Object.keys(binary).length > 0) {
+				return { json: data, binary };
+			}
+
+			return { json: data };
+		};
+
+		const emitData = async (dataArray: INodeExecutionData[]): Promise<void> => {
+			if (!parallelProcessing && (options.nodeVersion as number) > 1) {
+				const responsePromise = this.helpers.createDeferredPromise<IRun>();
+				this.emit([dataArray], undefined, responsePromise);
+				await responsePromise.promise;
+			} else {
+				this.emit([dataArray]);
+			}
+		};
 
 		const startConsumer = async () => {
 			try {
@@ -253,58 +418,46 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-				await consumer.run({
-					autoCommitInterval: (options.autoCommitInterval as number) || null,
-					autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-					eachMessage: async ({ topic: messageTopic, message }) => {
-						let data: IDataObject = {};
-						let value = message.value?.toString() as string;
+				const useBatchProcessing = batchSize > 1;
 
-						if (options.jsonParseMessage) {
-							try {
-								value = jsonParse(value);
-							} catch (error) {
-								this.logger.warn('Could not parse message to JSON, returning as string', { error });
-							}
-						}
+				if (useBatchProcessing) {
+					await consumer.run({
+						autoCommitInterval: options.autoCommitInterval || null,
+						autoCommitThreshold: options.autoCommitThreshold || null,
+						partitionsConsumedConcurrently,
+						eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
+							const messages = batch.messages;
+							const messageTopic = batch.topic;
 
-						if (useSchemaRegistry) {
-							try {
-								const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-								value = await registry.decode(message.value as Buffer);
-							} catch (error) {
-								this.logger.warn(
-									'Could not decode message with Schema Registry, returning original message',
-									{ error },
+							for (let i = 0; i < messages.length; i += batchSize) {
+								const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
+
+								const processedData = await Promise.all(
+									chunk.map(async (message) => await processMessage(message, messageTopic)),
 								);
+
+								await emitData(processedData);
+
+								const lastMessage = chunk[chunk.length - 1];
+								if (lastMessage) {
+									resolveOffset(lastMessage.offset);
+								}
+
+								await heartbeat();
 							}
-						}
-
-						if (options.returnHeaders && message.headers) {
-							data.headers = Object.fromEntries(
-								Object.entries(message.headers).map(([headerKey, headerValue]) => [
-									headerKey,
-									headerValue?.toString('utf8') ?? '',
-								]),
-							);
-						}
-
-						data.message = value;
-						data.topic = messageTopic;
-
-						if (options.onlyMessage) {
-							data = value as unknown as IDataObject;
-						}
-
-						if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-							const responsePromise = this.helpers.createDeferredPromise<IRun>();
-							this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
-							await responsePromise.promise;
-						} else {
-							this.emit([this.helpers.returnJsonArray([data])]);
-						}
-					},
-				});
+						},
+					});
+				} else {
+					await consumer.run({
+						autoCommitInterval: options.autoCommitInterval || null,
+						autoCommitThreshold: options.autoCommitThreshold || null,
+						partitionsConsumedConcurrently,
+						eachMessage: async ({ topic: messageTopic, message }) => {
+							const data = await processMessage(message, messageTopic);
+							await emitData([data]);
+						},
+					});
+				}
 			} catch (error) {
 				this.logger.error('Failed to start Kafka consumer', { error });
 				throw new NodeOperationError(this.getNode(), error);
@@ -312,10 +465,10 @@ export class KafkaTrigger implements INodeType {
 		};
 
 		const onConnected = consumer.on(consumer.events.CONNECT, () => {
-			this.logger.info('Kafka consumer connected');
+			this.logger.debug('Kafka consumer connected');
 		});
 		const onGroupJoin = consumer.on(consumer.events.GROUP_JOIN, () => {
-			this.logger.info('Consumer has joined the group');
+			this.logger.debug('Consumer has joined the group');
 		});
 		const onRequestTimeout = consumer.on(consumer.events.REQUEST_TIMEOUT, () => {
 			this.logger.error('Consumer request timed out');
@@ -333,10 +486,10 @@ export class KafkaTrigger implements INodeType {
 			this.logger.error('Consumer has disconnected', { error });
 		});
 		const onCommitOffsets = consumer.on(consumer.events.COMMIT_OFFSETS, () => {
-			this.logger.info('Consumer offsets committed!');
+			this.logger.debug('Consumer offsets committed!');
 		});
 		const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
-			this.logger.info('Consumer is rebalancing', { payload });
+			this.logger.debug('Consumer is rebalancing', { payload });
 		});
 		const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
 			this.logger.error('Consumer has crashed', { error });

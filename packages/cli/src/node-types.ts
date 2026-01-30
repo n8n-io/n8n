@@ -9,6 +9,7 @@ import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
 import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
@@ -73,8 +74,9 @@ export class NodeTypes implements INodeTypes {
 		}
 
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
+		// Handle both regular Tool suffix and HitlTool suffix
 		if (toolRequested) {
-			nodeType = nodeType.replace(/Tool$/, '');
+			nodeType = nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
 		}
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
@@ -93,12 +95,16 @@ export class NodeTypes implements INodeTypes {
 
 		if (!toolRequested) return versionedNodeType;
 
-		if (!versionedNodeType.description.usableAsTool)
-			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
-
 		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {
 			return loadedNodes[origType].type as INodeType;
+		}
+
+		// Check if this is an HITL tool (ends with 'HitlTool')
+		const isHitlTool = origType.endsWith('HitlTool');
+
+		if (!isHitlTool && !versionedNodeType.description.usableAsTool) {
+			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
 		}
 
 		// Instead of modifying the existing type, we extend it into a new type object
@@ -106,13 +112,16 @@ export class NodeTypes implements INodeTypes {
 			versionedNodeType.description.properties,
 		) as INodeTypeDescription['properties'];
 		const clonedDescription = Object.create(versionedNodeType.description, {
-			properties: { value: clonedProperties },
+			properties: { value: clonedProperties, writable: isHitlTool },
 		}) as INodeTypeDescription;
 		const clonedNode = Object.create(versionedNodeType, {
 			description: { value: clonedDescription },
 		}) as INodeType;
-		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
-		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
+
+		// For HITL tools, use convertNodeToHitlTool; for regular AI tools, use convertNodeToAiTool
+		const tool = isHitlTool ? convertNodeToHitlTool(clonedNode) : convertNodeToAiTool(clonedNode);
+
+		loadedNodes[origType] = { sourcePath: '', type: tool };
 		return tool;
 	}
 

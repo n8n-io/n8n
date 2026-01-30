@@ -22,6 +22,7 @@ export class DbConnection {
 	private dataSource: DataSource;
 
 	private pingTimer: NodeJS.Timeout | undefined;
+	timeout: number;
 
 	readonly connectionState: ConnectionState = {
 		connected: false,
@@ -37,6 +38,9 @@ export class DbConnection {
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
+		this.timeout = process.env.N8N_DB_PING_TIMEOUT
+			? Number.parseInt(process.env.N8N_DB_PING_TIMEOUT)
+			: 5000;
 	}
 
 	@Memoized
@@ -116,7 +120,7 @@ export class DbConnection {
 		try {
 			await Promise.race([
 				this.dataSource.query('SELECT 1'),
-				setTimeoutP(5000, undefined, { signal: abortController.signal }).then(() => {
+				setTimeoutP(this.timeout, undefined, { signal: abortController.signal }).then(() => {
 					throw new OperationalError('Database connection timed out');
 				}),
 			]);

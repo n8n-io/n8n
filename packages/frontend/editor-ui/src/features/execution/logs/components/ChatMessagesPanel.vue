@@ -316,6 +316,11 @@ async function copySessionId() {
 		--button--color--background--primary--hover-active-focus
 	);
 	--chat--button--border--primary--hover: none;
+	--chat--button--color--primary--disabled: var(--button--color--text--primary--disabled);
+	--chat--button--background--primary--disabled: var(
+		--button--color--background--primary--disabled
+	);
+	--chat--button--border--primary--disabled: none;
 	--chat--button--color--secondary: var(--button--color--text--secondary);
 	--chat--button--background--secondary: var(--button--color--background--secondary);
 	--chat--button--border--secondary: var(--border-width) var(--button--border-color--secondary)
@@ -326,6 +331,10 @@ async function copySessionId() {
 	--chat--button--background--secondary--hover: var(--button--color--background--secondary--hover);
 	--chat--button--border--secondary--hover: var(--border-width)
 		var(--button--border-color--secondary--hover-active-focus) var(--border-style);
+	--chat--button--color--secondary--disabled: var(--button--color--text--secondary--disabled);
+	--chat--button--background--secondary--disabled: var(--button--color--background--secondary);
+	--chat--button--border--secondary--disabled: var(--border-width)
+		var(--button--border-color--secondary--disabled) var(--border-style);
 	height: 100%;
 	display: flex;
 	flex-direction: column;

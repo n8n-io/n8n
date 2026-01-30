@@ -226,18 +226,6 @@ describe('DynamicCredentialService', () => {
 				expect(mockResolverRepository.findOneBy).not.toHaveBeenCalled();
 			});
 
-			it('credential has no resolver ID', async () => {
-				const credentialsEntity = createMockCredentialsMetadata({
-					isResolvable: true,
-					resolverId: undefined,
-				});
-
-				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
-
-				expect(result).toBe(staticData);
-				expect(mockResolverRepository.findOneBy).not.toHaveBeenCalled();
-			});
-
 			it('resolver entity is not found and fallback is allowed', async () => {
 				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
@@ -387,27 +375,6 @@ describe('DynamicCredentialService', () => {
 					}),
 				);
 			});
-
-			it('no resolver on credential or workflow settings', async () => {
-				const credentialsEntity = createMockCredentialsMetadata({
-					resolverId: undefined,
-				});
-				const executionContext = createMockExecutionContext('encrypted-credentials');
-				const additionalData = {
-					...createMockAdditionalData('exec-123', {}, executionContext),
-					workflowSettings: {}, // No credentialResolverId
-				};
-
-				const result = await service.resolveIfNeeded(
-					credentialsEntity,
-					staticData,
-					additionalData.executionContext,
-					undefined,
-				);
-
-				expect(result).toBe(staticData);
-				expect(mockResolverRepository.findOneBy).not.toHaveBeenCalled();
-			});
 		});
 
 		describe('should throw error when', () => {
@@ -425,6 +392,37 @@ describe('DynamicCredentialService', () => {
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
 				).rejects.toThrow('Resolver "resolver-456" not found for credential "Test Credential"');
+			});
+
+			it('no resolver on credential or workflow settings', async () => {
+				const credentialsEntity = createMockCredentialsMetadata({
+					resolverId: undefined,
+				});
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = {
+					...createMockAdditionalData('exec-123', {}, executionContext),
+					workflowSettings: {}, // No credentialResolverId
+				};
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(CredentialResolutionError);
+			});
+
+			it('credential has no resolver ID', async () => {
+				const credentialsEntity = createMockCredentialsMetadata({
+					isResolvable: true,
+					resolverId: undefined,
+				});
+
+				await expect(
+					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
+				).rejects.toThrow(CredentialResolutionError);
 			});
 
 			it('resolver instance is not found in registry and fallback is not allowed', async () => {

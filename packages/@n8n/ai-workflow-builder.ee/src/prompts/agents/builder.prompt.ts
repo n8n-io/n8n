@@ -5,8 +5,12 @@
  * Does NOT configure node parameters - that's the Configurator Agent's job.
  */
 
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
-import { structuredOutputParser } from '../shared/node-guidance';
+import { structuredOutputParser, webhook } from '../shared/node-guidance';
+
+const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
 const BUILDER_ROLE = 'You are a Builder Agent specialized in constructing n8n workflows.';
 
@@ -100,6 +104,8 @@ EXAMPLES:
 IMPORTANT: Choose the operation that matches user intent. If unclear, pick the most likely operation based on context`;
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.configuration;
+
+const WEBHOOK_GUIDANCE = webhook.connections;
 
 const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 
@@ -342,6 +348,28 @@ Common mistake to avoid:
 - NEVER connect Document Loader to main data outputs
 - Document Loader is an AI sub-node that gives Vector Store document processing capability`;
 
+const DATA_TABLE_PATTERN = `DATA TABLE NODE PATTERN:
+
+**Row Column Operations (${dataTableColumnOperationsList}) - REQUIRE Set Node:**
+When using Data Table nodes for row column operations, you MUST add a Set node immediately before the Data Table node.
+
+Structure: Set Node → Data Table Node (operation: ${dataTableColumnOperationsList})
+
+Why: The Set node defines the columns/fields to write. This tells users exactly which columns to create in their Data Table.
+
+Example for storing data:
+- add_nodes(nodeType: "n8n-nodes-base.set", name: "Prepare User Data")
+- add_nodes(nodeType: "n8n-nodes-base.dataTable", name: "Store Users", initialParameters: {{ operation: "insert" }})
+- connect_nodes(source: "Prepare User Data", target: "Store Users")
+
+**Row Read Operations (get, getAll, delete) - NO Set Node needed:**
+Read and delete operations don't write data, so they don't need a Set node before them.
+
+Example for reading data:
+- add_nodes(nodeType: "n8n-nodes-base.dataTable", name: "Get Users", initialParameters: {{ operation: "get" }})
+
+IMPORTANT: For ${dataTableColumnOperationsList} operations, NEVER connect a Data Table node directly to other nodes without a Set node in between.`;
+
 const SWITCH_NODE_PATTERN = `For Switch nodes with multiple routing paths:
 - The number of outputs is determined by the number of entries in rules.values[]
 - You MUST create the rules.values[] array with placeholder entries for each output branch
@@ -496,6 +524,7 @@ export function buildBuilderPrompt(): string {
 		.section('initial_parameters_examples', INITIAL_PARAMETERS_EXAMPLES)
 		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
+		.section('webhook_response_mode', WEBHOOK_GUIDANCE)
 		.section('node_connections_understanding', AI_CONNECTIONS)
 		.section('ai_connection_patterns', AI_CONNECTION_PATTERNS)
 		.section('branching', BRANCHING)
@@ -504,6 +533,7 @@ export function buildBuilderPrompt(): string {
 		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
 		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
+		.section('data_table_pattern', DATA_TABLE_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)

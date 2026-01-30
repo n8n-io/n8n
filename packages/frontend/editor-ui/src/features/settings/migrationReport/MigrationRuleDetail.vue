@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -109,7 +109,7 @@ const statusFilter = ref<'' | 'active' | 'deactivated'>('');
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
 	searchQuery.value = value;
-}, 300);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const onSearchInput = (value: string) => {
 	searchInput.value = value; // Update input immediately
