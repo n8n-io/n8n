@@ -55,6 +55,11 @@ interface KafkaCredentials {
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
+/**
+ * Creates Kafka client configuration from n8n credentials
+ * @param ctx - The trigger function context
+ * @returns Kafka configuration object with authentication settings
+ */
 export async function createConfig(ctx: ITriggerFunctions) {
 	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
 	const clientId = credentials.clientId;
@@ -85,6 +90,13 @@ export async function createConfig(ctx: ITriggerFunctions) {
 	return config;
 }
 
+/**
+ * Creates Kafka consumer configuration with session timeout and heartbeat settings
+ * @param ctx - The trigger function context
+ * @param options - Kafka trigger options from node parameters
+ * @param nodeVersion - The version of the Kafka trigger node
+ * @returns Consumer configuration object
+ */
 export function createConsumerConfig(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
@@ -97,18 +109,12 @@ export function createConsumerConfig(
 			: ctx.getNodeParameter('options.maxInFlightRequests', null)
 	) as number;
 
-	let sessionTimeout: number;
+	const sessionTimeout = options.sessionTimeout ?? 30000;
 	let heartbeatInterval: number;
 	if (nodeVersion < 1.3) {
-		sessionTimeout = options.sessionTimeout ?? 30000;
 		heartbeatInterval = options.heartbeatInterval ?? 3000;
 	} else {
-		// Add 5 seconds buffer to ensure the session doesn't expire before the workflow completes
-		const executionTimeoutInSeconds = (ctx.getWorkflowSettings().executionTimeout ?? 3600) + 5;
-		sessionTimeout = executionTimeoutInSeconds * 1000;
-		// KafkaJS recommends heartbeat interval to be 1/3 of session timeout
-		// Manual heartbeat() calls in the batch loop keep the session alive during processing
-		heartbeatInterval = Math.floor(sessionTimeout / 3);
+		heartbeatInterval = options.heartbeatInterval ?? 10000;
 	}
 
 	const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
@@ -134,6 +140,14 @@ export function createConsumerConfig(
 	return consumerConfig;
 }
 
+/**
+ * Configures a message parser function that processes Kafka messages based on node options
+ * @param options - Kafka trigger options for parsing behavior
+ * @param logger - Logger instance for warnings
+ * @param registry - Optional schema registry for message decoding
+ * @param prepareBinaryData - Helper function to prepare binary data
+ * @returns Async function that parses Kafka messages into n8n execution data
+ */
 export function configureMessageParser(
 	options: KafkaTriggerOptions,
 	logger: Logger,
@@ -197,6 +211,12 @@ export function configureMessageParser(
 	};
 }
 
+/**
+ * Attaches event listeners to the Kafka consumer for monitoring and logging
+ * @param consumer - The Kafka consumer instance
+ * @param logger - Logger instance for event logging
+ * @returns Array of listener removal functions
+ */
 export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	const onConnected = consumer.on(consumer.events.CONNECT, () => {
 		logger.debug('Kafka consumer connected');
@@ -242,12 +262,21 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	];
 }
 
+/**
+ * Removes all event listeners from the Kafka consumer
+ * @param listeners - Array of listener removal functions
+ */
 export function disconnectEventListeners(
 	listeners: Array<RemoveInstrumentationEventListener<'consumer.connect'>>,
 ) {
 	listeners.forEach((listener) => listener());
 }
 
+/**
+ * Initializes Confluent Schema Registry if enabled in node parameters
+ * @param ctx - The trigger function context
+ * @returns Schema registry instance or undefined if not configured
+ */
 export function setSchemaRegistry(ctx: ITriggerFunctions) {
 	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
@@ -263,6 +292,13 @@ export function setSchemaRegistry(ctx: ITriggerFunctions) {
 	return undefined;
 }
 
+/**
+ * Determines the offset resolution mode based on node version and configuration
+ * @param ctx - The trigger function context
+ * @param options - Kafka trigger options
+ * @param nodeVersion - The version of the Kafka trigger node
+ * @returns The offset resolution mode
+ */
 function getResolveOffsetMode(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
@@ -277,14 +313,19 @@ function getResolveOffsetMode(
 	return ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
 }
 
+/**
+ * Configures a data emitter function that handles workflow execution and offset resolution
+ * @param ctx - The trigger function context
+ * @param options - Kafka trigger options
+ * @param nodeVersion - The version of the Kafka trigger node
+ * @returns Async function that emits data and waits for execution completion based on resolve mode
+ */
 export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
 ) {
-	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
-	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
@@ -293,6 +334,9 @@ export function configureDataEmitter(
 			return { success: true };
 		};
 	}
+
+	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
+	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	const allowedStatuses: string[] = [];
 	if (resolveOffsetMode === 'onSuccess') {
@@ -349,6 +393,13 @@ export function configureDataEmitter(
 	};
 }
 
+/**
+ * Determines auto-commit settings based on node version and offset resolution configuration
+ * @param ctx - The trigger function context
+ * @param options - Kafka trigger options
+ * @param nodeVersion - The version of the Kafka trigger node
+ * @returns Object with auto-commit configuration
+ */
 export function getAutoCommitSettings(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
@@ -376,4 +427,32 @@ export function getAutoCommitSettings(
 		autoCommitInterval,
 		autoCommitThreshold,
 	};
+}
+
+/**
+ * Runs a task while periodically invoking a heartbeat function
+ * at specified intervals to prevent session timeout
+ * @param task - The promise to execute
+ * @param heartbeat - The heartbeat function to call periodically
+ * @param intervalMs - The interval in milliseconds between heartbeat calls (default: 3000)
+ * @returns The result of the task promise
+ */
+export async function runWithHeartbeat<T>(
+	task: Promise<T>,
+	heartbeat: () => Promise<void>,
+	intervalMs = 3000,
+) {
+	let timer;
+
+	try {
+		timer = setInterval(async () => {
+			try {
+				await heartbeat();
+			} catch (error) {}
+		}, intervalMs);
+
+		return await task;
+	} finally {
+		clearInterval(timer);
+	}
 }

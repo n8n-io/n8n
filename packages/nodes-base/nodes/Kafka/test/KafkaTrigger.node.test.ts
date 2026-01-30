@@ -1350,7 +1350,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	describe('version 1.3', () => {
-		it('should calculate sessionTimeout and heartbeatInterval from executionTimeout', async () => {
+		it('should use default sessionTimeout and heartbeatInterval', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1373,8 +1373,8 @@ describe('KafkaTrigger Node', () => {
 			expect(mockConsumerCreate).toHaveBeenCalledWith({
 				groupId: 'test-group',
 				maxInFlightRequests: null,
-				sessionTimeout: 3605000,
-				heartbeatInterval: 1201666,
+				sessionTimeout: 30000,
+				heartbeatInterval: 10000,
 				rebalanceTimeout: 600000,
 			});
 		});
@@ -1502,7 +1502,7 @@ describe('KafkaTrigger Node', () => {
 			await publishPromise;
 		});
 
-		it('should ignore sessionTimeout and heartbeatInterval options', async () => {
+		it('should use sessionTimeout and heartbeatInterval options when provided', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1529,8 +1529,8 @@ describe('KafkaTrigger Node', () => {
 			expect(mockConsumerCreate).toHaveBeenCalledWith({
 				groupId: 'test-group',
 				maxInFlightRequests: null,
-				sessionTimeout: 3605000,
-				heartbeatInterval: 1201666,
+				sessionTimeout: 20000,
+				heartbeatInterval: 2000,
 				rebalanceTimeout: 600000,
 			});
 		});

@@ -23,6 +23,7 @@ import {
 	createConsumerConfig,
 	configureDataEmitter,
 	getAutoCommitSettings,
+	runWithHeartbeat,
 } from './utils';
 
 export class KafkaTrigger implements INodeType {
@@ -45,18 +46,6 @@ export class KafkaTrigger implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName:
-					'Session Timeout is set automatically to match the Workflow Timeout. Heartbeat Interval is set automatically to one third of the Session Timeout. We suggest adjusting the Workflow Timeout in the workflow settings to match the expected execution time.',
-				name: 'settingsNotice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.3 } }],
-					},
-				},
-			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
@@ -264,6 +253,20 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Heartbeat Interval',
 						name: 'heartbeatInterval',
 						type: 'number',
+						default: 10000,
+						description:
+							'Controls how often the consumer sends heartbeats to the broker to indicate it is still alive. Must be lower than Session Timeout. Recommended value is approximately one third of the Session Timeout (for example: 10s heartbeat with 30s session timeout).',
+						hint: 'Value in milliseconds',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Heartbeat Interval',
+						name: 'heartbeatInterval',
+						type: 'number',
 						default: 3000,
 						description: "Heartbeats are used to ensure that the consumer's session stays active",
 						hint: 'The value must be set lower than Session Timeout',
@@ -381,13 +384,9 @@ export class KafkaTrigger implements INodeType {
 						name: 'sessionTimeout',
 						type: 'number',
 						default: 30000,
-						description: 'The time to await a response in ms',
+						description:
+							'Timeout in milliseconds used to detect failures. Has to be higher than Heartbeat Interval. During the workflow execution heartbeat will be sent periodically to keep the session alive with configured Heartbeat Interval.',
 						hint: 'Value in milliseconds',
-						displayOptions: {
-							hide: {
-								'@version': [{ _cnd: { gte: 1.3 } }],
-							},
-						},
 					},
 				],
 			},
@@ -456,7 +455,11 @@ export class KafkaTrigger implements INodeType {
 								chunk.map(async (message) => await processMessage(message, messageTopic)),
 							);
 
-							const result = await dataEmitter(processedData);
+							const result = await runWithHeartbeat(
+								dataEmitter(processedData),
+								heartbeat,
+								consumerConfig.heartbeatInterval,
+							);
 
 							if (!result.success) {
 								await heartbeat();
