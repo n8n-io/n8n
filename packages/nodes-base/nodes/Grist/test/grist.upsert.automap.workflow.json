@@ -1,0 +1,125 @@
+{
+	"name": "Grist Upsert Test (automap)",
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": "test-doc-id",
+				"tableId": "test-table-id",
+				"upsertCriteria": {
+					"properties": [
+						{
+							"fieldId": "Repo",
+							"fieldValue": "={{ $json.Repo }}"
+						}
+					]
+				},
+				"dataToSend": "autoMapInputs"
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [560, 64],
+			"id": "5c832c08-cf8e-46b9-be1a-f8aee6d660a6",
+			"name": "Grist",
+			"credentials": {
+				"gristApi": {
+					"id": "WAqbmboo031Hqq3V",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [112, 64],
+			"id": "22eac230-a3bf-4523-98b0-9eac9b43bbd0",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { \"Repo\": \"dtinth/automatron\", \"Description\": \"LINE Bot\" },\n  { \"Repo\": \"dtinth/WebMIDICon\", \"Description\": \"MIDI Controller\" },\n  { \"Repo\": \"dtinth/mockapis\", \"Description\": \"Mock API Endpoints\" }\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [336, 64],
+			"id": "4af15c53-67b8-47cf-bbd0-8bd9acf8625a",
+			"name": "Code"
+		}
+	],
+	"pinData": {
+		"Grist": [
+			{
+				"json": {
+					"Repo": "dtinth/automatron",
+					"Description": "LINE Bot"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/WebMIDICon",
+					"Description": "MIDI Controller"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/mockapis",
+					"Description": "Mock API Endpoints"
+				}
+			}
+		],
+		"When clicking 'Execute workflow'": [
+			{
+				"json": {}
+			}
+		],
+		"Code": [
+			{
+				"json": {
+					"Repo": "dtinth/automatron",
+					"Description": "LINE Bot"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/WebMIDICon",
+					"Description": "MIDI Controller"
+				}
+			},
+			{
+				"json": {
+					"Repo": "dtinth/mockapis",
+					"Description": "Mock API Endpoints"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Grist",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
