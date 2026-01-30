@@ -61,6 +61,10 @@ export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
 	'063_empty_state_builder_prompt',
 );
 
+export const CREDENTIALS_APP_SELECTION_EXPERIMENT = createExperiment(
+	'065_credentials_app_selection',
+);
+
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
 	control: 'control',
 	variantResources: 'variant-resources',
@@ -80,4 +84,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
+	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 ];
