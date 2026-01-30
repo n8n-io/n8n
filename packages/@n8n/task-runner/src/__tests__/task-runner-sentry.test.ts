@@ -262,6 +262,9 @@ describe('TaskRunnerSentry', () => {
 				withEventLoopBlockDetection: false,
 				profilesSampleRate: 0,
 				tracesSampleRate: 0,
+				eligibleIntegrations: {
+					Http: true,
+				},
 			});
 		});
 	});
