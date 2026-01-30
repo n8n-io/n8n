@@ -139,6 +139,7 @@ import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/17689
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
 import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import { AddTokensValidAfterColumnToUser1769500000000 } from '../common/1769500000000-AddTokensValidAfterColumnToUser';
+import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -283,4 +284,5 @@ export const postgresMigrations: Migration[] = [
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
 	CreateSecretsProviderConnectionTables1769433700000,
 	AddTokensValidAfterColumnToUser1769500000000,
+	CreateWorkflowPublishedVersionTable1769698710000,
 ];
