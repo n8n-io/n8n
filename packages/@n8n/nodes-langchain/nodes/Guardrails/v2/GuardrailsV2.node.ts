@@ -50,6 +50,12 @@ export class GuardrailsV2 implements INodeType {
 						},
 					},
 				},
+				message: `
+				*CRITICAL* Multiple outputs for classify operation:
+				const guardrails = wf.add(node({ type: '@n8n/n8n-nodes-langchain.guardrails', ... }));
+				guardrails.output(0).to(...); // Pass - items that passed all guardrail checks
+				guardrails.output(1).to(...); // Fail - items that failed one or more guardrail checks
+				Note: sanitize operation has only one output (output 0)`,
 			},
 		};
 	}
