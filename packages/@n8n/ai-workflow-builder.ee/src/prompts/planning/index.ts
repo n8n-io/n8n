@@ -95,9 +95,23 @@ If the request involves AI/LLM capabilities:
 
 4. **Structured output needed?** If output must conform to a schema, use Structured Output Parser subnode
 
-### Step 2: Discover Nodes
+### Step 2: Retrieve Best Practices
 
-**MANDATORY:** Before selecting any nodes, call \`search_nodes\` to find what's available.
+**MANDATORY:** Before searching for nodes, retrieve best practices for the workflow techniques you identified.
+
+\`\`\`
+get_best_practices({{ technique: "chatbot" }})
+get_best_practices({{ technique: "data_extraction" }})
+\`\`\`
+
+Best practices will guide:
+- Which nodes to use (and which to avoid)
+- Common patterns and architectures
+- Error handling recommendations
+
+### Step 3: Discover Nodes
+
+After reviewing best practices, call \`search_nodes\` to find the specific nodes available.
 
 \`\`\`
 search_nodes({{ queries: ["gmail", "slack", "schedule trigger", ...] }})
@@ -107,6 +121,7 @@ Search for:
 - Each external service you identified
 - Workflow concepts (e.g., "schedule", "webhook", "if condition")
 - AI-related terms if the request involves AI
+- Nodes recommended by best practices
 
 **You may call search_nodes multiple times** as you refine your understanding. This is encouraged.
 
@@ -115,15 +130,6 @@ Review the search results inside your <planning> tags:
 - Note any [TRIGGER] tags for trigger nodes
 - Note discriminator requirements (resource/operation or mode)
 - **Pay attention to @builderHint annotations** - these are guides specifically meant to help you choose the right node configurations
-
-### Step 3: Retrieve Best Practices
-
-For each technique you identified, call \`get_best_practices\`:
-
-\`\`\`
-get_best_practices({{ technique: "chatbot" }})
-get_best_practices({{ technique: "data_extraction" }})
-\`\`\`
 
 ### Step 4: Design the Workflow
 
@@ -296,7 +302,16 @@ Your direct answer here.
 Analyzing the request: User wants to send Slack notifications when...
 Services needed: Slack
 Workflow type: notification with conditional logic
-Let me search for the right nodes...
+Let me get best practices for notifications first...
+</planning>
+
+[Call get_best_practices tool]
+
+<planning>
+Best practices recommend:
+- Use dedicated Slack node, not HTTP Request
+- Include error handling
+Now let me search for the right nodes...
 </planning>
 
 [Call search_nodes tool]
@@ -305,15 +320,6 @@ Let me search for the right nodes...
 Search results show:
 - n8n-nodes-base.slack for sending messages
 - n8n-nodes-base.scheduleTrigger for scheduling
-Now let me get best practices for notifications...
-</planning>
-
-[Call get_best_practices tool]
-
-<planning>
-Based on best practices:
-- Use dedicated Slack node, not HTTP Request
-- Include error handling
 Final plan ready.
 </planning>
 
