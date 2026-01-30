@@ -78,15 +78,12 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
-import type { PromptVersionId } from './prompts/builder/one-shot';
 import type { ModelId } from './llm-config';
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 	/** Enable CodeWorkflowBuilder (default: true). When false, uses legacy multi-agent system. */
 	codeWorkflowBuilder?: boolean;
-	/** Prompt version to use for generation */
-	promptVersion?: PromptVersionId;
 	/** Model ID to use for generation */
 	modelId?: ModelId;
 }

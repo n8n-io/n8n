@@ -34,7 +34,6 @@
     "eval:pairwise": "tsx evaluations/cli/index.ts --suite pairwise",
     "eval:pairwise:langsmith": "tsx evaluations/cli/index.ts --suite pairwise --backend langsmith",
     "workflow:mermaid": "tsx scripts/workflow-to-mermaid.ts",
-    "prompt:print": "tsx scripts/print-prompt.ts",
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
     "python:lint": "cd evaluations/programmatic/python && just lint",
