@@ -2,9 +2,11 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { isValidEmail, SettingsRepository } from '@n8n/db';
-import type { User, RunningMode, SyncStatus } from '@n8n/db';
-import { Service, Container } from '@n8n/di';
+import { isValidEmail, SettingsRepository, User } from '@n8n/db';
+import type { RunningMode, SyncStatus } from '@n8n/db';
+import { Constructable, Container } from '@n8n/di';
+import type { IPasswordAuthHandler } from '@n8n/decorators';
+import { AuthHandler } from '@n8n/decorators';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
@@ -45,8 +47,9 @@ import {
 	getUserByLdapId,
 } from './helpers.ee';
 
-@Service()
-export class LdapService {
+@AuthHandler()
+export class LdapService implements IPasswordAuthHandler<User> {
+	readonly metadata = { name: 'ldap', type: 'password' as const };
 	private client: Client | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -55,6 +58,8 @@ export class LdapService {
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
 
 	config: LdapConfig;
+
+	readonly userClass: Constructable<User> = User;
 
 	constructor(
 		private readonly logger: Logger,
@@ -496,7 +501,7 @@ export class LdapService {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
+	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
 		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;
