@@ -283,8 +283,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			await this.setupProvider(connection.type, connectionSettings, connection.providerKey);
 		}
 
-		this.logger.debug('Reloaded external secrets providers');
 		await this.secretsCache.refreshAll();
+		this.logger.debug('Reloaded external secrets providers');
 	}
 
 	// ========================================
