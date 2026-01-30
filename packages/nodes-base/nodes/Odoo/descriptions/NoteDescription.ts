@@ -89,6 +89,31 @@ export const noteDescription: INodeProperties[] = [
 	// 		},
 	// 	],
 	// },
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['note'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                note:get                                    */
@@ -147,7 +172,7 @@ export const noteDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -166,8 +191,19 @@ export const noteDescription: INodeProperties[] = [
 					loadOptionsMethod: 'getModelFields',
 				},
 			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                note:update                                 */
 	/* -------------------------------------------------------------------------- */
@@ -228,4 +264,58 @@ export const noteDescription: INodeProperties[] = [
 	// 		},
 	// 	],
 	// },
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['note'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                note:delete                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['note'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
 ];
