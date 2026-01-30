@@ -692,10 +692,7 @@ export class OneShotWorkflowCodeAgent {
 			this.debugLog('TOOL_CALL', `Tool ${toolCall.name} completed`, {
 				toolDurationMs: toolDuration,
 				resultLength: typeof result === 'string' ? result.length : JSON.stringify(result).length,
-				resultPreview:
-					typeof result === 'string'
-						? result.substring(0, 200)
-						: JSON.stringify(result).substring(0, 200),
+				result: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
 			});
 
 			// Add tool result to messages
