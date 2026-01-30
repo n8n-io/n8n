@@ -912,6 +912,54 @@ function generateFixedCollectionType(
 }
 
 /**
+ * Merge properties with the same name for collection/fixedCollection types.
+ * When multiple properties have the same name (e.g., multiple 'options' collections
+ * with different displayOptions), their nested options should be merged.
+ *
+ * @param properties - Array of node properties, possibly with duplicates
+ * @returns Array of properties with duplicates merged
+ */
+function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
+	const seenProps = new Map<string, NodeProperty>();
+
+	for (const prop of properties) {
+		// Skip display-only types
+		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+			continue;
+		}
+
+		if (seenProps.has(prop.name)) {
+			const existingProp = seenProps.get(prop.name)!;
+
+			// For collection/fixedCollection types, merge nested options
+			if (
+				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
+				prop.options &&
+				existingProp.options
+			) {
+				// Merge options, avoiding duplicates by name
+				const existingOptionNames = new Set(existingProp.options.map((o) => o.name));
+				for (const opt of prop.options) {
+					if (!existingOptionNames.has(opt.name)) {
+						existingProp.options.push(opt);
+					}
+				}
+			}
+			// Don't add duplicate to output - we've merged into existing
+			continue;
+		}
+
+		// Create a shallow copy to avoid mutating the original when merging
+		seenProps.set(prop.name, {
+			...prop,
+			options: prop.options ? [...prop.options] : undefined,
+		});
+	}
+
+	return Array.from(seenProps.values());
+}
+
+/**
  * Generate inline type for a collection property
  * Collections have a flat structure with optional nested properties
  */
@@ -1132,6 +1180,19 @@ export function extractDiscriminatorCombinations(
 			(p) => p.name === discName && p.type === 'options' && p.options && p.options.length > 1,
 		);
 
+		// Skip if this discriminator has displayOptions (it's conditionally shown)
+		// Exception: @version displayOptions are fine since version filtering is handled separately
+		if (discProp?.displayOptions) {
+			const hasNonVersionDisplayOptions =
+				(discProp.displayOptions.show &&
+					Object.keys(discProp.displayOptions.show).some((k) => k !== '@version')) ||
+				(discProp.displayOptions.hide &&
+					Object.keys(discProp.displayOptions.hide).some((k) => k !== '@version'));
+			if (hasNonVersionDisplayOptions) {
+				continue;
+			}
+		}
+
 		if (discProp && discProp.options) {
 			// Check if any properties depend on this discriminator
 			const hasDependentProps = node.properties.some(
@@ -1324,16 +1385,9 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		const configName = `${nodeName}${versionSuffix}Params`;
 		lines.push(`export interface ${configName} {`);
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of node.properties) {
-			if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
-				continue;
-			}
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge duplicate collection properties (e.g., multiple 'options' collections with different displayOptions)
+		const mergedProps = mergeCollectionProperties(node.properties);
+		for (const prop of mergedProps) {
 			const propLine = generatePropertyLine(prop, !prop.required);
 			if (propLine) {
 				lines.push(propLine);
@@ -2875,16 +2929,9 @@ function generateDiscriminatedUnionForEntry(
 		const configName = `${nodeName}${versionSuffix}Params`;
 		lines.push(`export interface ${configName} {`);
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of node.properties) {
-			if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
-				continue;
-			}
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge duplicate collection properties (e.g., multiple 'options' collections with different displayOptions)
+		const mergedProps = mergeCollectionProperties(node.properties);
+		for (const prop of mergedProps) {
 			const propLine = generatePropertyLine(prop, !prop.required);
 			if (propLine) {
 				lines.push(propLine);
