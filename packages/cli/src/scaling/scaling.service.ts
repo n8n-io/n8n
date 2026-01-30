@@ -350,16 +350,18 @@ export class ScalingService {
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
 					 */
-					this.jobResults.set(msg.executionId, {
-						success: msg.success,
-						error: msg.error,
-						status: msg.status,
-						lastNodeExecuted: msg.lastNodeExecuted,
-						usedDynamicCredentials: msg.usedDynamicCredentials,
-						metadata: msg.metadata,
-						startedAt: new Date(msg.startedAt),
-						stoppedAt: new Date(msg.stoppedAt),
-					});
+					if ('version' in msg && msg.version === 2) {
+						this.jobResults.set(msg.executionId, {
+							success: msg.success,
+							error: msg.error,
+							status: msg.status,
+							lastNodeExecuted: msg.lastNodeExecuted,
+							usedDynamicCredentials: msg.usedDynamicCredentials,
+							metadata: msg.metadata,
+							startedAt: new Date(msg.startedAt),
+							stoppedAt: new Date(msg.stoppedAt),
+						});
+					}
 
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,

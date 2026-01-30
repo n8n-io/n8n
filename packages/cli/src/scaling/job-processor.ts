@@ -264,6 +264,7 @@ export class JobProcessor {
 
 		const msg: JobFinishedMessage = {
 			kind: 'job-finished',
+			version: 2,
 			executionId,
 			workerId: this.instanceSettings.hostId,
 			...props,

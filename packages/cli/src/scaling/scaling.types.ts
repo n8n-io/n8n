@@ -64,8 +64,19 @@ export type JobFinishedProps = {
 };
 
 /** Message sent by worker to main to report a job has finished. */
-export type JobFinishedMessage = {
+export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
+
+/** @deprecated Old format without execution result details. */
+type JobFinishedMessageV1 = {
 	kind: 'job-finished';
+	executionId: string;
+	workerId: string;
+	success: boolean;
+};
+
+type JobFinishedMessageV2 = {
+	kind: 'job-finished';
+	version: 2;
 	executionId: string;
 	workerId: string;
 } & JobFinishedProps;

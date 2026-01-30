@@ -465,15 +465,9 @@ export class WorkflowRunner {
 
 				const jobResult = this.scalingService.popJobResult(executionId);
 
-				if (!jobResult) {
-					return reject(new Error(`Could not find job result for execution ${executionId}`));
-				}
-
-				const needsFullData = this.needsFullExecutionData(data.executionMode, executionId);
-
 				let runData: IRun;
 
-				if (needsFullData) {
+				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
 					const fullExecutionData = await this.executionRepository.findSingleExecution(
 						executionId,
 						{
