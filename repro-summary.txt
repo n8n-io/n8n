@@ -1,0 +1,37 @@
+Issue #19319 Reproduction Summary
+=================================
+
+PROBLEM:
+- HttpRequest V3 node throws vague error: "JSON parameter needs to be valid JSON"
+- No context about which parameter failed (body/query/headers)
+- No guidance on how to fix the issue
+- No specific parse error details
+
+REPRODUCTION:
+1. Create webhook → HTTP Request workflow
+2. Send invalid JSON: {"message": "hello world"
+3. Observe unhelpful error message
+
+BEFORE FIX:
+❌ Error: "JSON parameter needs to be valid JSON"
+
+AFTER FIX:
+❌ Error: "JSON parameter needs to be valid JSON. The HTTP Request node received a string that is not valid JSON for the request body. If you build the JSON using expressions, wrap with JSON.stringify(...) to ensure proper formatting. Parse error: Expected ',' or '}' after property value in JSON at position 25"
+
+IMPROVEMENTS:
+✅ Contextual error messages (body/query/headers)
+✅ Actionable guidance (JSON.stringify suggestion)
+✅ Specific parse error details
+✅ Defensive webhook parsing with HTTP 400
+✅ Enhanced content-type support
+✅ Size limit protection (10MB)
+
+TEST COVERAGE:
+- Unit tests: packages/nodes-base/__tests__/httprequest-json-validation.test.js
+- Integration tests: packages/nodes-base/__tests__/webhook-json-parsing.test.js
+- Edge cases: dev/edge-cases-test.js
+- Comprehensive: dev/comprehensive-test.js
+
+FILES MODIFIED:
+- packages/nodes-base/nodes/Webhook/Webhook.node.ts
+- packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
