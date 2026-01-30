@@ -36,7 +36,7 @@ export const useCredentialsAppSelectionStore = defineStore(
 
 		const hasNoCredentials = computed(() => credentialsStore.allCredentials.length === 0);
 
-		const userIsTrialing = computed(() => true || cloudPlanStore.userIsTrialing);
+		const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 		// Show if in variant, trialing, not dismissed, and either:
 		// - Already started the flow (keep showing until dismissed)
