@@ -22,10 +22,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import {
-	PERSONAL_PROJECT_GOVERNANCE,
-	TEMPLATE_SETUP_EXPERIENCE,
-} from '@/app/constants/experiments';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
@@ -610,8 +607,8 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
-							const { isFeatureEnabled } = usePostHog();
-							return isFeatureEnabled(PERSONAL_PROJECT_GOVERNANCE.name);
+							const { check } = useEnvFeatureFlag();
+							return check.value('PERSONAL_SECURITY_SETTINGS');
 						},
 					},
 					telemetry: {

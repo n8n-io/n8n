@@ -66,7 +66,6 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantResources: 'variant-resources',
 	variantInspiration: 'variant-inspiration',
 });
-export const PERSONAL_PROJECT_GOVERNANCE = createExperiment('060_personal_project_governance');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -79,7 +78,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
-	PERSONAL_PROJECT_GOVERNANCE.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 ];
