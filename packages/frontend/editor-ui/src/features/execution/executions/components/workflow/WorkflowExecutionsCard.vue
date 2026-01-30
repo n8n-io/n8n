@@ -3,10 +3,11 @@ import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -36,7 +37,6 @@ const route = useRoute();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
-const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
@@ -44,7 +44,7 @@ const isAdvancedExecutionFilterEnabled = computed(
 );
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
-const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
+const workflowId = injectStrict(WorkflowIdKey);
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',
@@ -85,7 +85,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: execution.id },
+				params: { name: workflowId, executionId: execution.id },
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
