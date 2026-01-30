@@ -23,6 +23,7 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
@@ -45,6 +46,7 @@ export class ActiveExecutions {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -82,7 +84,7 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				maybeExecutionId = await this.executionRepository.createNewExecution(fullExecutionData);
+				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
 				assert(maybeExecutionId);
 
 				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });

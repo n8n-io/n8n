@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -40,7 +41,7 @@ export class WorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly testWebhooks: TestWebhooks,
@@ -359,7 +360,7 @@ export class WorkflowExecutionService {
 						workflowId: workflowData.id,
 					};
 
-					await this.executionRepository.createNewExecution(fullExecutionData);
+					await this.executionPersistence.create(fullExecutionData);
 				}
 				this.logger.info('Error workflow execution blocked due to subworkflow settings', {
 					erroredWorkflowId: workflowErrorData.workflow.id,
