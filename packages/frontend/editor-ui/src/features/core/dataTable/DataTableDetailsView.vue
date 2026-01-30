@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTable,
@@ -16,6 +16,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/app/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import {
 	N8nButton,
 	N8nInput,
@@ -39,6 +40,9 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
+const sourceControlStore = useSourceControlStore();
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -156,6 +160,7 @@ onMounted(async () => {
 					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
+						:disabled="readOnlyEnv"
 						@click="dataTableTableRef?.addRow"
 						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
 					>
@@ -163,6 +168,7 @@ onMounted(async () => {
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
+						:disabled="readOnlyEnv"
 					/>
 				</div>
 			</div>
@@ -171,6 +177,7 @@ onMounted(async () => {
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"
+					:read-only="readOnlyEnv"
 					@toggle-save="onToggleSave"
 				/>
 			</div>

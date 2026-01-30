@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useToast } from '@/app/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 
@@ -23,12 +24,19 @@ const props = defineProps<Props>();
 const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
 
 const dataTableStore = useDataTableStore();
+const sourceControlStore = useSourceControlStore();
 
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
 
 const editableName = ref(props.dataTable.name);
+
+const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const isRenameDisabled = computed(
+	() => !dataTableStore.projectPermissions.dataTable.update || isReadOnly.value,
+);
 
 const project = computed(() => {
 	return props.dataTable.project ?? null;
@@ -118,8 +126,8 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:read-only="false"
-					:disabled="false"
+					:read-only="isReadOnly"
+					:disabled="isRenameDisabled"
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
@@ -127,6 +135,7 @@ watch(
 		<div :class="$style['data-table-actions']">
 			<DataTableActions
 				:data-table="props.dataTable"
+				:is-read-only="isReadOnly"
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"
