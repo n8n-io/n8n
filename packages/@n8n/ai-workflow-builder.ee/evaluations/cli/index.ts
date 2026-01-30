@@ -28,8 +28,6 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
-	createCodeTypecheckEvaluator,
-	createCodeLLMJudgeEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -292,11 +290,6 @@ export async function runV2Evaluation(): Promise<void> {
 		case 'llm-judge':
 			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
 			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			// For one-shot agent, also run code-specific evaluators
-			if (args.agent === AGENT_TYPES.ONE_SHOT) {
-				evaluators.push(createCodeTypecheckEvaluator());
-				evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-			}
 			break;
 		case 'pairwise':
 			evaluators.push(
@@ -311,14 +304,6 @@ export async function runV2Evaluation(): Promise<void> {
 			break;
 		case 'similarity':
 			evaluators.push(createSimilarityEvaluator());
-			break;
-		case 'code-typecheck':
-			evaluators.push(createCodeTypecheckEvaluator());
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'code-llm-judge':
-			evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 			break;
 	}
 

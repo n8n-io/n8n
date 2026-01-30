@@ -46,8 +46,6 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
-	createCodeTypecheckEvaluator,
-	createCodeLLMJudgeEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
 } from './evaluators';

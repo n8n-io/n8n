@@ -13,13 +13,7 @@ import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
 import type { StageModels } from '../support/environment.js';
 
-export type EvaluationSuite =
-	| 'llm-judge'
-	| 'pairwise'
-	| 'programmatic'
-	| 'similarity'
-	| 'code-typecheck'
-	| 'code-llm-judge';
+export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';
 export type AgentType = 'multi-agent' | 'one-shot';
 
@@ -88,16 +82,7 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z
-			.enum([
-				'llm-judge',
-				'pairwise',
-				'programmatic',
-				'similarity',
-				'code-typecheck',
-				'code-llm-judge',
-			])
-			.default('llm-judge'),
+		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
 		agent: z.enum(['one-shot', 'multi-agent']).default('one-shot'),
 
