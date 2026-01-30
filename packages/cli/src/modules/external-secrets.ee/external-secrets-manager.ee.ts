@@ -296,23 +296,20 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		config: SecretsProviderSettings,
 		providerKey?: string,
 	): Promise<void> {
-		providerKey ??= providerType;
+		const key = providerKey ?? providerType;
 		const result = await this.providerLifecycle.initialize(providerType, config);
 
 		if (!result.success || !result.provider) {
-			this.logger.error(`Failed to initialize provider ${providerKey}`, {
+			this.logger.error(`Failed to initialize provider ${key}`, {
 				error: result.error,
 			});
 			return;
 		}
 
-		this.providerRegistry.add(providerKey, result.provider);
+		this.providerRegistry.add(key, result.provider);
 
 		if (config.connected) {
-			await this.retryManager.runWithRetry(
-				providerKey,
-				async () => await this.connectProvider(providerKey),
-			);
+			await this.retryManager.runWithRetry(key, async () => await this.connectProvider(key));
 		}
 	}
 
