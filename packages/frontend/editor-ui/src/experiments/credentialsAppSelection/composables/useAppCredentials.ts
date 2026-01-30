@@ -118,12 +118,38 @@ export function useAppCredentials() {
 
 	const isOAuthCredentialType = (credType: ICredentialType): boolean => {
 		if (!credType.extends) return false;
-		return credType.extends.includes('oAuth2Api') || credType.extends.includes('oAuth1Api');
+		return (
+			credType.extends.includes('oAuth2Api') ||
+			credType.extends.includes('oAuth1Api') ||
+			credType.extends.includes('googleOAuth2Api') ||
+			credType.extends.includes('microsoftOAuth2Api')
+		);
+	};
+
+	const isGoogleOAuthType = (credType: ICredentialType): boolean => {
+		if (!credType.extends) return false;
+		return credType.extends.includes('googleOAuth2Api');
+	};
+
+	const isMicrosoftOAuthType = (credType: ICredentialType): boolean => {
+		if (!credType.extends) return false;
+		return credType.extends.includes('microsoftOAuth2Api');
 	};
 
 	const hasInstantOAuth = (credType: ICredentialType): boolean => {
 		if (!isOAuthCredentialType(credType)) return false;
 
+		// Google OAuth types always support instant OAuth (Sign in with Google)
+		if (isGoogleOAuthType(credType)) {
+			return true;
+		}
+
+		// Microsoft OAuth types always support instant OAuth
+		if (isMicrosoftOAuthType(credType)) {
+			return true;
+		}
+
+		// For other OAuth types, check if clientId and clientSecret are pre-configured
 		const overwrittenProperties = credType.__overwrittenProperties;
 		if (!overwrittenProperties || !Array.isArray(overwrittenProperties)) {
 			return false;
@@ -135,10 +161,14 @@ export function useAppCredentials() {
 
 	// Get priority score for a credential type (higher = better)
 	const getCredentialPriority = (credType: ICredentialType): number => {
+		const isGoogle = isGoogleOAuthType(credType);
+		const isMicrosoft = isMicrosoftOAuthType(credType);
 		const isOAuth2 = credType.extends?.includes('oAuth2Api');
 		const isOAuth1 = credType.extends?.includes('oAuth1Api');
 		const hasInstant = hasInstantOAuth(credType);
 
+		// Google/Microsoft OAuth with native sign-in buttons are highest priority
+		if (isGoogle || isMicrosoft) return 6;
 		if (isOAuth2 && hasInstant) return 5;
 		if (isOAuth1 && hasInstant) return 4;
 		if (isOAuth2) return 3;

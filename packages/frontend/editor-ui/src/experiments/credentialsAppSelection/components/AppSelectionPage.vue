@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { N8nButton, N8nHeading, N8nInput, N8nText, N8nIcon, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
@@ -14,9 +13,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsAppSelectionStore } from '../stores/credentialsAppSelection.store';
 import { useAppCredentials, type AppEntry } from '../composables/useAppCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import AppSelectionGrid from './AppSelectionGrid.vue';
-import type { ICredentialType, CredentialInformation, ICredentialsDecrypted } from 'n8n-workflow';
 
 type CardState = 'default' | 'loading' | 'connected' | 'error';
 
@@ -25,14 +22,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
 const telemetry = useTelemetry();
 const { debounce } = useDebounce();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const appSelectionStore = useCredentialsAppSelectionStore();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 
 const { appEntries, isLoading } = useAppCredentials();
 
@@ -75,156 +70,22 @@ const handleSearchInput = (value: string) => {
 	debouncedTrackSearch(value, filteredCount);
 };
 
-const getParentTypes = (credentialType: ICredentialType): string[] => {
-	const parents: string[] = [];
-	let current = credentialType;
-
-	while (current.extends) {
-		parents.push(...current.extends);
-		const parentType = current.extends.find((ext) => credentialsStore.getCredentialTypeByName(ext));
-		if (parentType) {
-			const parent = credentialsStore.getCredentialTypeByName(parentType);
-			if (parent) {
-				current = parent;
-			} else {
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-
-	return parents;
-};
-
-const handleInstantOAuthFlow = async (appEntry: AppEntry) => {
-	const { credentialType, app } = appEntry;
-	cardStates.set(credentialType.name, 'loading');
-
-	try {
-		const credentialName = await credentialsStore.getNewCredentialName({
-			credentialTypeName: credentialType.name,
-		});
-
-		const credentialData = {
-			name: credentialName,
-			type: credentialType.name,
-			data: {} as Record<string, CredentialInformation>,
-		};
-
-		for (const property of credentialType.properties) {
-			if (property.default !== undefined && property.default !== null) {
-				credentialData.data[property.name] = property.default as CredentialInformation;
-			}
-		}
-
-		const projectId = projectsStore.personalProject?.id;
-		const credential = await credentialsStore.createNewCredential(
-			credentialData as ICredentialsDecrypted,
-			projectId,
-			'app_selection',
-		);
-
-		const parentTypes = getParentTypes(credentialType);
-		const isOAuth2 = credentialType.name === 'oAuth2Api' || parentTypes.includes('oAuth2Api');
-
-		const credData = {
-			id: credential.id,
-			...credentialData.data,
-			type: credentialType.name,
-			name: credentialName,
-		};
-
-		let url: string;
-		if (isOAuth2) {
-			url = await credentialsStore.oAuth2Authorize(
-				credData as Parameters<typeof credentialsStore.oAuth2Authorize>[0],
-			);
-		} else {
-			url = await credentialsStore.oAuth1Authorize(
-				credData as Parameters<typeof credentialsStore.oAuth1Authorize>[0],
-			);
-		}
-
-		const params =
-			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-		const oauthPopup = window.open(url, 'OAuth Authorization', params);
-
-		const oauthChannel = new BroadcastChannel('oauth-callback');
-
-		const receiveMessage = (event: MessageEvent) => {
-			const success = event.data === 'success';
-
-			telemetry.track('User saved credentials', {
-				credential_type: credentialType.name,
-				credential_id: credential.id,
-				app_name: app.displayName,
-				source: 'app_selection',
-				is_valid: success,
-				flow: 'instant_oauth',
-			});
-
-			if (success) {
-				cardStates.set(credentialType.name, 'connected');
-				appSelectionStore.markCredentialConnected(credential.id);
-			} else {
-				cardStates.set(credentialType.name, 'error');
-			}
-
-			oauthChannel.removeEventListener('message', receiveMessage);
-
-			if (oauthPopup) {
-				oauthPopup.close();
-			}
-		};
-
-		oauthChannel.addEventListener('message', receiveMessage);
-
-		const checkPopupClosed = setInterval(() => {
-			if (oauthPopup?.closed) {
-				clearInterval(checkPopupClosed);
-				const state = cardStates.get(credentialType.name);
-				if (state === 'loading') {
-					cardStates.set(credentialType.name, 'default');
-					void credentialsStore.deleteCredential({ id: credential.id });
-				}
-				oauthChannel.removeEventListener('message', receiveMessage);
-			}
-		}, 500);
-	} catch (error) {
-		cardStates.set(credentialType.name, 'error');
-		toast.showError(error, i18n.baseText('appSelection.error.oauthFailed'));
-	}
-};
-
-const handleManualSetupFlow = (appEntry: AppEntry) => {
+const handleCardClick = (appEntry: AppEntry) => {
 	const { credentialType } = appEntry;
-	pendingCredentialType.value = credentialType.name;
-	cardStates.set(credentialType.name, 'loading');
-	uiStore.openNewCredential(credentialType.name);
-};
-
-const handleCardClick = async (appEntry: AppEntry) => {
-	const { credentialType, supportsInstantOAuth } = appEntry;
 	const currentState = cardStates.get(credentialType.name);
 
 	if (currentState === 'loading' || currentState === 'connected') {
 		return;
 	}
 
-	if (supportsInstantOAuth) {
-		await handleInstantOAuthFlow(appEntry);
-	} else {
-		handleManualSetupFlow(appEntry);
-	}
+	// Open the credential modal - it handles OAuth and manual setup consistently
+	pendingCredentialType.value = credentialType.name;
+	cardStates.set(credentialType.name, 'loading');
+	uiStore.openNewCredential(credentialType.name, true);
 };
 
 const handleContinue = () => {
 	appSelectionStore.trackCompleted();
-	toast.showMessage({
-		title: i18n.baseText('appSelection.toast.success'),
-		type: 'success',
-	});
 	emit('continue');
 };
 

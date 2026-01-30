@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -87,16 +87,6 @@ const iconSource = computed((): NodeIconSource | undefined => {
 					<N8nIcon icon="triangle-alert" :class="$style.errorIcon" />
 				</div>
 			</Transition>
-
-			<N8nTooltip
-				v-if="supportsInstantOAuth && state === 'default'"
-				content="Instant connect"
-				placement="top"
-			>
-				<div :class="$style.instantBadge">
-					<N8nIcon icon="zap" :class="$style.boltIcon" />
-				</div>
-			</N8nTooltip>
 		</div>
 
 		<N8nText :class="$style.name" size="small">
@@ -203,25 +193,6 @@ const iconSource = computed((): NodeIconSource | undefined => {
 .errorIcon {
 	color: var(--color--danger);
 	font-size: 20px;
-}
-
-.instantBadge {
-	position: absolute;
-	top: -6px;
-	right: -6px;
-	width: 18px;
-	height: 18px;
-	background: var(--color--warning);
-	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.boltIcon {
-	color: var(--color--text--shade-1);
-	font-size: 10px;
 }
 
 .name {
