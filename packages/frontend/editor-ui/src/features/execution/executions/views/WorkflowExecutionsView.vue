@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
@@ -20,6 +21,7 @@ import { executionRetryMessage } from '../executions.utils';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const i18n = useI18n();
@@ -150,21 +152,21 @@ async function fetchWorkflow() {
 
 	// Check if we are loading the Executions tab directly, without having loaded the workflow
 	if (workflowId.value) {
-		if (!workflowsStore.workflowsById[workflowId.value]) {
+		if (!workflowsListStore.workflowsById[workflowId.value]) {
 			try {
-				await workflowsStore.fetchActiveWorkflows();
-				const data = await workflowsStore.fetchWorkflow(workflowId.value);
+				await workflowsListStore.fetchActiveWorkflows();
+				const data = await workflowsListStore.fetchWorkflow(workflowId.value);
 				await initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 			}
 
-			workflow.value = workflowsStore.getWorkflowById(workflowId.value);
-			const workflowData = await workflowsStore.fetchWorkflow(workflow.value.id);
+			workflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+			const workflowData = await workflowsListStore.fetchWorkflow(workflow.value.id);
 
 			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 		} else {
-			workflow.value = workflowsStore.workflowsById[workflowId.value];
+			workflow.value = workflowsListStore.workflowsById[workflowId.value];
 		}
 	}
 }

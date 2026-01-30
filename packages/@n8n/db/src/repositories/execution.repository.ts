@@ -1109,8 +1109,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Sort the final result after the joins again, because there is no
 		// guarantee that the order is unchanged after performing joins. Especially
-		// postgres and MySQL returned to the natural order again, listing
-		// executions in the order they were created.
+		// postgres returned to the natural order again, listing executions in the
+		// order they were created.
 		if (query.kind === 'range') {
 			if (query.order?.startedAt === 'DESC') {
 				const table = qb.escape('e');

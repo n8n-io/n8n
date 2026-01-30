@@ -21,7 +21,7 @@ test.describe('Workflow Publish', () => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 
 		await n8n.canvas.publishWorkflow();
 

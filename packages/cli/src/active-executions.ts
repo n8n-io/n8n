@@ -10,6 +10,7 @@ import type {
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
+	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -37,6 +38,9 @@ export class ActiveExecutions {
 	private activeExecutions: {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
+
+	/** Response mode by execution ID, if webhook-initiated. */
+	private responseModes = new Map<string, WebhookResponseMode>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -144,6 +148,7 @@ export class ActiveExecutions {
 					delete execution.workflowExecution;
 				} else {
 					delete this.activeExecutions[executionId];
+					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
 				}
 			});
@@ -204,6 +209,7 @@ export class ActiveExecutions {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
 			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
 			delete this.activeExecutions[executionId];
+			this.responseModes.delete(executionId);
 		} else {
 			execution.workflowExecution?.cancel();
 			execution.postExecutePromise.reject(cancellationError);
@@ -287,6 +293,14 @@ export class ActiveExecutions {
 		return this.getExecutionOrFail(executionId).status;
 	}
 
+	setResponseMode(executionId: string, responseMode: WebhookResponseMode): void {
+		this.responseModes.set(executionId, responseMode);
+	}
+
+	getResponseMode(executionId: string): WebhookResponseMode | undefined {
+		return this.responseModes.get(executionId);
+	}
+
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		const isRegularMode = this.executionsConfig.mode === 'regular';
@@ -299,9 +313,8 @@ export class ActiveExecutions {
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { responsePromise, status } = this.activeExecutions[executionId];
-			if (!!responsePromise || (isRegularMode && cancelAll)) {
-				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
+			const { status } = this.activeExecutions[executionId];
+			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {

@@ -275,12 +275,6 @@ describe('UniqueRoleNames Migration', () => {
 					WHERE t.relname = ${tableName} AND i.relname = ${indexName}`,
 				);
 				expect(uniqueCheck[0].indisunique).toBe(true);
-			} else if (postMigrationContext.isMysql) {
-				const result = await postMigrationContext.queryRunner.query(
-					`SHOW INDEXES FROM ${tableName} WHERE Key_name = ${indexName}`,
-				);
-				expect(result).toHaveLength(1);
-				expect(result[0].Non_unique).toBe(0); // 0 means unique
 			}
 
 			// Verify index enforces uniqueness by attempting duplicate insert
@@ -336,11 +330,6 @@ describe('UniqueRoleNames Migration', () => {
 					`SELECT indexname FROM pg_indexes WHERE tablename = ${tableName} AND indexname = ${indexName}`,
 				);
 				expect(result).toHaveLength(1);
-			} else if (upContext.isMysql) {
-				const result = await upContext.queryRunner.query(
-					`SHOW INDEXES FROM ${tableName} WHERE Key_name = ${indexName}`,
-				);
-				expect(result).toHaveLength(1);
 			}
 
 			await upContext.queryRunner.release();
@@ -363,11 +352,6 @@ describe('UniqueRoleNames Migration', () => {
 			} else if (postRollbackContext.isPostgres) {
 				const result = await postRollbackContext.queryRunner.query(
 					`SELECT indexname FROM pg_indexes WHERE tablename = ${tableName} AND indexname = ${indexName}`,
-				);
-				expect(result).toHaveLength(0);
-			} else if (postRollbackContext.isMysql) {
-				const result = await postRollbackContext.queryRunner.query(
-					`SHOW INDEXES FROM ${tableName} WHERE Key_name = ${indexName}`,
 				);
 				expect(result).toHaveLength(0);
 			}

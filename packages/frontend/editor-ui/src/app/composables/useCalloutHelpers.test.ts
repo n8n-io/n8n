@@ -39,6 +39,11 @@ vi.mock('@/app/stores/workflows.store', () => ({
 		workflowObject: {
 			id: '1',
 		},
+	}),
+}));
+
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({
 		getWorkflowById: mocks.getWorkflowById,
 	}),
 }));

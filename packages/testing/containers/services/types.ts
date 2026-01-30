@@ -15,6 +15,8 @@ export const SERVICE_NAMES = [
 	'loadBalancer',
 	'cloudflared',
 	'kafka',
+	'ngrok',
+	'mysql',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

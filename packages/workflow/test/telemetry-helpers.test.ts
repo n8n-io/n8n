@@ -3,13 +3,16 @@ import { mock } from 'vitest-mock-extended';
 
 import { nodeTypes } from './ExpressionExtensions/helpers';
 import type { NodeTypes } from './node-types';
-import { STICKY_NODE_TYPE } from '../src/constants';
+import {
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
 	IConnections,
 	INode,
 	INodeTypeDescription,
-	INodeTypes,
 	IRun,
 	IRunData,
 	NodeConnectionType,
@@ -1829,6 +1832,162 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: { 'Guardrails Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
 		});
