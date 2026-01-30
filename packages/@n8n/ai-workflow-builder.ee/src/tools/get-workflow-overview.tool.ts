@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
 import { ValidationError, ToolExecutionError } from '../errors';
+import type { SimpleWorkflow } from '../types/workflow';
 import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -112,10 +113,7 @@ function buildSummaryFormat(
  * Builds a Mermaid diagram output with node IDs embedded in comments
  */
 function buildMermaidFormat(
-	workflow: {
-		nodes: Array<{ id: string; name: string; type: string }>;
-		connections: Record<string, unknown>;
-	},
+	workflow: SimpleWorkflow,
 	triggerNode: { id: string; name: string; type: string } | undefined,
 	includeParameters: boolean,
 ): string {
@@ -131,13 +129,8 @@ function buildMermaidFormat(
 
 	// Mermaid diagram - node IDs are embedded in the comment lines
 	parts.push('');
-	// mermaidStringify expects a WorkflowMetadata shape
 	const mermaid = mermaidStringify(
-		{
-			templateId: 0,
-			name: '',
-			workflow: workflow as Parameters<typeof mermaidStringify>[0]['workflow'],
-		},
+		{ workflow },
 		{
 			includeNodeType: true,
 			includeNodeParameters: includeParameters,

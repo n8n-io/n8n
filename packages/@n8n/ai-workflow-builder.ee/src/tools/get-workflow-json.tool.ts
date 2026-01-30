@@ -53,7 +53,7 @@ function filterConnections(connections: IConnections, nodeNames: Set<string>): I
 		>) {
 			if (!typeConns) continue;
 
-			const filteredTypeConns: NonNullable<IConnections[string][NodeConnectionType]> = [];
+			const filteredTypeConns: IConnections[string][NodeConnectionType] = [];
 
 			for (const connArray of typeConns) {
 				if (!connArray) {

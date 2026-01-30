@@ -353,11 +353,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowIndicator(parentState.workflowJSON));
 
-		// Note: Execution data (schema, logs, expressions) is available via tools:
-		// - get_execution_schema: Node output types
-		// - get_execution_logs: Full execution data (runData, errors)
-		// - get_expression_data_mapping: Resolved expression values
-
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
 

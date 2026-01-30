@@ -6,6 +6,19 @@ import {
 } from './node-configuration.utils';
 
 /**
+ * Input type for mermaidStringify when you only have workflow data
+ * without full template metadata.
+ * The workflow object must have nodes and connections, name is optional.
+ */
+export interface MermaidWorkflowInput {
+	workflow: {
+		name?: string;
+		nodes: WorkflowMetadata['workflow']['nodes'];
+		connections: WorkflowMetadata['workflow']['connections'];
+	};
+}
+
+/**
  * Options for mermaid diagram generation
  */
 export interface MermaidOptions {
@@ -892,8 +905,11 @@ class MermaidBuilder {
 /**
  * Generates a Mermaid flowchart diagram from a workflow
  */
-export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOptions): string {
-	const { workflow: wf } = workflow;
+export function mermaidStringify(
+	input: WorkflowMetadata | MermaidWorkflowInput,
+	options?: MermaidOptions,
+): string {
+	const { workflow: wf } = input;
 	const mergedOptions: Required<MermaidOptions> = {
 		...DEFAULT_MERMAID_OPTIONS,
 		...options,

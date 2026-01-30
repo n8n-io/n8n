@@ -1,11 +1,13 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 
-import { trimWorkflowJSON } from './trim-workflow-context';
+import { MAX_AI_RESPONSE_CHARS, MAX_WORKFLOW_INDICATOR_NODES } from '../constants';
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { ChatPayload } from '../workflow-builder-agent';
+import { trimWorkflowJSON } from './trim-workflow-context';
+import { truncateJson } from './truncate-json';
 
 // ============================================================================
 // WORKFLOW CONTEXT BUILDERS
@@ -47,10 +49,13 @@ export function buildWorkflowIndicator(workflow: SimpleWorkflow): string {
 		return 'Empty workflow - ready to build';
 	}
 
-	// Get node names (limit to first 5 for indicator)
+	// Get node names (limit to first N for indicator)
 	const nodeNames = workflow.nodes.map((n) => n.name);
-	const displayNames = nodeNames.slice(0, 5);
-	const hasMore = nodeNames.length > 5 ? ` (and ${nodeNames.length - 5} more)` : '';
+	const displayNames = nodeNames.slice(0, MAX_WORKFLOW_INDICATOR_NODES);
+	const hasMore =
+		nodeNames.length > MAX_WORKFLOW_INDICATOR_NODES
+			? ` (and ${nodeNames.length - MAX_WORKFLOW_INDICATOR_NODES} more)`
+			: '';
 
 	// Find trigger node
 	const trigger = workflow.nodes.find(
@@ -218,9 +223,10 @@ export function buildConversationContext(
 					const aiContent = getMessageContent(messages[i]);
 					if (aiContent) {
 						// Truncate if too long, keep the most relevant part (usually at the end)
-						const maxLength = 500;
 						const truncatedContent =
-							aiContent.length > maxLength ? '...' + aiContent.slice(-maxLength) : aiContent;
+							aiContent.length > MAX_AI_RESPONSE_CHARS
+								? '...' + aiContent.slice(-MAX_AI_RESPONSE_CHARS)
+								: aiContent;
 						parts.push(`Last AI response: "${truncatedContent}"`);
 						parts.push('');
 					}
@@ -261,11 +267,11 @@ export function buildExecutionContextBlock(
 
 	return [
 		'<execution_data>',
-		JSON.stringify(executionData, null, 2),
+		truncateJson(executionData),
 		'</execution_data>',
 		'',
 		'<execution_schema>',
-		JSON.stringify(executionSchema, null, 2),
+		truncateJson(executionSchema),
 		'</execution_schema>',
 	].join('\n');
 }
@@ -280,11 +286,7 @@ export function buildExecutionSchemaBlock(
 
 	if (executionSchema.length === 0) return '';
 
-	return [
-		'<execution_schema>',
-		JSON.stringify(executionSchema, null, 2),
-		'</execution_schema>',
-	].join('\n');
+	return ['<execution_schema>', truncateJson(executionSchema), '</execution_schema>'].join('\n');
 }
 
 type ExecutionError = NonNullable<
@@ -445,7 +447,8 @@ export function buildSimplifiedExecutionContext(
 	const nodesWithEmptyOutput = (workflowContext.executionSchema ?? [])
 		.filter((schema) => {
 			const value = schema.schema?.value;
-			return Array.isArray(value) && value.length === 0;
+			// Explicitly check type before checking length to avoid implicit contract with schema format
+			return value !== undefined && Array.isArray(value) && value.length === 0;
 		})
 		.map((schema) => schema.nodeName);
 

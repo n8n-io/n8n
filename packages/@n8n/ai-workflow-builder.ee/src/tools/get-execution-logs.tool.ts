@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ValidationError, ToolExecutionError } from '../errors';
 import type { GetExecutionLogsOutput } from '../types/tools';
 import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
+import { truncateJson } from '../utils/truncate-json';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getWorkflowState } from './helpers/state';
@@ -37,7 +38,7 @@ function formatExecutionLogs(
 			parts.push(`  <last_node_executed>${lastNodeExecuted}</last_node_executed>`);
 		}
 		parts.push('  <error_details>');
-		parts.push(JSON.stringify(error, null, 2));
+		parts.push(truncateJson(error));
 		parts.push('  </error_details>');
 		parts.push('</execution_error>');
 	}
@@ -51,7 +52,7 @@ function formatExecutionLogs(
 			: runData;
 
 		if (Object.keys(filtered).length > 0) {
-			parts.push(JSON.stringify(filtered, null, 2));
+			parts.push(truncateJson(filtered));
 		} else if (nodeName) {
 			parts.push(`No execution data found for node "${nodeName}"`);
 		}

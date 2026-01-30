@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { ValidationError, ToolExecutionError } from '../errors';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
+import { truncateJson } from '../utils/truncate-json';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getWorkflowState } from './helpers/state';
@@ -195,7 +196,7 @@ function buildNodeContext(
 	parts.push('');
 	parts.push('Parameters:');
 	if (node.parameters && Object.keys(node.parameters).length > 0) {
-		parts.push(JSON.stringify(node.parameters, null, 2));
+		parts.push(truncateJson(node.parameters));
 	} else {
 		parts.push('  (no parameters set)');
 	}
@@ -208,7 +209,7 @@ function buildNodeContext(
 		const nodeSchema = executionSchema.find((s) => s.nodeName === node.name);
 		if (nodeSchema) {
 			parts.push('Output schema (from last execution):');
-			parts.push(JSON.stringify(nodeSchema.schema, null, 2));
+			parts.push(truncateJson(nodeSchema.schema));
 		}
 
 		// RunData from executionData
@@ -218,13 +219,7 @@ function buildNodeContext(
 		if (nodeRunData) {
 			parts.push('');
 			parts.push('Execution data (from last run):');
-			// Trim large data
-			const dataStr = JSON.stringify(nodeRunData, null, 2);
-			if (dataStr.length > 2000) {
-				parts.push(dataStr.substring(0, 2000) + '\n... (truncated)');
-			} else {
-				parts.push(dataStr);
-			}
+			parts.push(truncateJson(nodeRunData));
 		}
 
 		if (!nodeSchema && !nodeRunData) {

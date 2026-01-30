@@ -1,9 +1,16 @@
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import type { NodeExecutionSchema, Schema } from 'n8n-workflow';
 
+import { createNode, createWorkflow } from '../../../test/test-utils';
 import type { CoordinationLogEntry } from '../../types/coordination';
 import type { ChatPayload } from '../../workflow-builder-agent';
-import { buildSimplifiedExecutionContext, buildConversationContext } from '../context-builders';
+import {
+	buildSimplifiedExecutionContext,
+	buildConversationContext,
+	buildWorkflowIndicator,
+	buildExecutionContextBlock,
+	buildExecutionSchemaBlock,
+} from '../context-builders';
 
 // Helper to create mock execution schema with proper typing
 const createMockSchema = (value: Schema['value']): Schema => ({
@@ -527,6 +534,173 @@ describe('buildConversationContext', () => {
 			expect(originalIndex).toBeLessThan(actionsIndex);
 			expect(actionsIndex).toBeLessThan(aiResponseIndex);
 			expect(aiResponseIndex).toBeLessThan(currentIndex);
+		});
+	});
+});
+
+describe('buildExecutionContextBlock', () => {
+	it('should return empty data when workflowContext is undefined', () => {
+		const result = buildExecutionContextBlock(undefined);
+
+		expect(result).toContain('<execution_data>');
+		expect(result).toContain('<execution_schema>');
+		expect(result).toContain('{}');
+		expect(result).toContain('[]');
+	});
+
+	it('should include execution data and schema', () => {
+		const workflowContext: ChatPayload['workflowContext'] = {
+			executionData: {
+				runData: { TestNode: [] },
+				lastNodeExecuted: 'TestNode',
+			},
+			executionSchema: [createMockNodeSchema('TestNode', [createMockSchema('test data')])],
+		};
+
+		const result = buildExecutionContextBlock(workflowContext);
+
+		expect(result).toContain('<execution_data>');
+		expect(result).toContain('TestNode');
+		expect(result).toContain('lastNodeExecuted');
+		expect(result).toContain('<execution_schema>');
+		expect(result).toContain('nodeName');
+	});
+});
+
+describe('buildExecutionSchemaBlock', () => {
+	it('should return empty string when no schema', () => {
+		const result = buildExecutionSchemaBlock(undefined);
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when executionSchema is empty array', () => {
+		const workflowContext: ChatPayload['workflowContext'] = {
+			executionSchema: [],
+		};
+		const result = buildExecutionSchemaBlock(workflowContext);
+		expect(result).toBe('');
+	});
+
+	it('should return schema block when schema exists', () => {
+		const workflowContext: ChatPayload['workflowContext'] = {
+			executionSchema: [createMockNodeSchema('Code', [createMockSchema('result')])],
+		};
+
+		const result = buildExecutionSchemaBlock(workflowContext);
+
+		expect(result).toContain('<execution_schema>');
+		expect(result).toContain('Code');
+		expect(result).toContain('result');
+		expect(result).toContain('</execution_schema>');
+	});
+});
+
+describe('buildWorkflowIndicator', () => {
+	describe('empty workflow', () => {
+		it('should return ready to build message for empty workflow', () => {
+			const workflow = createWorkflow([]);
+			const result = buildWorkflowIndicator(workflow);
+			expect(result).toBe('Empty workflow - ready to build');
+		});
+	});
+
+	describe('small workflow (≤5 nodes)', () => {
+		it('should list all node names for small workflows', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+				createNode({ id: '2', name: 'Code', type: 'n8n-nodes-base.code' }),
+				createNode({ id: '3', name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Workflow has 3 nodes: Webhook, Code, HTTP Request');
+			expect(result).not.toContain('and');
+			expect(result).not.toContain('more');
+		});
+	});
+
+	describe('large workflow (>5 nodes)', () => {
+		it('should list first 5 names and show count for remaining', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Node1' }),
+				createNode({ id: '2', name: 'Node2' }),
+				createNode({ id: '3', name: 'Node3' }),
+				createNode({ id: '4', name: 'Node4' }),
+				createNode({ id: '5', name: 'Node5' }),
+				createNode({ id: '6', name: 'Node6' }),
+				createNode({ id: '7', name: 'Node7' }),
+				createNode({ id: '8', name: 'Node8' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Workflow has 8 nodes: Node1, Node2, Node3, Node4, Node5');
+			expect(result).toContain('(and 3 more)');
+			expect(result).not.toContain('Node6');
+			expect(result).not.toContain('Node7');
+			expect(result).not.toContain('Node8');
+		});
+	});
+
+	describe('trigger detection', () => {
+		it('should detect webhook trigger node', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'My Webhook', type: 'n8n-nodes-base.webhook' }),
+				createNode({ id: '2', name: 'Code', type: 'n8n-nodes-base.code' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Trigger: My Webhook (n8n-nodes-base.webhook)');
+		});
+
+		it('should detect manual trigger node', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Trigger: Manual Trigger (n8n-nodes-base.manualTrigger)');
+		});
+
+		it('should detect any node with "trigger" in type', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Trigger: Schedule (n8n-nodes-base.scheduleTrigger)');
+		});
+	});
+
+	describe('workflow without trigger', () => {
+		it('should indicate no trigger node detected', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Code', type: 'n8n-nodes-base.code' }),
+				createNode({ id: '2', name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('No trigger node detected');
+		});
+	});
+
+	describe('tool recommendation', () => {
+		it('should recommend get_workflow_overview tool', () => {
+			const workflow = createWorkflow([
+				createNode({ id: '1', name: 'Code', type: 'n8n-nodes-base.code' }),
+			]);
+
+			const result = buildWorkflowIndicator(workflow);
+
+			expect(result).toContain('Use workflow context tools for details:');
+			expect(result).toContain('get_workflow_overview');
+			expect(result).toContain('get_node_context');
+			expect(result).toContain('get_workflow_json');
 		});
 	});
 });
