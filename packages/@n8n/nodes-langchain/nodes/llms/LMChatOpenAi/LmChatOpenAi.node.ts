@@ -813,6 +813,10 @@ export class LmChatOpenAi implements INodeType {
 		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility
 		if (responsesApiEnabled) {
 			fields.useResponsesApi = true;
+			// Set supportsStrictToolCalling to false to prevent sending null for the strict field
+			// in tool definitions. OpenAI-compatible backends (like LM Studio) expect strict to be
+			// a boolean or omitted entirely, not null.
+			fields.supportsStrictToolCalling = false;
 		}
 
 		const model = new ChatOpenAI(fields);
