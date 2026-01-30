@@ -135,13 +135,14 @@ export async function getAllFields(this: ILoadOptionsFunctions) {
 }
 
 const isTypeField =
-	(resource: 'Group' | 'Organization' | 'Ticket' | 'User') => (arr: Zammad.Field[]) =>
+	(resource: 'Group' | 'Organization' | 'Ticket' | 'User' | 'Role') => (arr: Zammad.Field[]) =>
 		arr.filter((i) => i.object === resource);
 
 export const getGroupFields = isTypeField('Group');
 export const getOrganizationFields = isTypeField('Organization');
 export const getUserFields = isTypeField('User');
 export const getTicketFields = isTypeField('Ticket');
+export const getRoleFields = isTypeField('Role');
 
 const getCustomFields = (arr: Zammad.Field[]) => arr.filter((i) => i.created_by_id !== 1);
 
@@ -149,6 +150,7 @@ export const getGroupCustomFields = flow(getGroupFields, getCustomFields);
 export const getOrganizationCustomFields = flow(getOrganizationFields, getCustomFields);
 export const getUserCustomFields = flow(getUserFields, getCustomFields);
 export const getTicketCustomFields = flow(getTicketFields, getCustomFields);
+export const getRoleCustomFields = flow(getRoleFields, getCustomFields);
 
 export const isNotZammadFoundation = (i: Zammad.Organization) => i.name !== 'Zammad Foundation';
 
