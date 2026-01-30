@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { itemGetAllFieldsPreSend } from '../../helpers/utils';
+import { addHonorNonIndexedQueriesHeader, itemGetAllFieldsPreSend } from '../../helpers/utils';
 import { listRLC, siteRLC, untilSiteSelected } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -31,6 +31,7 @@ const properties: INodeProperties[] = [
 				property: '$filter',
 				type: 'query',
 				value: '={{ $value ? $value : undefined }}',
+				preSend: [addHonorNonIndexedQueriesHeader],
 			},
 		},
 		type: 'string',
