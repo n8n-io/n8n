@@ -677,8 +677,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 	});
 
 	describe('getBase', () => {
-		const mockWebhookBaseUrl = 'webhook-base-url.com';
+		const mockWebhookBaseUrl = 'https://webhook.example.com/';
+		const mockInstanceBaseUrl = 'https://editor.example.com';
 		jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
+		jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
 
 		const globalConfig = mockInstance(GlobalConfig);
 		Container.set(GlobalConfig, globalConfig);
@@ -701,7 +703,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				credentialsHelper,
 				executeWorkflow: expect.any(Function),
 				restApiUrl: `${mockWebhookBaseUrl}/rest/`,
-				instanceBaseUrl: mockWebhookBaseUrl,
+				instanceBaseUrl: mockInstanceBaseUrl,
 				formWaitingBaseUrl: `${mockWebhookBaseUrl}/form-waiting/`,
 				webhookBaseUrl: `${mockWebhookBaseUrl}/webhook/`,
 				webhookWaitingBaseUrl: `${mockWebhookBaseUrl}/webhook-waiting/`,
