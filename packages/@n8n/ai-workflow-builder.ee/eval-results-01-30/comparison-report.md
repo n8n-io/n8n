@@ -43,16 +43,30 @@ Langsmith run https://smith.langchain.com/o/f3711c2a-fe3f-43a3-96aa-692f8f979c5a
 Analysis of pairwise judge violations reveals these recurring patterns:
 
 ### 1. GPT Model Specification (15 occurrences)
-- Not specifying `gpt-5-mini` in lmChatOpenAi nodes
-- Using default model instead of required specific model
+- Evals require specifying `gpt-5-mini` in lmChatOpenAi nodes
+- The code agent actually sets this correclty but fails because judge thinks gpt-5-mini does not exist
+`Node 'OpenAI Chat Model' (id: e6d28322-66bb-49e8-8fbf-3a751841a1a4) of type '@n8n/n8n-nodes-langchain.lmChatOpenAi' has the model parameter set to 'gpt-5-mini'. However, 'gpt-5-mini' is not a valid OpenAI model name. ...`
+- Basically impossible to beat.
 
 ### 2. Google Sheets Configuration (9 occurrences)
 - Not using `mode: list` for `documentId` and `sheetName` parameters
-- Hardcoding values instead of using the list selection mode
+- The agent uses url here because the prompt literally says `I have a URL` and `using the URL`. I am not going to fix this. What the agent is doing makes sense.
 
 ### 3. Embeddings Node Selection (9 occurrences)
 - Not using `embeddingsGoogleGemini` for image generation with Banana API
 - Using HTTP Request nodes directly instead of embedding nodes
+- Here's the agent's thinking and confusion. Basically it does not understand how to use this. Hopefully this is something best practices/planning can help resolve?
+```
+ "Let me reconsider: Perhaps the user wants to use Google Gemini's image analysis capabilities instead? That would make more sense for processing an uploaded photo before sending to Banana.\n" +
+    '\n' +
+    '**Revised Architecture:**\n' +
+    '1. Form Trigger (file upload)\n' +
+    '2. Google Gemini Image Analysis (analyze the uploaded photo)\n' +
+    '3. HTTP Request to Banana API (generate 3D model using the image)\n' +
+    '4. Respond to Webhook (return result)\n' +
+    '\n' +
+    `But the user specifically said "embeddingsGoogleGemini" - I'll include it but note this is unusual. Let me search for more context on how embeddings might be used here.\n` +
+```
 
 ### 4. Vector Store Retriever Connections (9 occurrences)
 - Vector Store Retriever not properly connected to Vector Store
