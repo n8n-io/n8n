@@ -70,20 +70,20 @@ describe('UserRepository', () => {
 	describe('updateExistingExecution with conditions', () => {
 		test.each([
 			{
-				statusInDB: 'waiting',
-				statusUpdate: 'running',
+				statusInDB: 'waiting' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
 				conditions: { requireStatus: 'waiting' as ExecutionStatus },
 				updateExpected: true,
 			},
 			{
-				statusInDB: 'success',
-				statusUpdate: 'running',
+				statusInDB: 'success' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
 				conditions: { requireStatus: 'waiting' as ExecutionStatus },
 				updateExpected: false,
 			},
 			{
-				statusInDB: 'running',
-				statusUpdate: 'success',
+				statusInDB: 'running' as ExecutionStatus,
+				statusUpdate: 'success' as ExecutionStatus,
 				conditions: undefined,
 				updateExpected: true,
 			},
