@@ -6,6 +6,7 @@ import {
 	evaluateConnections,
 	evaluateCredentials,
 	evaluateNodes,
+	evaluateParameters,
 	evaluateTools,
 	evaluateAgentPrompt,
 	evaluateFromAi,
@@ -32,6 +33,7 @@ export async function programmaticEvaluation(
 	const fromAiEvaluationResult = evaluateFromAi(generatedWorkflow, nodeTypes);
 	const credentialsEvaluationResult = evaluateCredentials(generatedWorkflow);
 	const nodeUsageEvaluationResult = evaluateNodeUsage(generatedWorkflow);
+	const parametersEvaluationResult = evaluateParameters(generatedWorkflow, nodeTypes);
 
 	// Workflow similarity evaluation
 	let similarityEvaluationResult = null;
@@ -75,6 +77,7 @@ export async function programmaticEvaluation(
 		fromAi: fromAiEvaluationResult,
 		credentials: credentialsEvaluationResult,
 		nodeUsage: nodeUsageEvaluationResult,
+		parameters: parametersEvaluationResult,
 		similarity: similarityEvaluationResult,
 	});
 
@@ -88,6 +91,7 @@ export async function programmaticEvaluation(
 		fromAi: fromAiEvaluationResult,
 		credentials: credentialsEvaluationResult,
 		nodeUsage: nodeUsageEvaluationResult,
+		parameters: parametersEvaluationResult,
 		similarity: similarityEvaluationResult,
 	};
 }
