@@ -258,7 +258,7 @@ describe('GlobalConfig', () => {
 					keepAlive: false,
 					keepAliveDelay: 5000,
 					keepAliveInterval: 5000,
-					reconnectOnFailover: false,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
