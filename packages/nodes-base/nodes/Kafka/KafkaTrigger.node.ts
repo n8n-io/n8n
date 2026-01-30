@@ -360,26 +360,6 @@ export class KafkaTrigger implements INodeType {
 						description: 'The maximum time allowed for a consumer to join the group',
 					},
 					{
-						displayName: 'Retry Delay on Error',
-						name: 'errorRetryDelay',
-						type: 'number',
-						default: 5000,
-						description:
-							'Delay in milliseconds before retrying after a failed offset resolution. This prevents rapid retry loops that could overwhelm the Kafka broker.',
-						hint: 'Value in milliseconds',
-						typeOptions: {
-							minValue: 1000,
-						},
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.3 } }],
-							},
-							hide: {
-								'/resolveOffset': ['immediately'],
-							},
-						},
-					},
-					{
 						displayName: 'Session Timeout',
 						name: 'sessionTimeout',
 						type: 'number',
