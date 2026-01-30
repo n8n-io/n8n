@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
-import { LanceDBConfig } from '@n8n/config';
+import { VectorStoreConfig } from '@n8n/config';
 import type { VectorDocument, VectorSearchResult } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettings } from 'n8n-core';
 import * as path from 'path';
@@ -23,18 +23,20 @@ interface LanceDBRecord extends Record<string, unknown> {
  * Stores vectors in file-based LanceDB tables under ~/.n8n/vector-store/projects/{projectId}/{memoryKey}.lance/
  */
 @Service()
-export class LanceDBVectorStoreService {
+export class VectorStoreDataRepository {
 	private connectionCache = new Map<string, Connection>();
 	private basePath: string;
+	private readonly logger: Logger;
 
 	constructor(
-		private readonly config: LanceDBConfig,
+		private readonly config: VectorStoreConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly logger: Logger,
+		logger: Logger,
 	) {
 		// Resolve base path relative to n8n user directory
 		const userHome = this.instanceSettings.n8nFolder;
-		this.basePath = path.join(userHome, this.config.path);
+		this.basePath = path.join(userHome, this.config.lancedbPath);
+		this.logger = logger.scoped('vector-store');
 	}
 
 	/**
@@ -57,7 +59,7 @@ export class LanceDBVectorStoreService {
 	async shutdown(): Promise<void> {
 		for (const [projectId, connection] of this.connectionCache.entries()) {
 			try {
-				await connection.close();
+				connection.close();
 				this.logger.debug(`Closed LanceDB connection for project: ${projectId}`);
 			} catch (error) {
 				this.logger.error(`Error closing LanceDB connection for project ${projectId}`, {
@@ -155,6 +157,8 @@ export class LanceDBVectorStoreService {
 		embeddings: number[][],
 		clearStore: boolean = false,
 	): Promise<void> {
+		const startTime = performance.now();
+
 		const connection = await this.getConnection(projectId);
 		const tableName = this.sanitizeTableName(memoryKey);
 		const tableNames = await connection.tableNames();
@@ -170,14 +174,18 @@ export class LanceDBVectorStoreService {
 			updatedAt: now,
 		}));
 
+		const vectorDimension = embeddings.length > 0 ? embeddings[0].length : 0;
+
 		if (!tableExists) {
 			// Create table with the first batch of records
 			if (records.length === 0) {
 				throw new OperationalError('Cannot create table with no records');
 			}
 			await connection.createTable(tableName, records);
-			this.logger.debug(
-				`Created table ${tableName} with ${records.length} vectors in project ${projectId}`,
+
+			const duration = performance.now() - startTime;
+			this.logger.info(
+				`Created table ${tableName} with ${records.length} vectors (${vectorDimension}d) in ${duration.toFixed(2)}ms`,
 			);
 		} else {
 			const table = await connection.openTable(tableName);
@@ -189,8 +197,10 @@ export class LanceDBVectorStoreService {
 
 			if (records.length > 0) {
 				await table.add(records);
-				this.logger.debug(
-					`Added ${records.length} vectors to ${memoryKey} in project ${projectId}`,
+
+				const duration = performance.now() - startTime;
+				this.logger.info(
+					`Indexed ${records.length} vectors (${vectorDimension}d) to ${memoryKey} in ${duration.toFixed(2)}ms (${(records.length / (duration / 1000)).toFixed(0)} vectors/sec)`,
 				);
 			}
 		}
@@ -206,6 +216,8 @@ export class LanceDBVectorStoreService {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
+		const startTime = performance.now();
+
 		const table = await this.getTable(projectId, memoryKey);
 
 		if (!table) {
@@ -222,10 +234,18 @@ export class LanceDBVectorStoreService {
 
 		const results = await query.toArray();
 
+		const duration = performance.now() - startTime;
+		const vectorDimension = queryEmbedding.length;
+		const filterInfo = filter ? ' with filter' : '';
+
+		this.logger.info(
+			`Similarity search in ${memoryKey}: found ${results.length}/${k} results (${vectorDimension}d)${filterInfo} in ${duration.toFixed(2)}ms`,
+		);
+
 		return results.map((row: LanceDBRecord & { _distance: number }) => ({
 			document: {
 				content: row.content,
-				metadata: JSON.parse(row.metadata), // Deserialize metadata from JSON string
+				metadata: jsonParse(row.metadata), // Deserialize metadata from JSON string
 			},
 			score: 1 - row._distance, // Convert distance to similarity score (cosine: 0=identical, 2=opposite)
 		}));

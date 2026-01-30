@@ -2,12 +2,12 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope } from '@n8n/decorators';
 import { VectorStoreConfig } from '@n8n/config';
 import type { VectorStoreUsageDto } from '@n8n/api-types';
-import { LanceDBVectorStoreService } from './lancedb-vector-store.service';
+import { VectorStoreDataRepository } from './vector-store-data.repository';
 
 @RestController('/vector-store')
 export class VectorStoreDataController {
 	constructor(
-		private readonly lancedbService: LanceDBVectorStoreService,
+		private readonly lancedbService: VectorStoreDataRepository,
 		private readonly vectorStoreConfig: VectorStoreConfig,
 	) {}
 

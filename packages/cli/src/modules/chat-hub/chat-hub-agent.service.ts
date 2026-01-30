@@ -25,7 +25,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import type { ProviderAndCredentialId } from './chat-hub.types';
-import { LanceDBVectorStoreService } from '../vector-store/lancedb-vector-store.service';
+import { VectorStoreDataRepository } from '../vector-store/vector-store-data.repository';
 
 @Service()
 export class ChatHubAgentService {
@@ -36,7 +36,7 @@ export class ChatHubAgentService {
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly lancedbVectorStoreService: LanceDBVectorStoreService,
+		private readonly vectorStoreRepository: VectorStoreDataRepository,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {}
 
@@ -275,7 +275,7 @@ export class ChatHubAgentService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete all embeddings for this agent from the vector store
-		await this.lancedbVectorStoreService.clearStore(memoryKey, projectId);
+		await this.vectorStoreRepository.clearStore(memoryKey, projectId);
 
 		this.logger.debug(
 			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey}, projectId: ${projectId})`,
@@ -295,7 +295,7 @@ export class ChatHubAgentService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete embeddings for specific files from the vector store
-		const deletedCount = await this.lancedbVectorStoreService.deleteByFileNames(
+		const deletedCount = await this.vectorStoreRepository.deleteByFileNames(
 			memoryKey,
 			projectId,
 			fileNames,
