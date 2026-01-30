@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ChatHubCredentialModal } from './components/ChatHubCredentialModal';
@@ -88,22 +88,38 @@ export class ChatHubChatPage extends BasePage {
 
 	async clickEditButtonAt(index: number): Promise<void> {
 		await this.hoverMessageActionsAt(index);
-		await this.getEditButtonAt(index).click({ force: true });
+		const editButton = this.getEditButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await editButton.waitFor({ state: 'visible' });
+		await expect(editButton).toBeEnabled();
+		await editButton.click({ force: true });
 	}
 
 	async clickRegenerateButtonAt(index: number): Promise<void> {
 		await this.hoverMessageActionsAt(index);
-		await this.getRegenerateButtonAt(index).click({ force: true });
+		const regenerateButton = this.getRegenerateButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await regenerateButton.waitFor({ state: 'visible' });
+		await expect(regenerateButton).toBeEnabled();
+		await regenerateButton.click({ force: true });
 	}
 
 	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
 		await this.hoverMessageActionsAt(index);
-		await this.getPrevAlternativeButtonAt(index).click({ force: true });
+		const prevButton = this.getPrevAlternativeButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await prevButton.waitFor({ state: 'visible' });
+		await expect(prevButton).toBeEnabled();
+		await prevButton.click({ force: true });
 	}
 
 	async clickNextAlternativeButtonAt(index: number): Promise<void> {
 		await this.hoverMessageActionsAt(index);
-		await this.getNextAlternativeButtonAt(index).click({ force: true });
+		const nextButton = this.getNextAlternativeButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await nextButton.waitFor({ state: 'visible' });
+		await expect(nextButton).toBeEnabled();
+		await nextButton.click({ force: true });
 	}
 
 	/**
