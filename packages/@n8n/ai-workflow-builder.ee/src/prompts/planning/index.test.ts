@@ -57,9 +57,23 @@ describe('Planning Agent Prompt', () => {
 
 			const systemContent = messages[0].content as string;
 			expect(systemContent).toContain('<planning_process>');
-			expect(systemContent).toContain('Analyze the Request');
+			expect(systemContent).toContain('Understand Requirements');
 			expect(systemContent).toContain('search_nodes');
 			expect(systemContent).toContain('get_best_practices');
+		});
+
+		it('should instruct to use <planning> tags for interleaved thinking', async () => {
+			const prompt = buildPlanningAgentPrompt();
+
+			const messages = await prompt.formatMessages({
+				userMessage: 'test',
+			});
+
+			const systemContent = messages[0].content as string;
+			expect(systemContent).toContain('You MUST use <planning> tags for your thinking');
+			expect(systemContent).toContain('Interleave planning with tool calls');
+			expect(systemContent).toContain('Start your <planning> section by analyzing');
+			expect(systemContent).toContain('Continue your <planning>');
 		});
 
 		it('should include plan format section', async () => {

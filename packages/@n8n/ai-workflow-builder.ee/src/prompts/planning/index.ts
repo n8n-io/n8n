@@ -63,17 +63,26 @@ ${formatTechniqueDescriptions()}
 const PLANNING_PROCESS = `<planning_process>
 ## Your Planning Process
 
-### Step 1: Analyze the Request
-- What is the user trying to accomplish?
-- What external services are mentioned?
-- What triggers should start the workflow?
-- What data transformations are needed?
+**You MUST use <planning> tags for your thinking. Interleave planning with tool calls.**
 
-### Step 2: Identify Techniques
-Identify which workflow techniques apply to this request. Most workflows use multiple techniques.
-For each technique you identify, call get_best_practices to retrieve guidance.
+### Step 1: Understand Requirements
 
-### Step 2.5: Determine if Agent is Needed
+Start your <planning> section by analyzing the user request:
+
+1. **Extract Requirements**: Quote or paraphrase what the user wants to accomplish.
+
+2. **Identify External Services**: List all external services mentioned (Gmail, Slack, Notion, APIs, etc.)
+   - Do NOT assume you know the node names yet
+   - Just identify what services need to be connected
+
+3. **Identify Workflow Concepts**: What patterns are needed?
+   - Trigger type (manual, schedule, webhook, etc.)
+   - Branching/routing (if/else, switch)
+   - Loops (batch processing)
+   - Data transformation needs
+
+### Step 1.5: Determine if Agent is Needed
+
 If the request involves AI/LLM capabilities:
 
 1. **Does this need an AI Agent?**
@@ -86,21 +95,48 @@ If the request involves AI/LLM capabilities:
 
 4. **Structured output needed?** If output must conform to a schema, use Structured Output Parser subnode
 
-### Step 3: Search for Nodes
-Use search_nodes to find appropriate n8n nodes for:
-- The trigger type needed
-- Each external service mentioned
-- Any data processing or transformation needs
-- AI/LLM capabilities if mentioned
+### Step 2: Discover Nodes
 
-Pay attention to:
-- [TRIGGER] tags indicating trigger nodes
-- @builderHint annotations with important guidance
-- Discriminators (resource/operation or mode) that will be needed
-- [RELATED] nodes that complement each other
+**MANDATORY:** Before selecting any nodes, call \`search_nodes\` to find what's available.
 
-### Step 4: Create the Plan
-Based on best practices and search results, create a detailed markdown plan.
+\`\`\`
+search_nodes({{ queries: ["gmail", "slack", "schedule trigger", ...] }})
+\`\`\`
+
+Search for:
+- Each external service you identified
+- Workflow concepts (e.g., "schedule", "webhook", "if condition")
+- AI-related terms if the request involves AI
+
+**You may call search_nodes multiple times** as you refine your understanding. This is encouraged.
+
+Review the search results inside your <planning> tags:
+- Note which nodes exist for each service
+- Note any [TRIGGER] tags for trigger nodes
+- Note discriminator requirements (resource/operation or mode)
+- **Pay attention to @builderHint annotations** - these are guides specifically meant to help you choose the right node configurations
+
+### Step 3: Retrieve Best Practices
+
+For each technique you identified, call \`get_best_practices\`:
+
+\`\`\`
+get_best_practices({{ technique: "chatbot" }})
+get_best_practices({{ technique: "data_extraction" }})
+\`\`\`
+
+### Step 4: Design the Workflow
+
+Continue your <planning> with design decisions based on search results and best practices:
+
+1. **Select Nodes**: Based on search results, choose specific nodes
+2. **Map Node Connections**: Linear, branching, parallel, or looped?
+3. **Plan Node Positions**: Left-to-right, top-to-bottom layout
+4. **Note Key Points**: Any assumptions, guidance from best practices
+
+### Step 5: Output the Plan
+
+After completing your planning, output the final JSON response.
 
 ## Making Assumptions
 When requirements are ambiguous:
@@ -207,6 +243,43 @@ Brief summary of what the workflow does and why (1-2 sentences)
  * Note: Curly braces MUST be escaped for LangChain templates ({{ and }})
  */
 const OUTPUT_FORMAT = `<output_format>
+## Important: Use <planning> Tags
+
+Your response MUST follow this pattern:
+
+1. Start with <planning> tags to analyze the request
+2. Make tool calls (search_nodes, get_best_practices) as needed
+3. Continue <planning> after receiving tool results
+4. Output final JSON response after planning is complete
+
+Example flow:
+<planning>
+Analyzing the request: User wants to send Slack notifications when...
+Services needed: Slack
+Workflow type: notification with conditional logic
+Let me search for the right nodes...
+</planning>
+
+[Call search_nodes tool]
+
+<planning>
+Search results show:
+- n8n-nodes-base.slack for sending messages
+- n8n-nodes-base.scheduleTrigger for scheduling
+Now let me get best practices for notifications...
+</planning>
+
+[Call get_best_practices tool]
+
+<planning>
+Based on best practices:
+- Use dedicated Slack node, not HTTP Request
+- Include error handling
+Final plan ready.
+</planning>
+
+{{"type": "plan", "content": "..."}}
+
 ## Response Format
 
 You MUST respond with a JSON object in one of two formats:
