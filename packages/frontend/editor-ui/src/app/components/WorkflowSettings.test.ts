@@ -10,6 +10,7 @@ import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/uti
 import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
@@ -48,11 +49,12 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 });
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let searchWorkflowsSpy: MockInstance<(typeof workflowsStore)['searchWorkflows']>;
+let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
@@ -69,6 +71,7 @@ describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
 		pinia = createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
@@ -88,9 +91,9 @@ describe('WorkflowSettingsVue', () => {
 			active: true,
 			scopes: ['workflow:update'],
 		});
-		workflowsStore.workflowsById = { '1': testWorkflow };
-		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([testWorkflow]);
-		workflowsStore.getWorkflowById.mockImplementation(() => testWorkflow);
+		workflowsListStore.workflowsById = { '1': testWorkflow };
+		searchWorkflowsSpy = workflowsListStore.searchWorkflows.mockResolvedValue([testWorkflow]);
+		workflowsListStore.getWorkflowById.mockImplementation(() => testWorkflow);
 	});
 
 	afterEach(() => {
@@ -135,26 +138,97 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
-	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent({ pinia });
+	describe('Error Workflow', () => {
+		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
-		const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			await nextTick();
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
 
-		// first is `- No Workflow -`, second is the workflow returned by
-		// `workflowsStore.fetchAllWorkflows`
-		expect(dropdownItems).toHaveLength(2);
-		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
-		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				query: undefined,
-			}),
-		);
+			// first is `- No Workflow -`, second is the workflow returned by
+			// `workflowsStore.fetchAllWorkflows`
+			expect(dropdownItems).toHaveLength(2);
+			expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
+			expect(searchWorkflowsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					query: undefined,
+				}),
+			);
+		});
+
+		it('should initialize undefined errorWorkflow to DEFAULT', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should send DEFAULT value for errorWorkflow to backend when set to "No Workflow"', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+				errorWorkflow: 'some-workflow-id',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select "No Workflow" (first option)
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should save workflow with errorWorkflow when a specific workflow is selected', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select the test workflow (second option)
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: '1' }),
+				}),
+			);
+		});
 	});
 
-	it('should not remove valid workflow ID characters', async () => {
-		const validWorkflowList = '1234567890, abcde, efgh, 1234';
+	it('should not remove valid workflow ID characters including hyphens and underscores', async () => {
+		const validWorkflowList =
+			'1234567890, abcde, efgh, 1234, luPpn77f_KhU1e-F9bQXu, another-valid_id';
 
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
@@ -240,7 +314,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -262,7 +338,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput as Element);
@@ -287,7 +365,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -301,8 +381,8 @@ describe('WorkflowSettingsVue', () => {
 			active: true,
 			scopes: ['workflow:read'],
 		});
-		workflowsStore.workflowsById = { '1': readOnlyWorkflow };
-		workflowsStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+		workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+		workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
 
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
@@ -310,7 +390,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -456,7 +538,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should disable execution order dropdown when user has no update permission', async () => {
-			workflowsStore.getWorkflowById.mockImplementation(() => ({
+			workflowsListStore.getWorkflowById.mockImplementation(() => ({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
@@ -615,7 +697,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should disable credential resolver dropdown when user has no update permission', async () => {
-			workflowsStore.getWorkflowById.mockImplementation(() => ({
+			workflowsListStore.getWorkflowById.mockImplementation(() => ({
 				id: '1',
 				name: 'Test Workflow',
 				active: true,

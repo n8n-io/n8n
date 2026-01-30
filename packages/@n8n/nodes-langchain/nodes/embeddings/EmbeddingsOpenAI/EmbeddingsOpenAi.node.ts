@@ -1,20 +1,20 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
-	type SupplyData,
 	type ISupplyDataFunctions,
-	type INodeProperties,
+	type SupplyData,
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { logWrapper } from '@utils/logWrapper';
-
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { Container } from '@n8n/di';
-import { AiConfig } from '@n8n/config';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -253,16 +253,15 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders,
 		};
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+		};
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,

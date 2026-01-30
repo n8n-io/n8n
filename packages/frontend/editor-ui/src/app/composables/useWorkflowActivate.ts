@@ -1,24 +1,79 @@
 import { useStorage } from '@/app/composables/useStorage';
 
-import { LOCAL_STORAGE_ACTIVATION_FLAG, WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
+import {
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
+} from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import type { INode } from 'n8n-workflow';
+import type { ResponseError } from '@n8n/rest-api-client/utils';
+import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
+
+	const parseWebhookConflictError = (error: ResponseError) => {
+		try {
+			const { errorCode, hint } = error;
+			if (errorCode === 409) {
+				const parsedHint = JSON.parse(hint ?? '') as Array<{
+					trigger: INode;
+					conflict: Awaited<ReturnType<typeof findWebhook>>;
+				}>;
+				if (
+					Array.isArray(parsedHint) &&
+					parsedHint.length > 0 &&
+					Object.hasOwn(parsedHint[0] as object, 'trigger')
+				) {
+					return parsedHint;
+				}
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	};
+
+	const handleWebhookConflictError = async (error: ResponseError) => {
+		const { trigger, conflict } = parseWebhookConflictError(error)?.pop() || {};
+		let workflowName = conflict?.workflowId;
+		try {
+			if (conflict?.workflowId) {
+				const conflictingWorkflow = await workflowsListStore.fetchWorkflow(conflict?.workflowId);
+				workflowName = conflictingWorkflow.name;
+			}
+		} catch {}
+
+		uiStore.openModalWithData({
+			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+			data: {
+				triggerType: trigger?.type,
+				workflowName,
+				...conflict,
+			},
+		});
+	};
+
+	const isWebhookConflictError = (error: ResponseError) => {
+		return parseWebhookConflictError(error) !== null;
+	};
 
 	const publishWorkflow = async (
 		workflowId: string,
@@ -29,7 +84,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
 
 		if (!hadPublishedVersion) {
@@ -71,19 +126,24 @@ export function useWorkflowActivate() {
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
-			return true;
+			return { success: true };
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'published' },
-				}) + ':',
-			);
-			// Only update workflow state to inactive if this is not a validation error
-			if (!error.meta?.validationError) {
-				workflowsStore.setWorkflowInactive(workflowId);
+			if (isWebhookConflictError(error)) {
+				await handleWebhookConflictError(error);
+				return { success: false, errorHandled: true };
+			} else {
+				toast.showError(
+					error,
+					i18n.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'published' },
+					}) + ':',
+				);
+				// Only update workflow state to inactive if this is not a validation error
+				if (!error.meta?.validationError) {
+					workflowsStore.setWorkflowInactive(workflowId);
+				}
 			}
-			return false;
+			return { success: false };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
@@ -94,7 +154,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 		const wasPublished = !!workflow.activeVersion;
 
 		const telemetryPayload = {

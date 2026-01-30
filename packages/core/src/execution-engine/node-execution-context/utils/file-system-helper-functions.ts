@@ -12,7 +12,7 @@ import {
 	open as fsOpen,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, posix } from 'node:path';
+import { posix, dirname, basename, join } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -38,11 +38,17 @@ const getAllowedPaths = () => {
 };
 
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
+	const pathStr = path.toString();
+
 	try {
-		return (await fsRealpath(path)) as ResolvedFilePath; // apply brand, since we know it's resolved now
+		return (await fsRealpath(pathStr)) as ResolvedFilePath; // apply brand, since we know it's resolved now
 	} catch (error: unknown) {
 		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-			return resolve(path.toString()) as ResolvedFilePath; // apply brand, since we know it's resolved now
+			// File doesn't exist - resolve the parent directory and append filename
+			const dir = dirname(pathStr);
+			const file = basename(pathStr);
+			const resolvedDir = await fsRealpath(dir);
+			return join(resolvedDir, file) as ResolvedFilePath;
 		}
 		throw error;
 	}

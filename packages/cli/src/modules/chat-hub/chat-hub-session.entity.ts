@@ -91,7 +91,7 @@ export class ChatHubSession extends WithTimestamps {
 	/*
 	 * LLM model to use from the provider (if applicable)
 	 */
-	@Column({ type: 'varchar', length: 64, nullable: true })
+	@Column({ type: 'varchar', length: 256, nullable: true })
 	model: string | null;
 
 	/*

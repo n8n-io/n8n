@@ -24,12 +24,30 @@ export class ChatHubChatPage extends BasePage {
 		return this.page.getByRole('heading', { level: 2 });
 	}
 
+	getWelcomeStartNewChatButton(): Locator {
+		return this.page.getByTestId('welcome-start-new-chat');
+	}
+
+	async dismissWelcomeScreen(): Promise<void> {
+		// Wait for conversation list to load (indicates sessions are ready)
+		const conversationList = this.sidebar.getConversations();
+		await this.page.getByTestId('chat-conversation-list').waitFor({ state: 'visible' });
+
+		// Only dismiss welcome screen if there are no existing conversations
+		const conversationCount = await conversationList.count();
+		if (conversationCount === 0) {
+			const welcomeButton = this.getWelcomeStartNewChatButton();
+			await welcomeButton.click();
+			await welcomeButton.waitFor({ state: 'hidden' });
+		}
+	}
+
 	getModelSelectorButton(): Locator {
 		return this.page.getByTestId('chat-model-selector');
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span');
+		return this.getModelSelectorButton().locator('span.n8n-text').first();
 	}
 
 	getChatInput(): Locator {
@@ -68,6 +86,36 @@ export class ChatHubChatPage extends BasePage {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
 	}
 
+	async clickEditButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		await this.getEditButtonAt(index).click({ force: true });
+	}
+
+	async clickRegenerateButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		await this.getRegenerateButtonAt(index).click({ force: true });
+	}
+
+	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		await this.getPrevAlternativeButtonAt(index).click({ force: true });
+	}
+
+	async clickNextAlternativeButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		await this.getNextAlternativeButtonAt(index).click({ force: true });
+	}
+
+	/**
+	 * Hovers over the message content area to reveal hidden action buttons.
+	 * The action buttons are hidden by CSS until the content area is hovered.
+	 */
+	private async hoverMessageActionsAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await message.getByTestId('chat-message-actions').waitFor({ state: 'visible' });
+	}
+
 	getAttachButton(): Locator {
 		return this.page.getByRole('button', { name: /attach/i });
 	}
@@ -81,7 +129,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getToolsButton(): Locator {
-		return this.page.locator('[class*="toolsButton"]');
+		return this.page.getByTestId('chat-tools-button');
 	}
 
 	getOpenWorkflowButton(): Locator {

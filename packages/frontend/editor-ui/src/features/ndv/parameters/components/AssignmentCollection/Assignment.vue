@@ -140,13 +140,13 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	valueInputHovered.value = hovered;
 };
 
-const onValueDrop = (droppedExpression: string) => {
+const onValueDrop = async (droppedExpression: string) => {
 	if (props.disableType) {
 		return;
 	}
 
 	const droppedValue = removeExpressionPrefix(droppedExpression);
-	assignment.value.type = typeFromExpression(droppedValue);
+	assignment.value.type = await typeFromExpression(droppedValue);
 
 	if (!assignment.value.name) {
 		assignment.value.name = propertyNameFromExpression(droppedValue);
@@ -198,19 +198,20 @@ const onValueDrop = (droppedExpression: string) => {
 						@blur="onBlur"
 					/>
 				</template>
-				<template v-if="!hideType" #middle>
-					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
-						<template #content>
-							{{ binaryDataAccessTooltip }}
-						</template>
-						<TypeSelect
-							:class="$style.select"
-							:model-value="assignment.type ?? 'string'"
-							:is-read-only="disableType || isReadOnly"
-							@update:model-value="onAssignmentTypeChange"
-						>
-						</TypeSelect>
-					</N8nTooltip>
+				<template v-if="!hideType" #middle="{ breakpoint }">
+					<div :class="$style.typeSelectWrapper">
+						<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+							<template #content>
+								{{ binaryDataAccessTooltip }}
+							</template>
+							<TypeSelect
+								:model-value="assignment.type ?? 'string'"
+								:is-read-only="disableType || isReadOnly"
+								:stacked="breakpoint === 'stacked'"
+								@update:model-value="onAssignmentTypeChange"
+							/>
+						</N8nTooltip>
+					</div>
 				</template>
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">
@@ -325,5 +326,13 @@ const onValueDrop = (droppedExpression: string) => {
 
 .statusIcon {
 	padding-left: var(--spacing--4xs);
+}
+
+.typeSelectWrapper {
+	height: 100%;
+
+	> :deep(span) {
+		height: 100%;
+	}
 }
 </style>

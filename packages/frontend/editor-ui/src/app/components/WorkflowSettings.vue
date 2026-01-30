@@ -18,6 +18,7 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nInput,
+	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
 	N8nOption,
@@ -30,6 +31,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -63,6 +65,7 @@ const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -149,7 +152,7 @@ const readOnlyEnv = computed(
 );
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
-const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
+const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -220,9 +223,9 @@ const executionLogicOptions = computed(() => {
 });
 
 const onCallerIdsInput = (str: string) => {
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s_-]+$/.test(str)
 		? str
-		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
+		: str.replace(/[^a-zA-Z0-9,\s_-]/g, '');
 };
 
 const closeDialog = () => {
@@ -393,7 +396,7 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async (searchTerm?: string) => {
-	const workflowsData = (await workflowsStore.searchWorkflows({
+	const workflowsData = (await workflowsListStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
 		triggerNodeTypes: ['n8n-nodes-base.errorTrigger'],
@@ -409,7 +412,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	});
 
 	workflowsData.unshift({
-		id: undefined as unknown as string,
+		id: 'DEFAULT',
 		name: i18n.baseText('workflowSettings.noWorkflow'),
 	} as IWorkflowShortResponse);
 
@@ -617,7 +620,7 @@ onMounted(async () => {
 
 	try {
 		const promises = [
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
 			loadSaveDataSuccessExecutionOptions(),
@@ -644,6 +647,9 @@ onMounted(async () => {
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
+	}
+	if (workflowSettingsData.errorWorkflow === undefined) {
+		workflowSettingsData.errorWorkflow = 'DEFAULT';
 	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
@@ -1190,13 +1196,15 @@ onBeforeUnmount(() => {
 				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed'">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-input']">
-							<N8nInput
+							<N8nInputNumber
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
+								controls-position="right"
+								size="medium"
+								:controls="true"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
+								:min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
@@ -1341,13 +1349,10 @@ onBeforeUnmount(() => {
 .time-saved-input {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
 
-	:global(.el-input) {
-		width: var(--spacing--3xl);
-	}
-
-	span {
-		margin-left: var(--spacing--2xs);
+	:global(.el-input-number) {
+		width: var(--spacing--4xl);
 	}
 }
 

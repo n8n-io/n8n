@@ -6,7 +6,6 @@
  * - builder/ - PromptBuilder utility for composing prompts
  * - agents/ - Multi-agent system prompts (builder, configurator, discovery, etc.)
  * - chains/ - Chain-level prompts (categorization, compact, workflow-name, parameter-updater)
- * - legacy-agent.prompt.ts - Legacy single-agent mode prompt
  */
 
 // Prompt builder utility
@@ -31,13 +30,6 @@ export {
 export { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from './agents/configurator.prompt';
 export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export { buildResponderPrompt } from './agents/responder.prompt';
-
-// Legacy agent prompt (single-agent mode)
-export {
-	createMainAgentPrompt,
-	mainAgentPrompt,
-	type MainAgentPromptOptions,
-} from './legacy-agent.prompt';
 
 // Chain prompts
 export {

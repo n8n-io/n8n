@@ -3,9 +3,18 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
+import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRM,
+	VIEWS,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	getDebounceTime,
+} from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
@@ -40,6 +49,7 @@ export function useWorkflowSaving({
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
@@ -88,7 +98,7 @@ export function useWorkflowSaving({
 				const saved = await saveCurrentWorkflow({}, false);
 
 				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
+					await npsSurveyStore.showNpsSurveyIfPossible();
 					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
@@ -162,7 +172,9 @@ export function useWorkflowSaving({
 		}
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
-		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		const existingWorkflow = currentWorkflow
+			? workflowsListStore.getWorkflowById(currentWorkflow)
+			: null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
 			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
@@ -231,12 +243,47 @@ export function useWorkflowSaving({
 			// Reset AI Builder edits flag only after successful save
 			builderStore.resetAiBuilderMadeEdits();
 
+			// Reset retry count on successful save
+			autosaveStore.resetRetry();
+
 			onSaved?.(false); // Update of existing workflow
 			return true;
 		} catch (error) {
 			console.error(error);
 
 			uiStore.removeActiveAction('workflowSaving');
+
+			// Handle autosave failures with exponential backoff
+			if (autosaved) {
+				autosaveStore.incrementRetry();
+				autosaveStore.setLastError(error.message);
+
+				// Schedule retry with exponential backoff
+				const retryDelay = autosaveStore.getRetryDelay();
+				autosaveStore.setRetrying(true);
+
+				setTimeout(() => {
+					autosaveStore.setRetrying(false);
+					// Trigger autosave again if workflow is still dirty
+					if (uiStore.stateIsDirty) {
+						scheduleAutoSave();
+					}
+				}, retryDelay);
+
+				toast.showMessage({
+					title: i18n.baseText('workflowHelpers.showMessage.title'),
+					message: i18n.baseText('generic.autosave.retrying', {
+						interpolate: {
+							error: error.message,
+							retryIn: `${Math.ceil(retryDelay / 1000)}s`,
+						},
+					}),
+					type: 'error',
+					duration: retryDelay,
+				});
+
+				return false;
+			}
 
 			if (error.errorCode === 100) {
 				telemetry.track('User attempted to save locked workflow', {
@@ -367,7 +414,7 @@ export function useWorkflowSaving({
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
-			workflowsStore.addWorkflow(workflowData);
+			workflowsListStore.addWorkflow(workflowData);
 
 			focusPanelStore.onNewWorkflowSave(workflowData.id);
 
@@ -469,10 +516,10 @@ export function useWorkflowSaving({
 					await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
-						autosaveStore.reset();
+						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
 					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty) {
+					if (uiStore.stateIsDirty && !autosaveStore.isRetrying) {
 						autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -481,8 +528,8 @@ export function useWorkflowSaving({
 
 			autosaveStore.setPendingAutoSave(savePromise);
 		},
-		1500,
-		{ maxWait: 5000 },
+		getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
+		{ maxWait: getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) },
 	);
 
 	const scheduleAutoSave = () => {
@@ -491,6 +538,12 @@ export function useWorkflowSaving({
 		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
 			return;
 		}
+
+		// Don't schedule if we're waiting for retry backoff to complete
+		if (autosaveStore.isRetrying) {
+			return;
+		}
+
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};

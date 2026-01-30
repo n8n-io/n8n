@@ -1,6 +1,5 @@
 import { Time } from '@n8n/constants';
-import type { User } from '@n8n/db';
-import moment from 'moment-timezone';
+import type { User, WorkflowRepository } from '@n8n/db';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -10,7 +9,6 @@ import {
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	UserError,
 	UnexpectedError,
 	TimeoutExecutionCancelledError,
 	ensureError,
@@ -21,7 +19,7 @@ import {
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { McpExecutionTimeoutError } from '../mcp.errors';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type {
 	ExecuteWorkflowsInputMeta,
 	ToolDefinition,
@@ -35,6 +33,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
+const ERROR_KEYS_TO_IGNORE = ['stack', 'node'];
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
@@ -91,6 +90,7 @@ const outputSchema = {
 export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
+	workflowRepository: WorkflowRepository,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
@@ -119,6 +119,7 @@ export const createExecuteWorkflowTool = (
 			const output = await executeWorkflow(
 				user,
 				workflowFinderService,
+				workflowRepository,
 				activeExecutions,
 				workflowRunner,
 				workflowId,
@@ -131,6 +132,12 @@ export const createExecuteWorkflowTool = (
 					executionId: output.executionId,
 				},
 			};
+			if (!output.success && output.error) {
+				telemetryPayload.results.error = JSON.stringify(
+					output.error,
+					(key: string, value: unknown) => (ERROR_KEYS_TO_IGNORE.includes(key) ? undefined : value),
+				);
+			}
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
@@ -140,17 +147,33 @@ export const createExecuteWorkflowTool = (
 		} catch (er) {
 			const error = ensureError(er);
 			const isTimeout = error instanceof McpExecutionTimeoutError;
+			const isAccessError = error instanceof WorkflowAccessError;
+
+			const errorInfo: Record<string, unknown> = {
+				message: error.message || 'Unknown error',
+				name: error.constructor.name,
+			};
+
+			if ('extra' in error && error.extra) {
+				errorInfo.extra = error.extra;
+			}
+			if (error.cause) {
+				errorInfo.cause =
+					error.cause instanceof Error ? error.cause.message : jsonStringify(error.cause);
+			}
+
 			const output: ExecuteWorkflowOutput = {
 				success: false,
 				executionId: isTimeout ? error.executionId : null,
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
-					: error.message,
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
+					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
 			telemetryPayload.results = {
 				success: false,
-				error: isTimeout ? 'Workflow execution timed out' : error.message,
+				error: isTimeout ? 'Workflow execution timed out' : errorInfo,
+				error_reason: isAccessError ? error.reason : undefined,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -171,11 +194,13 @@ export const createExecuteWorkflowTool = (
 export const executeWorkflow = async (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
+	workflowRepository: WorkflowRepository,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 ): Promise<ExecuteWorkflowOutput> => {
+	// Check if user has permission to access the workflow
 	const workflow = await workflowFinderService.findWorkflowForUser(
 		workflowId,
 		user,
@@ -183,13 +208,34 @@ export const executeWorkflow = async (
 		{ includeActiveVersion: true },
 	);
 
-	if (!workflow || workflow.isArchived) {
-		throw new UserError('Workflow not found');
+	if (!workflow) {
+		const workflowExists = await workflowRepository.findById(workflowId);
+
+		if (!workflowExists) {
+			throw new WorkflowAccessError(
+				`Workflow with ID '${workflowId}' does not exist`,
+				'workflow_does_not_exist',
+			);
+		}
+
+		// Workflow exists but user doesn't have permission
+		throw new WorkflowAccessError(
+			`You don't have permission to execute workflow '${workflowId}'`,
+			'no_permission',
+		);
+	}
+
+	if (workflow.isArchived) {
+		throw new WorkflowAccessError(
+			`Workflow '${workflowId}' is archived and cannot be executed`,
+			'workflow_archived',
+		);
 	}
 
 	if (!workflow.settings?.availableInMCP) {
-		throw new UserError(
+		throw new WorkflowAccessError(
 			'Workflow is not available for execution via MCP. Enable access in the workflow settings to make it available.',
+			'not_available_in_mcp',
 		);
 	}
 
@@ -199,8 +245,9 @@ export const executeWorkflow = async (
 	const triggerNode = findMcpSupportedTrigger(nodes);
 
 	if (!triggerNode) {
-		throw new UserError(
+		throw new WorkflowAccessError(
 			`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+			'unsupported_trigger',
 		);
 	}
 
@@ -213,7 +260,7 @@ export const executeWorkflow = async (
 	// Set the trigger node as the start node and pin data for it
 	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
+	runData.pinData = await getPinDataForTrigger(triggerNode, inputs);
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
@@ -305,10 +352,10 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 /**
  * Constructs pin data for the trigger node based on provided inputs.
  */
-const getPinDataForTrigger = (
+const getPinDataForTrigger = async (
 	node: INode,
 	inputs: z.infer<typeof inputSchema>['inputs'],
-): IPinData => {
+): Promise<IPinData> => {
 	switch (node.type) {
 		case WEBHOOK_NODE_TYPE: {
 			// For webhook triggers, provide default empty values if no inputs or wrong type
@@ -354,6 +401,7 @@ const getPinDataForTrigger = (
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			// For schedule triggers, we don't map any inputs but we can add expected datetime info
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			const moment = (await import('moment-timezone')).default;
 			const momentTz = moment.tz(timezone);
 			return {
 				[node.name]: [
