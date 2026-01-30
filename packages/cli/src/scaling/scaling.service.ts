@@ -350,7 +350,7 @@ export class ScalingService {
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
 					 */
-					if ('version' in msg && msg.version === 2) {
+					if (msg.version === 2) {
 						this.jobResults.set(msg.executionId, {
 							success: msg.success,
 							error: msg.error,

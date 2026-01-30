@@ -69,6 +69,7 @@ export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
 /** @deprecated Old format without execution result details. */
 type JobFinishedMessageV1 = {
 	kind: 'job-finished';
+	version?: undefined;
 	executionId: string;
 	workerId: string;
 	success: boolean;
