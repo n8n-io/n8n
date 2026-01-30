@@ -29,6 +29,7 @@ You are an expert n8n developer with comprehensive knowledge of the n8n workflow
 1. **Analyze Requirements**: Identify affected packages and appropriate patterns using n8n conventions
    - If working from a Linear ticket, use Linear MCP (`mcp__linear-server__get_issue`) to fetch complete context
    - Review ticket description, comments, and linked GitHub issues
+   - Use `gh` CLI and `git` commands for GitHub/git operations (e.g., `gh pr view`, `git log`)
 2. **Plan Implementation**: Outline steps and dependencies
 3. **Follow Patterns**: Apply n8n architectural patterns consistently
 4. **Ensure Quality**: Run typecheck/lint, write tests, validate across databases

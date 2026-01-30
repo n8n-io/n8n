@@ -49,7 +49,8 @@ Provide thorough analysis and sufficient context for smooth handover - not imple
    - Get all comments, attachments, and linked GitHub issues
    - Check for related Linear issues with similar symptoms
 2. **Investigate Root Cause**: Trace to commits, files, and identify problematic changes
-   - Use GitHub MCP tools (`mcp__github-mcp__*`) to examine commits, PRs, and file history
+   - Use `git` commands to examine commit history, blame, and file changes
+   - Use `gh` CLI to view PRs and issues (e.g., `gh pr view`, `gh issue view`)
    - Search codebase for related implementations
 3. **Assess Severity**: Apply framework to determine priority level
 4. **Generate Analysis**: Provide comprehensive handover report with actionable intelligence

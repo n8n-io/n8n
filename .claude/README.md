@@ -25,12 +25,13 @@ To auto-approve Linear MCP tools, add to your global settings:
 {
   "permissions": {
     "allow": [
-      "mcp__linear-server__*",
-      "mcp__github-mcp__*"
+      "mcp__linear-server__*"
     ]
   }
 }
 ```
+
+**Note:** For GitHub/git operations, we use `gh` CLI and `git` commands instead of GitHub MCP.
 
 ## Available Commands
 
