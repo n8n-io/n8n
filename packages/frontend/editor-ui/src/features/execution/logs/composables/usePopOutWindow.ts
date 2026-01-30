@@ -135,6 +135,7 @@ export function usePopOutWindow({
 				link.type = styleSheet.type;
 				link.media = styleSheet.media as unknown as string;
 				link.href = styleSheet.href as string;
+				link.crossOrigin = 'anonymous';
 				popOutWindow.value.document.head.appendChild(link);
 			}
 		}
