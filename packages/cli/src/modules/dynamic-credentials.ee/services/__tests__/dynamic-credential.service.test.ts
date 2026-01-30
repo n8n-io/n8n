@@ -1123,6 +1123,77 @@ describe('DynamicCredentialService', () => {
 				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
 				getStaticAuthMiddlewareSpy.mockRestore();
 			});
+
+			describe('cookie authentication bypass', () => {
+				it('should bypass static auth check when req.user is present', () => {
+					mockDynamicCredentialConfig.endpointAuthToken = 'test-token';
+					service = new DynamicCredentialService(
+						mockDynamicCredentialConfig,
+						mockResolverRegistry,
+						mockResolverRepository,
+						mockLoadNodesAndCredentials,
+						mockCipher,
+						mockLogger,
+						mockExpressionService,
+					);
+
+					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
+
+					const mockReq = {
+						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						cookies: {},
+						headers: {}, // No X-Authorization header
+					} as AuthenticatedRequest;
+
+					const mockRes = {
+						status: jest.fn().mockReturnThis(),
+						json: jest.fn(),
+					} as unknown as Response;
+
+					const mockNext = jest.fn();
+
+					middleware(mockReq, mockRes, mockNext);
+
+					// Should call next() without checking static auth
+					expect(mockNext).toHaveBeenCalled();
+					expect(mockRes.status).not.toHaveBeenCalled();
+					expect(mockRes.json).not.toHaveBeenCalled();
+				});
+
+				it('should bypass 500 error when no token configured but req.user is present', () => {
+					mockDynamicCredentialConfig.endpointAuthToken = ''; // No token configured
+					service = new DynamicCredentialService(
+						mockDynamicCredentialConfig,
+						mockResolverRegistry,
+						mockResolverRepository,
+						mockLoadNodesAndCredentials,
+						mockCipher,
+						mockLogger,
+						mockExpressionService,
+					);
+
+					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
+
+					const mockReq = {
+						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						cookies: {},
+					} as AuthenticatedRequest;
+
+					const mockRes = {
+						status: jest.fn().mockReturnThis(),
+						json: jest.fn(),
+					} as unknown as Response;
+
+					const mockNext = jest.fn();
+
+					middleware(mockReq, mockRes, mockNext);
+
+					// Should call next() instead of returning 500 error
+					expect(mockNext).toHaveBeenCalled();
+					expect(mockLogger.error).not.toHaveBeenCalled();
+					expect(mockRes.status).not.toHaveBeenCalled();
+				});
+			});
 		});
 	});
 });
