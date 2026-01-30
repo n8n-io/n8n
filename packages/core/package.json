@@ -48,7 +48,7 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@sentry/node": "catalog:",
-    "@sentry/node-native": "^9.42.1",
+    "@sentry/node-native": "^10.36.0",
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",
