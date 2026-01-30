@@ -39,8 +39,8 @@ properties:
     nullable: true
     description: The time at which the execution stopped. Will only be null for executions that still have the status 'running'.
   workflowId:
-    type: number
-    example: '1000'
+    type: string
+    example: '2tUt1wbLX592XDdX'
   waitTill:
     type: string
     nullable: true
