@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { User } from '@n8n/db';
 import type { AuthType, IAuthHandler, IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandlerEntryMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -10,7 +11,7 @@ import { Container, Service } from '@n8n/di';
 @Service()
 export class AuthHandlerRegistry {
 	/** Map of handler names to handler instances */
-	private handlerMap: Map<string, IAuthHandler> = new Map();
+	private handlerMap: Map<string, IAuthHandler<User>> = new Map();
 
 	constructor(
 		private readonly authHandlerEntryMetadata: AuthHandlerEntryMetadata,
@@ -29,9 +30,11 @@ export class AuthHandlerRegistry {
 		this.logger.debug(`Registering ${handlerClasses.length} auth handlers.`);
 
 		for (const HandlerClass of handlerClasses) {
-			let handler: IAuthHandler;
+			let handler: IAuthHandler<User>;
 			try {
-				handler = Container.get(HandlerClass);
+				// We're casting here as we know all classes returned
+				// by getClasses() implement IAuthHandler<User>
+				handler = Container.get(HandlerClass) as IAuthHandler<User>;
 			} catch (error) {
 				this.logger.error(
 					`Failed to instantiate auth handler class "${HandlerClass.name}": ${(error as Error).message}`,
@@ -63,10 +66,21 @@ export class AuthHandlerRegistry {
 	}
 
 	/**
+	 * Type guard to check if a handler is a password auth handler
+	 */
+	private isPasswordAuthHandler(
+		handler: IAuthHandler<User>,
+	): handler is IPasswordAuthHandler<User> {
+		return handler.metadata.type === 'password';
+	}
+
+	/**
 	 * Retrieves a registered handler by its metadata name.
 	 * @returns The handler instance, or undefined if not found
 	 */
-	get(authMethod: string, type: AuthType): IAuthHandler | undefined {
+	get(authMethod: string, type: 'password'): IPasswordAuthHandler<User> | undefined;
+	get(authMethod: string, type: AuthType): IAuthHandler<User> | undefined;
+	get(authMethod: string, type: AuthType): IAuthHandler<User> | undefined {
 		const handler = this.handlerMap.get(authMethod);
 		if (!handler) {
 			return undefined;
@@ -74,9 +88,9 @@ export class AuthHandlerRegistry {
 		if (handler.metadata.type !== type) {
 			return undefined;
 		}
-		// When new types are added, this cast will need to be updated
-		if (type === 'password') {
-			return handler as IPasswordAuthHandler;
+		// When new types are added, add corresponding type guard check
+		if (type === 'password' && this.isPasswordAuthHandler(handler)) {
+			return handler;
 		}
 		return handler;
 	}
@@ -86,12 +100,5 @@ export class AuthHandlerRegistry {
 	 */
 	has(authMethod: string): boolean {
 		return this.handlerMap.has(authMethod);
-	}
-
-	/**
-	 * Returns all successfully registered handler instances.
-	 */
-	getAllHandlers(): IAuthHandler[] {
-		return Array.from(this.handlerMap.values());
 	}
 }

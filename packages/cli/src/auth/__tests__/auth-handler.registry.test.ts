@@ -36,7 +36,7 @@ describe('AuthHandlerRegistry', () => {
 			await registry.init();
 
 			expect(registry.has('ldap')).toBe(true);
-			expect(registry.get('ldap')).toBe(mockHandler);
+			expect(registry.get('ldap', 'password')).toBe(mockHandler);
 		});
 
 		it('should call handler init() if present', async () => {
@@ -110,45 +110,19 @@ describe('AuthHandlerRegistry', () => {
 			await registry.init();
 
 			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('already registered'));
-			expect(registry.get('ldap')).toBe(handler1);
+			expect(registry.get('ldap', 'password')).toBe(handler1);
 		});
 	});
 
 	describe('get', () => {
 		it('should return undefined for non-existent handler', () => {
-			expect(registry.get('nonexistent')).toBeUndefined();
+			expect(registry.get('nonexistent', 'password')).toBeUndefined();
 		});
 	});
 
 	describe('has', () => {
 		it('should return false for non-existent handler', () => {
 			expect(registry.has('nonexistent')).toBe(false);
-		});
-	});
-
-	describe('getAllHandlers', () => {
-		it('should return all registered handlers', async () => {
-			const handler1 = mock<IPasswordAuthHandler<User>>({
-				metadata: { name: 'ldap', type: 'password' },
-			});
-			const handler2 = mock<IPasswordAuthHandler<User>>({
-				metadata: { name: 'saml', type: 'password' },
-			});
-
-			class MockHandlerClass1 {}
-			class MockHandlerClass2 {}
-
-			jest
-				.spyOn(mockMetadata, 'getClasses')
-				.mockReturnValue([MockHandlerClass1 as any, MockHandlerClass2 as any]);
-			jest.spyOn(Container, 'get').mockReturnValueOnce(handler1).mockReturnValueOnce(handler2);
-
-			await registry.init();
-
-			const allHandlers = registry.getAllHandlers();
-			expect(allHandlers).toHaveLength(2);
-			expect(allHandlers).toContain(handler1);
-			expect(allHandlers).toContain(handler2);
 		});
 	});
 });

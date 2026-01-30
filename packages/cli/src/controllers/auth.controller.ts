@@ -100,7 +100,7 @@ export class AuthController {
 				// Check if an auth handler is registered for the current auth method
 				const authHandler = this.authHandlerRegistry.get(usedAuthenticationMethod, 'password');
 				if (authHandler) {
-					user = (await authHandler.handleLogin(emailOrLdapLoginId, password)) as User | undefined;
+					user = await authHandler.handleLogin(emailOrLdapLoginId, password);
 				}
 			}
 		} else {
