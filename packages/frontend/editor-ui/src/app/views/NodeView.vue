@@ -365,7 +365,12 @@ async function initializeData() {
 		}
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-			promises.push(externalSecretsStore.fetchAllSecrets());
+			promises.push(externalSecretsStore.fetchGlobalSecrets());
+			const shouldFetchProjectSecrets =
+				route?.params?.projectId !== projectsStore.personalProject?.id;
+			if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
+				promises.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
+			}
 		}
 
 		return promises;
