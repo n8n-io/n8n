@@ -64,6 +64,17 @@ const testNodeTypes: INodeTypeData = {
 };
 const formWorkflowNodeTypes = createMockNodeTypes(testNodeTypes);
 
+const aiTestNodeTypes: INodeTypeData = {
+	'n8n-nodes-langchain.agent': mockLoadedNodeType('n8n-nodes-langchain.agent'),
+	'n8n-nodes-langchain.outputParserStructured': mockLoadedNodeType(
+		'n8n-nodes-langchain.outputParserStructured',
+	),
+};
+const aiWorkflowNodeTypes = createMockNodeTypes({
+	...testNodeTypes,
+	...aiTestNodeTypes,
+});
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	return {
@@ -269,6 +280,95 @@ describe('ParameterInputList', () => {
 			const el = queryByText('TRIGGER NOTICE');
 
 			expect(el).not.toBeInTheDocument();
+		});
+	});
+
+	describe('updateAiConnectionNoticeParameters', () => {
+		const outputParserNoticeParameters: INodeProperties[] = [
+			{
+				displayName: 'Require Specific Output Format',
+				name: 'hasOutputParser',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+					},
+				},
+			},
+		];
+
+		it('should show output parser notice if output parser is not connected', () => {
+			ndvStore.activeNode = createTestNode({
+				name: 'AI Agent',
+				type: 'n8n-nodes-langchain.agent',
+				parameters: { hasOutputParser: true },
+			}) as INodeUi;
+
+			const agentNode = createTestNode({
+				name: 'AI Agent',
+				type: 'n8n-nodes-langchain.agent',
+			});
+
+			workflowStore.workflowObject = createTestWorkflowObject({
+				nodes: [agentNode],
+				connections: {},
+				nodeTypes: aiWorkflowNodeTypes,
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					parameters: outputParserNoticeParameters,
+					nodeValues: { hasOutputParser: true },
+				},
+			});
+
+			expect(getByText(/specify the output format you require/i)).toBeInTheDocument();
+		});
+
+		it('should not show output parser notice if output parser is connected', () => {
+			ndvStore.activeNode = createTestNode({
+				name: 'AI Agent',
+				type: 'n8n-nodes-langchain.agent',
+				parameters: { hasOutputParser: true },
+			}) as INodeUi;
+
+			const agentNode = createTestNode({
+				name: 'AI Agent',
+				type: 'n8n-nodes-langchain.agent',
+			});
+
+			const outputParserNode = createTestNode({
+				name: 'Output Parser',
+				type: 'n8n-nodes-langchain.outputParserStructured',
+			});
+
+			workflowStore.workflowObject = createTestWorkflowObject({
+				nodes: [agentNode, outputParserNode],
+				connections: {
+					'Output Parser': {
+						[NodeConnectionTypes.AiOutputParser]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiOutputParser, index: 0 }],
+						],
+					},
+				},
+				nodeTypes: aiWorkflowNodeTypes,
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					parameters: outputParserNoticeParameters,
+					nodeValues: { hasOutputParser: true },
+				},
+			});
+
+			expect(queryByText(/specify the output format you require/i)).not.toBeInTheDocument();
 		});
 	});
 

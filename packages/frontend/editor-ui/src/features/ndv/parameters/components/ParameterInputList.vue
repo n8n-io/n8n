@@ -10,6 +10,7 @@ import type {
 import {
 	ADD_FORM_NOTICE,
 	getParameterValueByPath,
+	NodeConnectionTypes,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
@@ -202,6 +203,10 @@ throttledWatch(
 			filteredParameters = parameters;
 		}
 
+		if (node.value) {
+			filteredParameters = updateAiConnectionNoticeParameters(filteredParameters, node.value.name);
+		}
+
 		// Compute all parameter data for template usage
 		// Note: `value` is intentionally NOT included to prevent re-renders when values change
 		// Values are fetched via getParameterValue() in the template instead
@@ -366,6 +371,24 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	}
 
 	return parameters;
+}
+
+function updateAiConnectionNoticeParameters(parameters: INodeProperties[], nodeName: string) {
+	const workflowObject = workflowsStore.workflowObject;
+	if (!workflowObject) return parameters;
+
+	const hasOutputParserConnected =
+		workflowObject.getParentNodes(nodeName, NodeConnectionTypes.AiOutputParser, 1).length > 0;
+
+	if (!hasOutputParserConnected) return parameters;
+
+	const outputParserConnectionType = `data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'`;
+
+	return parameters.filter((parameter) => {
+		if (parameter.type !== 'notice') return true;
+		if (typeof parameter.displayName !== 'string') return true;
+		return !parameter.displayName.includes(outputParserConnectionType);
+	});
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
