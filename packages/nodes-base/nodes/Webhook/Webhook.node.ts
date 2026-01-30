@@ -117,6 +117,10 @@ export class Webhook extends Node {
 						name: 'PUT',
 						value: 'PUT',
 					},
+					{
+						name: 'OPTIONS', // <-- Added OPTIONS
+						value: 'OPTIONS',
+					},
 				],
 				default: ['GET', 'POST'],
 				description: 'The HTTP methods to listen to',
@@ -207,6 +211,20 @@ export class Webhook extends Node {
 		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 
+		const req = context.getRequestObject();
+		const resp = context.getResponseObject();
+		const requestMethod = req.method;
+
+		// Handle CORS preflight requests
+		if (requestMethod === 'OPTIONS') {
+			resp.setHeader('Access-Control-Allow-Origin', '*');
+			resp.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+			resp.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+			resp.writeHead(204); // No Content
+			resp.end();
+			return { noWebhookResponse: true };
+		}
+
 		if (nodeVersion >= 2 && nodeType === 'n8n-nodes-base.webhook') {
 			checkResponseModeConfiguration(context);
 		}
@@ -218,8 +236,6 @@ export class Webhook extends Node {
 			responseData?: string;
 			ipWhitelist?: string;
 		};
-		const req = context.getRequestObject();
-		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
 
 		if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
