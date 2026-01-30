@@ -23,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
@@ -48,7 +49,10 @@ import type {
 	ConnectStartEvent,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+} from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -65,6 +69,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -75,6 +80,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
 	NodeHelpers,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -119,7 +125,10 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
+import {
+	parseCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/features/workflows/canvas/canvas.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -134,6 +143,8 @@ import CanvasChatButton from '@/features/workflows/canvas/components/elements/bu
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -185,6 +196,7 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const settingsStore = useSettingsStore();
@@ -209,6 +221,8 @@ const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore()
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
+const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
+const chatPanelStore = useChatPanelStore();
 
 const workflowState = useWorkflowState();
 
@@ -341,7 +355,7 @@ async function initializeData() {
 		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
 		const promises: Array<Promise<unknown>> = [
-			workflowsStore.fetchActiveWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
 			credentialsStore.fetchCredentialTypes(true),
 			loadCredentials(),
 		];
@@ -433,7 +447,7 @@ async function initializeRoute(force = false) {
 
 			// Check if we should initialize for a new workflow
 			if (isNewWorkflowRoute.value) {
-				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				const exists = await workflowsListStore.checkWorkflowExists(workflowId.value);
 				if (!exists && route.meta?.nodeView === true) {
 					return await initializeWorkspaceForNewWorkflow();
 				} else {
@@ -486,7 +500,7 @@ async function initializeWorkspaceForNewWorkflow() {
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
+		const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 		await openWorkflow(workflowData);
 
@@ -786,11 +800,11 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 }
 
 function addWorkflowSavedEventBindings() {
-	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 }
 
 function removeWorkflowSavedEventBindings() {
-	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
 }
 
@@ -1142,10 +1156,21 @@ function onCreateSticky() {
 }
 
 function onClickConnectionAdd(connection: Connection) {
-	nodeCreatorStore.openNodeCreatorForConnectingNode({
-		connection,
-		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	});
+	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
+	const isAddBetwenTool =
+		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
+	if (isAddBetwenTool) {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			nodeCreatorView: HUMAN_IN_THE_LOOP_CATEGORY,
+		});
+	} else {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		});
+	}
 }
 
 function onClickReplaceNode(nodeId: string) {
@@ -1188,7 +1213,7 @@ function onClickReplaceNode(nodeId: string) {
 
 const workflowPermissions = computed(() => {
 	return workflowId.value
-		? getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow
+		? getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow
 		: {};
 });
 
@@ -1251,8 +1276,8 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);
@@ -1275,7 +1300,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	copyWebhookUrl(id, 'test');
+	void copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1287,7 +1312,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	copyWebhookUrl(id, 'production');
+	void copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1487,7 +1512,7 @@ async function onSourceControlPull() {
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {
-			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
+			const workflowData = await workflowsListStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				await openWorkflow(workflowData);
 			}
@@ -1802,6 +1827,18 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
+async function handlePendingBuilderPrompt() {
+	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
+	if (pendingPrompt) {
+		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+		await builderStore.sendChatMessage({
+			text: pendingPrompt,
+			initialGeneration: true,
+			source: 'empty-state',
+		});
+	}
+}
+
 /**
  * Routing
  */
@@ -2028,6 +2065,9 @@ onMounted(() => {
 				}, 500);
 
 				emitPostMessageReady();
+
+				// Check for pending builder prompt from empty state experiment
+				void handlePendingBuilderPrompt();
 			});
 
 		void usersStore.showPersonalizationSurvey();

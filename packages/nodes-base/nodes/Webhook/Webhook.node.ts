@@ -33,7 +33,7 @@ import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
 	handleFormData,
-	isIpWhitelisted,
+	isIpAllowed,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -222,9 +222,9 @@ export class Webhook extends Node {
 		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
 
-		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
+		if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);
-			resp.end('IP is not whitelisted to access the webhook!');
+			resp.end('IP is not allowed to access the webhook!');
 			return { noWebhookResponse: true };
 		}
 

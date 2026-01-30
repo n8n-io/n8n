@@ -354,31 +354,6 @@ export class DataTableRepository extends Repository<DataTable> {
 				break;
 			}
 
-			case 'mysqldb':
-			case 'mariadb': {
-				const databaseName = this.globalConfig.database.mysqldb.database;
-				const isMariaDb = dbType === 'mariadb';
-				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
-				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
-				sql = `
-        SELECT t.TABLE_NAME AS table_name,
-            COALESCE(
-                (
-                  SELECT SUM(ists.ALLOCATED_SIZE)
-                    FROM information_schema.${innodbTables} ist
-                    JOIN information_schema.${innodbTablespaces} ists
-                      ON ists.SPACE = ist.SPACE
-                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
-                ),
-                (t.DATA_LENGTH + t.INDEX_LENGTH)
-            ) AS table_bytes
-        FROM information_schema.TABLES t
-        WHERE t.TABLE_SCHEMA = '${databaseName}'
-          AND t.TABLE_NAME LIKE '${tablePattern}'
-    `;
-				break;
-			}
-
 			default:
 				return new Map<string, number>();
 		}

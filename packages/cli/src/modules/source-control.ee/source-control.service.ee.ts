@@ -372,7 +372,7 @@ export class SourceControlService {
 					}
 				});
 
-			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
 			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
@@ -498,11 +498,27 @@ export class SourceControlService {
 		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
-		await this.sourceControlImportService.importWorkflowFromWorkFolder(
-			workflowsToBeImported,
-			user.id,
-			options.autoPublish,
+		const workflowImportResults =
+			await this.sourceControlImportService.importWorkflowFromWorkFolder(
+				workflowsToBeImported,
+				user.id,
+				options.autoPublish,
+			);
+
+		// Add publishing errors to status result
+		const statusByWorkflowId = new Map(
+			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
+
+		for (const { id, publishingError } of workflowImportResults) {
+			if (!publishingError) continue;
+
+			const statusItem = statusByWorkflowId.get(id);
+			if (statusItem) {
+				statusItem.publishingError = publishingError;
+			}
+		}
+
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
 			user,

@@ -58,6 +58,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -123,6 +124,7 @@ const folderHelpers = useFolders();
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
@@ -353,6 +355,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
 				settings: resource.settings,
+				hasResolvableCredentials: resource.hasResolvableCredentials,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -552,6 +555,7 @@ const showTemplateRecommendationV3 = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
+
 	void usersStore.showPersonalizationSurvey();
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
@@ -583,10 +587,9 @@ const initialize = async () => {
 	await setFiltersFromQueryString();
 
 	currentFolderId.value = route.params.folderId as string | null;
-	const [, resourcesPage] = await Promise.all([
-		usersStore.fetchUsers(),
+	const [resourcesPage] = await Promise.all([
 		fetchWorkflows(),
-		workflowsStore.fetchActiveWorkflows(),
+		workflowsListStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(
 			route.params.projectId as string | undefined,
@@ -630,7 +633,7 @@ const fetchWorkflows = async () => {
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
 	try {
-		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
 			currentPage.value,
 			pageSize.value,
@@ -994,13 +997,23 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 
 	// Fetch the updated workflow to get the latest settings
 	try {
-		const updatedWorkflow = await workflowsStore.fetchWorkflow(data.id);
+		const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.id);
 		if (updatedWorkflow.settings) {
 			workflow.settings = updatedWorkflow.settings;
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.one'));
 	}
+};
+
+const onWorkflowUnpublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Update the workflow to reflect unpublished state
+	workflow.activeVersionId = null;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -1754,7 +1767,7 @@ const onNameSubmit = async (name: string) => {
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="workflowsStore.totalWorkflowCount"
+		:total-items="workflowsListStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
@@ -1943,6 +1956,7 @@ const onNameSubmit = async (name: string) => {
 					}"
 					:show-ownership-badge="showCardsBadge"
 					data-target="folder"
+					data-droppable
 					class="mb-2xs"
 					@action="onFolderCardAction"
 					@mouseenter="folderHelpers.onDragEnter"
@@ -1990,6 +2004,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
+					@workflow:unpublished="onWorkflowUnpublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
@@ -2126,6 +2141,12 @@ const onNameSubmit = async (name: string) => {
 						}}
 					</template></N8nActionBox
 				>
+			</div>
+			<div
+				v-if="showRecommendedTemplatesInline && showArchivedOnlyHint"
+				:class="$style.templatesContainer"
+			>
+				<RecommendedTemplatesSection />
 			</div>
 		</template>
 	</ResourcesListLayout>
