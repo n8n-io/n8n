@@ -8,7 +8,6 @@
  * 4. Parsing and validating the generated code
  *
  * This is a focused code generator - it doesn't do discovery or planning.
- * Refactored from one-shot-workflow-code-agent.ts.
  */
 
 import { inspect } from 'node:util';

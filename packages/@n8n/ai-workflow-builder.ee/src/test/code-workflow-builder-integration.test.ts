@@ -1,5 +1,5 @@
 /**
- * Integration tests for the two-agent workflow generation architecture.
+ * Integration tests for CodeWorkflowBuilder.
  * Tests the integration between WorkflowBuilderAgent and CodeWorkflowBuilder.
  */
 
@@ -57,7 +57,7 @@ import {
 	type ChatPayload,
 } from '@/workflow-builder-agent';
 
-describe('Two-Agent Architecture Integration', () => {
+describe('CodeWorkflowBuilder Integration', () => {
 	let agent: WorkflowBuilderAgent;
 	let mockLlm: BaseChatModel;
 	let mockLogger: Logger;

@@ -83,7 +83,7 @@ import type { ModelId } from './llm-config';
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** Enable one-shot workflow code agent (default: true for POC testing) */
+	/** Enable CodeWorkflowBuilder (default: true). When false, uses legacy multi-agent system. */
 	oneShotAgent?: boolean;
 	/** Prompt version to use for generation */
 	promptVersion?: PromptVersionId;
@@ -169,13 +169,13 @@ export class WorkflowBuilderAgent {
 	) {
 		this.validateMessageLength(payload.message);
 
-		// Feature flag: Route to two-agent architecture if enabled (default: true)
-		const useTwoAgentArchitecture = payload.featureFlags?.oneShotAgent ?? true;
+		// Feature flag: Route to CodeWorkflowBuilder if enabled (default: true)
+		const useCodeWorkflowBuilder = payload.featureFlags?.oneShotAgent ?? true;
 
-		if (useTwoAgentArchitecture) {
-			this.logger?.debug('Routing to two-agent architecture (CodeWorkflowBuilder)', { userId });
+		if (useCodeWorkflowBuilder) {
+			this.logger?.debug('Routing to CodeWorkflowBuilder', { userId });
 
-			// Use the two-agent architecture (planning + coding agents)
+			// Use CodeWorkflowBuilder (planning + coding agents)
 			const codeWorkflowBuilder = new CodeWorkflowBuilder({
 				planningLLM: this.stageLLMs.builder,
 				codingLLM: this.stageLLMs.builder,
@@ -188,8 +188,8 @@ export class WorkflowBuilderAgent {
 			return;
 		}
 
-		// Fall back to multi-agent system
-		this.logger?.debug('Routing to multi-agent system', { userId });
+		// Fall back to legacy multi-agent system
+		this.logger?.debug('Routing to legacy multi-agent system', { userId });
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,

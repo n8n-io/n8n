@@ -1,9 +1,7 @@
 /**
  * Code Workflow Builder
  *
- * Public entry point for the two-agent workflow generation system.
- * Exposes a chat() method matching the existing OneShotWorkflowCodeAgent interface
- * for drop-in replacement.
+ * Public entry point for the workflow generation system.
  *
  * Architecture:
  * - Planning Agent: Categorizes requests, retrieves best practices, creates plans
@@ -42,12 +40,9 @@ export interface CodeWorkflowBuilderConfig {
 /**
  * Code Workflow Builder
  *
- * Two-agent system for generating n8n workflows:
+ * Generates n8n workflows using a planning + coding agent architecture:
  * 1. Planning Agent analyzes requests and creates detailed plans
  * 2. Coding Agent generates TypeScript SDK code following the plan
- *
- * This is a drop-in replacement for OneShotWorkflowCodeAgent with the same
- * chat() interface.
  */
 export class CodeWorkflowBuilder {
 	private orchestrator: Orchestrator;
@@ -67,9 +62,6 @@ export class CodeWorkflowBuilder {
 
 	/**
 	 * Main chat method - generates workflow from user request
-	 *
-	 * This method has the same signature as OneShotWorkflowCodeAgent.chat()
-	 * for drop-in replacement compatibility.
 	 *
 	 * @param payload - Chat payload with message and workflow context
 	 * @param userId - User ID for logging

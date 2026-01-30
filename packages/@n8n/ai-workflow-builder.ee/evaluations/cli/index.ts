@@ -108,7 +108,7 @@ function createWorkflowGenerator(
 }
 
 /**
- * Create a two-agent workflow generator function.
+ * Create a CodeWorkflowBuilder generator function.
  * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
  * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
  * Returns GenerationResult including the source code for artifact saving.
@@ -117,7 +117,7 @@ function createWorkflowGenerator(
  *                    aborted if it exceeds this duration. This ensures the generator
  *                    actually stops instead of continuing to run after timeout rejection.
  */
-function createTwoAgentWorkflowGenerator(
+function createCodeWorkflowBuilderGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
@@ -152,7 +152,7 @@ function createTwoAgentWorkflowGenerator(
 
 		if (timeoutMs !== undefined && timeoutMs > 0) {
 			timeoutId = setTimeout(() => {
-				abortController.abort(new Error(`Two-agent builder timed out after ${timeoutMs}ms`));
+				abortController.abort(new Error(`CodeWorkflowBuilder timed out after ${timeoutMs}ms`));
 			}, timeoutMs);
 		}
 
@@ -186,7 +186,7 @@ function createTwoAgentWorkflowGenerator(
 		}
 
 		if (!workflow) {
-			throw new WorkflowGenerationError('Two-agent builder did not produce a workflow');
+			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
 		}
 
 		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
@@ -266,10 +266,10 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// ONE_SHOT now uses the two-agent architecture (planning + coding agents)
+	// ONE_SHOT uses CodeWorkflowBuilder (planning + coding agents)
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.ONE_SHOT
-			? createTwoAgentWorkflowGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
+			? createCodeWorkflowBuilderGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on suite (using judge LLM for evaluation)
