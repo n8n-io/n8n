@@ -24,6 +24,8 @@ def sentry_config():
         n8n_version="1.0.0",
         environment="test",
         deployment_name="test-deployment",
+        profiles_sample_rate=0,
+        traces_sample_rate=0,
     )
 
 
@@ -34,6 +36,8 @@ def disabled_sentry_config():
         n8n_version="1.0.0",
         environment="test",
         deployment_name="test-deployment",
+        profiles_sample_rate=0,
+        traces_sample_rate=0,
     )
 
 
@@ -236,6 +240,8 @@ class TestSentryConfig:
             "N8N_VERSION": "2.0.0",
             "ENVIRONMENT": "production",
             "DEPLOYMENT_NAME": "prod-deployment",
+            "N8N_SENTRY_PROFILES_SAMPLE_RATE": "0.5",
+            "N8N_SENTRY_TRACES_SAMPLE_RATE": "0.1",
         },
     )
     def test_from_env_creates_config_from_environment(self):
@@ -245,6 +251,8 @@ class TestSentryConfig:
         assert config.n8n_version == "2.0.0"
         assert config.environment == "production"
         assert config.deployment_name == "prod-deployment"
+        assert config.profiles_sample_rate == 0.5
+        assert config.traces_sample_rate == 0.1
 
     @patch.dict("os.environ", {}, clear=True)
     def test_from_env_uses_defaults_when_missing(self):
@@ -254,3 +262,5 @@ class TestSentryConfig:
         assert config.n8n_version == ""
         assert config.environment == ""
         assert config.deployment_name == ""
+        assert config.profiles_sample_rate == 0
+        assert config.traces_sample_rate == 0

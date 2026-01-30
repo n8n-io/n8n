@@ -62,6 +62,8 @@ describe('JsTaskRunner', () => {
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
 			},
 		});
 
