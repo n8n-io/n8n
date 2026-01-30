@@ -268,12 +268,12 @@ export async function mockGetSecretProviderConnections(): Promise<SecretProvider
 /**
  * Mock API call for getting a single connection by ID
  */
-export async function mockGetSecretProviderConnectionById(
-	connectionId: string,
+export async function mockGetSecretProviderConnectionByKey(
+	providerKey: string,
 ): Promise<SecretProviderConnection> {
 	await new Promise((resolve) => setTimeout(resolve, 150));
 	return (
-		MOCK_ACTIVE_CONNECTIONS.find((connection) => connection.id === connectionId) ??
+		MOCK_ACTIVE_CONNECTIONS.find((connection) => connection.name === providerKey) ??
 		MOCK_ACTIVE_CONNECTIONS[0]
 	);
 }
@@ -282,7 +282,7 @@ export async function mockGetSecretProviderConnectionById(
  * Mock API call for creating a new connection
  */
 export async function mockCreateSecretProviderConnection(connectionData: {
-	type: string;
+	type: SecretProviderConnection['type'];
 	isGlobal: boolean;
 	settings: Record<string, unknown>;
 	projectIds: string[];
@@ -292,7 +292,7 @@ export async function mockCreateSecretProviderConnection(connectionData: {
 	return {
 		id: providerKey,
 		name: providerKey,
-		type: connectionData.type as SecretProviderConnection['type'],
+		type: connectionData.type,
 		settings: connectionData.settings,
 		projects: connectionData.projectIds.map((id) => ({ id, name: 'Project' })),
 		state: 'connected',

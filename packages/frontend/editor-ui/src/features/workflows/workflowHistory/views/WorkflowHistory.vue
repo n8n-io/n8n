@@ -33,6 +33,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -59,6 +60,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
+const usersStore = useUsersStore();
 const workflowActivate = useWorkflowActivate();
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -110,6 +112,11 @@ const sendTelemetry = (event: string) => {
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, queryParams);
 	lastReceivedItemsLength.value = history.length;
+	const userIds = history
+		.flatMap((item) => item.workflowPublishHistory.map((pub) => pub.userId))
+		.filter((id): id is string => Boolean(id));
+	const userIdsToFetch = new Set<string>(userIds);
+	await usersStore.fetchUsers({ filter: { ids: Array.from(userIdsToFetch) } });
 	workflowHistory.value = workflowHistory.value.concat(history);
 };
 

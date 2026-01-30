@@ -251,6 +251,7 @@ describe('GlobalConfig', () => {
 					keepAlive: false,
 					keepAliveDelay: 5000,
 					keepAliveInterval: 5000,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -281,6 +282,8 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
 		},
 		logging: {
 			level: 'info',

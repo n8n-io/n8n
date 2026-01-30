@@ -10,6 +10,7 @@ import type {
 	ExecutionStatus,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
+	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -22,6 +23,7 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
@@ -38,9 +40,13 @@ export class ActiveExecutions {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
 
+	/** Response mode by execution ID, if webhook-initiated. */
+	private responseModes = new Map<string, WebhookResponseMode>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -78,7 +84,7 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				maybeExecutionId = await this.executionRepository.createNewExecution(fullExecutionData);
+				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
 				assert(maybeExecutionId);
 
 				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
@@ -144,6 +150,7 @@ export class ActiveExecutions {
 					delete execution.workflowExecution;
 				} else {
 					delete this.activeExecutions[executionId];
+					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
 				}
 			});
@@ -204,6 +211,7 @@ export class ActiveExecutions {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
 			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
 			delete this.activeExecutions[executionId];
+			this.responseModes.delete(executionId);
 		} else {
 			execution.workflowExecution?.cancel();
 			execution.postExecutePromise.reject(cancellationError);
@@ -285,6 +293,14 @@ export class ActiveExecutions {
 
 	getStatus(executionId: string): ExecutionStatus {
 		return this.getExecutionOrFail(executionId).status;
+	}
+
+	setResponseMode(executionId: string, responseMode: WebhookResponseMode): void {
+		this.responseModes.set(executionId, responseMode);
+	}
+
+	getResponseMode(executionId: string): WebhookResponseMode | undefined {
+		return this.responseModes.get(executionId);
 	}
 
 	/** Wait for all active executions to finish */
