@@ -277,6 +277,17 @@
 	--node--icon--color--crimson: #724;
 	--node--icon--color--code-orange: #f92;
 
+	// Node category colors
+	/* stylelint-disable @n8n/css-var-naming */
+	--node-category--color--ai: #f17642;
+	--node-category--color--transform: #e94b71;
+	--node-category--color--flow: #9f51ec;
+	--node-category--color--core: #4d5fea;
+	--node-category--color--trigger: #45a0ea;
+	--node-category--color--human-review: #5f6c71;
+	--node-category--color--uncategorized: #5f6c71;
+	/* stylelint-enable @n8n/css-var-naming */
+
 	// Expressions, autocomplete, infobox
 	--expression-editor--resolvable--color--foreground--valid: var(--color--green-600);
 	--expression-editor--resolvable--color--background--valid: var(--color--green-100);

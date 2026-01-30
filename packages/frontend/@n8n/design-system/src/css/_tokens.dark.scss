@@ -130,6 +130,17 @@
 	--node--icon--color--crimson: #f188a2;
 	--node--icon--color--code-orange: #f92;
 
+	// Node category colors
+	/* stylelint-disable @n8n/css-var-naming */
+	--node-category--color--ai: #ec8255;
+	--node-category--color--transform: #e94b71;
+	--node-category--color--flow: #a55fec;
+	--node-category--color--core: #5c6ef6;
+	--node-category--color--trigger: #6caadc;
+	--node-category--color--human-review: #6f7d83;
+	--node-category--color--uncategorized: #6f7d83;
+	/* stylelint-enable @n8n/css-var-naming */
+
 	// Expressions, autocomplete, infobox
 	--expression-editor--resolvable--color--foreground--valid: var(--color--green-300);
 	--expression-editor--resolvable--color--background--valid: var(--color--green-alpha-200);
