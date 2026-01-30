@@ -1265,25 +1265,6 @@ describe('stream-processor', () => {
 			expect(results).toHaveLength(0);
 		});
 
-		it('should filter out message events from configurator_subgraph namespace', async () => {
-			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
-				yield [
-					['configurator_subgraph:xyz-789'],
-					'updates',
-					{ configurator: { messages: [{ content: 'Internal config message' }] } },
-				];
-			}
-
-			const processor = createStreamProcessor(mockStream());
-			const results: StreamOutput[] = [];
-
-			for await (const output of processor) {
-				results.push(output);
-			}
-
-			expect(results).toHaveLength(0);
-		});
-
 		it('should allow tool progress events from subgraphs', async () => {
 			const toolChunk: ToolProgressChunk = {
 				id: 'tool-1',

@@ -10,8 +10,7 @@ import { prompt } from '../builder';
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 
 const AVAILABLE_AGENTS = `- discovery: Find n8n nodes for building/modifying workflows
-- builder: Create nodes and connections (requires discovery first for new node types)
-- configurator: Set parameters on EXISTING nodes (no structural changes)
+- builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
 const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → responder
@@ -27,7 +26,7 @@ const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → res
 3. Is the request about connecting/disconnecting existing nodes? → builder
    Examples: "Connect node A to node B", "Remove the connection to X"
 
-4. Is the request about changing VALUES in existing nodes? → configurator
+4. Is the request about changing VALUES in existing nodes? → builder
    Examples:
    - "Change the URL to https://..."
    - "Set the timeout to 30 seconds"
@@ -35,7 +34,7 @@ const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → res
 
 /** Clarifies replacement (discovery) vs configuration - common confusion point */
 const KEY_DISTINCTION = `- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
-- "Change the [ServiceA] API key" = CONFIGURATION = configurator (same node, different value)`;
+- "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)`;
 
 const OUTPUT_FORMAT = `- reasoning: One sentence explaining your routing decision
 - next: Agent name`;

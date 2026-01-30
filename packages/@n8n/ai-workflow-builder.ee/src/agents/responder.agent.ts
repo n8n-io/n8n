@@ -10,7 +10,7 @@ import {
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
-} from '@/prompts/agents/responder.prompt';
+} from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
@@ -19,7 +19,6 @@ import type { SimpleWorkflow } from '../types/workflow';
 import {
 	getErrorEntry,
 	getBuilderOutput,
-	getConfiguratorOutput,
 	hasRecursionErrorsCleared,
 } from '../utils/coordination-log';
 import { extractDataTableInfo } from '../utils/data-table-helpers';
@@ -129,18 +128,12 @@ export class ResponderAgent {
 			);
 		}
 
-		// Builder output
+		// Builder output (handles both node creation and parameter configuration)
 		const builderOutput = getBuilderOutput(context.coordinationLog);
 		if (builderOutput) {
 			contextParts.push(`**Builder:** ${builderOutput}`);
 		} else if (context.workflowJSON.nodes.length) {
 			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
-		}
-
-		// Configurator output
-		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
-		if (configuratorOutput) {
-			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
 		}
 
 		// Data Table creation guidance
