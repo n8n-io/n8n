@@ -3,9 +3,9 @@ import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -27,8 +27,8 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -75,7 +75,6 @@ import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
-import ContactPromptModal from '@/app/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
@@ -84,8 +83,10 @@ import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderMo
 import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
+import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
+import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
@@ -112,7 +113,6 @@ import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeMod
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
-import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
@@ -124,12 +124,6 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 <template>
 	<div>
-		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template #default="{ modalName }">
-				<ContactPromptModal :modal-name="modalName" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
@@ -297,6 +291,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<DebugPaywallModal
@@ -411,15 +411,15 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY">
-			<template #default="{ modalName, data }">
-				<NodeRecommendationModalTDQ :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
 			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
 				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<BinaryDataViewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
@@ -446,6 +446,7 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>

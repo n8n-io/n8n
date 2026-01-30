@@ -45,9 +45,11 @@ jobs:
         run: pnpm --filter=n8n-playwright test:workflows --workers 4
         env:
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_PROJECT_ID: 'mpLFH9'
 
       - name: Run Workflow Schema Tests
         if: ${{ inputs.compare_schemas == 'true' }}
         run: pnpm --filter=n8n-playwright test:workflows:schema
         env:
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_PROJECT_ID: 'mpLFH9'

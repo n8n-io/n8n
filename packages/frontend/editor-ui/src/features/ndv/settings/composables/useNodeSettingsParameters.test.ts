@@ -50,7 +50,7 @@ describe('useNodeSettingsParameters', () => {
 			vi.clearAllMocks();
 		});
 
-		it('sets focused node parameter', () => {
+		it('sets focused node parameter', async () => {
 			const { handleFocus } = useNodeSettingsParameters();
 			const node: INodeUi = {
 				id: '1',
@@ -80,7 +80,7 @@ describe('useNodeSettingsParameters', () => {
 			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
 		});
 
-		it('does nothing if node is undefined', () => {
+		it('does nothing if node is undefined', async () => {
 			const { handleFocus } = useNodeSettingsParameters();
 
 			const parameter: INodeProperties = {
@@ -149,61 +149,64 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		describe('hidden parameter type', () => {
-			it('returns false for hidden parameter type', () => {
+			it('returns false for hidden parameter type', async () => {
 				mockNodeHelpers();
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
+				const result = await shouldDisplayNodeParameter({}, null, {
+					...mockParameter,
+					type: 'hidden',
+				});
 				expect(result).toBe(false);
 			});
 
-			it('does not call displayParameter for hidden parameters', () => {
+			it('does not call displayParameter for hidden parameters', async () => {
 				mockNodeHelpers();
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
+				await shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
 				expect(displayParameterSpy).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('custom API call handling', () => {
-			it('returns false for custom API call with mustHideDuringCustomApiCall', () => {
+			it('returns false for custom API call with mustHideDuringCustomApiCall', async () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);
 				mockNodeHelpers({ isCustomApiCallSelected: true });
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(false);
 			});
 
-			it('returns true when custom API call selected but mustHideDuringCustomApiCall is false', () => {
+			it('returns true when custom API call selected but mustHideDuringCustomApiCall is false', async () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers({ isCustomApiCallSelected: true });
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(true);
 			});
 
-			it('does not check mustHideDuringCustomApiCall when custom API call is not selected', () => {
+			it('does not check mustHideDuringCustomApiCall when custom API call is not selected', async () => {
 				const mustHideSpy = vi
 					.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall')
 					.mockReturnValueOnce(true);
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers({ isCustomApiCallSelected: false });
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				shouldDisplayNodeParameter({}, null, mockParameter);
+				await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(mustHideSpy).not.toHaveBeenCalled();
 			});
 		});
@@ -220,25 +223,25 @@ describe('useNodeSettingsParameters', () => {
 				],
 			};
 
-			it('returns false if parameter is auth-related', () => {
+			it('returns false if parameter is auth-related', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(false);
 			});
 
-			it('returns false when parameter name matches main auth field name', () => {
+			it('returns false when parameter name matches main auth field name', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					{},
 					{
 						id: '1',
@@ -253,11 +256,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(false);
 			});
 
-			it('shows auth field when node type is in KEEP_AUTH_IN_NDV_FOR_NODES', () => {
+			it('shows auth field when node type is in KEEP_AUTH_IN_NDV_FOR_NODES', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -270,15 +273,15 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, authParameter);
+				const result = await shouldDisplayNodeParameter({}, node, authParameter);
 				expect(result).toBe(true);
 			});
 
-			it('shows auth field when node type is webhook (in KEEP_AUTH_IN_NDV_FOR_NODES)', () => {
+			it('shows auth field when node type is webhook (in KEEP_AUTH_IN_NDV_FOR_NODES)', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -291,27 +294,27 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, authParameter);
+				const result = await shouldDisplayNodeParameter({}, node, authParameter);
 				expect(result).toBe(true);
 			});
 
-			it('shows parameter when no main auth field exists', () => {
+			it('shows parameter when no main auth field exists', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, null, mockParameter);
 				expect(result).toBe(true);
 			});
 
-			it('shows non-auth parameter when main auth field exists', () => {
+			it('shows non-auth parameter when main auth field exists', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -324,7 +327,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, node, mockParameter);
 				expect(result).toBe(true);
 			});
 		});
@@ -342,7 +345,7 @@ describe('useNodeSettingsParameters', () => {
 				default: false,
 			};
 
-			it('hides availableInChat when chat feature is disabled', () => {
+			it('hides availableInChat when chat feature is disabled', async () => {
 				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
@@ -361,16 +364,16 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				const result = await shouldDisplayNodeParameter({}, node, availableInChatParameter);
 				expect(result).toBe(false);
 			});
 
-			it('shows availableInChat when chat feature is enabled', () => {
+			it('shows availableInChat when chat feature is enabled', async () => {
 				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				settingsStore.isChatFeatureEnabled = true;
 
@@ -385,15 +388,15 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				const result = await shouldDisplayNodeParameter({}, node, availableInChatParameter);
 				expect(result).toBe(true);
 			});
 
-			it('does not affect availableInChat on non-chat trigger nodes', () => {
+			it('does not affect availableInChat on non-chat trigger nodes', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				settingsStore.isChatFeatureEnabled = false;
 
@@ -408,27 +411,27 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				const result = await shouldDisplayNodeParameter({}, node, availableInChatParameter);
 				expect(result).toBe(true);
 			});
 		});
 
 		describe('displayOptions handling', () => {
-			it('returns true if displayOptions is undefined', () => {
+			it('returns true if displayOptions is undefined', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({}, null, {
+				const result = await shouldDisplayNodeParameter({}, null, {
 					...mockParameter,
 					displayOptions: undefined,
 				});
 				expect(result).toBe(true);
 			});
 
-			it('returns true if disabledOptions is undefined when using disabledOptions displayKey', () => {
+			it('returns true if disabledOptions is undefined when using disabledOptions displayKey', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
@@ -440,7 +443,7 @@ describe('useNodeSettingsParameters', () => {
 					displayOptions: { show: { resource: ['user'] } },
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					{},
 					null,
 					parameterWithoutDisabledOptions,
@@ -452,11 +455,11 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		describe('path parameter handling', () => {
-			it('gets rawValues from path when path is provided', () => {
+			it('gets rawValues from path when path is provided', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -474,7 +477,12 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter, 'nested');
+				const result = await shouldDisplayNodeParameter(
+					nodeParameters,
+					node,
+					mockParameter,
+					'nested',
+				);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					nodeParameters,
@@ -486,7 +494,7 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('returns false when rawValues at path is null', () => {
+			it('returns false when rawValues at path is null', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
@@ -505,7 +513,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					nodeParameters as unknown as Record<string, string>,
 					node,
 					mockParameter,
@@ -514,7 +522,7 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(false);
 			});
 
-			it('returns false when rawValues at path is undefined', () => {
+			it('returns false when rawValues at path is undefined', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
@@ -531,7 +539,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					nodeParameters,
 					node,
 					mockParameter,
@@ -542,15 +550,15 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		describe('expression resolution', () => {
-			it('resolves expressions and calls displayParameter with resolved parameters', () => {
+			it('resolves expressions and calls displayParameter with resolved parameters', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
-					resolveExpression: (expr: string) => (expr === '=1+1' ? 2 : expr),
+					resolveExpression: async (expr: string) => (expr === '=1+1' ? 2 : expr),
 				}));
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -565,7 +573,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					{ foo: 2 },
@@ -579,13 +587,13 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('defers resolution when expression references missing parameter with $parameter', () => {
+			it('defers resolution when expression references missing parameter with $parameter', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
-				const resolveExpressionSpy = vi.fn();
+				const resolveExpressionSpy = vi.fn().mockResolvedValue(undefined);
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
@@ -607,25 +615,25 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				// The expression with $parameter.second should be deferred until 'second' is processed
 				// So resolveExpression should still be called eventually
 				expect(displayParameterSpy).toHaveBeenCalled();
 			});
 
-			it('handles mutually dependent expressions (circular dependency)', () => {
+			it('handles mutually dependent expressions (circular dependency)', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				// Track resolution order to detect any bugs:
 				const resolutionOrder: string[] = [];
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
-					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+					resolveExpression: async (expr: string, siblingParameters: INodeParameters = {}) => {
 						if (expr === '={{ $parameter.second }}') {
 							resolutionOrder.push('first');
 							return (siblingParameters.second as string) ?? 'unresolved_second';
@@ -655,7 +663,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				// Both should be resolved
 				expect(resolutionOrder).toContain('first');
@@ -666,18 +674,18 @@ describe('useNodeSettingsParameters', () => {
 				expect(resolutionOrder[0]).toBe('first');
 			});
 
-			it('handles chained expression dependencies (a depends on b, b depends on c)', () => {
+			it('handles chained expression dependencies (a depends on b, b depends on c)', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				// Track resolution order to verify dependencies are resolved correctly
 				const resolutionOrder: string[] = [];
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
-					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+					resolveExpression: async (expr: string, siblingParameters: INodeParameters = {}) => {
 						if (expr === '={{ $parameter.second }}') {
 							resolutionOrder.push('first');
 							// If second wasn't resolved yet, this would return 'unresolved'
@@ -713,7 +721,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				// Should resolve in correct order: third -> second -> first
 				// This ensures dependencies are resolved before dependents
@@ -732,11 +740,11 @@ describe('useNodeSettingsParameters', () => {
 				);
 			});
 
-			it('sets empty string when expression resolution throws error', () => {
+			it('sets empty string when expression resolution throws error', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
@@ -757,7 +765,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					{ foo: '' },
@@ -769,11 +777,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('handles non-expression values without resolving', () => {
+			it('handles non-expression values without resolving', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				const resolveExpressionSpy = vi.fn();
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
@@ -793,7 +801,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(resolveExpressionSpy).not.toHaveBeenCalled();
 				expect(displayParameterSpy).toHaveBeenCalledWith(
@@ -805,15 +813,16 @@ describe('useNodeSettingsParameters', () => {
 				);
 			});
 
-			it('resolves expressions with path and calls displayParameter with deepCopy', () => {
+			it('resolves expressions with path and calls displayParameter with deepCopy', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
-					resolveExpression: (expr: string) => (expr === '=resolved' ? 'resolved_value' : expr),
+					resolveExpression: async (expr: string) =>
+						expr === '=resolved' ? 'resolved_value' : expr,
 				}));
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -832,7 +841,12 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter, 'nested');
+				const result = await shouldDisplayNodeParameter(
+					nodeParameters,
+					node,
+					mockParameter,
+					'nested',
+				);
 
 				// When path is provided and expressions are resolved, it should deepCopy and set the resolved values
 				expect(displayParameterSpy).toHaveBeenCalledWith(
@@ -847,15 +861,15 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('handles mixed expression and non-expression values', () => {
+			it('handles mixed expression and non-expression values', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
 					...originalWorkflowHelpers,
-					resolveExpression: () => 'resolved',
+					resolveExpression: async () => 'resolved',
 				}));
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -874,7 +888,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					{ expr: 'resolved', plain: 'plain value', number: 42 },
@@ -887,11 +901,11 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		describe('displayParameter delegation', () => {
-			it('calls displayParameter with correct arguments', () => {
+			it('calls displayParameter with correct arguments', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(false);
+				displayParameterSpy.mockResolvedValueOnce(false);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -912,7 +926,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					nodeParameters,
 					node,
 					parameter,
@@ -930,11 +944,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(false);
 			});
 
-			it('calls displayParameter with default displayOptions', () => {
+			it('calls displayParameter with default displayOptions', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -948,7 +962,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					nodeParameters,
@@ -960,11 +974,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('returns the result from displayParameter', () => {
+			it('returns the result from displayParameter', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(false);
+				displayParameterSpy.mockResolvedValueOnce(false);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -978,36 +992,36 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 				expect(result).toBe(false);
 
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 
-				const result2 = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result2 = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 				expect(result2).toBe(true);
 			});
 		});
 
 		describe('edge cases', () => {
-			it('handles null node parameter', () => {
+			it('handles null node parameter', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-				const result = shouldDisplayNodeParameter({ foo: 'bar' }, null, mockParameter);
+				const result = await shouldDisplayNodeParameter({ foo: 'bar' }, null, mockParameter);
 				expect(result).toBe(true);
 			});
 
-			it('handles empty nodeParameters', () => {
+			it('handles empty nodeParameters', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -1020,15 +1034,15 @@ describe('useNodeSettingsParameters', () => {
 					parameters: {},
 				};
 
-				const result = shouldDisplayNodeParameter({}, node, mockParameter);
+				const result = await shouldDisplayNodeParameter({}, node, mockParameter);
 				expect(result).toBe(true);
 			});
 
-			it('handles undefined path parameter (uses empty string default)', () => {
+			it('handles undefined path parameter (uses empty string default)', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -1043,7 +1057,7 @@ describe('useNodeSettingsParameters', () => {
 				};
 
 				// Call without path parameter (uses default empty string)
-				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				const result = await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(displayParameterSpy).toHaveBeenCalledWith(
 					nodeParameters,
@@ -1055,11 +1069,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('handles non-string values in nodeParameters', () => {
+			it('handles non-string values in nodeParameters', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -1079,7 +1093,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					nodeParameters as unknown as Record<string, string>,
 					node,
 					mockParameter,
@@ -1095,11 +1109,11 @@ describe('useNodeSettingsParameters', () => {
 				expect(result).toBe(true);
 			});
 
-			it('handles deeply nested paths', () => {
+			it('handles deeply nested paths', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
 				mockNodeHelpers();
-				displayParameterSpy.mockReturnValueOnce(true);
+				displayParameterSpy.mockResolvedValueOnce(true);
 
 				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -1121,7 +1135,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				const result = shouldDisplayNodeParameter(
+				const result = await shouldDisplayNodeParameter(
 					nodeParameters,
 					node,
 					mockParameter,

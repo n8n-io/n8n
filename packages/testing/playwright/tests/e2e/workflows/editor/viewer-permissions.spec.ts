@@ -2,6 +2,8 @@ import { INSTANCE_MEMBER_CREDENTIALS } from '../../../../config/test-users';
 import { test, expect } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'viewer-permissions' } } });
+
 const MEMBER_EMAIL = INSTANCE_MEMBER_CREDENTIALS[0].email;
 
 // Helper to set up a project with a workflow and sign in as member with specified role
@@ -22,7 +24,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 
 	// Create workflow with node
 	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
-	await n8n.workflows.clickNewWorkflowCard();
+	await n8n.workflows.clickNewWorkflowButtonFromProject();
 	await n8n.canvas.addNode(nodeName, { closeNDV: true });
 	await n8n.canvas.waitForSaveWorkflowCompleted();
 
@@ -31,11 +33,12 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await n8n.navigate.toHome();
 	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
 	await n8n.workflows.cards.getWorkflows().first().click();
+	await expect(n8n.canvas.canvasPane()).toBeVisible();
 	await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
 
-test.describe('Workflow Viewer Permissions @isolated', () => {
+test.describe('Workflow Viewer Permissions', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	let readOnlyRole: { slug: string };
@@ -112,10 +115,8 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 
 		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
 
-		const finalPosition = await node.boundingBox();
-
 		// Position SHOULD change
-		expect(finalPosition?.x).not.toBe(initialPosition?.x);
+		await expect.poll(async () => (await node.boundingBox())?.x).not.toBe(initialPosition?.x);
 
 		// Copy and paste should work
 		await n8n.canvasComposer.selectAllAndCopy();

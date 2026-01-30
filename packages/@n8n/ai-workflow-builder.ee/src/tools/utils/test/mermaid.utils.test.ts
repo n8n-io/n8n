@@ -907,6 +907,98 @@ n1["Start"]
 			expect(result).toContain('--> ');
 			expect(result).toContain('Lonely Agent');
 		});
+
+		it('should connect nodes across different sticky subgraphs', () => {
+			// This test verifies that nodes in different sticky subgraphs are connected
+			// with inter-subgraph connections (not skipped because they're both "sticky" type)
+			const workflow: WorkflowMetadata = {
+				templateId: 9006,
+				name: 'Multi Sticky Connected',
+				workflow: {
+					name: 'Multi Sticky Connected',
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							position: [100, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Set Data',
+							type: 'n8n-nodes-base.set',
+							position: [300, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'node2',
+							name: 'Process',
+							type: 'n8n-nodes-base.code',
+							position: [600, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'node3',
+							name: 'Send Email',
+							type: 'n8n-nodes-base.gmail',
+							position: [800, 100],
+							typeVersion: 1,
+						},
+						// Sticky 1 covers Trigger and Set Data
+						{
+							parameters: { content: '## Input Section', width: 350, height: 200 },
+							id: 'sticky1',
+							name: 'Sticky Note 1',
+							type: 'n8n-nodes-base.stickyNote',
+							position: [50, 50],
+							typeVersion: 1,
+						},
+						// Sticky 2 covers Process and Send Email
+						{
+							parameters: { content: '## Output Section', width: 350, height: 200 },
+							id: 'sticky2',
+							name: 'Sticky Note 2',
+							type: 'n8n-nodes-base.stickyNote',
+							position: [550, 50],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Trigger: {
+							main: [[{ node: 'Set Data', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Set Data': {
+							main: [[{ node: 'Process', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Process: {
+							main: [[{ node: 'Send Email', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			// Should have two subgraphs
+			expect(result).toContain('subgraph sg1["## Input Section"]');
+			expect(result).toContain('subgraph sg2["## Output Section"]');
+
+			// Should have internal connections within subgraphs
+			expect(result).toMatch(/n1.*-->.*n2/); // Trigger --> Set Data within sg1
+			expect(result).toMatch(/n3.*-->.*n4/); // Process --> Send Email within sg2
+
+			// Critical: Should have inter-subgraph connection from Set Data to Process
+			// This was previously missing because both are "sticky" type
+			expect(result).toContain('n2 --> n3'); // Set Data --> Process (inter-subgraph)
+		});
 	});
 
 	describe('processWorkflowExamples', () => {

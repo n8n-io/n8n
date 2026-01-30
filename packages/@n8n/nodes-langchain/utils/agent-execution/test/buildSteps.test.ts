@@ -985,6 +985,233 @@ describe('buildSteps', () => {
 		});
 	});
 
+	describe('Tool name resolution', () => {
+		it('should use HITL toolName when HITL metadata is present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'custom_search_tool',
+									gatedToolNodeName: 'Search API',
+									originalInput: { query: 'test' },
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { results: ['result1'] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should use the toolName from HITL metadata
+			expect(result[0].action.tool).toBe('custom_search_tool');
+		});
+
+		it('should convert nodeName to toolName when HITL metadata is not present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator Node',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should convert node name using nodeNameToToolName
+			expect(result[0].action.tool).toBe('Calculator_Node');
+		});
+
+		it('should use HITL toolName in message content', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'custom_tool',
+									gatedToolNodeName: 'Custom Tool',
+									originalInput: { query: 'test' },
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Message content should use the HITL toolName
+			expect(message.content).toContain('Calling custom_tool');
+			expect(message.content).not.toContain('HITL Node');
+			// Tool call should also use the HITL toolName
+			expect(message.tool_calls?.[0].name).toBe('custom_tool');
+		});
+
+		it('should use converted nodeName in message content when HITL metadata is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'My Custom Node',
+							input: {
+								id: 'call_123',
+								input: { data: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Message content should use the converted tool name
+			expect(message.content).toContain('Calling My_Custom_Node');
+			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
+		});
+
+		it('should handle HITL toolName in Anthropic thinking blocks', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'hitl_tool',
+									gatedToolNodeName: 'Gated Tool',
+									originalInput: { query: 'test' },
+								},
+								anthropic: {
+									thinkingContent: 'I will use the HITL tool',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'approved' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			// Content should be an array with thinking and tool_use blocks
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// Tool use block should use the HITL toolName
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_123',
+				name: 'hitl_tool',
+			});
+		});
+	});
+
 	describe('Tool input extraction', () => {
 		it('should extract toolInput as object with string input property', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
@@ -1156,6 +1383,245 @@ describe('buildSteps', () => {
 				extra: 'should be included',
 			});
 			expect(result[0].action.toolInput).not.toHaveProperty('id');
+		});
+	});
+
+	describe('Gemini thought_signature in additional_kwargs', () => {
+		it('should include thought_signature in AIMessage additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'gemini_thought_sig_abc123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Verify additional_kwargs contains the thought signature
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
+				call_123: 'gemini_thought_sig_abc123',
+			});
+		});
+
+		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// First step should have the shared AIMessage with ALL tool calls
+			const firstMessage = result[0].action.messageLog![0];
+			expect(firstMessage).toBeDefined();
+			expect(firstMessage.tool_calls).toHaveLength(2);
+			expect(firstMessage.tool_calls![0].name).toBe('Calculator');
+			expect(firstMessage.tool_calls![1].name).toBe('Weather');
+
+			// Signature should only be on the first tool call in the map
+			const sigMap = firstMessage.additional_kwargs
+				.__gemini_function_call_thought_signatures__ as Record<string, string>;
+			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
+
+			// Signatures array should have: ['', 'sig', ''] (text part, first func call, second func call)
+			const sigArray = firstMessage.additional_kwargs.signatures as string[];
+			expect(sigArray).toEqual(['', 'shared_gemini_sig', '']);
+
+			// Second step should have EMPTY messageLog (no duplicate AIMessage)
+			expect(result[1].action.messageLog).toEqual([]);
+
+			// Both steps should have correct observations
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should NOT group parallel tool calls without Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// Without Gemini signature, each step should have its own AIMessage
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].tool_calls).toHaveLength(1);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should not include additional_kwargs when no thought_signature present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should not have __gemini_function_call_thought_signatures__ when no signature
+			expect(
+				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
+			).toBeUndefined();
 		});
 	});
 });

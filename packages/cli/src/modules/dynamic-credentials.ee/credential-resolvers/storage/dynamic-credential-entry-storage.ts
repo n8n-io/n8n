@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { ICredentialEntriesStorage } from './storage-interface';
 import { DynamicCredentialEntry } from '../../database/entities/dynamic-credential-entry';
 import { DynamicCredentialEntryRepository } from '../../database/repositories/dynamic-credential-entry.repository';
+import { CredentialResolverHandle } from '@n8n/decorators';
 
 @Service()
 export class DynamicCredentialEntryStorage implements ICredentialEntriesStorage {
@@ -60,5 +61,9 @@ export class DynamicCredentialEntryStorage implements ICredentialEntriesStorage 
 			subjectId,
 			resolverId,
 		});
+	}
+
+	async deleteAllCredentialData(handle: CredentialResolverHandle): Promise<void> {
+		await this.dynamicCredentialEntryRepository.delete({ resolverId: handle.resolverId });
 	}
 }

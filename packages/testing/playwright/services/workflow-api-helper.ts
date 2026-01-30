@@ -106,6 +106,27 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async shareWorkflow(workflowId: string, shareWithIds: string[]) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share workflow: ${await response.text()}`);
+		}
+	}
+
+	async getWorkflows() {
+		const response = await this.api.request.get('/rest/workflows');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async transfer(workflowId: string, destinationProjectId: string) {
 		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
 			data: { destinationProjectId },
@@ -113,6 +134,31 @@ export class WorkflowApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to transfer workflow: ${await response.text()}`);
+		}
+	}
+
+	/**
+	 * Set tags on a workflow via API
+	 * @param workflowId - The workflow ID
+	 * @param tagIds - Array of tag IDs to assign to the workflow
+	 */
+	async setTags(workflowId: string, tagIds: string[]): Promise<void> {
+		const getResponse = await this.api.request.get(`/rest/workflows/${workflowId}`);
+		if (!getResponse.ok()) {
+			throw new TestError(`Failed to get workflow: ${await getResponse.text()}`);
+		}
+		const workflowData = await getResponse.json();
+		const workflow = workflowData.data ?? workflowData;
+
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				versionId: workflow.versionId,
+				tags: tagIds,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to set workflow tags: ${await response.text()}`);
 		}
 	}
 

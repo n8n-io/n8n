@@ -1,5 +1,7 @@
 import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -164,6 +166,43 @@ describe('SourceControlController', () => {
 
 			await controller.status(req);
 			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+		});
+	});
+
+	describe('getPreferences', () => {
+		it('should return preferences with public key', async () => {
+			const mockPreferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:example/repo.git',
+				connected: true,
+				publicKey: '',
+			};
+			const mockPublicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
+
+			(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue(
+				mockPreferences,
+			);
+			(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(mockPublicKey);
+
+			const result = await controller.getPreferences();
+
+			expect(sourceControlPreferencesService.getPublicKey).toHaveBeenCalled();
+			expect(sourceControlPreferencesService.getPreferences).toHaveBeenCalled();
+			expect(result).toEqual({
+				...mockPreferences,
+				publicKey: mockPublicKey,
+			});
+		});
+
+		it('should require authentication', () => {
+			const registry = Container.get(ControllerRegistryMetadata);
+			const controllerMetadata = registry.getControllerMetadata(
+				SourceControlController as Controller,
+			);
+
+			const getPreferencesRoute = controllerMetadata.routes.get('getPreferences');
+			expect(getPreferencesRoute).toBeDefined();
+			expect(getPreferencesRoute?.skipAuth).toBe(false);
 		});
 	});
 });

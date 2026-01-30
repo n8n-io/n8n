@@ -51,6 +51,10 @@ const outputSchema = {
 					.nullable()
 					.describe('The number of triggers associated with the workflow'),
 				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
+				scopes: z.array(z.string()).describe('User permissions for this workflow'),
+				canExecute: z
+					.boolean()
+					.describe('Whether the user has permission to execute this workflow'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
@@ -154,19 +158,20 @@ export async function searchWorkflows(
 			updatedAt: true,
 			triggerCount: true,
 			activeVersion: true,
+			ownedBy: true, // Required for loading 'shared' relation used in scope computation
 		},
 	};
 
 	const { workflows, count } = await workflowService.getMany(
 		user,
 		options,
-		false, // includeScopes
+		true, // includeScopes
 		false, // includeFolders
 		false, // onlySharedWithMe
 	);
 
-	const formattedWorkflows: SearchWorkflowsItem[] = (workflows as WorkflowEntity[]).map(
-		({
+	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
+		const {
 			id,
 			name,
 			description,
@@ -175,7 +180,10 @@ export async function searchWorkflows(
 			updatedAt,
 			triggerCount,
 			activeVersion,
-		}) => ({
+		} = workflow as WorkflowEntity;
+		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
+
+		return {
 			id,
 			name,
 			description,
@@ -187,8 +195,10 @@ export async function searchWorkflows(
 				name: node.name,
 				type: node.type,
 			})),
-		}),
-	);
+			scopes,
+			canExecute: scopes.includes('workflow:execute'),
+		};
+	});
 
 	return { data: formattedWorkflows, count };
 }

@@ -7,7 +7,6 @@ import type {
 	User,
 	Variables,
 	WorkflowEntity,
-	WorkflowTagMapping,
 } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -20,12 +19,12 @@ import {
 	UserRepository,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
@@ -61,7 +60,6 @@ import {
 	getWorkflowExportPath,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type {
 	ExportableCredential,
 	StatusExportableCredential,
@@ -75,8 +73,9 @@ import type {
 	StatusResourceOwner,
 	TeamResourceOwner,
 } from './types/resource-owner';
-import type { SourceControlContext } from './types/source-control-context';
+import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -538,10 +537,7 @@ export class SourceControlImportService {
 		return { tags: [], mappings: [] };
 	}
 
-	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<{
-		tags: TagEntity[];
-		mappings: WorkflowTagMapping[];
-	}> {
+	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<ExportableTags> {
 		const localTags = await this.tagRepository.find({
 			select: ['id', 'name'],
 		});
@@ -771,13 +767,6 @@ export class SourceControlImportService {
 			// If the workflow should be active (was active before and not archived),
 			// reactivate it with the new version
 			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
-				// Publish the new version - this updates activeVersionId and active flag
-				// This ensures the workflow runs the new pulled version
-				this.logger.debug(
-					`Publishing workflow id ${existingWorkflow.id} with new version ${newVersionId}`,
-				);
-				await this.workflowRepository.publishVersion(existingWorkflow.id, newVersionId);
-
 				// Activate the workflow with the new published version
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
@@ -869,7 +858,7 @@ export class SourceControlImportService {
 		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
-	async importTagsFromWorkFolder(candidate: SourceControlledFile) {
+	async importTagsFromWorkFolder(candidate: SourceControlledFile, user: User) {
 		let mappedTags;
 		try {
 			this.logger.debug(`Importing tags from file ${candidate.file}`);
@@ -915,18 +904,50 @@ export class SourceControlImportService {
 			}),
 		);
 
-		await Promise.all(
-			mappedTags.mappings.map(async (mapping) => {
-				if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-				await this.workflowTagMappingRepository.upsert(
-					{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
+		// Get all workflow IDs from remote files (in scope for this import)
+		// This ensures we delete mappings for workflows with zero tags
+		const context = new SourceControlContext(user);
+		const remoteWorkflowIds = (await this.getRemoteVersionIdsFromFiles(context)).map((wf) => wf.id);
+
+		// Include both workflows with mappings AND workflows in remote files (even with zero tags)
+		const workflowIdsInImport = [
+			...new Set([
+				...mappedTags.mappings.map((mapping) => String(mapping.workflowId)),
+				...remoteWorkflowIds,
+			]),
+		].filter((workflowId) => existingWorkflowIds.has(workflowId));
+
+		const mappingsToImport = mappedTags.mappings.filter((mapping) =>
+			existingWorkflowIds.has(String(mapping.workflowId)),
+		);
+
+		/**
+		 * Use a transaction here as we "delete" them all and then "create" them again.
+		 *
+		 * Without a transaction we run the risk of deleting them all, then experiencing a failure on the "create" and
+		 * leaving the customer with a partial tag/workflow import
+		 */
+		await this.workflowTagMappingRepository.manager.transaction(async (transactionManager) => {
+			if (workflowIdsInImport.length > 0) {
+				await transactionManager.delete(WorkflowTagMapping, {
+					workflowId: In(workflowIdsInImport),
+				});
+			}
+
+			if (mappingsToImport.length > 0) {
+				await transactionManager.upsert(
+					WorkflowTagMapping,
+					mappingsToImport.map((mapping) => ({
+						tagId: String(mapping.tagId),
+						workflowId: String(mapping.workflowId),
+					})),
 					{
 						skipUpdateIfNoValuesChanged: true,
 						conflictPaths: { tagId: true, workflowId: true },
 					},
 				);
-			}),
-		);
+			}
+		});
 
 		return mappedTags;
 	}

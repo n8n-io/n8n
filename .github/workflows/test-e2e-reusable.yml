@@ -47,9 +47,21 @@ on:
         required: false
         default: false
         type: boolean
+      currents-project-id:
+        description: 'Currents project ID for reporting'
+        required: false
+        default: 'LRxcNt'
+        type: string
+      pre-generated-matrix:
+        description: 'Pre-generated shard matrix JSON (skips matrix job if provided)'
+        required: false
+        default: ''
+        type: string
 
     secrets:
       CURRENTS_RECORD_KEY:
+        required: false
+      CURRENTS_API_KEY:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
         required: false
@@ -59,7 +71,11 @@ on:
         required: false
       N8N_LICENSE_ACTIVATION_KEY:
         required: false
+      N8N_LICENSE_CERT:
+        required: false
       N8N_ENCRYPTION_KEY:
+        required: false
+      CONTAINER_TELEMETRY_WEBHOOK:
         required: false
 
 env:
@@ -67,16 +83,17 @@ env:
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
-  # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
-  COVERAGE_ENABLED: 'true'
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-  N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+  TEST_IMAGE_N8N: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
   N8N_SKIP_LICENSES: 'true'
+  CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+  CURRENTS_PROJECT_ID: ${{ inputs.currents-project-id }}
 
 jobs:
   matrix:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    if: ${{ inputs.pre-generated-matrix == '' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
@@ -96,12 +113,13 @@ jobs:
 
   test:
     needs: matrix
-    runs-on: ${{ inputs.runner }}
+    if: ${{ !cancelled() }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+        include: ${{ fromJSON(inputs.pre-generated-matrix || needs.matrix.outputs.matrix) }}
     name: Shard ${{ matrix.shard }}
 
     steps:
@@ -138,6 +156,9 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          CONTAINER_TELEMETRY_WEBHOOK: ${{secrets.CONTAINER_TELEMETRY_WEBHOOK}}
 
       - name: Upload Failure Artifacts
         if: ${{ failure() && inputs.upload-failure-artifacts }}
@@ -148,3 +169,16 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
           retention-days: 7
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: ${{ cancelled() }}
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
+          fi

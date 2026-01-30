@@ -162,7 +162,7 @@ describe('WorkflowIndexService', () => {
 			await service.updateIndexFor(workflow);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to update workflow dependency index for workflow workflow-123: Database error',
+				'Failed to update workflow draft dependency index for workflow workflow-123: Database error',
 			);
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
 		});
@@ -355,6 +355,66 @@ describe('WorkflowIndexService', () => {
 				]),
 			);
 		});
+
+		it('should insert placeholder for workflow with no nodes', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([]);
+
+			await service.updateIndexFor(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
+
+		it('should insert placeholder for workflow with nodes but no extractable dependencies', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			// Node with empty type - no nodeType dependency will be created
+			const workflow = createWorkflow([
+				{
+					id: 'node-1',
+					name: 'EmptyNode',
+					type: '', // Empty type - no dependency extracted
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				} as INode,
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
 	});
 
 	describe('init()', () => {
@@ -383,6 +443,9 @@ describe('WorkflowIndexService', () => {
 			mockWorkflowRepository.findWorkflowsNeedingIndexing
 				.mockResolvedValueOnce([workflow1, workflow2])
 				.mockResolvedValueOnce([]);
+
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
 
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
@@ -431,6 +494,9 @@ describe('WorkflowIndexService', () => {
 				.mockResolvedValueOnce([workflows[0], workflows[1]]) // First batch: 2 workflows
 				.mockResolvedValueOnce([workflows[2], workflows[3]]) // Second batch: 2 workflows
 				.mockResolvedValueOnce([workflows[4]]); // Third batch: 1 workflow (partial, should stop)
+
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
 
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 

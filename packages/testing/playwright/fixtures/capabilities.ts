@@ -13,6 +13,7 @@ export const CAPABILITIES = {
 	'source-control': { services: ['gitea'] },
 	oidc: { services: ['keycloak'] },
 	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	kafka: { services: ['kafka'] },
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;
@@ -22,6 +23,13 @@ export type Capability = keyof typeof CAPABILITIES;
  * Use @mode:X only for tests requiring specific infrastructure.
  */
 export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const;
+
+/**
+ * Tests requiring enterprise license features (`@licensed` tag).
+ * These tests only run in container mode where a license file is available.
+ * Use for tests that interact with enterprise-only API endpoints (log streaming, SSO, etc.)
+ */
+export const LICENSED_TAG = 'licensed';
 
 // Used by playwright-projects.ts to filter container-only tests in local mode
 export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];

@@ -382,6 +382,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 			description: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
 		}),
 	},
+	{
+		label: '$tool',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$tool',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$tool'),
+		}),
+	},
 ];
 
 export const STRING_RECOMMENDED_OPTIONS = [
@@ -440,14 +449,14 @@ export const STRING_SECTIONS: Record<string, CompletionSection> = {
 };
 
 export const VARIABLE_SECTIONS: Record<string, CompletionSection> = {
-	project: withSectionHeader({
+	project: {
 		name: i18n.baseText('codeNodeEditor.completer.section.variable.project'),
 		rank: 1,
-	}),
-	global: withSectionHeader({
+	},
+	global: {
 		name: i18n.baseText('codeNodeEditor.completer.section.variable.global'),
 		rank: 2,
-	}),
+	},
 };
 
 export const TARGET_NODE_PARAMETER_FACET = Facet.define<

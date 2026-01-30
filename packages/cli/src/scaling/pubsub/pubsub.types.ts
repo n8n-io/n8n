@@ -59,6 +59,7 @@ export namespace PubSub {
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
+		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -81,7 +82,8 @@ export namespace PubSub {
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration
 		| Commands.ReloadCredentialsOverwrites
-		| Commands.ReloadSsoProvisioningConfiguration;
+		| Commands.ReloadSsoProvisioningConfiguration
+		| Commands.ReloadSourceControlConfiguration;
 
 	// ----------------------------------
 	//         worker responses
