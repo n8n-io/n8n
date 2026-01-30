@@ -9,12 +9,94 @@ import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces'
 import { escapeFilterValue } from '../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
+export async function getDrives(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const siteParameter = this.getNodeParameter('site', undefined, { extractValue: true });
+	if (typeof siteParameter !== 'string') {
+		throw new Error('Site parameter must be a string');
+	}
+	const site = siteParameter;
+
+	const results: INodeListSearchItems[] = [];
+
+	// Get all lists and find which ones are document libraries (have drives)
+	let response: any;
+	if (paginationToken) {
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/lists`,
+			{},
+			undefined,
+			undefined,
+			paginationToken,
+		);
+	} else {
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/lists`,
+			{},
+			{ $top: 100 },
+		);
+	}
+
+	interface IListWithMetadata {
+		id: string;
+		displayName: string;
+		list?: { hidden?: boolean; template?: string };
+	}
+
+	const lists: IListWithMetadata[] = response.value ?? [];
+
+	// Check each non-hidden list to see if it has a drive (is a document library)
+	for (const list of lists) {
+		if (list.list?.hidden) continue;
+
+		try {
+			const driveResponse = await microsoftSharePointApiRequest.call(
+				this,
+				'GET',
+				`/sites/${site}/lists/${list.id}/drive`,
+				{},
+			);
+			if (driveResponse.id) {
+				const driveName = list.displayName || driveResponse.name || list.id;
+				if (!filter || driveName.toLowerCase().includes(filter.toLowerCase())) {
+					if (!results.some((r) => r.value === driveResponse.id)) {
+						results.push({
+							name: driveName,
+							value: driveResponse.id,
+						});
+					}
+				}
+			}
+		} catch {
+			// Skip lists without drives (not document libraries)
+		}
+	}
+
+	results.sort((a, b) =>
+		a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+	);
+
+	return { results, paginationToken: response['@odata.nextLink'] };
+}
+
 export async function getFiles(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const driveParameter = this.getNodeParameter('drive', undefined, { extractValue: true });
+	if (typeof driveParameter !== 'string') {
+		throw new Error('Drive parameter must be a string');
+	}
+	const drive = driveParameter;
 	const folder = this.getNodeParameter('folder', undefined, { extractValue: true }) as string;
 
 	let response: any;
@@ -22,7 +104,7 @@ export async function getFiles(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items/${folder}/children`,
+			`/sites/${site}/drives/${drive}/items/${folder}/children`,
 			{},
 			undefined,
 			undefined,
@@ -40,7 +122,7 @@ export async function getFiles(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items/${folder}/children`,
+			`/sites/${site}/drives/${drive}/items/${folder}/children`,
 			{},
 			qs,
 		);
@@ -67,13 +149,18 @@ export async function getFolders(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const driveParameter = this.getNodeParameter('drive', undefined, { extractValue: true });
+	if (typeof driveParameter !== 'string') {
+		throw new Error('Drive parameter must be a string');
+	}
+	const drive = driveParameter;
 
 	let response: any;
 	if (paginationToken) {
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items`,
+			`/sites/${site}/drives/${drive}/root/children`,
 			{},
 			undefined,
 			undefined,
@@ -89,7 +176,7 @@ export async function getFolders(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site}/drive/items`,
+			`/sites/${site}/drives/${drive}/root/children`,
 			{},
 			qs,
 		);
@@ -97,7 +184,13 @@ export async function getFolders(
 
 	const items: IDriveItem[] = response.value;
 
-	const results: INodeListSearchItems[] = items
+	// Add the root folder option for selecting the document library root
+	const rootOption: INodeListSearchItems = {
+		name: '/ (Library root)',
+		value: 'root',
+	};
+
+	const folderResults: INodeListSearchItems[] = items
 		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
 		.map((g) => ({
 			name: g.name,
@@ -106,6 +199,12 @@ export async function getFolders(
 		.sort((a, b) =>
 			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
 		);
+
+	// Include root option if filter matches or no filter provided
+	const results: INodeListSearchItems[] =
+		!filter || rootOption.name.toLowerCase().includes(filter.toLowerCase())
+			? [rootOption, ...folderResults]
+			: folderResults;
 
 	return { results, paginationToken: response['@odata.nextLink'] };
 }
