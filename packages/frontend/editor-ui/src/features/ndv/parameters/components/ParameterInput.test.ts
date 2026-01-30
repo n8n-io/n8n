@@ -17,7 +17,7 @@ import {
 	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
@@ -122,7 +122,7 @@ const renderComponent = createComponentRenderer(ParameterInput, {
 });
 
 const settingsStore = mockedStore(useSettingsStore);
-const workflowsStore = mockedStore(useWorkflowsStore);
+const workflowsListStore = mockedStore(useWorkflowsListStore);
 
 describe('ParameterInput.vue', () => {
 	beforeEach(() => {
@@ -425,7 +425,7 @@ describe('ParameterInput.vue', () => {
 			value: workflowId,
 		};
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			mock<WorkflowListResource>({
 				id: workflowId,
 				name: 'Test',
@@ -487,8 +487,10 @@ describe('ParameterInput.vue', () => {
 			updatedAt: new Date().toISOString(),
 			versionId: faker.string.uuid(),
 		};
-		workflowsStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([mock<WorkflowListResource>(workflowBase)]);
+		workflowsListStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			mock<WorkflowListResource>(workflowBase),
+		]);
 
 		const { emitted, container, getByTestId } = renderComponent({
 			props: {

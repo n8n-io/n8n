@@ -28,16 +28,16 @@ if (!PROJECT_ID) {
 	process.exit(1);
 }
 
-async function fetchAllTests(apiKey) {
-	const tests = [];
+async function fetchSpecPerformance(apiKey) {
+	const specs = [];
 	let page = 0;
 	let hasMore = true;
 
 	const sevenDaysAgo = new Date();
 	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-	while (hasMore && page < 200) {
-		const url = new URL(`${CURRENTS_API}/tests/${PROJECT_ID}`);
+	while (hasMore && page < 100) {
+		const url = new URL(`${CURRENTS_API}/spec-files/${PROJECT_ID}`);
 		url.searchParams.set('limit', '50');
 		url.searchParams.set('page', page.toString());
 		url.searchParams.set('date_start', sevenDaysAgo.toISOString());
@@ -50,34 +50,15 @@ async function fetchAllTests(apiKey) {
 		if (!res.ok) throw new Error(`API error: ${res.status}`);
 		const data = await res.json();
 
-		tests.push(...data.data.list);
+		// Filter to e2e specs only
+		const e2eSpecs = data.data.list.filter((s) => s.spec.startsWith('tests/e2e/'));
+		specs.push(...e2eSpecs);
 		hasMore = data.data.nextPage !== false;
 		page++;
 
-		process.stdout.write(`\rFetched ${tests.length} tests...`);
+		process.stdout.write(`\rFetched ${specs.length} e2e specs...`);
 	}
 	console.log();
-
-	return tests;
-}
-
-function aggregateBySpec(tests) {
-	const specs = {};
-
-	for (const test of tests) {
-		// Only include e2e tests
-		if (!test.spec.startsWith('tests/e2e/')) continue;
-
-		if (!specs[test.spec]) {
-			specs[test.spec] = { totalDuration: 0, testCount: 0, totalFlaky: 0, executions: 0 };
-		}
-
-		const s = specs[test.spec];
-		s.totalDuration += test.metrics.avgDurationMs;
-		s.testCount++;
-		s.totalFlaky += test.metrics.flaky;
-		s.executions += test.metrics.executions;
-	}
 
 	return specs;
 }
@@ -107,8 +88,7 @@ async function main() {
 	}
 
 	const validSpecs = getPlaywrightSpecs();
-	const tests = await fetchAllTests(apiKey);
-	const aggregated = aggregateBySpec(tests);
+	const specMetrics = await fetchSpecPerformance(apiKey);
 
 	const output = {
 		updatedAt: new Date().toISOString(),
@@ -118,17 +98,17 @@ async function main() {
 	};
 
 	const staleSpecs = [];
-	for (const [spec, data] of Object.entries(aggregated)) {
+	for (const item of specMetrics) {
 		// Skip specs not in Playwright (deleted/isolated)
-		if (validSpecs && !validSpecs.has(spec)) {
-			staleSpecs.push(spec);
+		if (validSpecs && !validSpecs.has(item.spec)) {
+			staleSpecs.push(item.spec);
 			continue;
 		}
-		const duration = data.totalDuration < 1000 ? DEFAULT_DURATION : Math.round(data.totalDuration);
-		output.specs[spec] = {
+		const duration = item.metrics.avgDuration < 1000 ? DEFAULT_DURATION : Math.round(item.metrics.avgDuration);
+		output.specs[item.spec] = {
 			avgDuration: duration,
-			testCount: data.testCount,
-			flakyRate: data.executions > 0 ? Math.round((data.totalFlaky / data.executions) * 10000) / 10000 : 0,
+			testCount: item.metrics.suiteSize,
+			flakyRate: Math.round(item.metrics.flakeRate * 10000) / 10000,
 		};
 	}
 
