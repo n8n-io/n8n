@@ -1585,6 +1585,7 @@ export const getRequestHelperFunctions = (
 			requestOptions.qs = {};
 		}
 		requestOptions.resolveWithFullResponse = true;
+		const failOnError = requestOptions.simple !== false;
 		requestOptions.simple = false;
 
 		let tempResponseData: IN8nHttpFullResponse;
@@ -1755,11 +1756,21 @@ export const getRequestHelperFunctions = (
 
 					await sleep(requestInterval);
 				}
-				if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
-					// We have it configured to let all requests pass no matter the response code
-					// via "requestOptions.simple = false" to not by default fail if it is for example
-					// configured to stop on 404 response codes. For that reason we have to throw here
-					// now an error manually if the response code is not a success one.
+			}
+
+			if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
+				// We have it configured to let all requests pass no matter the response code
+				// via "requestOptions.simple = false" to not by default fail if it is for example
+				// configured to stop on 404 response codes. For that reason we have to throw here
+				// now an error manually if the response code is not a success one.
+
+				// If "Never Error" (failOnError === false) is enabled, we never throw.
+				// If allowedStatusCodes are provided, we check if the status code is allowed.
+				if (
+					failOnError &&
+					(!paginationOptions.allowedStatusCodes ||
+						!paginationOptions.allowedStatusCodes.includes(tempResponseData.statusCode))
+				) {
 					let data = tempResponseData.body;
 					if (data instanceof Readable && paginationOptions.binaryResult !== true) {
 						data = await binaryToString(data as Buffer | Readable);
