@@ -1615,6 +1615,64 @@ describe('Workflow Builder', () => {
 				value: 'nested-value',
 			});
 		});
+
+		it('should clear placeholder values when mode is list', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: 'n8n-nodes-base.slack',
+					version: 2.4,
+					config: {
+						name: 'Slack',
+						parameters: {
+							channelId: {
+								mode: 'list',
+								value: '<__PLACEHOLDER_VALUE__Select a channel__>',
+							},
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const slackNode = json.nodes.find((n) => n.name === 'Slack');
+
+			// Placeholder should be cleared to empty string for list mode
+			expect(slackNode?.parameters?.channelId).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: '',
+			});
+		});
+
+		it('should NOT clear placeholder values when mode is id', () => {
+			const wf = workflow('test', 'Test').add(
+				node({
+					type: 'n8n-nodes-base.slack',
+					version: 2.4,
+					config: {
+						name: 'Slack',
+						parameters: {
+							channelId: {
+								mode: 'id',
+								value: '<__PLACEHOLDER_VALUE__Enter channel ID__>',
+							},
+						},
+						position: [0, 0],
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const slackNode = json.nodes.find((n) => n.name === 'Slack');
+
+			// Placeholder should be preserved for id mode (user can enter manually)
+			expect(slackNode?.parameters?.channelId).toEqual({
+				__rl: true,
+				mode: 'id',
+				value: '<__PLACEHOLDER_VALUE__Enter channel ID__>',
+			});
+		});
 	});
 
 	describe('addNodeWithSubnodes duplicate detection', () => {
