@@ -250,7 +250,7 @@ export const handleFormRedirectionCase = (
 				redirectURL: validatedUrl,
 			};
 		}
-		(data.headers as IDataObject).location = undefined;
+		delete (data.headers as IDataObject).location;
 	}
 
 	return data;
@@ -630,6 +630,12 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		/**
+		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
+		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+		 */
+		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
 
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;

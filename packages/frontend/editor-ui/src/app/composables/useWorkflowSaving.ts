@@ -1,6 +1,7 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
+import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
@@ -33,6 +35,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 
 export function useWorkflowSaving({
 	router,
@@ -48,6 +51,7 @@ export function useWorkflowSaving({
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
@@ -60,6 +64,7 @@ export function useWorkflowSaving({
 		useWorkflowHelpers();
 
 	const autosaveStore = useWorkflowAutosaveStore();
+	const backendConnectionStore = useBackendConnectionStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -96,7 +101,7 @@ export function useWorkflowSaving({
 				const saved = await saveCurrentWorkflow({}, false);
 
 				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
+					await npsSurveyStore.showNpsSurveyIfPossible();
 					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
@@ -170,7 +175,9 @@ export function useWorkflowSaving({
 		}
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
-		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		const existingWorkflow = currentWorkflow
+			? workflowsListStore.getWorkflowById(currentWorkflow)
+			: null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
 			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
@@ -410,7 +417,7 @@ export function useWorkflowSaving({
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
-			workflowsStore.addWorkflow(workflowData);
+			workflowsListStore.addWorkflow(workflowData);
 
 			focusPanelStore.onNewWorkflowSave(workflowData.id);
 
@@ -540,6 +547,11 @@ export function useWorkflowSaving({
 			return;
 		}
 
+		// Don't schedule if we're offline
+		if (!backendConnectionStore.isOnline) {
+			return;
+		}
+
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};
@@ -550,6 +562,18 @@ export function useWorkflowSaving({
 		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Watch for network coming back online
+	watch(
+		() => backendConnectionStore.isOnline,
+		(isOnline, wasOnline) => {
+			if (isOnline && !wasOnline) {
+				if (uiStore.stateIsDirty) {
+					scheduleAutoSave();
+				}
+			}
+		},
+	);
 
 	return {
 		promptSaveUnsavedWorkflowChanges,

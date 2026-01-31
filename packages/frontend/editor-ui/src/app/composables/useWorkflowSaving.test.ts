@@ -7,7 +7,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -92,7 +94,9 @@ const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 
 describe('useWorkflowSaving', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let backendConnectionStore: ReturnType<typeof useBackendConnectionStore>;
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -102,6 +106,7 @@ describe('useWorkflowSaving', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.setNodeTypes([
@@ -111,6 +116,9 @@ describe('useWorkflowSaving', () => {
 				group: ['trigger'],
 			}),
 		]);
+
+		backendConnectionStore = useBackendConnectionStore();
+		backendConnectionStore.setOnline(true);
 	});
 
 	describe('promptSaveUnsavedWorkflowChanges', () => {
@@ -121,7 +129,7 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
 				...workflow,
 				checksum: 'test-checksum',
@@ -129,7 +137,7 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const next = vi.fn();
@@ -141,7 +149,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const npsSurveyStore = useNpsSurveyStore();
-			vi.spyOn(npsSurveyStore, 'fetchPromptsData').mockResolvedValue();
+			vi.spyOn(npsSurveyStore, 'showNpsSurveyIfPossible').mockResolvedValue();
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
@@ -168,7 +176,7 @@ describe('useWorkflowSaving', () => {
 			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
-			expect(npsSurveyStore.fetchPromptsData).toHaveBeenCalled();
+			expect(npsSurveyStore.showNpsSurveyIfPossible).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toEqual(false);
 
 			expect(confirm).toHaveBeenCalled();
@@ -212,11 +220,12 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const workflowStore = useWorkflowsStore();
+			const workflowListStore = useWorkflowsListStore();
 			const MOCK_ID = 'existing-workflow-id';
 			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
 			workflowStore.workflow.id = MOCK_ID;
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowStore.workflowsById = { [MOCK_ID]: existingWorkflow };
+			workflowListStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -296,12 +305,12 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -444,12 +453,12 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -467,12 +476,12 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w1' });
@@ -490,11 +499,11 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { w2: workflow };
+			workflowsListStore.workflowsById = { w2: workflow };
 			workflowsStore.isWorkflowSaved = { w2: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
@@ -513,11 +522,11 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { w3: workflow };
+			workflowsListStore.workflowsById = { w3: workflow };
 			workflowsStore.isWorkflowSaved = { w3: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
@@ -546,11 +555,11 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			};
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const setWorkflowTagIdsSpy = vi.fn();
@@ -610,14 +619,14 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
 				...workflow,
 				checksum: 'test-checksum',
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();
@@ -662,14 +671,14 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
 				...workflow,
 				checksum: 'test-checksum',
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();
@@ -702,14 +711,14 @@ describe('useWorkflowSaving', () => {
 				active: true,
 			});
 
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
 				...workflow,
 				checksum: 'test-checksum',
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();
@@ -736,6 +745,20 @@ describe('useWorkflowSaving', () => {
 
 			// updateWorkflow should NOT have been called since we skipped
 			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should not schedule autosave when network is offline', () => {
+			const autosaveStore = useWorkflowAutosaveStore();
+
+			backendConnectionStore.setOnline(false);
+			autosaveStore.reset();
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Try to schedule autosave while offline
+			autoSaveWorkflow();
+
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 	});
 });

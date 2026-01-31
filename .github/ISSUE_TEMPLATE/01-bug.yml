@@ -76,8 +76,6 @@ body:
       options:
         - SQLite (default)
         - PostgreSQL
-        - MySQL
-        - MariaDB
       default: 0
     validations:
       required: true

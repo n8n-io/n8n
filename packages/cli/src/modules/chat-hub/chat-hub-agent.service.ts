@@ -8,12 +8,12 @@ import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubAgentService {
@@ -21,7 +21,9 @@ export class ChatHubAgentService {
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
 		const agents = await this.getAgentsByUserId(userId);

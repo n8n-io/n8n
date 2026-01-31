@@ -366,7 +366,7 @@ export class ExecutionService {
 			status: 'error',
 		};
 
-		await this.executionRepository.createNewExecution(fullExecutionData);
+		await this.executionPersistence.create(fullExecutionData);
 	}
 
 	// ----------------------------------
@@ -627,7 +627,7 @@ export class ExecutionService {
 			['execution'],
 		);
 
-		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// Upsert behavior differs for Postgres and sqlite,
 		// so we need to fetch the annotation to get the ID
 		const annotation = await this.executionAnnotationRepository.findOneOrFail({
 			where: {
