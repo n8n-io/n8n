@@ -62,7 +62,7 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 6. **Write tests** for every changed file (study existing test files for patterns)
 7. **Run tests** → `pnpm test {NodeName}` - must all pass
 8. **Validate** → run from `packages/nodes-base/`: `pnpm lint`, `pnpm typecheck`
-9. **Create PR** using `/create-pr`
+9. **Create PR** using `/create-pr` skill
 
 ## If API Doesn't Support Signatures
 
