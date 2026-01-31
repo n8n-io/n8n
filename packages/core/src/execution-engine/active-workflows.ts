@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import type {
 	CronContext,
 	INode,
+	IPollFunctions,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	TriggerTime,
@@ -19,6 +20,7 @@ import {
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
+import { Tracing } from '@/errors/tracing';
 import type { IWorkflowData } from '@/interfaces';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
@@ -152,28 +154,7 @@ export class ActiveWorkflows {
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = async (testingTrigger = false) => {
-			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
-				workflowName: workflow.name,
-				workflowId: workflow.id,
-			});
-
-			try {
-				const pollResponse = await this.triggersAndPollers.runPoll(workflow, node, pollFunctions);
-
-				if (pollResponse !== null) {
-					pollFunctions.__emit(pollResponse);
-				}
-			} catch (error) {
-				// If the poll function fails in the first activation
-				// throw the error back so we let the user know there is
-				// an issue with the trigger.
-				if (testingTrigger) {
-					throw error;
-				}
-				pollFunctions.__emitError(error as Error);
-			}
-		};
+		const executeTrigger = this.createPollExecuteFn(workflow, node, pollFunctions);
 
 		// Execute the trigger directly to be able to know if it works
 		await executeTrigger(true);
@@ -250,5 +231,58 @@ export class ActiveWorkflows {
 				{ cause: error, workflowId },
 			);
 		}
+	}
+
+	/**
+	 * Creates a function that executes the poll function for a given workflow
+	 * and node and triggers a workflow execution based on the output.
+	 */
+	private createPollExecuteFn(
+		workflow: Workflow,
+		node: INode,
+		pollFunctions: IPollFunctions,
+	): (testingTrigger?: boolean) => Promise<void> {
+		return async (testingTrigger = false) => {
+			return await Tracing.startSpan(
+				{
+					name: 'Workflow Trigger Poll',
+					op: 'trigger.poll',
+					attributes: {
+						'n8n.workflow.id': workflow.id,
+						'n8n.workflow.name': workflow.name,
+						'n8n.node.id': node.id,
+						'n8n.node.name': node.name,
+						'n8n.node.type': node.type,
+						'n8n.node.type_version': node.typeVersion,
+					},
+				},
+				async () => {
+					this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+						workflowName: workflow.name,
+						workflowId: workflow.id,
+					});
+
+					try {
+						const pollResponse = await this.triggersAndPollers.runPoll(
+							workflow,
+							node,
+							pollFunctions,
+						);
+
+						if (pollResponse !== null) {
+							pollFunctions.__emit(pollResponse);
+						}
+					} catch (error) {
+						// If the poll function fails in the first activation
+						// throw the error back so we let the user know there is
+						// an issue with the trigger.
+						if (testingTrigger) {
+							throw error;
+						}
+						pollFunctions.__emitError(error as Error);
+					}
+				},
+			);
+		};
 	}
 }
