@@ -131,6 +131,31 @@ const properties: INodeProperties[] = [
 					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
 			},
 			{
+				displayName: 'Attachment Type',
+				name: 'attachmentDisposition',
+				type: 'options',
+				options: [
+					{
+						name: 'Detect Automatically',
+						value: 'auto',
+						description:
+							'Tries to detect if the attachment should be inline or not based on whether it is referenced in the HTML body',
+					},
+					{
+						name: 'Always Inline',
+						value: 'inline',
+						description: 'Always marks the attachment as inline',
+					},
+					{
+						name: 'Always Attachment',
+						value: 'attachment',
+						description: 'Always adds the attachment as a regular attachment',
+					},
+				],
+				default: 'auto',
+				description: 'How to handle attachments',
+			},
+			{
 				displayName: 'CC Email',
 				name: 'ccEmail',
 				type: 'string',
@@ -240,11 +265,26 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 				for (const propertyName of attachmentProperties) {
 					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
-					attachments.push({
+
+					const attachment: IDataObject = {
 						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
-						cid: propertyName,
-					});
+					};
+
+					const disposition = options.attachmentDisposition || 'auto';
+
+					if (disposition === 'inline') {
+						attachment.cid = propertyName;
+					} else if (disposition === 'auto') {
+						const isReferencedInHtml =
+							typeof mailOptions.html === 'string' &&
+							mailOptions.html.includes(`cid:${propertyName}`);
+						if (isReferencedInHtml) {
+							attachment.cid = propertyName;
+						}
+					}
+
+					attachments.push(attachment);
 				}
 
 				if (attachments.length) {
