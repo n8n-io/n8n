@@ -167,8 +167,9 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		batchSize = batchSize ?? 10;
 		let migrated = 0;
 		while (migrated < total) {
+			const offset = migrated > 0 ? ` OFFSET ${migrated}` : '';
 			await queryRunner.query(
-				`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+				`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} ${offset} LIMIT ${batchSize}`,
 			);
 			migrated += batchSize;
 		}
