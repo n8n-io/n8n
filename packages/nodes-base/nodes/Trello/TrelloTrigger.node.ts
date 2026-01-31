@@ -8,8 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
-
-// import { createHmac } from 'crypto';
+import { verifySignature } from './TrelloTriggerHelpers';
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -147,21 +146,17 @@ export class TrelloTrigger implements INodeType {
 			};
 		}
 
+		// Verify the webhook signature
+		const isValid = await verifySignature.call(this);
+		if (!isValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized');
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
-
-		// TODO: Check why that does not work as expected even though it gets done as described
-		//    https://developers.trello.com/page/webhooks
-
-		//const credentials = await this.getCredentials('trelloApi');
-		// // Check if the request is valid
-		// const headerData = this.getHeaderData() as IDataObject;
-		// const webhookUrl = this.getNodeWebhookUrl('default');
-		// const checkContent = JSON.stringify(bodyData) + webhookUrl;
-		// const computedSignature = createHmac('sha1', credentials.oauthSecret as string).update(checkContent).digest('base64');
-		// if (headerData['x-trello-webhook'] !== computedSignature) {
-		// 	// Signature is not valid so ignore call
-		// 	return {};
-		// }
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
