@@ -16,6 +16,8 @@ import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { WorkflowOperationError } from 'n8n-workflow/src';
 
 export = {
 	deleteExecution: [
@@ -189,6 +191,55 @@ export = {
 				) {
 					return res.status(409).json({ message: error.message });
 				} else if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: error.message });
+				} else {
+					throw error;
+				}
+			}
+		},
+	],
+	stopExecution: [
+		apiKeyHasScope('execution:retry'),
+		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+
+			// user does not have workflows hence no executions
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const { id } = req.params;
+
+			// look for the execution on the workflow the user owns
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
+
+			if (!execution) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			if (execution.status !== 'running') {
+				return res.status(400).json({
+					message: 'Cannot stop not running execution',
+				});
+			}
+
+			try {
+				const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+				const updatedExecution = {
+					...execution,
+					status: stopResult.status,
+					finished: stopResult.finished,
+					stoppedAt: stopResult.stoppedAt,
+				};
+
+				return res.json(replaceCircularReferences(updatedExecution));
+			} catch (error) {
+				if (error instanceof WorkflowOperationError) {
+					return res.status(409).json({ message: error.message });
+				} else if (error instanceof MissingExecutionStopError) {
 					return res.status(404).json({ message: error.message });
 				} else {
 					throw error;
