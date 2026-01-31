@@ -29,6 +29,7 @@ import {
 	generateBaseSchemaFile,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+import { generateOutputSchemaJson } from './generate-output-schemas';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
@@ -3827,6 +3828,19 @@ async function generateVersionSpecificFiles(
 					const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
 					const schemaFilePath = path.join(nodeDir, `${fileName}.schema.ts`);
 					await fs.promises.writeFile(schemaFilePath, schemaContent);
+					generatedFiles++;
+				}
+
+				// Generate output schema JSON file for pin data generation (runtime loading)
+				const outputSchemas = discoverSchemasForNode(
+					sourceNode.name,
+					version,
+					sourceNode.schemaPath,
+				);
+				if (outputSchemas.length > 0) {
+					const jsonContent = generateOutputSchemaJson(outputSchemas);
+					const jsonFilePath = path.join(nodeDir, `${fileName}.output.json`);
+					await fs.promises.writeFile(jsonFilePath, jsonContent);
 					generatedFiles++;
 				}
 			}

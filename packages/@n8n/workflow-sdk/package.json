@@ -40,6 +40,7 @@
 		"@n8n/typescript-config": "workspace:*"
 	},
 	"dependencies": {
+		"minifaker": "1.34.1",
 		"n8n-workflow": "workspace:*",
 		"uuid": "catalog:",
 		"zod": "catalog:"
