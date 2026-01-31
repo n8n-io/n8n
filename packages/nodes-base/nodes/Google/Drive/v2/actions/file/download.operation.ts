@@ -79,6 +79,11 @@ const properties: INodeProperties[] = [
 										name: 'Text (txt)',
 										value: 'text/plain',
 									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
+									},
 								],
 								default: 'text/html',
 								description: 'Format used to export when downloading Google Docs files',
