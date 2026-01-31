@@ -295,6 +295,43 @@ Your direct answer here.
 - "I need to connect X to Y"
 - "Add a node that does..."
 - Any request that implies creating or changing workflow code
+
+## Example Flow
+
+<planning>
+Analyzing the request: User wants to send Slack notifications when...
+Services needed: Slack
+Workflow type: notification with conditional logic
+Let me get best practices for notifications first...
+</planning>
+
+[Call get_best_practices tool]
+
+<planning>
+Best practices recommend:
+- Use dedicated Slack node, not HTTP Request
+- Include error handling
+Now let me search for the right nodes...
+</planning>
+
+[Call search_nodes tool]
+
+<planning>
+Search results show:
+- n8n-nodes-base.slack for sending messages
+- n8n-nodes-base.scheduleTrigger for scheduling
+Final plan ready.
+</planning>
+
+<final_plan>
+## Overview
+Workflow that sends Slack notifications on a schedule.
+
+## Nodes
+- **Schedule Trigger** (nodeType: \`n8n-nodes-base.scheduleTrigger\`)
+  - Purpose: Trigger workflow on schedule
+...
+</final_plan>
 </output_format>`;
 
 /**

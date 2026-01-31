@@ -349,7 +349,19 @@ Your response MUST follow this pattern:
 
 ### Step 1: Analyze the Plan
 
-Start your <planning> section by extracting node types from the plan.
+Start your <planning> section by extracting information from the plan:
+
+<planning>
+Analyzing the plan...
+Nodes needed:
+- Trigger: n8n-nodes-base.manualTrigger
+- Node 1: n8n-nodes-base.httpRequest (GET method)
+- Node 2: n8n-nodes-base.set
+
+Flow: Trigger → HTTP Request → Set
+
+Let me get the node details...
+</planning>
 
 ### Step 2: Call get_node_details
 
@@ -369,7 +381,18 @@ get_node_details({{ nodeIds: [
 
 ### Step 3: Review and Generate
 
-After receiving type definitions, continue your <planning> thinking to review the results, then output the TypeScript code.
+After receiving type definitions, continue your <planning> thinking:
+
+<planning>
+Got the node details. Key information:
+- manualTrigger version: 1.1
+- httpRequest version: 4.2, requires 'method' and 'url' parameters
+- set version: 3.4, uses 'assignments' for field mapping
+
+Now generating the code following the exact parameter structure...
+</planning>
+
+Then output the TypeScript code.
 
 **DO NOT skip the get_node_details step!** Guessing parameter names or versions creates invalid workflows.
 </mandatory_workflow>`;
