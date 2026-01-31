@@ -62,6 +62,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+import { TriggerValidationService } from './trigger-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
@@ -88,6 +89,7 @@ export class WorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
+		private readonly triggerValidationService: TriggerValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
@@ -641,6 +643,7 @@ export class WorkflowService {
 		}
 
 		await this._detectWebhookConflicts(workflow, versionToActivate);
+		await this.triggerValidationService.validateWorkflowActivation(workflow);
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);

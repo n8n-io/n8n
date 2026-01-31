@@ -6,6 +6,8 @@ import { ErrorReporter } from 'n8n-core';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
+import { TriggerParameterConflictError } from '@/errors/trigger-parameter-conflict.error';
+import { SingleTriggerError } from '@/errors/single-trigger.error';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
 
@@ -165,7 +167,11 @@ export function send<T, R extends Request, S extends Response>(
 			if (error instanceof Error) {
 				reportError(error);
 
-				if (isUniqueConstraintError(error)) {
+				if (
+					isUniqueConstraintError(error) &&
+					!(error instanceof TriggerParameterConflictError) &&
+					!(error instanceof SingleTriggerError)
+				) {
 					error.message = 'There is already an entry with this name';
 				}
 			}
