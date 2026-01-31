@@ -3,7 +3,15 @@
  * Matches and resolves output schemas based on node parameters
  */
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import type { JsonSchema } from './pin-data-generator';
+
+/**
+ * Path to the generated types directory
+ */
+const GENERATED_TYPES_PATH = path.join(os.homedir(), '.n8n', 'generated-types');
 
 /**
  * Entry in the output schemas array
@@ -105,17 +113,59 @@ export function loadOutputSchemas(
 }
 
 /**
+ * Converts a version number to a file name prefix
+ * Matches the format used in generate-types.ts
+ */
+function versionToFileName(version: number | string): string {
+	const versionNum = typeof version === 'string' ? parseFloat(version) : version;
+	// Convert version like 3.1 to v31, 3 to v3
+	if (Number.isInteger(versionNum)) {
+		return `v${versionNum}`;
+	}
+	return `v${String(versionNum).replace('.', '')}`;
+}
+
+/**
  * Attempts to load output schemas from the generated types directory
  */
 function tryLoadOutputSchemas(
-	_nodeType: string,
-	_version: number | string,
+	nodeType: string,
+	version: number | string,
 ): OutputSchemaEntry[] | undefined {
 	// Parse the node type to get package and node name
 	// e.g., 'n8n-nodes-base.slack' → package: 'n8n-nodes-base', node: 'slack'
-	// Note: Actual loading will be implemented in generate-output-schemas step
-	// For now, return undefined to indicate no schema found
-	return undefined;
+	const parts = nodeType.split('.');
+	if (parts.length < 2) {
+		return undefined;
+	}
+
+	const packageName = parts[0];
+	const nodeName = parts.slice(1).join('.');
+
+	// Build path to the JSON output file
+	// e.g., ~/.n8n/generated-types/nodes/n8n-nodes-base/slack/v2.output.json
+	const fileName = versionToFileName(version);
+	const jsonFilePath = path.join(
+		GENERATED_TYPES_PATH,
+		'nodes',
+		packageName,
+		nodeName.toLowerCase(),
+		`${fileName}.output.json`,
+	);
+
+	// Try to load the JSON file
+	try {
+		if (!fs.existsSync(jsonFilePath)) {
+			return undefined;
+		}
+
+		const content = fs.readFileSync(jsonFilePath, 'utf-8');
+		const schemas = JSON.parse(content) as OutputSchemaEntry[];
+		return schemas;
+	} catch {
+		// File doesn't exist or is invalid JSON
+		return undefined;
+	}
 }
 
 /**
