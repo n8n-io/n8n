@@ -64,6 +64,8 @@ export type Part =
 				id?: string;
 				name: string;
 				args?: IDataObject;
+				/** Gemini 3 thought signature for extended thinking tool calls */
+				thought_signature?: string;
 			};
 	  }
 	| {
@@ -71,6 +73,8 @@ export type Part =
 				id?: string;
 				name: string;
 				response: IDataObject;
+				/** Gemini 3 thought signature for extended thinking tool calls */
+				thought_signature?: string;
 			};
 	  }
 	| {
