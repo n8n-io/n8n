@@ -2,26 +2,15 @@
 import { z } from 'zod';
 
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '@/llm-config';
-import {
-	AVAILABLE_PROMPT_VERSIONS,
-	DEFAULT_PROMPT_VERSION,
-	type PromptVersionId,
-} from '@/prompts/one-shot';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
 import type { StageModels } from '../support/environment.js';
 
-export type EvaluationSuite =
-	| 'llm-judge'
-	| 'pairwise'
-	| 'programmatic'
-	| 'similarity'
-	| 'code-typecheck'
-	| 'code-llm-judge';
+export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';
-export type AgentType = 'multi-agent' | 'one-shot';
+export type AgentType = 'multi-agent' | 'code-builder';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
@@ -48,10 +37,6 @@ export interface EvaluationArgs {
 	numJudges: number;
 
 	featureFlags?: BuilderFeatureFlags;
-
-	// Prompt version configuration
-	/** Prompt version to use for generation */
-	promptVersion: PromptVersionId;
 
 	// Model configuration
 	/** Default model for all stages */
@@ -88,18 +73,9 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z
-			.enum([
-				'llm-judge',
-				'pairwise',
-				'programmatic',
-				'similarity',
-				'code-typecheck',
-				'code-llm-judge',
-			])
-			.default('llm-judge'),
+		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
-		agent: z.enum(['one-shot', 'multi-agent']).default('one-shot'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -124,11 +100,6 @@ const cliSchema = z
 
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
-
-		// Prompt version configuration
-		promptVersion: z
-			.enum(AVAILABLE_PROMPT_VERSIONS as [PromptVersionId, ...PromptVersionId[]])
-			.default(DEFAULT_PROMPT_VERSION),
 
 		// Model configuration
 		model: modelIdSchema.default(DEFAULT_MODEL),
@@ -180,7 +151,7 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'agent',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Agent type (one-shot|multi-agent)',
+		desc: 'Agent type (code-builder|multi-agent)',
 	},
 	'--max-examples': {
 		key: 'maxExamples',
@@ -263,14 +234,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		kind: 'boolean',
 		group: 'feature',
 		desc: 'Enable template examples phase',
-	},
-
-	// Prompt version configuration
-	'--prompt-version': {
-		key: 'promptVersion',
-		kind: 'string',
-		group: 'model',
-		desc: `Prompt version (${AVAILABLE_PROMPT_VERSIONS.join('|')}, default: ${DEFAULT_PROMPT_VERSION})`,
 	},
 
 	// Model configuration
@@ -572,8 +535,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
 		featureFlags,
-		// Prompt version configuration
-		promptVersion: parsed.promptVersion,
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,

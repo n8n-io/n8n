@@ -3,7 +3,7 @@
 // ============================================================================
 
 export const AGENT_TYPES = {
-	ONE_SHOT: 'one-shot',
+	CODE_BUILDER: 'code-builder',
 	MULTI_AGENT: 'multi-agent',
 } as const;
 

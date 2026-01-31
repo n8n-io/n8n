@@ -1,22 +1,22 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createOneShotNodeGetTool } from '../one-shot-node-get.tool';
+import { createCodeBuilderGetTool } from '../code-builder-get.tool';
 
-describe('OneShotNodeGetTool', () => {
-	describe('createOneShotNodeGetTool', () => {
+describe('CodeBuilderGetTool', () => {
+	describe('createCodeBuilderGetTool', () => {
 		it('should create tool without throwing when generatedTypesDir is not provided', () => {
 			// This test verifies that the tool can be created without errors
 			// when no custom generatedTypesDir is provided.
-			expect(() => createOneShotNodeGetTool()).not.toThrow();
+			expect(() => createCodeBuilderGetTool()).not.toThrow();
 		});
 
 		it('should create tool with custom generatedTypesDir', () => {
-			expect(() => createOneShotNodeGetTool({ generatedTypesDir: '/tmp/test' })).not.toThrow();
+			expect(() => createCodeBuilderGetTool({ generatedTypesDir: '/tmp/test' })).not.toThrow();
 		});
 
 		it('should return a tool with correct name', () => {
-			const tool = createOneShotNodeGetTool();
+			const tool = createCodeBuilderGetTool();
 			expect(tool.name).toBe('get_nodes');
 		});
 	});
@@ -26,7 +26,7 @@ describe('OneShotNodeGetTool', () => {
 			// This test verifies that invoking the tool doesn't throw the error:
 			// "Package subpath './package.json' is not defined by 'exports'"
 			// The tool should handle the fallback path resolution gracefully.
-			const tool = createOneShotNodeGetTool();
+			const tool = createCodeBuilderGetTool();
 
 			// Invoke with a non-existent node - we expect an error message in the response,
 			// but NOT a thrown exception related to package.json resolution.
@@ -41,7 +41,7 @@ describe('OneShotNodeGetTool', () => {
 		it('should provide helpful error when generated types directory does not exist', async () => {
 			// When a non-existent generatedTypesDir is provided, the error message
 			// should indicate that the types need to be generated.
-			const tool = createOneShotNodeGetTool({
+			const tool = createCodeBuilderGetTool({
 				generatedTypesDir: '/non-existent-path-that-does-not-exist-12345',
 			});
 
@@ -124,7 +124,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should read flat version file for nodes without discriminators', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: ['n8n-nodes-base.aggregate'],
@@ -135,7 +135,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should read specific operation file when resource and operation provided', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: [
@@ -152,7 +152,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should read specific mode file when mode provided', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: [
@@ -168,7 +168,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should return error when split node is requested without discriminators', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: ['n8n-nodes-base.freshservice'],
@@ -180,7 +180,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should return error when invalid discriminator value is provided', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: [
@@ -198,7 +198,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should accept string nodeId for backwards compatibility', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			// String nodeId should work for flat files
 			const result = await tool.invoke({
@@ -209,7 +209,7 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should handle mixed array of string and object nodeIds', async () => {
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: [
@@ -255,7 +255,7 @@ describe('OneShotNodeGetTool', () => {
 
 			fs.writeFileSync(path.join(openaiDir, 'index.ts'), "export * from './v21';");
 
-			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+			const tool = createCodeBuilderGetTool({ generatedTypesDir: tempDir });
 
 			const result = await tool.invoke({
 				nodeIds: [

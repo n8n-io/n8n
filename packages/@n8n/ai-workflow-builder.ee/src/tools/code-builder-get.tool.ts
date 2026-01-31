@@ -1,5 +1,5 @@
 /**
- * Simplified Node Get Tool for One-Shot Workflow Code Agent
+ * Simplified Node Get Tool for CodeWorkflowBuilder
  *
  * Returns the full TypeScript type definition for a specific node
  * from the generated workflow-sdk types.
@@ -20,7 +20,7 @@ import { z } from 'zod';
  */
 function debugLog(message: string, data?: Record<string, unknown>): void {
 	const timestamp = new Date().toISOString();
-	const prefix = `[ONE-SHOT-AGENT][${timestamp}][GET_TOOL]`;
+	const prefix = `[CODE-BUILDER][${timestamp}][GET_TOOL]`;
 	if (data) {
 		const formatted = inspect(data, {
 			depth: null,
@@ -495,7 +495,7 @@ type NodeRequest =
 /**
  * Options for creating the node get tool
  */
-export interface OneShotNodeGetToolOptions {
+export interface CodeBuilderGetToolOptions {
 	/**
 	 * Path to the generated types directory (from InstanceSettings.generatedTypesDir).
 	 * If not provided, falls back to workflow-sdk static types.
@@ -504,10 +504,10 @@ export interface OneShotNodeGetToolOptions {
 }
 
 /**
- * Create the simplified node get tool for one-shot agent
+ * Create the simplified node get tool for code builder
  * Accepts a list of node IDs (with optional versions) and returns all type definitions in a single call
  */
-export function createOneShotNodeGetTool(options: OneShotNodeGetToolOptions = {}) {
+export function createCodeBuilderGetTool(options: CodeBuilderGetToolOptions = {}) {
 	const { generatedTypesDir } = options;
 	debugLog('Creating get_nodes tool', { generatedTypesDir });
 

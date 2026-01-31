@@ -9,9 +9,9 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { OneShotWorkflowCodeAgent } from '@/one-shot-workflow-code-agent';
+import { CodeWorkflowBuilder } from '@/code-workflow-builder';
 import type { SimpleWorkflow } from '@/types/workflow';
-import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
+import type { AgentMessageChunk, StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { TokenUsage, GenerationError } from '../harness/harness-types.js';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
@@ -28,8 +28,6 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
-	createCodeTypecheckEvaluator,
-	createCodeLLMJudgeEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -56,24 +54,31 @@ function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk
 }
 
 /**
+ * Type guard for agent message chunks from streaming output.
+ */
+function isAgentMessageChunk(chunk: StreamChunk): chunk is AgentMessageChunk {
+	return chunk.type === 'message';
+}
+
+/**
  * Create a workflow generator function for the multi-agent system.
  * LangSmith tracing is handled via traceable() in the runner.
  * Callbacks are passed explicitly from the runner to ensure correct trace context
  * under high concurrency (avoids AsyncLocalStorage race conditions).
  *
- * IMPORTANT: This generator explicitly sets oneShotAgent: false to ensure the
+ * IMPORTANT: This generator explicitly sets codeWorkflowBuilder: false to ensure the
  * multi-agent system is used. The WorkflowBuilderAgent.chat() method defaults
- * to oneShotAgent: true, so we must override it here.
+ * to codeWorkflowBuilder: true, so we must override it here.
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow> {
-	// Ensure oneShotAgent is explicitly set to false for multi-agent evaluation
+	// Ensure codeWorkflowBuilder is explicitly set to false for multi-agent evaluation
 	const multiAgentFeatureFlags: BuilderFeatureFlags = {
 		...featureFlags,
-		oneShotAgent: false,
+		codeWorkflowBuilder: false,
 	};
 
 	return async (prompt: string, callbacks?: Callbacks): Promise<SimpleWorkflow> => {
@@ -110,36 +115,34 @@ function createWorkflowGenerator(
 }
 
 /**
- * Create a one-shot workflow generator function.
- * Uses the OneShotWorkflowCodeAgent which generates workflows via TypeScript SDK code
- * and emits workflow JSON directly in the stream.
+ * Create a CodeWorkflowBuilder generator function.
+ * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
+ * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
  * Returns GenerationResult including the source code for artifact saving.
  *
  * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
  *                    aborted if it exceeds this duration. This ensures the generator
  *                    actually stops instead of continuing to run after timeout rejection.
- * @param captureLog - When true, captures debug logs for artifact saving.
  */
-function createOneShotWorkflowGenerator(
+function createCodeWorkflowBuilderGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
-	captureLog?: boolean,
 ): (prompt: string, callbacks?: Callbacks) => Promise<GenerationResult> {
 	return async (prompt: string): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
-		const agent = new OneShotWorkflowCodeAgent({
-			llm: llms.builder,
+		const builder = new CodeWorkflowBuilder({
+			planningLLM: llms.builder,
+			codingLLM: llms.builder,
 			nodeTypes: parsedNodeTypes,
-			captureLog,
 		});
 
 		const payload = getChatPayload({
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { oneShotAgent: true },
+			featureFlags: { codeWorkflowBuilder: true },
 		});
 
 		let workflow: SimpleWorkflow | null = null;
@@ -147,6 +150,7 @@ function createOneShotWorkflowGenerator(
 		let tokenUsage: TokenUsage | undefined;
 		let iterationCount: number | undefined;
 		let generationErrors: GenerationError[] | undefined;
+		const logParts: string[] = [];
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -156,18 +160,21 @@ function createOneShotWorkflowGenerator(
 
 		if (timeoutMs !== undefined && timeoutMs > 0) {
 			timeoutId = setTimeout(() => {
-				abortController.abort(new Error(`One-shot agent timed out after ${timeoutMs}ms`));
+				abortController.abort(new Error(`CodeWorkflowBuilder timed out after ${timeoutMs}ms`));
 			}, timeoutMs);
 		}
 
 		try {
-			for await (const output of agent.chat(
+			for await (const output of builder.chat(
 				payload,
 				EVAL_USERS.LANGSMITH,
 				abortController.signal,
 			)) {
 				for (const message of output.messages) {
-					if (isWorkflowUpdateChunk(message)) {
+					if (isAgentMessageChunk(message)) {
+						// Capture all message text for logs (includes <planning> tags)
+						logParts.push(message.text);
+					} else if (isWorkflowUpdateChunk(message)) {
 						workflow = JSON.parse(message.codeSnippet) as SimpleWorkflow;
 						generatedCode = message.sourceCode;
 						if (message.tokenUsage) {
@@ -189,11 +196,11 @@ function createOneShotWorkflowGenerator(
 			}
 		}
 
-		// Get captured logs if log capture was enabled
-		const logs = captureLog ? agent.getCapturedLogs() : undefined;
+		// Join all collected log parts into a single logs string
+		const logs = logParts.length > 0 ? logParts.join('\n') : undefined;
 
 		if (!workflow) {
-			throw new WorkflowGenerationError('One-shot agent did not produce a workflow', logs);
+			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow', logs);
 		}
 
 		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
@@ -273,15 +280,10 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// Enable log capture for one-shot agent when outputDir is set
+	// CODE_BUILDER uses CodeWorkflowBuilder (planning + coding agents)
 	const generateWorkflow =
-		args.agent === AGENT_TYPES.ONE_SHOT
-			? createOneShotWorkflowGenerator(
-					env.parsedNodeTypes,
-					env.llms,
-					args.timeoutMs,
-					!!args.outputDir,
-				)
+		args.agent === AGENT_TYPES.CODE_BUILDER
+			? createCodeWorkflowBuilderGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on suite (using judge LLM for evaluation)
@@ -292,11 +294,6 @@ export async function runV2Evaluation(): Promise<void> {
 		case 'llm-judge':
 			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
 			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			// For one-shot agent, also run code-specific evaluators
-			if (args.agent === AGENT_TYPES.ONE_SHOT) {
-				evaluators.push(createCodeTypecheckEvaluator());
-				evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-			}
 			break;
 		case 'pairwise':
 			evaluators.push(
@@ -311,14 +308,6 @@ export async function runV2Evaluation(): Promise<void> {
 			break;
 		case 'similarity':
 			evaluators.push(createSimilarityEvaluator());
-			break;
-		case 'code-typecheck':
-			evaluators.push(createCodeTypecheckEvaluator());
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'code-llm-judge':
-			evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 			break;
 	}
 

@@ -15,5 +15,3 @@ export {
 	createSimilarityEvaluator,
 	type SimilarityEvaluatorOptions,
 } from './similarity';
-export { createCodeTypecheckEvaluator } from './code-typecheck';
-export { createCodeLLMJudgeEvaluator } from './code-llm-judge';
