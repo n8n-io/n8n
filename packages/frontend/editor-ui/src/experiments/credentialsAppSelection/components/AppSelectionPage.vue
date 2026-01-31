@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
-import { N8nButton, N8nHeading, N8nInput, N8nText, N8nIcon, N8nLoading } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nInput, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -104,6 +104,9 @@ onMounted(() => {
 				cardStates.set(credential.type, 'connected');
 				appSelectionStore.markCredentialConnected(credential.id);
 
+				// Close the credential modal automatically
+				uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+
 				telemetry.track('User saved credentials', {
 					credential_type: credential.type,
 					credential_id: credential.id,
@@ -163,15 +166,11 @@ watch(isCredentialModalOpen, (isOpen, wasOpen) => {
 				</N8nInput>
 			</div>
 
-			<div v-if="isLoading" :class="$style.loadingContainer">
-				<N8nLoading variant="p" :rows="3" />
-			</div>
-
 			<AppSelectionGrid
-				v-else
 				:app-entries="appEntries"
 				:card-states="cardStates"
 				:search-query="searchQuery"
+				:loading="isLoading"
 				@card-click="handleCardClick"
 			/>
 
@@ -229,11 +228,6 @@ watch(isCredentialModalOpen, (isOpen, wasOpen) => {
 	width: 400px;
 	min-width: 400px;
 	margin-bottom: var(--spacing--lg);
-}
-
-.loadingContainer {
-	width: 100%;
-	padding: var(--spacing--2xl);
 }
 
 .footer {

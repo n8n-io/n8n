@@ -7,10 +7,13 @@ import type { AppEntry } from '../composables/useAppCredentials';
 
 type CardState = 'default' | 'loading' | 'connected' | 'error';
 
+const SKELETON_COUNT = 12;
+
 const props = defineProps<{
 	appEntries: AppEntry[];
 	cardStates: Map<string, CardState>;
 	searchQuery: string;
+	loading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,12 +42,19 @@ const handleCardClick = (entry: AppEntry) => {
 
 <template>
 	<div :class="$style.container">
-		<div v-if="filteredAppEntries.length === 0" :class="$style.emptyState">
+		<!-- Skeleton loading state -->
+		<div v-if="loading" :class="$style.grid">
+			<AppSelectionCard v-for="i in SKELETON_COUNT" :key="`skeleton-${i}`" skeleton />
+		</div>
+
+		<!-- Empty state -->
+		<div v-else-if="filteredAppEntries.length === 0" :class="$style.emptyState">
 			<N8nText color="text-light">
 				{{ i18n.baseText('appSelection.noResults') }}
 			</N8nText>
 		</div>
 
+		<!-- Normal grid -->
 		<div v-else :class="$style.grid">
 			<AppSelectionCard
 				v-for="entry in filteredAppEntries"
