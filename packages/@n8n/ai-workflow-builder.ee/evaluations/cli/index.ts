@@ -11,7 +11,7 @@ import pLimit from 'p-limit';
 
 import { CodeWorkflowBuilder } from '@/code-workflow-builder';
 import type { SimpleWorkflow } from '@/types/workflow';
-import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
+import type { AgentMessageChunk, StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { TokenUsage, GenerationError } from '../harness/harness-types.js';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
@@ -51,6 +51,13 @@ import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../su
  */
 function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
 	return chunk.type === 'workflow-updated';
+}
+
+/**
+ * Type guard for agent message chunks from streaming output.
+ */
+function isAgentMessageChunk(chunk: StreamChunk): chunk is AgentMessageChunk {
+	return chunk.type === 'message';
 }
 
 /**
@@ -143,6 +150,7 @@ function createCodeWorkflowBuilderGenerator(
 		let tokenUsage: TokenUsage | undefined;
 		let iterationCount: number | undefined;
 		let generationErrors: GenerationError[] | undefined;
+		const logParts: string[] = [];
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -163,7 +171,10 @@ function createCodeWorkflowBuilderGenerator(
 				abortController.signal,
 			)) {
 				for (const message of output.messages) {
-					if (isWorkflowUpdateChunk(message)) {
+					if (isAgentMessageChunk(message)) {
+						// Capture all message text for logs (includes <planning> tags)
+						logParts.push(message.text);
+					} else if (isWorkflowUpdateChunk(message)) {
 						workflow = JSON.parse(message.codeSnippet) as SimpleWorkflow;
 						generatedCode = message.sourceCode;
 						if (message.tokenUsage) {
@@ -185,11 +196,14 @@ function createCodeWorkflowBuilderGenerator(
 			}
 		}
 
+		// Join all collected log parts into a single logs string
+		const logs = logParts.length > 0 ? logParts.join('\n') : undefined;
+
 		if (!workflow) {
-			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
+			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow', logs);
 		}
 
-		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
+		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
 	};
 }
 
