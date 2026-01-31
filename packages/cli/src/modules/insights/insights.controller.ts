@@ -100,7 +100,13 @@ export class InsightsController {
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		const inThePast = (date?: Date) => !date || date <= new Date();
+		// Allow 2 second buffer for clock skew and network latency
+		const inThePast = (date?: Date) => {
+			if (!date) return true;
+			const now = new Date();
+			const bufferMs = 2000; // 2 second tolerance
+			return date.getTime() <= now.getTime() + bufferMs;
+		};
 		const dateInThePastSchema = z.coerce
 			.date()
 			.optional()

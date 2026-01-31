@@ -427,6 +427,46 @@ describe('InsightsDashboard', () => {
 				screen.getByText(/Viewing this time period requires an enterprise plan/),
 			).toBeVisible();
 		});
+
+		it('should set start date to beginning of day for multi-day ranges', async () => {
+			// Set system time to Dec 19, 2000 at 14:30:45
+			const currentTime = new Date('2000-12-19T14:30:45.000Z');
+			vi.setSystemTime(currentTime);
+
+			const { getByText } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			vi.clearAllMocks();
+
+			const picker = await openDatePicker(getByText);
+			// Select month option to get a multi-day range
+			const monthOption = within(picker).getByText('Last 30 days');
+			await userEvent.click(monthOption);
+
+			// For multi-day ranges ending today: start is midnight, end is current time
+			const expectedRange = {
+				startDate: new Date('2000-11-19T00:00:00.000Z'), // 30 days ago at midnight
+				endDate: currentTime, // Current time
+			};
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
+				end_date: expectedRange.endDate.toISOString(),
+				start_date: expectedRange.startDate.toISOString(),
+				range_length_days: 30,
+				type: 'preset',
+			});
+
+			expectStoreExecutions({
+				summary: expectedRange,
+				charts: expectedRange,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...expectedRange,
+				},
+			});
+		});
 	});
 
 	describe('Component Lifecycle', () => {
