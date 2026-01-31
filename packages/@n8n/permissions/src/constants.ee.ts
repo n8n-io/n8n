@@ -17,6 +17,7 @@ export const RESOURCES = {
 	project: [...DEFAULT_OPERATIONS] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
+	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
@@ -76,3 +77,4 @@ export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+export const PERSONAL_SPACE_PUBLISHING_SETTING_KEY = 'security.personalSpacePublishing';

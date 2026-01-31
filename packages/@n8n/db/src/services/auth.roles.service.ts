@@ -1,13 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line import-x/order
-import { ALL_SCOPES, ALL_ROLES, scopeInformation } from '@n8n/permissions';
+import {
+	ALL_SCOPES,
+	ALL_ROLES,
+	scopeInformation,
+	PERSONAL_SPACE_PUBLISHING_SETTING_KEY,
+	PROJECT_OWNER_ROLE_SLUG,
+} from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import { Scope } from '../entities';
-import { RoleRepository, ScopeRepository } from '../repositories';
+import { RoleRepository, ScopeRepository, SettingsRepository } from '../repositories';
 
 @Service()
 export class AuthRolesService {
@@ -15,6 +21,7 @@ export class AuthRolesService {
 		private readonly logger: Logger,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleRepository: RoleRepository,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	private async syncScopes() {
@@ -96,6 +103,35 @@ export class AuthRolesService {
 		}
 	}
 
+	private async shouldPersonalOwnerHavePublishScope(): Promise<boolean> {
+		const setting = await this.settingsRepository.findByKey(PERSONAL_SPACE_PUBLISHING_SETTING_KEY);
+		// Default to true if setting doesn't exist (backward compatibility)
+		return setting?.value === 'true' || setting === null;
+	}
+
+	/**
+	 * Modifies the expected scopes for a role based on settings.
+	 * Currently only applies to project:personalOwner role.
+	 * Uses a "closed first" approach: workflow:publish is not in the base definition
+	 * and is added when the setting is enabled.
+	 */
+	private async updateScopesBasedOnSettings(
+		roleSlug: string,
+		defaultScopes: string[],
+	): Promise<string[]> {
+		// Special handling for project:personalOwner role
+		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
+			const shouldHavePublish = await this.shouldPersonalOwnerHavePublishScope();
+			if (shouldHavePublish) {
+				this.logger.debug(
+					`Personal space publishing is enabled - adding workflow:publish scope to ${PROJECT_OWNER_ROLE_SLUG} role`,
+				);
+				return [...defaultScopes, 'workflow:publish'];
+			}
+		}
+		return defaultScopes;
+	}
+
 	private async syncRoles() {
 		const existingRoles = await this.roleRepository.find({
 			select: {
@@ -119,9 +155,11 @@ export class AuthRolesService {
 		const existingRolesMap = new Map(existingRoles.map((role) => [role.slug, role]));
 
 		for (const roleNamespace of Object.keys(ALL_ROLES) as Array<keyof typeof ALL_ROLES>) {
-			const rolesToUpdate = ALL_ROLES[roleNamespace]
-				.map((role) => {
+			const rolesToUpdate = await Promise.all(
+				ALL_ROLES[roleNamespace].map(async (role) => {
 					const existingRole = existingRolesMap.get(role.slug);
+
+					const expectedScopes = await this.updateScopesBasedOnSettings(role.slug, role.scopes);
 
 					if (!existingRole) {
 						const newRole = this.roleRepository.create({
@@ -130,7 +168,7 @@ export class AuthRolesService {
 							description: role.description ?? null,
 							roleType: roleNamespace,
 							systemRole: true,
-							scopes: allScopes.filter((scope) => role.scopes.includes(scope.slug)),
+							scopes: allScopes.filter((scope) => expectedScopes.includes(scope.slug)),
 						});
 						return newRole;
 					}
@@ -139,23 +177,24 @@ export class AuthRolesService {
 						existingRole.displayName !== role.displayName ||
 						existingRole.description !== role.description ||
 						existingRole.roleType !== roleNamespace ||
-						existingRole.scopes.some((scope) => !role.scopes.includes(scope.slug)) || // DB roles has scope that it should not have
-						role.scopes.some((scope) => !existingRole.scopes.some((s) => s.slug === scope)); // A role has scope that is not in DB
+						existingRole.scopes.some((scope) => !expectedScopes.includes(scope.slug)) || // DB role has scope that it should not have
+						expectedScopes.some((scope) => !existingRole.scopes.some((s) => s.slug === scope)); // Role definition requires scopes not in the DB
 
 					if (needsUpdate) {
 						existingRole.displayName = role.displayName;
 						existingRole.description = role.description ?? null;
 						existingRole.roleType = roleNamespace;
-						existingRole.scopes = allScopes.filter((scope) => role.scopes.includes(scope.slug));
+						existingRole.scopes = allScopes.filter((scope) => expectedScopes.includes(scope.slug));
 						return existingRole;
 					}
 
 					return null;
-				})
-				.filter((role) => role !== null);
-			if (rolesToUpdate.length > 0) {
-				this.logger.debug(`Updating ${rolesToUpdate.length} ${roleNamespace} roles...`);
-				await this.roleRepository.save(rolesToUpdate);
+				}),
+			);
+			const filteredRolesToUpdate = rolesToUpdate.filter((role) => role !== null);
+			if (filteredRolesToUpdate.length > 0) {
+				this.logger.debug(`Updating ${filteredRolesToUpdate.length} ${roleNamespace} roles...`);
+				await this.roleRepository.save(filteredRolesToUpdate);
 				this.logger.debug(`${roleNamespace} roles updated successfully.`);
 			} else {
 				this.logger.debug(`No ${roleNamespace} roles to update.`);
