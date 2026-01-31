@@ -260,17 +260,6 @@ export class Orchestrator {
 				// Plan - run coding agent
 				this.debugLog('CHAT', 'Routing: Plan → Coding Agent');
 
-				// Stream the plan to user
-				yield {
-					messages: [
-						{
-							role: 'assistant',
-							type: 'message',
-							text: `\n**Workflow Plan:**\n\n${planningResponse.content}\n\n---\n\n**Generating code...**\n`,
-						} as AgentMessageChunk,
-					],
-				};
-
 				// Check for abort before coding
 				if (abortSignal?.aborted) {
 					this.debugLog('CHAT', 'Abort signal received before coding');

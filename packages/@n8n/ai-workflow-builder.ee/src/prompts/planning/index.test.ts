@@ -48,7 +48,7 @@ describe('Planning Agent Prompt', () => {
 			expect(systemContent).toContain('data_extraction');
 		});
 
-		it('should include planning process instructions', async () => {
+		it('should include mandatory workflow instructions', async () => {
 			const prompt = buildPlanningAgentPrompt();
 
 			const messages = await prompt.formatMessages({
@@ -56,7 +56,7 @@ describe('Planning Agent Prompt', () => {
 			});
 
 			const systemContent = messages[0].content as string;
-			expect(systemContent).toContain('<planning_process>');
+			expect(systemContent).toContain('<mandatory_workflow>');
 			expect(systemContent).toContain('Understand Requirements');
 			expect(systemContent).toContain('search_nodes');
 			expect(systemContent).toContain('get_best_practices');

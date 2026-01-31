@@ -334,17 +334,27 @@ return workflow('id', 'name')
 </code_patterns>`;
 
 /**
- * Mandatory workflow section
+ * Mandatory workflow section - thinking process with tool calls
  */
 const MANDATORY_WORKFLOW = `<mandatory_workflow>
-## REQUIRED: Get Node Details First
+## REQUIRED: Think Step by Step
 
-Before generating ANY code, you MUST call get_node_details for EVERY node mentioned in the plan.
+**You MUST use <planning> tags for your thinking. Interleave thinking with tool calls.**
 
-### Step 1: Extract Node Types from Plan
-Read the plan and identify all node types (shown in parentheses like \`nodeType: n8n-nodes-base.httpRequest\`)
+Your response MUST follow this pattern:
+1. Start with <planning> tags to analyze the plan
+2. Call get_node_details tool to get type definitions
+3. Continue <planning> to review the results
+4. Generate the final TypeScript code
+
+### Step 1: Analyze the Plan
+
+Start your <planning> section by extracting node types from the plan.
 
 ### Step 2: Call get_node_details
+
+**MANDATORY:** Before generating code, call get_node_details for ALL nodes in the plan.
+
 \`\`\`
 get_node_details({{ nodeIds: ["n8n-nodes-base.manualTrigger", "n8n-nodes-base.httpRequest", ...] }})
 \`\`\`
@@ -357,10 +367,11 @@ get_node_details({{ nodeIds: [
 ] }})
 \`\`\`
 
-### Step 3: Generate Code
-Only after receiving type definitions, generate the TypeScript code using exact parameter names and structures.
+### Step 3: Review and Generate
 
-**DO NOT skip Step 2!** Guessing parameter names or versions creates invalid workflows.
+After receiving type definitions, continue your <planning> thinking to review the results, then output the TypeScript code.
+
+**DO NOT skip the get_node_details step!** Guessing parameter names or versions creates invalid workflows.
 </mandatory_workflow>`;
 
 /**
