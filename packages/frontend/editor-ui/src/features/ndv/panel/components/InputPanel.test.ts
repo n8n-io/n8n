@@ -56,7 +56,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 
 	const workflow = createTestWorkflow({ nodes, connections });
 	const workflowStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
+	const workflowState = useWorkflowState('test-workflow-id');
 
 	workflowStore.setWorkflow(workflow);
 

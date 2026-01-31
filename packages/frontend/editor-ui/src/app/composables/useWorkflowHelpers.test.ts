@@ -56,7 +56,7 @@ describe('useWorkflowHelpers', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		workflowsEEStore = useWorkflowsEEStore();

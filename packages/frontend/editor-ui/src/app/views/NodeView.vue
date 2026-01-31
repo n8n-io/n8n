@@ -23,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { disposeWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
@@ -224,7 +225,12 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 
-const workflowState = useWorkflowState();
+const workflowId = computed(() => {
+	const name = route.params.name;
+	return Array.isArray(name) ? name[0] : name;
+});
+
+const workflowState = useWorkflowState(workflowId.value ?? '');
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -300,10 +306,6 @@ const hideNodeIssues = ref(false);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
-const workflowId = computed(() => {
-	const name = route.params.name;
-	return Array.isArray(name) ? name[0] : name;
-});
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
@@ -2101,6 +2103,11 @@ onDeactivated(() => {
 });
 
 onBeforeUnmount(() => {
+	// Dispose the workflow document store to prevent memory leaks
+	if (workflowId.value) {
+		disposeWorkflowDocumentsStore(workflowId.value);
+	}
+
 	removeSourceControlEventBindings();
 	removePostMessageEventBindings();
 	removeWorkflowSavedEventBindings();

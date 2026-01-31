@@ -47,7 +47,7 @@ describe('useResolvedExpression', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.useFakeTimers();
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 

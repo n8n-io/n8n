@@ -16,7 +16,7 @@ describe('useWorkflowState', () => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 	});
 
 	describe('setWorkflowName()', () => {

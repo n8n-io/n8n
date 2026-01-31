@@ -111,7 +111,7 @@ describe('LogsPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 

@@ -296,7 +296,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return true for an existing workflow', () => {
-			useWorkflowState().setWorkflowId('123');
+			useWorkflowState('test-workflow-id').setWorkflowId('123');
 			// Add the workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(
 				createTestWorkflow({
@@ -1230,7 +1230,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node success run data', () => {
-			useWorkflowState().setWorkflowExecutionData(executionResponse);
+			useWorkflowState('test-workflow-id').setWorkflowExecutionData(executionResponse);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1255,7 +1255,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node error event and track errored executions', async () => {
 			workflowsStore.workflow.pinData = {};
-			useWorkflowState().setWorkflowExecutionData(executionResponse);
+			useWorkflowState('test-workflow-id').setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -1323,7 +1323,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState('test-workflow-id').setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1378,7 +1378,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState('test-workflow-id').setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1879,7 +1879,11 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
 			workflowsStore.removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			useWorkflowState().setNodeValue({ name: 'n1', key: 'disabled', value: true });
+			useWorkflowState('test-workflow-id').setNodeValue({
+				name: 'n1',
+				key: 'disabled',
+				value: true,
+			});
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});

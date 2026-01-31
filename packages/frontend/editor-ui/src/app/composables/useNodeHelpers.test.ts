@@ -40,7 +40,7 @@ describe('useNodeHelpers()', () => {
 
 	describe('initialization', () => {
 		it('should use provided workflowState and not inject', () => {
-			const workflowState = useWorkflowState();
+			const workflowState = useWorkflowState('test-workflow-id');
 			vi.clearAllMocks();
 
 			useNodeHelpers({ workflowState });
@@ -744,7 +744,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithFeatures);
 			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
-			const workflowState = useWorkflowState();
+			const workflowState = useWorkflowState('test-workflow-id');
 			const { updateNodeParameterIssues } = useNodeHelpers({ workflowState });
 
 			updateNodeParameterIssues(node);

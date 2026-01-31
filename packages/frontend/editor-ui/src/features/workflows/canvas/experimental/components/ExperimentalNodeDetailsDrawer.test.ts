@@ -65,7 +65,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		]);
 		ndvStore = useNDVStore();
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 

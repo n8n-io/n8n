@@ -176,7 +176,7 @@ describe('AI Builder store', () => {
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {

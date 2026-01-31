@@ -48,13 +48,19 @@ export type WorkflowStateBusEvents = {
 
 export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
-export function useWorkflowState() {
+export function useWorkflowState(workflowId: string) {
 	const ws = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+
+	// Note: workflowId is for future multi-document support.
+	// Currently we use the global workflows store directly.
+	// The documents store (useWorkflowDocumentsStore) can be used later when
+	// we need per-document state isolation.
+	void workflowId; // Mark as intentionally unused for now
 
 	////
 	// Workflow editing state
@@ -522,12 +528,10 @@ export function injectWorkflowState() {
 	return inject(
 		WorkflowStateKey,
 		() => {
-			// While we're migrating we're happy to fall back onto a separate instance since
-			// all data is still stored in the workflowsStore
-			// Once we're ready to move the actual refs to `useWorkflowState` we should error here
-			// to track down remaining usages that would break
-			// console.error('Attempted to inject workflowState outside of NodeView tree');
-			return useWorkflowState();
+			// Fallback for code paths that call injectWorkflowState outside of NodeView tree
+			// (e.g., useWorkflowHelpers called from useWorkflowsStore during store initialization)
+			// This uses a default workflow ID since the actual workflow data comes from workflowsStore
+			return useWorkflowState('default');
 		},
 		true,
 	);

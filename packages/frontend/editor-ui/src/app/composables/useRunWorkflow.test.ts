@@ -219,7 +219,7 @@ describe('useRunWorkflow({ router })', () => {
 		workflowsStore = useWorkflowsStore();
 		agentRequestStore = useAgentRequestStore();
 
-		workflowState = vi.mocked(useWorkflowState());
+		workflowState = vi.mocked(useWorkflowState('test-workflow-id'));
 		// vi.mocked(workflowState.setActiveExecutionId).mockImplementation((id: string | null | undefined) => {
 		// 	workflowsStore.activeExecutionId = id;
 		// }

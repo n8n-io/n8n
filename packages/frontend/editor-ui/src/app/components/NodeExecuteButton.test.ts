@@ -122,7 +122,7 @@ describe('NodeExecuteButton', () => {
 		});
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowState = useWorkflowState();
+		workflowState = useWorkflowState('test-workflow-id');
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -296,7 +296,7 @@ describe('NodeExecuteButton', () => {
 	it('stops execution when clicking button while workflow is running', async () => {
 		workflowsStore.isWorkflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
-		useWorkflowState().setActiveExecutionId('test-execution-id');
+		useWorkflowState('test-workflow-id').setActiveExecutionId('test-execution-id');
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
