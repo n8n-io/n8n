@@ -554,15 +554,10 @@ export type StickyFn = (
 
 /**
  * placeholder(hint) - Creates a placeholder for user input
+ * Use for simple string parameters only
  *
- * @example
- * node({
- *   type: 'n8n-nodes-base.slack',
- *   version: 2.2,
- *   config: {
- *     parameters: { channel: placeholder('Enter Slack channel') }
- *   }
- * });
+ * @example Single value
+ * parameters: { url: placeholder('API endpoint URL (e.g., https://api.example.com/v1)') }
  */
 export type PlaceholderFn = (hint: string) => string;
 
