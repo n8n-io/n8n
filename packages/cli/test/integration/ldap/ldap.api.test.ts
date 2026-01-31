@@ -19,8 +19,8 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
-import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import { saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,

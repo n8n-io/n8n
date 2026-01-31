@@ -16,6 +16,7 @@ import {
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
+import { Cipher } from 'n8n-core';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -36,6 +37,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
@@ -50,7 +52,10 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-	) {}
+		private readonly cipher: Cipher,
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	async createChatWorkflow(
 		userId: string,
@@ -64,6 +69,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
+		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -85,6 +91,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
+				executionMetadata,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -186,15 +193,32 @@ export class ChatHubWorkflowService {
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
+		executionMetadata: ChatHubAuthenticationMetadata,
 	): IExecuteData[] {
+		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
-				node: triggerNode,
+				node: {
+					...triggerNode,
+					parameters: {
+						...triggerNode.parameters,
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							hooks: [
+								{
+									hookName: CHATHUB_EXTRACTOR_NAME,
+									isAllowedToFail: true,
+								},
+							],
+						},
+					},
+				},
 				data: {
 					main: [
 						[
 							{
+								encryptedMetadata,
 								json: {
 									sessionId,
 									action: 'sendMessage',
@@ -268,6 +292,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		executionMetadata,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -278,6 +303,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
+		executionMetadata: ChatHubAuthenticationMetadata;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -383,6 +409,7 @@ export class ChatHubWorkflowService {
 			sessionId,
 			humanMessage,
 			attachments,
+			executionMetadata,
 		);
 
 		const executionData = createRunExecutionData({

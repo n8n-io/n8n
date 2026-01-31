@@ -18,6 +18,7 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
+import { createTelemetryRecorder } from './telemetry';
 
 const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
 
@@ -100,183 +101,210 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	log(`Starting: ${uniqueProjectName}`);
 
-	const network = await new Network().start();
+	const telemetry = createTelemetryRecorder(config);
 
-	const ctx: StartContext = {
-		config: { ...config, postgres: usePostgres },
-		projectName: uniqueProjectName,
-		mains,
-		workers,
-		isQueueMode,
-		usePostgres,
-		needsLoadBalancer,
-		environment,
-		serviceResults,
-		allocatedPorts: {
-			main: allocatedMainPort,
-			loadBalancer: allocatedLbPort,
-		},
-	};
+	let network: StartedNetwork;
+	try {
+		const networkStart = performance.now();
+		network = await new Network().start();
+		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		telemetry.flush(false, `Network creation failed: ${message}`);
+		throw error;
+	}
 
-	// Step 1: Start services (parallel by dependency level)
-	const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
-	const servicesToStart = allServiceNames.filter((name) =>
-		shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
-	);
-	const dependencyLevels = groupByDependencyLevel(servicesToStart);
+	try {
+		const ctx: StartContext = {
+			config: { ...config, postgres: usePostgres },
+			projectName: uniqueProjectName,
+			mains,
+			workers,
+			isQueueMode,
+			usePostgres,
+			needsLoadBalancer,
+			environment,
+			serviceResults,
+			allocatedPorts: {
+				main: allocatedMainPort,
+				loadBalancer: allocatedLbPort,
+			},
+		};
 
-	for (const level of dependencyLevels) {
-		const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
+		// Step 1: Start services (parallel by dependency level)
+		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
+		const servicesToStart = allServiceNames.filter((name) =>
+			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
+		);
+		const dependencyLevels = groupByDependencyLevel(servicesToStart);
 
-		const levelPromises = level.map(async (name) => {
-			const service = SERVICE_REGISTRY[name];
-			const options = service.getOptions?.(ctx);
-			try {
-				const result = await service.start(network, uniqueProjectName, options, ctx);
-				return { name, service, result };
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+		for (const level of dependencyLevels) {
+			const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
+
+			const levelPromises = level.map(async (name) => {
+				const service = SERVICE_REGISTRY[name];
+				const options = service.getOptions?.(ctx);
+				const serviceStart = performance.now();
+				try {
+					const result = await service.start(network, uniqueProjectName, options, ctx);
+					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+					return { name, service, result };
+				} catch (error) {
+					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+					const message = error instanceof Error ? error.message : String(error);
+					throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+				}
+			});
+
+			const results = await Promise.all(levelPromises);
+
+			for (const { name, service, result } of results) {
+				// Some services (e.g., tracing) return multiple containers
+				const serviceContainers =
+					'containers' in result && Array.isArray(result.containers)
+						? (result.containers as StartedTestContainer[])
+						: [result.container];
+				containers.push(...serviceContainers);
+				serviceResults[name] = result;
+
+				if (service.env) {
+					environment = { ...environment, ...service.env(result) };
+				}
+				if (service.extraEnv) {
+					environment = { ...environment, ...service.extraEnv(result) };
+				}
 			}
+
+			ctx.environment = environment;
+			ctx.serviceResults = serviceResults;
+
+			log(`Services ready: ${levelNames}`);
+		}
+
+		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
+		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
+		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+
+		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
+			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
+			return meta?.n8nFilesToMount ?? [];
 		});
 
-		const results = await Promise.all(levelPromises);
+		const n8nStartupStart = performance.now();
+		const n8nResult = await createN8NInstances({
+			mains,
+			workers,
+			projectName: uniqueProjectName,
+			network,
+			serviceEnvironment: environment,
+			userEnvironment: env,
+			usePostgres,
+			baseUrl: needsLoadBalancer ? undefined : baseUrl,
+			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
+			resourceQuota,
+			filesToMount,
+		});
+		containers.push(...n8nResult.containers);
+		telemetry.recordN8nStartup(
+			Math.round(performance.now() - n8nStartupStart),
+			n8nResult.containers.length,
+		);
+		log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
 
-		for (const { name, service, result } of results) {
-			// Some services (e.g., tracing) return multiple containers
-			const serviceContainers =
-				'containers' in result && Array.isArray(result.containers)
-					? (result.containers as StartedTestContainer[])
-					: [result.container];
-			containers.push(...serviceContainers);
-			serviceResults[name] = result;
-
-			if (service.env) {
-				environment = { ...environment, ...service.env(result) };
-			}
-			if (service.extraEnv) {
-				environment = { ...environment, ...service.extraEnv(result) };
-			}
+		if (lbResult) {
+			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+			log('Load balancer ready');
 		}
 
-		ctx.environment = environment;
-		ctx.serviceResults = serviceResults;
+		ctx.baseUrl = baseUrl;
 
-		log(`Services ready: ${levelNames}`);
-	}
+		// Run verification hooks (e.g. keycloak connectivity check)
+		const n8nContainers = containers.filter((c) => {
+			const name = c.getName();
+			return name.includes('-n8n-main-') || name.endsWith('-n8n');
+		});
 
-	// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
-	const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
-	const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
-
-	const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
-		const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
-		return meta?.n8nFilesToMount ?? [];
-	});
-
-	const n8nResult = await createN8NInstances({
-		mains,
-		workers,
-		projectName: uniqueProjectName,
-		network,
-		serviceEnvironment: environment,
-		userEnvironment: env,
-		usePostgres,
-		baseUrl: needsLoadBalancer ? undefined : baseUrl,
-		allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
-		resourceQuota,
-		filesToMount,
-	});
-	containers.push(...n8nResult.containers);
-	log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
-
-	if (lbResult) {
-		await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
-		log('Load balancer ready');
-	}
-
-	ctx.baseUrl = baseUrl;
-
-	// Run verification hooks (e.g. keycloak connectivity check)
-	const n8nContainers = containers.filter((c) => {
-		const name = c.getName();
-		return name.includes('-n8n-main-') || name.endsWith('-n8n');
-	});
-
-	const verifications: string[] = [];
-	for (const name of servicesToStart) {
-		const service = SERVICE_REGISTRY[name];
-		if (service.verifyFromN8n && serviceResults[name]) {
-			await service.verifyFromN8n(serviceResults[name], n8nContainers);
-			verifications.push(service.description);
+		const verifications: string[] = [];
+		for (const name of servicesToStart) {
+			const service = SERVICE_REGISTRY[name];
+			if (service.verifyFromN8n && serviceResults[name]) {
+				await service.verifyFromN8n(serviceResults[name], n8nContainers);
+				verifications.push(service.description);
+			}
 		}
+		if (verifications.length > 0) {
+			log(`Verified: ${verifications.join(', ')}`);
+		}
+
+		await waitForNetworkQuiet();
+		telemetry.flush(true);
+
+		const helperCtx: HelperContext = {
+			containers,
+			findContainer: (pattern: RegExp) => containers.find((c) => pattern.test(c.getName())),
+			serviceResults,
+		};
+		const helperCache: Partial<ServiceHelpers> = {};
+
+		const servicesProxy = new Proxy({} as ServiceHelpers, {
+			get: <K extends keyof ServiceHelpers>(
+				_target: ServiceHelpers,
+				prop: K,
+			): ServiceHelpers[K] => {
+				if (prop in helperCache) {
+					return helperCache[prop]!;
+				}
+
+				const factory = (helperFactories as HelperFactories)[prop];
+				if (!factory) {
+					throw new Error(
+						`No helper factory found for service: ${String(prop)}. ` +
+							`Available helpers: ${Object.keys(helperFactories).join(', ')}`,
+					);
+				}
+
+				const helper = factory(helperCtx);
+				helperCache[prop] = helper;
+				return helper;
+			},
+			has: (_target, prop) => prop in helperFactories,
+			ownKeys: () => Object.keys(helperFactories),
+			getOwnPropertyDescriptor: (_target, prop) => {
+				if (prop in helperFactories) {
+					return { enumerable: true, configurable: true };
+				}
+				return undefined;
+			},
+		});
+
+		return {
+			baseUrl,
+			projectName: uniqueProjectName,
+			stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
+			containers,
+			serviceResults,
+			services: servicesProxy,
+			get logs() {
+				return servicesProxy.observability.logs;
+			},
+			get metrics() {
+				return servicesProxy.observability.metrics;
+			},
+			findContainers(namePattern: string | RegExp): StartedTestContainer[] {
+				const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
+				return containers.filter((container) => regex.test(container.getName()));
+			},
+			async stopContainer(namePattern: string | RegExp): Promise<StoppedTestContainer | null> {
+				const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
+				const container = containers.find((c) => regex.test(c.getName()));
+				return container ? await container.stop() : null;
+			},
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		telemetry.flush(false, message);
+		throw error;
 	}
-	if (verifications.length > 0) {
-		log(`Verified: ${verifications.join(', ')}`);
-	}
-
-	log(`Ready: ${baseUrl}`);
-	await waitForNetworkQuiet();
-
-	// Build service helpers proxy
-	const helperCtx: HelperContext = {
-		containers,
-		findContainer: (pattern: RegExp) => containers.find((c) => pattern.test(c.getName())),
-		serviceResults,
-	};
-	const helperCache: Partial<ServiceHelpers> = {};
-
-	const servicesProxy = new Proxy({} as ServiceHelpers, {
-		get: <K extends keyof ServiceHelpers>(_target: ServiceHelpers, prop: K): ServiceHelpers[K] => {
-			if (prop in helperCache) {
-				return helperCache[prop]!;
-			}
-
-			const factory = (helperFactories as HelperFactories)[prop];
-			if (!factory) {
-				throw new Error(
-					`No helper factory found for service: ${String(prop)}. ` +
-						`Available helpers: ${Object.keys(helperFactories).join(', ')}`,
-				);
-			}
-
-			const helper = factory(helperCtx);
-			helperCache[prop] = helper;
-			return helper;
-		},
-		has: (_target, prop) => prop in helperFactories,
-		ownKeys: () => Object.keys(helperFactories),
-		getOwnPropertyDescriptor: (_target, prop) => {
-			if (prop in helperFactories) {
-				return { enumerable: true, configurable: true };
-			}
-			return undefined;
-		},
-	});
-
-	return {
-		baseUrl,
-		projectName: uniqueProjectName,
-		stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
-		containers,
-		serviceResults,
-		services: servicesProxy,
-		get logs() {
-			return servicesProxy.observability.logs;
-		},
-		get metrics() {
-			return servicesProxy.observability.metrics;
-		},
-		findContainers(namePattern: string | RegExp): StartedTestContainer[] {
-			const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
-			return containers.filter((container) => regex.test(container.getName()));
-		},
-		async stopContainer(namePattern: string | RegExp): Promise<StoppedTestContainer | null> {
-			const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
-			const container = containers.find((c) => regex.test(c.getName()));
-			return container ? await container.stop() : null;
-		},
-	};
 }
 
 function getErrorMessage(error: unknown): string {

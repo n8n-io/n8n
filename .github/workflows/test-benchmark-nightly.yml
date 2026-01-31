@@ -44,21 +44,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: '1.8.5'
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Azure login
         uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1

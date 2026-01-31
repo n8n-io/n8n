@@ -603,8 +603,26 @@ describe('VirtualSchema.vue', () => {
 		function dragDropPill(pill: HTMLElement) {
 			const ndvStore = useNDVStore();
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
-			fireEvent(window, new MouseEvent('mousemove', { bubbles: true, button: 0, buttons: 1 }));
+			fireEvent(
+				pill,
+				new MouseEvent('mousedown', {
+					bubbles: true,
+					button: 0,
+					buttons: 1,
+					clientX: 100,
+					clientY: 100,
+				}),
+			);
+			fireEvent(
+				window,
+				new MouseEvent('mousemove', {
+					bubbles: true,
+					button: 0,
+					buttons: 1,
+					clientX: 120,
+					clientY: 120,
+				}),
+			);
 			expect(reset).toHaveBeenCalled();
 
 			vi.useRealTimers();

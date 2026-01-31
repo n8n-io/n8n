@@ -1,49 +1,92 @@
 import { describe, it, expect } from 'vitest';
 import {
-	extractPlaceholderLabel,
+	extractPlaceholderLabels,
 	findPlaceholderDetails,
 	formatPlaceholderPath,
 	isPlaceholderValue,
 } from './useBuilderTodos';
 
 describe('useBuilderTodos', () => {
-	describe('extractPlaceholderLabel', () => {
-		it('returns null for non-string values', () => {
-			expect(extractPlaceholderLabel(123)).toBeNull();
-			expect(extractPlaceholderLabel(true)).toBeNull();
-			expect(extractPlaceholderLabel(null)).toBeNull();
-			expect(extractPlaceholderLabel(undefined)).toBeNull();
-			expect(extractPlaceholderLabel({})).toBeNull();
-			expect(extractPlaceholderLabel([])).toBeNull();
+	describe('extractPlaceholderLabels', () => {
+		it('returns empty array for non-string values', () => {
+			expect(extractPlaceholderLabels(123)).toEqual([]);
+			expect(extractPlaceholderLabels(true)).toEqual([]);
+			expect(extractPlaceholderLabels(null)).toEqual([]);
+			expect(extractPlaceholderLabels(undefined)).toEqual([]);
+			expect(extractPlaceholderLabels({})).toEqual([]);
+			expect(extractPlaceholderLabels([])).toEqual([]);
 		});
 
-		it('returns null for strings without placeholder format', () => {
-			expect(extractPlaceholderLabel('regular string')).toBeNull();
-			expect(extractPlaceholderLabel('https://example.com')).toBeNull();
-			expect(extractPlaceholderLabel('')).toBeNull();
+		it('returns empty array for strings without placeholder format', () => {
+			expect(extractPlaceholderLabels('regular string')).toEqual([]);
+			expect(extractPlaceholderLabels('https://example.com')).toEqual([]);
+			expect(extractPlaceholderLabels('')).toEqual([]);
 		});
 
-		it('returns null for partial placeholder format', () => {
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__missing end')).toBeNull();
-			expect(extractPlaceholderLabel('PLACEHOLDER__test__>')).toBeNull();
-			expect(extractPlaceholderLabel('__PLACEHOLDER_VALUE__test__>')).toBeNull();
+		it('returns empty array for partial placeholder format', () => {
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__missing end')).toEqual([]);
+			expect(extractPlaceholderLabels('PLACEHOLDER__test__>')).toEqual([]);
+			expect(extractPlaceholderLabels('__PLACEHOLDER_VALUE__test__>')).toEqual([]);
 		});
 
-		it('returns null for empty label', () => {
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE____>')).toBeNull();
+		it('returns empty array for empty label', () => {
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE____>')).toEqual([]);
 		});
 
-		it('returns null for whitespace-only label', () => {
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__   __>')).toBeNull();
+		it('returns empty array for whitespace-only label', () => {
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__   __>')).toEqual([]);
 		});
 
 		it('extracts label from valid placeholder', () => {
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__Enter URL__>')).toBe('Enter URL');
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__API Key__>')).toBe('API Key');
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__Enter URL__>')).toEqual(['Enter URL']);
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__API Key__>')).toEqual(['API Key']);
 		});
 
 		it('trims whitespace from label', () => {
-			expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__  Enter URL  __>')).toBe('Enter URL');
+			expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__  Enter URL  __>')).toEqual([
+				'Enter URL',
+			]);
+		});
+
+		it('extracts single embedded placeholder from code', () => {
+			const code = "const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';";
+			expect(extractPlaceholderLabels(code)).toEqual(['API_KEY']);
+		});
+
+		it('extracts multiple embedded placeholders from code', () => {
+			const code = `
+				const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';
+				const endpoint = '<__PLACEHOLDER_VALUE__API_ENDPOINT__>';
+			`;
+			expect(extractPlaceholderLabels(code)).toEqual(['API_KEY', 'API_ENDPOINT']);
+		});
+
+		it('handles placeholders in complex code', () => {
+			const code = `
+				// This is a comment
+				function getData() {
+					const url = '<__PLACEHOLDER_VALUE__Base URL__>' + '/api/data';
+					const headers = {
+						'Authorization': 'Bearer <__PLACEHOLDER_VALUE__API Token__>'
+					};
+					return fetch(url, { headers });
+				}
+			`;
+			expect(extractPlaceholderLabels(code)).toEqual(['Base URL', 'API Token']);
+		});
+
+		it('extracts label from alternative placeholder format with colon', () => {
+			expect(extractPlaceholderLabels('<__PLACEHOLDER__: Add your custom code here__>')).toEqual([
+				'Add your custom code here',
+			]);
+		});
+
+		it('extracts labels from mixed placeholder formats', () => {
+			const code = `
+				const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';
+				const customCode = '<__PLACEHOLDER__: Add your code here__>';
+			`;
+			expect(extractPlaceholderLabels(code)).toEqual(['API_KEY', 'Add your code here']);
 		});
 	});
 
@@ -145,6 +188,44 @@ describe('useBuilderTodos', () => {
 				'parameters',
 			]);
 			expect(result).toEqual([{ path: ['parameters', 'url'], label: 'Enter URL' }]);
+		});
+
+		it('finds embedded placeholder in code string', () => {
+			const result = findPlaceholderDetails({
+				jsCode: "const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';",
+			});
+			expect(result).toEqual([{ path: ['jsCode'], label: 'API_KEY' }]);
+		});
+
+		it('finds multiple embedded placeholders in code string', () => {
+			const code = `
+				const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';
+				const endpoint = '<__PLACEHOLDER_VALUE__API_ENDPOINT__>';
+			`;
+			const result = findPlaceholderDetails({ jsCode: code });
+			expect(result).toHaveLength(2);
+			expect(result).toContainEqual({ path: ['jsCode'], label: 'API_KEY' });
+			expect(result).toContainEqual({ path: ['jsCode'], label: 'API_ENDPOINT' });
+		});
+
+		it('finds embedded placeholders in Code node parameters', () => {
+			const result = findPlaceholderDetails({
+				mode: 'runOnceForAllItems',
+				language: 'javaScript',
+				jsCode: `
+					// Fetch data from API
+					const response = await fetch('<__PLACEHOLDER_VALUE__API URL__>');
+					return response.json();
+				`,
+			});
+			expect(result).toEqual([{ path: ['jsCode'], label: 'API URL' }]);
+		});
+
+		it('finds embedded placeholders in Python code', () => {
+			const result = findPlaceholderDetails({
+				pythonCode: "api_key = '<__PLACEHOLDER_VALUE__Python API Key__>'",
+			});
+			expect(result).toEqual([{ path: ['pythonCode'], label: 'Python API Key' }]);
 		});
 	});
 

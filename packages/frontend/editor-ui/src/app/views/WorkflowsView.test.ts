@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
@@ -76,7 +76,7 @@ vi.mock('@n8n/rest-api-client/api/usage', () => ({
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
-let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let projectPages: ReturnType<typeof useProjectPages>;
 
@@ -101,14 +101,18 @@ describe('WorkflowsView', () => {
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
 
 		foldersStore.totalWorkflowCount = 0;
 		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+
+		// Mock getSimplifiedLayoutVisibility to return false so ResourcesListLayout is used
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
 
 		projectPages = useProjectPages();
 	});
@@ -127,7 +131,7 @@ describe('WorkflowsView', () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('👋 Welcome John!')).toBeVisible();
+			expect(getByText('👋 Welcome, John!')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -157,25 +161,11 @@ describe('WorkflowsView', () => {
 				expect(getByText('Create your first workflow')).toBeInTheDocument();
 			});
 		});
-
-		it('should allow workflow creation', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
-
-			await userEvent.click(getByTestId('new-workflow-card'));
-
-			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
-		});
 	});
 
 	describe('fetch workflow options', () => {
 		it('should not fetch folders for overview page', async () => {
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 			settingsStore.isFoldersFeatureEnabled = true;
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
@@ -183,7 +173,7 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -195,7 +185,7 @@ describe('WorkflowsView', () => {
 		});
 
 		it('should send proper API parameters for "Shared with you" page', async () => {
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 			settingsStore.isFoldersFeatureEnabled = true;
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
@@ -203,7 +193,7 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -226,12 +216,12 @@ describe('WorkflowsView', () => {
 			tagStore.tagsById = {
 				'test-tag': TEST_TAG,
 			};
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -248,12 +238,12 @@ describe('WorkflowsView', () => {
 		it('should set search filter based on query parameters', async () => {
 			await router.replace({ query: { search: 'one' } });
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -270,12 +260,12 @@ describe('WorkflowsView', () => {
 		it('should set active status filter based on query parameters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -292,12 +282,12 @@ describe('WorkflowsView', () => {
 		it('should set deactivated status filter based on query parameters', async () => {
 			await router.replace({ query: { status: 'false' } });
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -314,12 +304,12 @@ describe('WorkflowsView', () => {
 		it('should unset isArchived filter based on query parameters', async () => {
 			await router.replace({ query: { showArchived: 'true' } });
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(Number),
 				expect.any(Number),
@@ -335,7 +325,7 @@ describe('WorkflowsView', () => {
 		it('should reset filters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			const { queryByTestId, getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
@@ -352,7 +342,7 @@ describe('WorkflowsView', () => {
 
 		it('should remove incomplete properties', async () => {
 			await router.replace({ query: { tags: '' } });
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 			renderComponent({ pinia });
 			await waitAllPromises();
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
@@ -360,7 +350,7 @@ describe('WorkflowsView', () => {
 
 		it('should remove invalid tags', async () => {
 			await router.replace({ query: { tags: 'non-existing-tag' } });
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 			const tagStore = mockedStore(useTagsStore);
 			tagStore.allTags = [{ id: 'test-tag', name: 'tag' }];
 			renderComponent({ pinia });
@@ -370,7 +360,7 @@ describe('WorkflowsView', () => {
 
 		it('should show archived only hint', async () => {
 			foldersStore.totalWorkflowCount = 1;
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
@@ -388,17 +378,16 @@ describe('WorkflowsView', () => {
 			foldersStore = mockedStore(useFoldersStore);
 			foldersStore.totalWorkflowCount = 0;
 			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
-			workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsListStore = mockedStore(useWorkflowsListStore);
 
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
 		});
 		it('should reinitialize on source control pullWorkfolder', async () => {
 			vi.spyOn(usersApi, 'getUsers').mockResolvedValue({
 				count: 0,
 				items: [],
 			});
-			const userStore = mockedStore(useUsersStore);
 
 			const sourceControl = useSourceControlStore();
 
@@ -406,7 +395,6 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true);
-			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
 		});
 	});
 });
@@ -417,7 +405,7 @@ describe('Folders', () => {
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 
 		settingsStore.isFoldersFeatureEnabled = true;
@@ -467,11 +455,11 @@ describe('Folders', () => {
 			href: '/projects/1/folders/1',
 		});
 		foldersStore.totalWorkflowCount = 2;
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			TEST_WORKFLOW_RESOURCE,
 			TEST_FOLDER_RESOURCE,
 		]);
-		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
 		const { getByTestId } = renderComponent({
 			pinia,
 		});
@@ -486,7 +474,7 @@ describe('Folders', () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
 		const { getByTestId } = renderComponent({
 			pinia,
 		});
@@ -499,7 +487,7 @@ describe('Folders', () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
 		const { queryByTestId } = renderComponent({
 			pinia,
 		});
@@ -512,7 +500,7 @@ describe('Folders', () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
 		const { queryByTestId } = renderComponent({
 			pinia,
 		});
@@ -528,10 +516,10 @@ describe('Simplified Layout', () => {
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
 		foldersStore.totalWorkflowCount = 0;
 		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
 	});
@@ -541,18 +529,31 @@ describe('Simplified Layout', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 
 		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
-		vi.spyOn(readyToRunStore, 'getCardVisibility').mockReturnValue(true);
 		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		// EmptyStateLayout cards should be rendered
-		expect(getByTestId('new-workflow-card')).toBeInTheDocument();
-		expect(getByTestId('ready-to-run-card')).toBeInTheDocument();
-
-		// ResourcesListLayout should NOT be rendered
+		// ResourcesListLayout should NOT be rendered when simplified layout is enabled
 		expect(queryByTestId('resources-list-wrapper')).not.toBeInTheDocument();
+	});
+
+	it('should navigate to new workflow when Create workflow card is clicked', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		const projectsStore = mockedStore(useProjectsStore);
+
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
+		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const createWorkflowCard = getByTestId('new-workflow-card');
+		expect(createWorkflowCard).toBeInTheDocument();
+
+		await userEvent.click(createWorkflowCard);
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 	});
 
 	it('should render ResourcesListLayout when simplified layout is disabled', async () => {
@@ -580,27 +581,6 @@ describe('Simplified Layout', () => {
 		expect(getSimplifiedLayoutVisibility).toHaveBeenCalled();
 		const callArgs = getSimplifiedLayoutVisibility.mock.calls[0];
 		expect(callArgs[0]).toBeDefined(); // route
-	});
-
-	it('should call addWorkflow when EmptyStateLayout new workflow card is clicked', async () => {
-		const readyToRunStore = mockedStore(useReadyToRunStore);
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.currentProject = { id: 'project-123', scopes: ['workflow:create'] } as Project;
-
-		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
-		vi.spyOn(readyToRunStore, 'getCardVisibility').mockReturnValue(true);
-
-		const { getByTestId } = renderComponent({ pinia });
-		await waitAllPromises();
-
-		const newWorkflowCard = getByTestId('new-workflow-card');
-		expect(newWorkflowCard).toBeInTheDocument();
-
-		// Click the new workflow card
-		await userEvent.click(newWorkflowCard);
-
-		// Should navigate to new workflow view
-		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 	});
 
 	it('should pass route and loading state reactively to getSimplifiedLayoutVisibility', async () => {

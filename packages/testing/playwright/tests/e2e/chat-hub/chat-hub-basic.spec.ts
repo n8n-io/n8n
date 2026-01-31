@@ -1,8 +1,4 @@
 import { test, expect, chatHubTestConfig } from './fixtures';
-import {
-	INSTANCE_MEMBER_CREDENTIALS,
-	INSTANCE_OWNER_CREDENTIALS,
-} from '../../../config/test-users';
 import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 import { CredentialModal } from '../../../pages/components/CredentialModal';
 
@@ -13,10 +9,9 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Start a chat with');
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
 
 		await page.getChatInput().fill('Hello');
@@ -35,10 +30,9 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Select a model to start chatting');
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
@@ -62,6 +56,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
 		// STEP: send first prompt
@@ -78,20 +73,21 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages().nth(2)).toContainText('How are you?');
 		await expect(page.getChatMessages().nth(3)).toContainText("I'm doing well");
+		await expect(page.getChatMessages().nth(3)).toContainText("What's on your mind?");
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: regenerate response to first prompt
-		await page.getRegenerateButtonAt(1).click();
+		await page.clickRegenerateButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
 		await expect(page.getChatMessages()).toHaveCount(2);
 
 		// STEP: switch to previous alternative
-		await page.getPrevAlternativeButtonAt(1).click();
+		await page.clickPrevAlternativeButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: edit 2nd prompt
-		await page.getEditButtonAt(2).click();
+		await page.clickEditButtonAt(2);
 		await page.getEditorAt(2).fill('Hola');
 		await page.getSendButtonAt(2).click();
 		await expect(page.getChatMessages().nth(3)).toContainText('¡Hola!');

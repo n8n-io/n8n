@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
-import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
+import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
@@ -9,13 +9,13 @@ import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/app/event-bus';
-import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
@@ -40,7 +40,8 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -50,7 +51,6 @@ const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 };
 
 const props = defineProps<{
-	readOnly?: boolean;
 	id: IWorkflowDb['id'];
 	tags: IWorkflowDb['tags'];
 	name: IWorkflowDb['name'];
@@ -67,8 +67,10 @@ const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
+const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
 const i18n = useI18n();
 
@@ -104,21 +106,18 @@ const isNewWorkflow = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
+const readOnly = computed(
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+);
+
 // For workflow name and tags editing: needs update permission and not archived
 const readOnlyActions = computed(() => {
-	if (isNewWorkflow.value) return props.readOnly;
-	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+	if (isNewWorkflow.value) return readOnly.value;
+	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
-});
-
-const currentProjectName = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return locale.baseText('projects.menu.personal');
-	}
-	return projectsStore.currentProject?.name;
 });
 
 const currentFolderForBreadcrumbs = computed(() => {
@@ -219,14 +218,9 @@ async function onNameSubmit(name: string) {
 	}
 
 	uiStore.addActiveAction('workflowSaving');
-	const id = getWorkflowId(props.id, route.params.name);
-
-	// Capture the "new" state before saving, as the route will be replaced during save
-	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -272,7 +266,7 @@ async function handleArchiveWorkflow() {
 	});
 
 	// Navigate to the appropriate project's workflow list
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	if (workflow?.homeProject?.type === ProjectTypes.Team) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -315,11 +309,11 @@ async function handleDeleteWorkflow() {
 	}
 
 	// Get workflow before deletion to know which project to navigate to
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
 
 	try {
-		await workflowsStore.deleteWorkflow(props.id);
+		await workflowsListStore.deleteWorkflow(props.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -345,66 +339,6 @@ async function handleDeleteWorkflow() {
 	}
 }
 
-function getPersonalProjectToastContent() {
-	const title = locale.baseText('workflows.create.personal.toast.title');
-	if (!props.currentFolder) {
-		return { title };
-	}
-
-	const toastMessage = locale.baseText('workflows.create.folder.toast.title', {
-		interpolate: {
-			projectName: 'Personal',
-			folderName: props.currentFolder.name,
-		},
-	});
-
-	return { title, toastMessage };
-}
-
-function getToastContent() {
-	const currentProject = projectsStore.currentProject;
-	const isPersonalProject =
-		!projectsStore.currentProject || currentProject?.id === projectsStore.personalProject?.id;
-	const projectName = currentProjectName.value ?? '';
-
-	if (isPersonalProject) {
-		return getPersonalProjectToastContent();
-	}
-
-	const titleKey = props.currentFolder
-		? 'workflows.create.folder.toast.title'
-		: 'workflows.create.project.toast.title';
-
-	const interpolateData: Record<string, string> = props.currentFolder
-		? { projectName, folderName: props.currentFolder.name ?? '' }
-		: { projectName };
-
-	const title = locale.baseText(titleKey, { interpolate: interpolateData });
-
-	const toastMessage = locale.baseText('workflows.create.project.toast.text', {
-		interpolate: { projectName },
-	});
-
-	return { title, toastMessage };
-}
-
-function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
-	if (!id) return;
-
-	// Only show toast if this is a newly created workflow
-	const shouldShowToast = wasNewWorkflow ?? false;
-
-	if (!shouldShowToast) return;
-
-	const { title, toastMessage } = getToastContent();
-
-	toast.showMessage({
-		title,
-		message: toastMessage,
-		type: 'success',
-	});
-}
-
 const onBreadcrumbsItemSelected = (item: PathItem) => {
 	if (item.href) {
 		void router.push(item.href).catch((error) => {
@@ -419,12 +353,6 @@ const handleImportWorkflowFromFile = () => {
 	}
 };
 
-const handleWorkflowSaved = (data: { isFirstSave: boolean }) => {
-	if (data.isFirstSave) {
-		showCreateWorkflowSuccessToast(props.id, true);
-	}
-};
-
 onMounted(() => {
 	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
 	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
@@ -432,7 +360,6 @@ onMounted(() => {
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 	nodeViewEventBus.on('addTag', onTagsEditEnable);
-	canvasEventBus.on('saved:workflow', handleWorkflowSaved);
 });
 
 onBeforeUnmount(() => {
@@ -442,7 +369,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 	nodeViewEventBus.off('addTag', onTagsEditEnable);
-	canvasEventBus.off('saved:workflow', handleWorkflowSaved);
 });
 </script>
 
@@ -526,7 +452,7 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
-		<PushConnectionTracker class="actions">
+		<ConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
@@ -534,12 +460,11 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
 			/>
-		</PushConnectionTracker>
+		</ConnectionTracker>
 	</div>
 </template>
 

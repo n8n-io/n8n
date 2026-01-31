@@ -27,15 +27,6 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const UPGRADE_PLAN_CTA_EXPERIMENT = createExperiment('054_upgrade_plan_cta');
-
-export const TEMPLATES_DATA_QUALITY_EXPERIMENT = createExperiment('046_templates_data_quality', {
-	control: 'control',
-	variant1: 'variant-batch-1',
-	variant2: 'variant-batch-2',
-	variant3: 'variant-batch-3',
-});
-
 export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
 	control: 'control',
 	variant1: 'variant-1-singlebox',
@@ -66,17 +57,30 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
+export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
+	'063_empty_state_builder_prompt',
+);
+
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
+	control: 'control',
+	variantResources: 'variant-resources',
+	variantInspiration: 'variant-inspiration',
+});
+
+export const DYNAMIC_TEMPLATES_EXPERIMENT = createExperiment('068_dynamic_templates');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
+	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
+	DYNAMIC_TEMPLATES_EXPERIMENT.name,
 ];

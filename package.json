@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.4.0",
+  "version": "2.6.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -89,11 +89,12 @@
       "sqlite3"
     ],
     "overrides": {
+      "libphonenumber-js": "npm:empty-npm-package@1.0.0",
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
-      "@n8n/typeorm>@sentry/node": "catalog:",
+      "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@types/node": "^20.17.50",
       "axios": "1.12.0",
       "chokidar": "4.0.3",
@@ -129,7 +130,12 @@
       "jws@4": "4.0.1",
       "qs@6": "6.14.1",
       "@smithy/config-resolver": ">=4.4.0",
-      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0"
+      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
+      "diff": "8.0.3",
+      "undici@6": "^6.23.0",
+      "undici@7": "^7.18.2",
+      "tar": "^7.5.4",
+      "lodash-es": "4.17.23"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

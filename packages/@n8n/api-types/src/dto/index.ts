@@ -1,3 +1,5 @@
+export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
@@ -81,6 +83,16 @@ export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
+export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
+export {
+	CreateDestinationDto,
+	type WebhookDestination,
+	type SentryDestination,
+	type SyslogDestination,
+} from './log-streaming/create-destination.dto';
+export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
+export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+
 export { PaginationDto } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
@@ -100,8 +112,14 @@ export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
-export { ListDataTableQueryDto } from './data-table/list-data-table-query.dto';
-export { ListDataTableContentQueryDto } from './data-table/list-data-table-content-query.dto';
+export {
+	ListDataTableQueryDto,
+	PublicApiListDataTableQueryDto,
+} from './data-table/list-data-table-query.dto';
+export {
+	ListDataTableContentQueryDto,
+	PublicApiListDataTableContentQueryDto,
+} from './data-table/list-data-table-content-query.dto';
 export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
@@ -116,3 +134,8 @@ export {
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
+
+export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
+export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
+export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
+export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';

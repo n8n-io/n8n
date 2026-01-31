@@ -20,7 +20,7 @@ import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -33,6 +33,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -58,7 +59,8 @@ const toast = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
+const usersStore = useUsersStore();
 const workflowActivate = useWorkflowActivate();
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -77,11 +79,12 @@ const editorRoute = computed(() => ({
 	},
 }));
 const workflowPermissions = computed(
-	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+	() =>
+		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 
 const workflowActiveVersionId = computed(() => {
-	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
+	return workflowsListStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
@@ -109,6 +112,11 @@ const sendTelemetry = (event: string) => {
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, queryParams);
 	lastReceivedItemsLength.value = history.length;
+	const userIds = history
+		.flatMap((item) => item.workflowPublishHistory.map((pub) => pub.userId))
+		.filter((id): id is string => Boolean(id));
+	const userIdsToFetch = new Set<string>(userIds);
+	await usersStore.fetchUsers({ filter: { ids: Array.from(userIdsToFetch) } });
 	workflowHistory.value = workflowHistory.value.concat(history);
 };
 
@@ -116,7 +124,7 @@ onBeforeMount(async () => {
 	sendTelemetry('User opened workflow history');
 	try {
 		const [workflow] = await Promise.all([
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadMore({ take: requestNumberOfItems.value }),
 		]);
 		activeWorkflow.value = workflow;
@@ -183,7 +191,7 @@ const cloneWorkflowVersion = async (
 };
 
 const restoreWorkflowVersion = async (id: WorkflowVersionId) => {
-	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
+	const workflow = await workflowsListStore.fetchWorkflow(workflowId.value);
 
 	const versionIdBeforeRestore = workflow.versionId;
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
@@ -211,7 +219,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 
 	publishEventBus.once('publish', (publishData) => {
 		// Refresh the active workflow to get the updated activeVersion with workflowPublishHistory
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 		// Update the history list with the new name, description, and workflowPublishHistory
 		const historyItem = workflowHistory.value.find(
@@ -270,7 +278,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
@@ -355,7 +363,7 @@ watchEffect(async () => {
 		// Fetch both in parallel and update atomically to prevent double-render flicker
 		const [workflowVersion, workflow] = await Promise.all([
 			workflowHistoryStore.getWorkflowVersion(workflowId.value, versionId.value),
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 		]);
 
 		// Single atomic update - prevents double render of workflow preview

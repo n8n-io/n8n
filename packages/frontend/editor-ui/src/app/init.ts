@@ -3,7 +3,9 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
 	registerModuleModals,
@@ -45,7 +47,6 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const versionsStore = useVersionsStore();
 	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
@@ -80,8 +81,6 @@ export async function initializeCore() {
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 		},
 	});
-
-	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
@@ -163,9 +162,7 @@ export async function initializeAuthenticatedFeatures(
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
-							bannersStore.pushBannerToStack('TRIAL');
-						}
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
@@ -196,6 +193,7 @@ export async function initializeAuthenticatedFeatures(
 
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
 	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
+		versionsStore.initialize(settingsStore.settings.versionNotifications);
 		void versionsStore.checkForNewVersions();
 	}
 
@@ -211,6 +209,13 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+
+	// Initialize run data worker and load node types
+	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+		const coordinator = await import('@/app/workers');
+		await coordinator.initialize({ version: settingsStore.settings.versionCli });
+		await coordinator.loadNodeTypes(rootStore.baseUrl);
+	}
 
 	authenticatedFeaturesInitialized = true;
 }

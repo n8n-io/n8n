@@ -21,7 +21,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
@@ -36,6 +35,7 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
+import '@/controllers/dynamic-templates.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -111,12 +111,6 @@ export class Server extends AbstractServer {
 	private async registerAdditionalControllers() {
 		if (!inProduction && this.instanceSettings.isMultiMain) {
 			await import('@/controllers/debug.controller');
-		}
-
-		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-			await import('@/ldap.ee/ldap.controller.ee');
-			await Container.get(LdapService).init();
 		}
 
 		if (inE2ETests) {
@@ -288,7 +282,11 @@ export class Server extends AbstractServer {
 
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
-		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		const protectedTypeFiles = [
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+		];
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,

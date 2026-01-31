@@ -15,8 +15,6 @@ For recurring tasks, use Schedule Trigger node with clear naming (e.g., "Daily 0
 
 Prevent overlapping executions by ensuring worst-case execution time < schedule interval. For frequent schedules, implement mutex/lock mechanisms using external systems if needed.
 
-CRITICAL: Always save and activate workflows with Schedule Trigger nodes - scheduled workflows only run in active mode. Manual execution works during development but activation is required for automatic runs.
-
 ## Scheduling Patterns
 
 ### Recurring Schedules

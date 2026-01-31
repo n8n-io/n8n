@@ -68,14 +68,6 @@ describe('GlobalConfig', () => {
 				maxQueryExecutionTime: 0,
 				options: 'error',
 			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
-				poolSize: 10,
-			},
 			postgresdb: {
 				database: 'n8n',
 				host: 'localhost',
@@ -84,6 +76,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,7 +86,6 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -169,6 +162,7 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
+			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -186,6 +180,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -254,6 +249,10 @@ describe('GlobalConfig', () => {
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
 					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -284,6 +283,8 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
 		},
 		logging: {
 			level: 'info',
@@ -414,10 +415,11 @@ describe('GlobalConfig', () => {
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
 			batchSize: 100,
-			compactingMinimumAgeHours: 3,
-			compactingTimeWindowHours: 2,
-			compactOnStartUp: false,
-			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
+			optimizingMinimumAgeHours: 0.25,
+			optimizingTimeWindowHours: 2,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 		},
 	};
 
@@ -451,7 +453,6 @@ describe('GlobalConfig', () => {
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
@@ -509,6 +510,24 @@ describe('GlobalConfig', () => {
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
+	});
+
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
 	});
 
 	it('should handle invalid numbers', () => {
