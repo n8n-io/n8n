@@ -16,16 +16,23 @@ interface ChatNodeMessageWithButtons {
 	}>;
 }
 
+/**
+ * Constructs the WebSocket URL for chat connections.
+ * Token is optional for backward compatibility with older n8n versions
+ * that don't return a token in the initial webhook response.
+ */
 export function constructChatWebsocketUrl(
 	url: string,
 	executionId: string,
 	sessionId: string,
 	isPublic: boolean,
+	token?: string,
 ) {
 	const baseUrl = new URL(url).origin;
 	const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
 	const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
-	return `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}${isPublic ? '&isPublic=true' : ''}`;
+	const tokenParam = token ? `&token=${token}` : '';
+	return `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}${tokenParam}${isPublic ? '&isPublic=true' : ''}`;
 }
 
 export function parseBotChatMessageContent(message: string): ChatMessage {

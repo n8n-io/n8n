@@ -18,4 +18,5 @@ export interface SendMessageResponse {
 	message?: string;
 	executionId?: string;
 	executionStarted?: boolean;
+	token?: string;
 }

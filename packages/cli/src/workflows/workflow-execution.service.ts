@@ -25,6 +25,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { ChatTokenService } from '@/chat/chat-token.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -50,6 +51,7 @@ export class WorkflowExecutionService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly chatTokenService: ChatTokenService,
 	) {}
 
 	async runWorkflow(
@@ -103,7 +105,7 @@ export class WorkflowExecutionService {
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
-	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+	): Promise<{ executionId: string; token: string } | { waitingForWebhook: boolean }> {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
 
@@ -243,7 +245,9 @@ export class WorkflowExecutionService {
 			}
 
 			const executionId = await this.workflowRunner.run(data);
-			return { executionId };
+
+			const token = this.chatTokenService.generateToken(executionId);
+			return { executionId, token };
 		}
 
 		throw new UnexpectedError('`executeManually` was called with an unexpected payload', {

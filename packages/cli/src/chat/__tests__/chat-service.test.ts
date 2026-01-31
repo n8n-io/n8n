@@ -7,13 +7,17 @@ import { WebSocket } from 'ws';
 import type { ChatExecutionManager } from '../chat-execution-manager';
 import { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
+import type { ChatTokenService } from '../chat-token.service';
 
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;
+	let mockChatTokenService: ReturnType<typeof mock<ChatTokenService>>;
 	let mockLogger: ReturnType<typeof mock<Logger>>;
 	let mockErrorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let chatService: ChatService;
 	let mockWs: ReturnType<typeof mock<WebSocket>>;
+
+	const validToken = 'valid-token-123';
 
 	beforeAll(() => {
 		jest.useFakeTimers();
@@ -25,10 +29,18 @@ describe('ChatService', () => {
 
 	beforeEach(() => {
 		mockExecutionManager = mock<ChatExecutionManager>();
+		mockChatTokenService = mock<ChatTokenService>();
 		mockLogger = mock<Logger>();
 		mockErrorReporter = mock<ErrorReporter>();
-		chatService = new ChatService(mockExecutionManager, mockLogger, mockErrorReporter);
+		chatService = new ChatService(
+			mockExecutionManager,
+			mockChatTokenService,
+			mockLogger,
+			mockErrorReporter,
+		);
 		mockWs = mock<WebSocket>();
+
+		mockChatTokenService.validateToken.mockReturnValue(true);
 	});
 
 	it('should handle missing execution gracefully', async () => {
@@ -37,18 +49,17 @@ describe('ChatService', () => {
 			query: {
 				sessionId: '123',
 				executionId: '42',
+				token: validToken,
 				isPublic: false,
 			},
 		} as unknown as ChatRequest;
 
-		mockExecutionManager.findExecution.mockResolvedValue(undefined);
+		mockExecutionManager.checkIfExecutionExists.mockResolvedValue(undefined);
 
-		try {
-			await chatService.startSession(req);
-		} catch (error) {
-			expect(error).toBeDefined();
-			expect(mockWs.send).toHaveBeenCalledWith('Execution with id "42" does not exist');
-		}
+		await chatService.startSession(req);
+
+		expect(mockWs.send).toHaveBeenCalledWith('Execution with id "42" does not exist');
+		expect(mockWs.close).toHaveBeenCalledWith(1008);
 	});
 
 	it('should handle missing WebSocket connection gracefully', async () => {
@@ -57,11 +68,49 @@ describe('ChatService', () => {
 			query: {
 				sessionId: 'abc',
 				executionId: '123',
+				token: validToken,
 				isPublic: false,
 			},
 		} as unknown as ChatRequest;
 
 		await expect(chatService.startSession(req)).rejects.toThrow('WebSocket connection is missing');
+	});
+
+	it('should reject connection with invalid token', async () => {
+		mockChatTokenService.validateToken.mockReturnValue(false);
+
+		const req = {
+			ws: mockWs,
+			query: {
+				sessionId: 'abc',
+				executionId: '123',
+				token: 'invalid-token',
+				isPublic: false,
+			},
+		} as unknown as ChatRequest;
+
+		await chatService.startSession(req);
+
+		expect(mockWs.send).toHaveBeenCalledWith('Invalid or missing token');
+		expect(mockWs.close).toHaveBeenCalledWith(1008);
+		expect(mockLogger.warn).toHaveBeenCalled();
+	});
+
+	it('should reject connection with missing token', async () => {
+		const req = {
+			ws: mockWs,
+			query: {
+				sessionId: 'abc',
+				executionId: '123',
+				token: '',
+				isPublic: false,
+			},
+		} as unknown as ChatRequest;
+
+		await chatService.startSession(req);
+
+		expect(mockWs.send).toHaveBeenCalledWith('Invalid or missing token');
+		expect(mockWs.close).toHaveBeenCalledWith(1008);
 	});
 
 	describe('startSession', () => {
@@ -75,6 +124,7 @@ describe('ChatService', () => {
 				query: {
 					sessionId: 'abc',
 					executionId: '123',
+					token: validToken,
 					isPublic: true,
 				},
 			} as unknown as ChatRequest;
@@ -100,6 +150,7 @@ describe('ChatService', () => {
 				query: {
 					sessionId: 'abc',
 					executionId: '123',
+					token: validToken,
 					isPublic: false,
 				},
 			} as unknown as ChatRequest;

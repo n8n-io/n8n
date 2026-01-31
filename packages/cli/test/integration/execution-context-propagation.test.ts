@@ -424,7 +424,7 @@ describe('Execution Context Propagation Integration Tests', () => {
 
 function hasExecutionId(
 	data: Awaited<ReturnType<WorkflowExecutionService['executeManually']>>,
-): asserts data is { executionId: string } {
+): asserts data is { executionId: string; token: string } {
 	if ('executionId' in data) {
 		return;
 	}
