@@ -129,6 +129,31 @@ jobs:
           fetch-depth: 1
           ref: ${{ inputs.branch || github.ref }}
 
+      - name: Setup RAM disk and warm Docker
+        if: ${{ !contains(inputs.test-command, 'test:local') }}
+        run: |
+          # Setup 3GB RAM disk for faster container I/O
+          sudo mkdir -p /mnt/ramdisk
+          sudo mount -t tmpfs -o size=3G tmpfs /mnt/ramdisk &
+
+          # Warm Docker daemon in parallel (images cached by Blacksmith)
+          docker run --rm alpine:latest true &
+          docker run --rm postgres:18-alpine true &
+          docker run --rm redis:alpine true &
+
+          # Warm network subsystem
+          docker network create "warmup-$$" &
+
+          wait
+          docker network rm "warmup-$$" 2>/dev/null || true
+
+          # Set temp directories to use RAM disk
+          {
+            echo "TMPDIR=/mnt/ramdisk"
+            echo "TEMP=/mnt/ramdisk"
+            echo "TMP=/mnt/ramdisk"
+          } >> "$GITHUB_ENV"
+
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
         with:
