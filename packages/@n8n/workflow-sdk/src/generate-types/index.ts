@@ -77,3 +77,11 @@ export {
 
 // Zod helpers (for use in generated files)
 export * from './zod-helpers';
+
+// Output schema generation (for pin data)
+export {
+	type OutputSchemaEntry,
+	groupSchemasByDiscriminators,
+	generateOutputSchemaContent,
+	generateOutputSchemaJson,
+} from './generate-output-schemas';
