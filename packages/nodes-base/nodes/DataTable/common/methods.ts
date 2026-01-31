@@ -27,10 +27,11 @@ export async function tableSearch(
 	});
 
 	const results = result.data.map((row) => {
+		const projectId = proxy.getProjectId();
 		return {
 			name: row.name,
 			value: row.id,
-			url: `/projects/${proxy.getProjectId()}/datatables/${row.id}`,
+			url: projectId ? `/projects/${projectId}/datatables/${row.id}` : `/datatables/${row.id}`,
 		};
 	});
 
