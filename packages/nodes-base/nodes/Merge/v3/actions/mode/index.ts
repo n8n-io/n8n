@@ -21,7 +21,7 @@ export const description: INodeProperties[] = [
 				value: 'append',
 				description: 'Output items of each input, one after the other',
 				builderHint:
-					'Do you need to collect items from multiple sources into a single list without modifying them? Use Append to concatenate items sequentially. Does NOT wait for all inputs. Supports any number of inputs.',
+					'Do you need to collect items from multiple sources into a single list without modifying them? Use Append to concatenate items sequentially. Waits for all connected inputs. Supports any number of inputs.',
 			},
 			{
 				name: 'Combine',
