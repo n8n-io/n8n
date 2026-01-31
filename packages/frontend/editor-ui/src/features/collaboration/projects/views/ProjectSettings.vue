@@ -535,7 +535,7 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 
-	await userRoleProvisioningStore.getProvisioningConfig();
+	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
 });
 </script>
 
@@ -668,7 +668,6 @@ onMounted(async () => {
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"
-						@show-upgrade-dialog="upgradeDialogVisible = true"
 					/>
 				</div>
 			</fieldset>
