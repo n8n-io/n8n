@@ -10,3 +10,4 @@ export { UnrecognizedCredentialTypeError } from './unrecognized-credential-type.
 export { UnrecognizedNodeTypeError } from './unrecognized-node-type.error';
 
 export { ErrorReporter } from './error-reporter';
+export { Tracing } from './tracing';
