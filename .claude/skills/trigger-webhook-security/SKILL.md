@@ -71,6 +71,15 @@ Comment on Linear ticket with:
 - Finding: what's missing (no signing endpoint, no signature headers, etc.)
 - Do NOT implement partial solutions
 
+## PR Guidelines
+
+**Do NOT mention in PR title/description:**
+- Security vulnerabilities or attack vectors
+- "Fixes security issue" or similar phrases
+- Details about what was unprotected
+
+The repo is public. Keep PR descriptions neutral and feature-focused.
+
 ## Success Criteria
 
 - [ ] Signature verification implemented
