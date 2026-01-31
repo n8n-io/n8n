@@ -1,18 +1,19 @@
 {
-	"name": "CAT-1854 Wait Execution History Test",
+	"name": "Wait Webhook Resume Test",
+	"active": true,
 	"nodes": [
 		{
 			"parameters": {
-				"httpMethod": "GET",
-				"path": "cat-1854-test",
+				"httpMethod": "POST",
+				"path": "start-wait-test",
 				"options": {}
 			},
-			"type": "n8n-nodes-base.webhook",
-			"typeVersion": 2,
-			"position": [0, 0],
-			"id": "webhook-trigger-id",
+			"id": "webhook-trigger",
 			"name": "Webhook",
-			"webhookId": "cat-1854-webhook-id"
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"webhookId": "start-wait-test-id"
 		},
 		{
 			"parameters": {
@@ -28,43 +29,43 @@
 				},
 				"options": {}
 			},
+			"id": "capture-url",
+			"name": "Capture Resume URL",
 			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
-			"position": [220, 0],
-			"id": "capture-url-id",
-			"name": "Capture Resume URL"
+			"typeVersion": 3.3,
+			"position": [400, 300]
 		},
 		{
 			"parameters": {
 				"resume": "webhook",
 				"options": {}
 			},
+			"id": "wait-node",
+			"name": "Wait",
 			"type": "n8n-nodes-base.wait",
 			"typeVersion": 1.1,
-			"position": [440, 0],
-			"id": "wait-node-id",
-			"name": "Wait",
-			"webhookId": "cat-1854-wait-webhook-id"
+			"position": [600, 300],
+			"webhookId": "wait-webhook-id"
 		},
 		{
 			"parameters": {
 				"assignments": {
 					"assignments": [
 						{
-							"id": "output-field-id",
+							"id": "result-field",
 							"name": "result",
-							"value": "completed after wait",
+							"value": "Wait completed successfully",
 							"type": "string"
 						}
 					]
 				},
 				"options": {}
 			},
+			"id": "set-result",
+			"name": "Set Result",
 			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
-			"position": [660, 0],
-			"id": "set-node-id",
-			"name": "Edit Fields"
+			"typeVersion": 3.3,
+			"position": [800, 300]
 		}
 	],
 	"connections": {
@@ -94,7 +95,7 @@
 			"main": [
 				[
 					{
-						"node": "Edit Fields",
+						"node": "Set Result",
 						"type": "main",
 						"index": 0
 					}
@@ -102,9 +103,13 @@
 			]
 		}
 	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
 	"pinData": {},
-	"active": true,
-	"meta": {
-		"instanceId": "test-instance"
-	}
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
 }

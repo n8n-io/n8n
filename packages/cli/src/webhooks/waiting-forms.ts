@@ -74,7 +74,8 @@ export class WaitingForms extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
+		const { path: executionId } = req.params;
+		let { suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -84,6 +85,23 @@ export class WaitingForms extends WaitingWebhooks {
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		// Validate signature for forms if required (backwards compat: skip for old executions)
+		if (execution?.data.validateSignature) {
+			// Only strip n8n-execution-status suffix since it's added client-side for polling.
+			// Other suffixes like nodeId (for send-and-wait) are part of the signed URL.
+			const suffixToStrip = suffix === WAITING_FORMS_EXECUTION_STATUS ? suffix : undefined;
+			const { valid, webhookPath } = this.validateSignature(req, suffixToStrip);
+			if (!valid) {
+				res.status(401).render('form-invalid-token');
+				return { noWebhookResponse: true };
+			}
+
+			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
+			if (!suffix && webhookPath) {
+				suffix = webhookPath;
+			}
+		}
 
 		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
 			let status: string = execution?.status ?? 'null';

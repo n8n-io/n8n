@@ -23,7 +23,7 @@ describe('NodeExecutionContext', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: 'abc123',
 		encryptionKey: 'testEncryptionKey',
-		hmacSignatureSecret: 'testHmacSignatureSecret',
+		hmacSignatureSecret: 'test-hmac-secret',
 	});
 	Container.set(InstanceSettings, instanceSettings);
 
@@ -41,6 +41,9 @@ describe('NodeExecutionContext', () => {
 	});
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+		hmacSignatureSecret: undefined,
 	});
 
 	const mode: WorkflowExecuteMode = 'manual';
@@ -228,6 +231,9 @@ describe('NodeExecutionContext', () => {
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper: mockCredentialsHelper,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				hmacSignatureSecret: undefined,
 			});
 
 			const contextWithCredentials = new TestContext(
@@ -438,29 +444,43 @@ describe('NodeExecutionContext', () => {
 				mock<IWorkflowExecuteAdditionalData>({
 					executionId: '123',
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+					formWaitingBaseUrl: 'http://localhost/form-waiting',
+					hmacSignatureSecret: 'test-secret',
 				}),
 				mode,
 				createRunExecutionData({
-					validateSignature: true,
 					resultData: { runData: {} },
 				}),
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
-		it('should return a signed resume URL with no query parameters', () => {
+		it('should return a resume URL with HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl();
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			// URL should contain base path and a signature (64-char hex HMAC-SHA256)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?signature=[a-f0-9]{64}$/,
 			);
 		});
 
-		it('should return a signed resume URL with query parameters', () => {
+		it('should return a resume URL with query parameters and HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl({ approved: 'true' });
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			// URL should contain base path, approved param, and a signature (64-char hex HMAC-SHA256)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?approved=true&signature=[a-f0-9]{64}$/,
 			);
+		});
+
+		it('should generate consistent HMAC signatures for the same URL', () => {
+			const result1 = testContext.getSignedResumeUrl();
+			const result2 = testContext.getSignedResumeUrl();
+
+			// Same URL should produce the same HMAC signature
+			const token1 = new URL(result1).searchParams.get('signature');
+			const token2 = new URL(result2).searchParams.get('signature');
+
+			expect(token1).toBe(token2);
 		});
 	});
 

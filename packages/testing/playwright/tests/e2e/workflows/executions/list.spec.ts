@@ -1,3 +1,5 @@
+import flatted from 'flatted';
+
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 import { retryUntil } from '../../../../utils/retry-utils';
@@ -288,7 +290,16 @@ test.describe('Workflow Executions', () => {
 
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			const resumeResponse = await api.request.get(`/webhook-waiting/${execution.id}`);
+			// Get the signed resumeUrl from execution data
+			const fullExecution = await api.workflows.getExecution(execution.id);
+			const executionData = flatted.parse(fullExecution.data);
+			const captureNodeOutput = executionData.resultData.runData['Capture Resume URL'];
+			const resumeUrl = captureNodeOutput[0].data.main[0][0].json.resumeUrl;
+			expect(resumeUrl).toContain('signature=');
+
+			const urlObj = new URL(resumeUrl);
+			const signedPath = `${urlObj.pathname}${urlObj.search}`;
+			const resumeResponse = await api.request.get(signedPath);
 			expect(resumeResponse.ok()).toBe(true);
 
 			await api.workflows.waitForExecution(workflowId, 15000);
