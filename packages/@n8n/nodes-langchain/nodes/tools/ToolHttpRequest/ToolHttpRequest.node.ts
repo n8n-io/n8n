@@ -108,6 +108,26 @@ export class ToolHttpRequest implements INodeType {
 						name: 'PUT',
 						value: 'PUT',
 					},
+					{
+						name: 'PROPFIND',
+						value: 'PROPFIND',
+					},
+					{
+						name: 'MKCOL',
+						value: 'MKCOL',
+					},
+					{
+						name: 'MOVE',
+						value: 'MOVE',
+					},
+					{
+						name: 'COPY',
+						value: 'COPY',
+					},
+					{
+						name: 'REPORT',
+						value: 'REPORT',
+					},
 				],
 				default: 'GET',
 			},
