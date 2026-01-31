@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type {
 	DeclarativeRestApiSettings,
+	NodeParameterValueType,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -54,7 +55,7 @@ const getExecuteSingleFunctions = (
 ) =>
 	mock<executionContexts.ExecuteSingleContext>({
 		getItemIndex: () => itemIndex,
-		getNodeParameter: (parameterName: string) =>
+		getNodeParameter: <T = NodeParameterValueType | object>(parameterName: string) =>
 			workflow.expression.getParameterValue(
 				get(node.parameters, parameterName),
 				runExecutionData,
@@ -64,7 +65,7 @@ const getExecuteSingleFunctions = (
 				[],
 				'internal',
 				{},
-			),
+			) as T,
 		getWorkflow: () => ({
 			id: workflow.id,
 			name: workflow.name,
