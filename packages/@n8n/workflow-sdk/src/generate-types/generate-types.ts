@@ -729,6 +729,16 @@ function quotePropertyName(name: string): string {
 }
 
 /**
+ * Determine if a property should be optional in the generated type.
+ * A property is optional if it's not required OR if it has a default value.
+ * Properties with defaults can be omitted - the default will be used at runtime.
+ */
+function isPropertyOptional(prop: NodeProperty): boolean {
+	const hasDefault = 'default' in prop && prop.default !== undefined;
+	return !prop.required || hasDefault;
+}
+
+/**
  * Generate a compact JSDoc comment for a nested property (used in fixedCollections)
  * Returns a multi-line JSDoc that can be placed before property definitions
  */
@@ -1388,7 +1398,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		// Merge duplicate collection properties (e.g., multiple 'options' collections with different displayOptions)
 		const mergedProps = mergeCollectionProperties(node.properties);
 		for (const prop of mergedProps) {
-			const propLine = generatePropertyLine(prop, !prop.required);
+			const propLine = generatePropertyLine(prop, isPropertyOptional(prop));
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -1446,7 +1456,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 			}
 			seenNames.add(prop.name);
 			// Pass combo as discriminator context to filter redundant displayOptions
-			const propLine = generatePropertyLine(prop, !prop.required, combo);
+			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -2122,7 +2132,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 		if (seenNames.has(prop.name)) continue;
 		seenNames.add(prop.name);
 		// Pass combo as discriminator context to filter redundant displayOptions
-		const propLine = generatePropertyLine(prop, !prop.required, combo);
+		const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 		if (propLine) {
 			lines.push(propLine);
 		}
@@ -2932,7 +2942,7 @@ function generateDiscriminatedUnionForEntry(
 		// Merge duplicate collection properties (e.g., multiple 'options' collections with different displayOptions)
 		const mergedProps = mergeCollectionProperties(node.properties);
 		for (const prop of mergedProps) {
-			const propLine = generatePropertyLine(prop, !prop.required);
+			const propLine = generatePropertyLine(prop, isPropertyOptional(prop));
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -3015,7 +3025,7 @@ function generateDiscriminatedUnionForEntry(
 			}
 			seenNames.add(prop.name);
 			// Pass combo as discriminator context to filter redundant displayOptions
-			const propLine = generatePropertyLine(prop, !prop.required, combo);
+			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -3618,6 +3628,100 @@ export async function loadNodeTypes(
 	return nodes;
 }
 
+/**
+ * Convert a node to its tool variant.
+ * Mirrors the logic from cli/src/load-nodes-and-credentials.ts convertNodeToAiTool()
+ *
+ * Tool variants:
+ * - Have name ending with 'Tool'
+ * - Have displayName ending with ' Tool'
+ * - Have outputs set to ai_tool
+ * - Have toolDescription property added (with required: true and default from node description)
+ *
+ * @param node The base node to convert
+ * @returns The tool variant node, or null if node is not usable as tool
+ */
+function convertNodeToToolVariant(node: NodeTypeDescription): NodeTypeDescription | null {
+	if (!node.usableAsTool) {
+		return null;
+	}
+
+	// Deep copy to avoid mutating original
+	const toolNode: NodeTypeDescription = JSON.parse(JSON.stringify(node));
+
+	// Update name and displayName
+	toolNode.name = toolNode.name + 'Tool';
+	toolNode.displayName = toolNode.displayName + ' Tool';
+
+	// Set outputs to ai_tool
+	toolNode.outputs = [{ type: 'ai_tool', displayName: 'Tool' }];
+
+	// Clear inputs (tools don't have main input)
+	toolNode.inputs = [];
+
+	// Remove usableAsTool flag
+	delete toolNode.usableAsTool;
+
+	// Add toolDescription property if not already present
+	const hasToolDescription = toolNode.properties.some((p) => p.name === 'toolDescription');
+	if (!hasToolDescription) {
+		const hasResource = toolNode.properties.some((p) => p.name === 'resource');
+		const hasOperation = toolNode.properties.some((p) => p.name === 'operation');
+
+		// Create toolDescription property
+		const toolDescriptionProp: NodeProperty = {
+			displayName: 'Description',
+			name: 'toolDescription',
+			type: 'string',
+			default: toolNode.description ?? '',
+			required: true,
+			description:
+				'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+		};
+
+		// If node has resource/operation, add descriptionType selector and displayOptions
+		if (hasResource || hasOperation) {
+			const descriptionTypeProp: NodeProperty = {
+				displayName: 'Tool Description',
+				name: 'descriptionType',
+				type: 'options',
+				options: [
+					{
+						name: 'Set Automatically',
+						value: 'auto',
+						description: 'Automatically set based on resource and operation',
+					},
+					{
+						name: 'Set Manually',
+						value: 'manual',
+						description: 'Manually set the description',
+					},
+				],
+				default: 'auto',
+			};
+
+			// Add displayOptions to toolDescription
+			toolDescriptionProp.displayOptions = {
+				show: {
+					descriptionType: ['manual'],
+				},
+			};
+
+			// Insert at beginning of properties (after any notice/callout)
+			const firstNonNoticeIdx = toolNode.properties.findIndex((p) => p.type !== 'notice');
+			const insertIdx = firstNonNoticeIdx >= 0 ? firstNonNoticeIdx : 0;
+			toolNode.properties.splice(insertIdx, 0, descriptionTypeProp, toolDescriptionProp);
+		} else {
+			// Insert toolDescription at beginning
+			const firstNonNoticeIdx = toolNode.properties.findIndex((p) => p.type !== 'notice');
+			const insertIdx = firstNonNoticeIdx >= 0 ? firstNonNoticeIdx : 0;
+			toolNode.properties.splice(insertIdx, 0, toolDescriptionProp);
+		}
+	}
+
+	return toolNode;
+}
+
 // =============================================================================
 // Main Entry Point
 // =============================================================================
@@ -3772,7 +3876,9 @@ export async function generateTypes(): Promise<void> {
 		console.log(`  Found ${nodesBase.length} node entries in nodes-base`);
 
 		// Group nodes by their base name (for nodes with multiple version entries)
+		// Also create Tool variants for nodes with usableAsTool: true
 		const nodesByName = new Map<string, NodeTypeDescription[]>();
+		let toolVariantCount = 0;
 		for (const node of nodesBase) {
 			if (node.hidden) continue;
 			const fileName = nodeNameToFileName(node.name);
@@ -3780,8 +3886,21 @@ export async function generateTypes(): Promise<void> {
 				nodesByName.set(fileName, []);
 			}
 			nodesByName.get(fileName)!.push(node);
+
+			// Create Tool variant if node is usable as tool
+			const toolVariant = convertNodeToToolVariant(node);
+			if (toolVariant) {
+				const toolFileName = nodeNameToFileName(toolVariant.name);
+				if (!nodesByName.has(toolFileName)) {
+					nodesByName.set(toolFileName, []);
+				}
+				nodesByName.get(toolFileName)!.push(toolVariant);
+				toolVariantCount++;
+			}
 		}
-		console.log(`  Grouped into ${nodesByName.size} unique nodes`);
+		console.log(
+			`  Grouped into ${nodesByName.size} unique nodes (${toolVariantCount} tool variants)`,
+		);
 
 		// Generate version-specific files
 		const baseNodes = await generateVersionSpecificFiles(
@@ -3801,7 +3920,9 @@ export async function generateTypes(): Promise<void> {
 		console.log(`  Found ${nodesLangchain.length} node entries in nodes-langchain`);
 
 		// Group nodes by their base name (for nodes with multiple version entries)
+		// Also create Tool variants for nodes with usableAsTool: true
 		const nodesByName = new Map<string, NodeTypeDescription[]>();
+		let toolVariantCount = 0;
 		for (const node of nodesLangchain) {
 			if (node.hidden) continue;
 			const fileName = nodeNameToFileName(node.name);
@@ -3809,8 +3930,21 @@ export async function generateTypes(): Promise<void> {
 				nodesByName.set(fileName, []);
 			}
 			nodesByName.get(fileName)!.push(node);
+
+			// Create Tool variant if node is usable as tool
+			const toolVariant = convertNodeToToolVariant(node);
+			if (toolVariant) {
+				const toolFileName = nodeNameToFileName(toolVariant.name);
+				if (!nodesByName.has(toolFileName)) {
+					nodesByName.set(toolFileName, []);
+				}
+				nodesByName.get(toolFileName)!.push(toolVariant);
+				toolVariantCount++;
+			}
 		}
-		console.log(`  Grouped into ${nodesByName.size} unique nodes`);
+		console.log(
+			`  Grouped into ${nodesByName.size} unique nodes (${toolVariantCount} tool variants)`,
+		);
 
 		// Generate version-specific files
 		const langchainNodes = await generateVersionSpecificFiles(

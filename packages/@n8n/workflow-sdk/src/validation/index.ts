@@ -247,6 +247,24 @@ function hasAiConnectionToParent(nodeName: string, json: WorkflowJSON): boolean 
 }
 
 /**
+ * Check if a node is used as a tool (connected via ai_tool connection type)
+ */
+function isToolSubnode(nodeName: string, json: WorkflowJSON): boolean {
+	const nodeConnections = json.connections[nodeName];
+	if (!nodeConnections) return false;
+
+	const toolConns = nodeConnections.ai_tool as unknown as Array<Array<{ node: string }>>;
+	if (toolConns && Array.isArray(toolConns)) {
+		for (const outputs of toolConns) {
+			if (outputs && outputs.length > 0) {
+				return true; // Connected as a tool
+			}
+		}
+	}
+	return false;
+}
+
+/**
  * Find disconnected nodes (nodes that don't receive input from any other node)
  */
 function findDisconnectedNodes(json: WorkflowJSON): string[] {
@@ -397,7 +415,11 @@ export function validateWorkflow(
 				}
 			}
 
-			const schemaResult = validateNodeConfig(node.type, version, config);
+			// Determine if this node is being used as a tool (for @tool displayOptions)
+			// A node is a tool if it's connected via ai_tool connection type
+			const isToolNode = node.name ? isToolSubnode(node.name, json) : false;
+
+			const schemaResult = validateNodeConfig(node.type, version, config, { isToolNode });
 
 			if (!schemaResult.valid) {
 				for (const error of schemaResult.errors) {

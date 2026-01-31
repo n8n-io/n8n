@@ -7,10 +7,11 @@
  * - _cnd operators (eq, not, gte, lte, gt, lt, between, includes, startsWith, endsWith, regex, exists)
  * - Root paths (/ prefix)
  * - @version meta-property
+ * - @tool meta-property (via isToolNode context)
  * - Resource locator unwrapping (__rl)
  * - Expression handling (values starting with =)
  *
- * Note: @tool and @feature meta-properties are not supported as they require
+ * Note: @feature meta-property is not supported as it requires
  * nodeTypeDescription context which is not available in this SDK context.
  */
 
@@ -65,6 +66,8 @@ export type DisplayOptionsContext = {
 	rootParameters?: Record<string, unknown>;
 	/** Default values for properties (used when property is not set in parameters) */
 	defaults?: Record<string, unknown>;
+	/** Whether this node is a tool (for @tool meta-property) */
+	isToolNode?: boolean;
 };
 
 // =============================================================================
@@ -234,6 +237,8 @@ export function getPropertyValue(context: DisplayOptionsContext, propertyName: s
 		}
 	} else if (propertyName === '@version') {
 		value = context.nodeVersion ?? 0;
+	} else if (propertyName === '@tool') {
+		value = context.isToolNode ?? false;
 	} else {
 		// Get the value from current level parameters
 		value = get(context.parameters, propertyName);
