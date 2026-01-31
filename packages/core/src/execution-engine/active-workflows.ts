@@ -235,7 +235,7 @@ export class ActiveWorkflows {
 
 	/**
 	 * Creates a function that executes the poll function for a given workflow
-	 * and node and triggers a workflow executon based on the output.
+	 * and node and triggers a workflow execution based on the output.
 	 */
 	private createPollExecuteFn(
 		workflow: Workflow,
@@ -246,14 +246,14 @@ export class ActiveWorkflows {
 			return await Tracing.startSpan(
 				{
 					name: 'Workflow Trigger Poll',
-					op: 'workflow.trigger.poll',
+					op: 'trigger.poll',
 					attributes: {
-						workflowId: workflow.id,
-						workflowName: workflow.name,
-						nodeId: node.id,
-						nodeName: node.name,
-						nodeType: node.type,
-						nodeTypeVersion: node.typeVersion,
+						'n8n.workflow.id': workflow.id,
+						'n8n.workflow.name': workflow.name,
+						'n8n.node.id': node.id,
+						'n8n.node.name': node.name,
+						'n8n.node.type': node.type,
+						'n8n.node.type_version': node.typeVersion,
 					},
 				},
 				async () => {
