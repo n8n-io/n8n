@@ -183,13 +183,15 @@ afterEach(() => {
 	}
 });
 
-window.ResizeObserver =
-	window.ResizeObserver ||
-	vi.fn().mockImplementation(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		unobserve: vi.fn(),
-	}));
+if (!window.ResizeObserver) {
+	// Use function constructor instead of class to allow vi.spyOn to work
+	function MockResizeObserver(this: ResizeObserver, _cb: ResizeObserverCallback) {
+		this.disconnect = vi.fn();
+		this.observe = vi.fn();
+		this.unobserve = vi.fn();
+	}
+	window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+}
 
 Element.prototype.scrollIntoView = vi.fn();
 

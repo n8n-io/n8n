@@ -13,20 +13,24 @@ A versatile text input component for collecting user text, numbers, passwords, a
 **Props**
 
 - `modelValue?: string | number | null` - The bound value of the input (v-model). Default: `''`
-- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password'`. Default: `'text'`
+- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password' | 'number' | 'email'`. Default: `'text'`
 - `size?: InputSize` - Size of the input. Values: `'xlarge' | 'large' | 'medium' | 'small' | 'mini'`. Default: `'large'`
 - `placeholder?: string` - Placeholder text displayed when input is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the input. Default: `false`
+- `readonly?: boolean` - When `true`, the input is read-only and cannot be edited. Default: `false`
 - `clearable?: boolean` - When `true`, displays a clear button (×) when input has a value. Default: `false`
 - `rows?: number` - Number of rows for textarea type. Default: `2`
 - `maxlength?: number` - Maximum number of characters allowed.
 - `autosize?: boolean | { minRows?: number; maxRows?: number }` - Auto-resize textarea height based on content. When `true`, auto-sizes without limits. Object form specifies min/max row constraints. Only applies when `type="textarea"`. Default: `false`
 - `autofocus?: boolean` - When `true`, automatically focuses the input on mount. Default: `false`
-- `autocomplete?: 'on' | 'off'` - HTML autocomplete attribute. Default: `'off'`
+- `autocomplete?: InputAutocomplete` - HTML autocomplete attribute. Values: `'off' | 'on' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'one-time-code' | 'email'`. Default: `'off'`
+- `name?: string` - HTML name attribute for the input element.
 
 **Events**
 
-- `update:modelValue` - Emitted when input value changes. Payload: `[value: string | number | null]`
+- `update:modelValue` - Emitted when input value changes. Payload: `[value: string]`
+- `input` - Emitted when input value changes (for backwards compatibility). Payload: `[value: string]`
+- `focus` - Emitted when input gains focus. Payload: `[event: FocusEvent]`
 - `blur` - Emitted when input loses focus. Payload: `[event: FocusEvent]`
 - `keydown` - Emitted on keydown event. Payload: `[event: KeyboardEvent]`
 
@@ -34,6 +38,8 @@ A versatile text input component for collecting user text, numbers, passwords, a
 
 - `prefix` - Content inside input box, before the text (typically for search icons)
 - `suffix` - Content inside input box, after the text (typically for icons or indicators)
+- `prepend` - Content outside input box, before the input (typically for labels or grouped buttons)
+- `append` - Content outside input box, after the input (typically for units or grouped buttons)
 
 **Exposed Methods**
 

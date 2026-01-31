@@ -39,7 +39,10 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async fillField(key: string, value: string): Promise<void> {
-		const input = this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+		const parameterInput = this.root.getByTestId(`parameter-input-${key}`);
+		const input = parameterInput.locator('input, textarea');
+		// Wait for input to be visible before filling
+		await input.waitFor({ state: 'visible', timeout: 10000 });
 		await input.fill(value);
 		await expect(input).toHaveValue(value);
 	}

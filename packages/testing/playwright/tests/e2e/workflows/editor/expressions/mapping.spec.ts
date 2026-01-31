@@ -160,9 +160,10 @@ test.describe('Data Mapping', () => {
 		await expect(firstHeader).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
-		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'bottom');
+		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'center');
 
-		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible();
+		// Wait for expression editor to appear after drop
+		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible({ timeout: 15000 });
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{ $json.timestamp }}');
 
 		await n8n.page.keyboard.press('Escape');
@@ -331,11 +332,12 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
+		// Check border on input element (N8nInput has border on input, not container)
 		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
-		await expect(includeOtherFieldsInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
+		await expect(includeOtherFieldsInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
 		const valueInput = n8n.ndv.getParameterTextInput('value');
-		await expect(valueInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
+		await expect(valueInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
 		await n8n.page.mouse.up();
 	});
