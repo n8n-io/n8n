@@ -911,7 +911,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope ?? '').split(' '),
+    scopes: Array.isArray(credentials.scope) ? credentials.scope : (credentials.scope ?? '').split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
