@@ -5,12 +5,16 @@ import { jsonParse } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
 
-jest.mock('../GenericFunctions', () => ({
-	getQuery: jest.fn(),
-	salesforceApiRequest: jest.fn(),
-	salesforceApiRequestAllItems: jest.fn(),
-	sortOptions: jest.fn(),
-}));
+jest.mock('../GenericFunctions', () => {
+	const actual = jest.requireActual('../GenericFunctions');
+	return {
+		...actual,
+		getQuery: jest.fn(),
+		salesforceApiRequest: jest.fn(),
+		salesforceApiRequestAllItems: jest.fn(),
+		sortOptions: jest.fn(),
+	};
+});
 
 describe('Salesforce', () => {
 	let node: Salesforce;
@@ -326,6 +330,105 @@ describe('Salesforce', () => {
 					},
 				);
 				expect(result).toEqual([{ name: 'Custom Type', value: 'rt1' }]);
+			});
+
+			it('should properly escape special characters in resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account'; DROP TABLE RecordType--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toMatch(
+					/SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = /,
+				);
+
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle resource names with backslashes safely', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\\Test');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\\\');
+			});
+
+			it('should handle resource names with newlines and control characters', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\nTest\rValue');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\n');
+				expect(query).toContain('\\r');
+			});
+
+			it('should handle legitimate custom object names correctly', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockImplementation((param) => {
+					if (param === 'resource') return 'customObject';
+					if (param === 'customObject') return 'My_Custom_Object__c';
+					return '';
+				});
+
+				const mockTypes = [
+					{ Id: 'rt1', Name: 'Type 1', SobjectType: 'My_Custom_Object__c', IsActive: true },
+				];
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockTypes);
+
+				const result = await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('My_Custom_Object__c');
+				expect(result).toEqual([{ name: 'Type 1', value: 'rt1' }]);
+			});
+
+			it('should prevent UNION', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account' UNION SELECT Id, Name FROM User--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle empty and whitespace resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('  Account  ');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('  Account  ');
 			});
 		});
 

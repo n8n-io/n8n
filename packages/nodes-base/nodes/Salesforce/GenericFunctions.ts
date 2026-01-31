@@ -179,29 +179,229 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 	});
 }
 
-export function getValue(value: any) {
-	if (moment(value as string).isValid()) {
-		return value;
-	} else if (typeof value === 'string') {
-		return `'${value}'`;
-	} else {
-		return value;
-	}
+/**
+ * Escapes special characters in a string value for use in SOQL queries.
+ * SOQL requires escaping: single quotes, backslashes, and certain control characters.
+ * @see https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_quotedstringescapes.htm
+ */
+export function escapeSoqlString(value: string): string {
+	return value
+		.replace(/\\/g, '\\\\') // Escape backslashes first
+		.replace(/'/g, "\\'") // Escape single quotes
+		.replace(/"/g, '\\"') // Escape double quotes
+		.replace(/\n/g, '\\n') // Escape newlines
+		.replace(/\r/g, '\\r') // Escape carriage returns
+		.replace(/\t/g, '\\t') // Escape tabs
+		.replace(/\f/g, '\\f') // Escape form feeds
+		.replace(/[\b]/g, '\\b'); // Escape backspaces
 }
 
-export function getConditions(options: IDataObject) {
-	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
-	let data = undefined;
-	if (Array.isArray(conditions) && conditions.length !== 0) {
-		data = conditions.map(
-			(condition: IDataObject) =>
-				`${condition.field} ${
-					condition.operation === 'equal' ? '=' : condition.operation
-				} ${getValue(condition.value)}`,
-		);
-		data = `WHERE ${data.join(' AND ')}`;
+/**
+ * Validates that a field name is a valid Salesforce field identifier.
+ * Valid field names contain only alphanumeric characters, underscores, and can include
+ * relationship traversal dots for related object fields.
+ * @throws Error if the field name contains invalid characters
+ */
+export function validateSoqlFieldName(fieldName: string): string {
+	// Salesforce field names: alphanumeric, underscore, can have dots for relationships
+	// Examples: Name, Account__c, Account.Name, Custom_Field__c, Account__r, MyObject__Share
+	// Supports all Salesforce suffixes: __c, __r, __x, __e, __b, __mdt, __Share, __History, __Feed, etc.
+	const validFieldPattern =
+		/^[a-zA-Z][a-zA-Z0-9_]*(__[a-zA-Z]+)?(\.[a-zA-Z][a-zA-Z0-9_]*(__[a-zA-Z]+)?)*$/;
+
+	if (!validFieldPattern.test(fieldName)) {
+		throw new Error(`Invalid SOQL field name: ${fieldName}`);
 	}
-	return data;
+
+	return fieldName;
+}
+
+/**
+ * Validates and returns a valid SOQL comparison operator.
+ * @see https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_comparisonoperators.htm
+ * @throws Error if the operator is invalid
+ */
+export function validateSoqlOperator(operation: string): string {
+	// Normalize whitespace: trim and replace multiple spaces with single space
+	const normalized = operation.trim().replace(/\s+/g, ' ').toUpperCase();
+
+	const validOperators: Record<string, string> = {
+		EQUAL: '=',
+		'=': '=',
+		'!=': '!=',
+		'<>': '<>',
+		'<': '<',
+		'<=': '<=',
+		'>': '>',
+		'>=': '>=',
+		LIKE: 'LIKE',
+		'NOT LIKE': 'NOT LIKE',
+		IN: 'IN',
+		'NOT IN': 'NOT IN',
+		INCLUDES: 'INCLUDES',
+		EXCLUDES: 'EXCLUDES',
+	};
+
+	const validOperator = validOperators[normalized] || validOperators[operation];
+	if (!validOperator) {
+		throw new Error(`Invalid SOQL operator: ${operation}`);
+	}
+
+	return validOperator;
+}
+
+/**
+ * Validates that an SObject name is a valid Salesforce object identifier.
+ * Standard objects: Account, Contact, Lead, etc.
+ * Custom objects: MyObject__c, Namespace__MyObject__c
+ * External objects: MyObject__x
+ * Platform events: MyEvent__e
+ * Big objects: MyBigObject__b
+ * Custom metadata types: MyMetadata__mdt
+ * @throws Error if the object name contains invalid characters
+ */
+export function validateSoqlObjectName(objectName: string): string {
+	// Salesforce object names: alphanumeric, underscore
+	// Can end with: __c (custom), __x (external), __e (platform event), __b (big object),
+	// __mdt (custom metadata), __Share (sharing), __History (history), __Feed (feed), __ChangeEvent (change events)
+	// Can have namespace prefix like Namespace__ObjectName__c
+	// Standard objects: Account, Contact, Lead, etc.
+	const validObjectPattern =
+		/^[A-Za-z][A-Za-z0-9_]*(?:__[A-Za-z][A-Za-z0-9_]*)?(?:__(?:c|r|x|e|b|mdt|Share|History|Feed|ChangeEvent|Tag|kav))?$/;
+
+	if (!validObjectPattern.test(objectName)) {
+		throw new Error(`Invalid SOQL object name: ${objectName}`);
+	}
+
+	return objectName;
+}
+
+/**
+ * Salesforce date literals that should not be quoted
+ * @see https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm
+ */
+const SALESFORCE_DATE_LITERALS = new Set([
+	'YESTERDAY',
+	'TODAY',
+	'TOMORROW',
+	'LAST_WEEK',
+	'THIS_WEEK',
+	'NEXT_WEEK',
+	'LAST_MONTH',
+	'THIS_MONTH',
+	'NEXT_MONTH',
+	'LAST_90_DAYS',
+	'NEXT_90_DAYS',
+	'THIS_QUARTER',
+	'LAST_QUARTER',
+	'NEXT_QUARTER',
+	'THIS_YEAR',
+	'LAST_YEAR',
+	'NEXT_YEAR',
+	'THIS_FISCAL_QUARTER',
+	'LAST_FISCAL_QUARTER',
+	'NEXT_FISCAL_QUARTER',
+	'THIS_FISCAL_YEAR',
+	'LAST_FISCAL_YEAR',
+	'NEXT_FISCAL_YEAR',
+]);
+
+export function getValue(value: any): string | number | boolean {
+	if (value === null || value === undefined) {
+		return 'null';
+	}
+
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	if (typeof value === 'number') {
+		if (!Number.isFinite(value)) {
+			throw new Error('Invalid numeric value: must be a finite number');
+		}
+		return value;
+	}
+
+	// Handle arrays - convert to IN clause format with escaped values
+	if (Array.isArray(value)) {
+		const escapedValues = value.map((v) => {
+			if (typeof v === 'string') {
+				// Only escape strings, don't try to convert to numbers
+				return `'${escapeSoqlString(v)}'`;
+			}
+			if (typeof v === 'number' && Number.isFinite(v)) {
+				return v.toString();
+			}
+			if (typeof v === 'boolean') {
+				return v.toString();
+			}
+			throw new Error('Array values must be strings, numbers, or booleans');
+		});
+		return `(${escapedValues.join(',')})`;
+	}
+
+	if (typeof value === 'string') {
+		// Check for Salesforce date literals (e.g., TODAY, LAST_N_DAYS:7)
+		const upperValue = value.toUpperCase();
+		if (SALESFORCE_DATE_LITERALS.has(upperValue)) {
+			return upperValue;
+		}
+
+		// Check for LAST_N_DAYS, NEXT_N_DAYS, N_DAYS_AGO, etc. patterns
+		if (
+			/^(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS):\d+$/.test(
+				upperValue,
+			)
+		) {
+			return upperValue;
+		}
+
+		// Check for N_DAYS_AGO, N_WEEKS_AGO, etc. patterns
+		if (
+			/^N_(DAYS|WEEKS|MONTHS|QUARTERS|YEARS|FISCAL_QUARTERS|FISCAL_YEARS)_AGO:\d+$/.test(upperValue)
+		) {
+			return upperValue;
+		}
+
+		// Check for Salesforce datetime format: YYYY-MM-DDTHH:mm:ss(.SSS)?(Z|[+-]HH:mm)
+		if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?$/.test(value)) {
+			const luxonValue = DateTime.fromISO(value);
+			if (luxonValue.isValid) {
+				return value;
+			}
+		}
+
+		// Check for Salesforce date format: YYYY-MM-DD
+		if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+			const luxonValue = DateTime.fromISO(value);
+			if (luxonValue.isValid) {
+				return value;
+			}
+		}
+
+		// All other strings are escaped and quoted
+		return `'${escapeSoqlString(value)}'`;
+	}
+
+	throw new Error(`Unsupported value type: ${typeof value}`);
+}
+
+export function getConditions(options: IDataObject): string | undefined {
+	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
+
+	if (!Array.isArray(conditions) || conditions.length === 0) {
+		return undefined;
+	}
+
+	const conditionStrings = conditions.map((condition: IDataObject) => {
+		const field = validateSoqlFieldName(condition.field as string);
+		const operator = validateSoqlOperator(condition.operation as string);
+		const value = getValue(condition.value);
+
+		return `${field} ${operator} ${value}`;
+	});
+
+	return `WHERE ${conditionStrings.join(' AND ')}`;
 }
 
 export function getDefaultFields(sobject: string) {
@@ -220,23 +420,26 @@ export function getDefaultFields(sobject: string) {
 }
 
 export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
+	const validSobject = validateSoqlObjectName(sobject);
+
 	const fields: string[] = [];
 	if (options.fields) {
 		// options.fields is comma separated in standard Salesforce objects and array in custom Salesforce objects -- handle both cases
 		if (typeof options.fields === 'string') {
-			fields.push.apply(fields, options.fields.split(','));
+			const fieldList = options.fields.split(',').map((f) => f.trim());
+			fields.push(...fieldList.map((f) => validateSoqlFieldName(f)));
 		} else {
-			fields.push.apply(fields, options.fields as string[]);
+			fields.push(...(options.fields as string[]).map((f) => validateSoqlFieldName(f)));
 		}
 	} else {
-		fields.push.apply(fields, ((getDefaultFields(sobject) as string) || 'id').split(','));
+		fields.push(...((getDefaultFields(validSobject) as string) || 'id').split(','));
 	}
 	const conditions = getConditions(options);
 
-	let query = `SELECT ${fields.join(',')} FROM ${sobject} ${conditions ? conditions : ''}`;
+	let query = `SELECT ${fields.join(',')} FROM ${validSobject} ${conditions ? conditions : ''}`;
 
 	if (!returnAll) {
-		query = `SELECT ${fields.join(',')} FROM ${sobject} ${
+		query = `SELECT ${fields.join(',')} FROM ${validSobject} ${
 			conditions ? conditions : ''
 		} LIMIT ${limit}`;
 	}
