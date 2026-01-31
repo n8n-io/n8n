@@ -817,6 +817,20 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 // =============================================================================
 
 /**
+ * Options for generating pin data
+ */
+export interface GeneratePinDataOptions {
+	/** Filter by specific node names */
+	nodes?: string[];
+	/** Only generate for nodes without credentials */
+	hasNoCredentials?: boolean;
+	/** Only generate for nodes not in this workflow (new nodes) */
+	beforeWorkflow?: WorkflowJSON;
+	/** Seed for reproducible random generation */
+	seed?: number;
+}
+
+/**
  * Workflow builder for constructing workflows with a fluent API
  */
 export interface WorkflowBuilder {
@@ -884,6 +898,15 @@ export interface WorkflowBuilder {
 	toJSON(): WorkflowJSON;
 
 	toString(): string;
+
+	/**
+	 * Generate pin data from output schemas for nodes in the workflow.
+	 * Pin data allows running workflows without credentials by providing mock data.
+	 *
+	 * @param options - Options for filtering which nodes to generate pin data for
+	 * @returns The workflow builder for chaining
+	 */
+	generatePinData(options?: GeneratePinDataOptions): WorkflowBuilder;
 }
 
 /**

@@ -17,9 +17,12 @@ import type {
 	NodeChain,
 	CredentialReference,
 	NewCredentialValue,
+	GeneratePinDataOptions,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import { isInputTarget, isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
+import { generateFromSchema, type JsonSchema } from './pin-data-generator';
+import { loadOutputSchemas, matchSchema } from './output-schema-resolver';
 
 /**
  * Type guard to check if a MergeComposite uses the old named input syntax.
@@ -1613,6 +1616,74 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	toString(): string {
 		return JSON.stringify(this.toJSON(), null, 2);
+	}
+
+	generatePinData(options?: GeneratePinDataOptions): WorkflowBuilder {
+		const { nodes: filterNodes, hasNoCredentials, beforeWorkflow, seed } = options ?? {};
+
+		// Build set of existing node names from beforeWorkflow for quick lookup
+		const existingNodeNames = beforeWorkflow
+			? new Set(beforeWorkflow.nodes.map((n) => n.name))
+			: undefined;
+
+		// Get all nodes to process
+		let nodesToProcess = Array.from(this._nodes.values());
+
+		// Apply filters
+		if (filterNodes) {
+			const filterSet = new Set(filterNodes);
+			nodesToProcess = nodesToProcess.filter((graphNode) => filterSet.has(graphNode.instance.name));
+		}
+
+		if (hasNoCredentials) {
+			nodesToProcess = nodesToProcess.filter((graphNode) => {
+				const creds = graphNode.instance.config?.credentials;
+				return !creds || Object.keys(creds).length === 0;
+			});
+		}
+
+		if (existingNodeNames) {
+			nodesToProcess = nodesToProcess.filter(
+				(graphNode) => !existingNodeNames.has(graphNode.instance.name),
+			);
+		}
+
+		// Generate pin data for each node (mutate in place)
+		if (!this._pinData) {
+			this._pinData = {};
+		}
+
+		for (const graphNode of nodesToProcess) {
+			const node = graphNode.instance;
+			const outputSchema = this.resolveOutputSchema(node);
+
+			if (!outputSchema) {
+				// Silent skip for nodes without output schemas
+				continue;
+			}
+
+			const params = (node.config?.parameters as Record<string, unknown>) ?? {};
+			const operation = params.operation;
+			const itemCount = operation === 'getAll' ? 2 : 1;
+
+			const pinData = generateFromSchema(outputSchema, itemCount, { seed });
+			this._pinData[node.name] = pinData;
+		}
+
+		return this;
+	}
+
+	/**
+	 * Resolves the output schema for a node based on its type, version, and parameters
+	 */
+	private resolveOutputSchema(node: NodeInstance<string, string, unknown>): JsonSchema | undefined {
+		const outputSchemas = loadOutputSchemas(node.type, node.version);
+		if (!outputSchemas) {
+			return undefined;
+		}
+
+		const params = (node.config?.parameters as Record<string, unknown>) ?? {};
+		return matchSchema(outputSchemas, params);
 	}
 
 	/**
