@@ -51,13 +51,17 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 ## Workflow
 
 1. **Read Linear ticket** → get node name and requirements
-2. **Create branch** per AGENTS.md conventions
-3. **Research API docs** → find signature header, format, algorithm
-4. **Implement** based on pattern that fits
-5. **Write tests** for every changed file (study existing test files for patterns)
-6. **Run tests** → `pnpm test {NodeName}` - must all pass
-7. **Validate** → `pnpm lint`, `pnpm typecheck` - must pass
-8. **Create PR** using `create-pr` skill
+2. **Assign ticket to me** with `no-docs-needed` label:
+   ```
+   update_issue: { id: "NODE-XXXX", assignee: "me", labels: ["no-docs-needed"] }
+   ```
+3. **Create branch** per AGENTS.md conventions
+4. **Research API docs** → find signature header, format, algorithm
+5. **Implement** based on pattern that fits
+6. **Write tests** for every changed file (study existing test files for patterns)
+7. **Run tests** → `pnpm test {NodeName}` - must all pass
+8. **Validate** → `pnpm lint`, `pnpm typecheck` - must pass
+9. **Create PR** using `create-pr` skill
 
 ## If API Doesn't Support Signatures
 
