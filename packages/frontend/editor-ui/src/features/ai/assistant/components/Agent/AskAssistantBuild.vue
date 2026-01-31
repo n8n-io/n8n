@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { AutoSaveState } from '@/app/constants';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -27,6 +27,8 @@ import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
+import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
@@ -41,7 +43,9 @@ const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowAutosaveStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
+const assistantStore = useAssistantStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
@@ -74,6 +78,10 @@ watch(
 		}
 	},
 );
+
+const showSettingsButton = computed(() => {
+	return assistantStore.canManageAISettings;
+});
 
 const shouldShowNotificationBanner = computed(() => {
 	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
@@ -410,7 +418,14 @@ defineExpose({
 			@show-version="onShowVersion"
 		>
 			<template #header>
-				<slot name="header" />
+				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
+					<slot name="header" />
+					<AISettingsButton
+						v-if="showSettingsButton"
+						:show-usability-notice="false"
+						:disabled="builderStore.streaming"
+					/>
+				</div>
 			</template>
 			<template #inputHeader>
 				<Transition name="slide">
@@ -445,6 +460,17 @@ defineExpose({
 .container {
 	height: 100%;
 	width: 100%;
+}
+
+.header {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	flex: 1;
+
+	&.with-slot {
+		justify-content: space-between;
+	}
 }
 
 .topText {

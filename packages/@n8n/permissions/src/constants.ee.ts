@@ -1,6 +1,7 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
+	aiAssistant: ['manage'] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,

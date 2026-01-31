@@ -1,11 +1,20 @@
-import { deepCopy } from 'n8n-workflow';
+import {
+	deepCopy,
+	isAssignmentCollectionValue,
+	isFilterValue,
+	isResourceLocatorValue,
+	isResourceMapperValue,
+} from 'n8n-workflow';
 import type {
+	FilterValue,
 	IDataObject,
+	INode,
+	INodeParameters,
 	IRunExecutionData,
 	NodeApiError,
 	NodeError,
 	NodeOperationError,
-	INode,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -15,7 +24,7 @@ import {
 	getMainAuthField,
 	getNodeAuthOptions,
 } from '@/app/utils/nodeTypesUtils';
-import type { ChatRequest } from '../assistant.types';
+import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
@@ -93,6 +102,96 @@ export const useAIAssistantHelpers = () => {
 	}
 
 	/**
+	 * Removes sensitive values from node parameters while preserving structure
+	 * for AI assistant context when allowSendingParameterData is false.
+	 */
+	function removeParameterValues(params: INodeParameters): INodeParameters {
+		const sanitized: INodeParameters = {};
+		const parameters = params ?? {};
+		for (const [key, value] of Object.entries(parameters)) {
+			sanitized[key] = sanitizeParameterValue(value);
+		}
+		return sanitized;
+	}
+
+	function sanitizeFilterConditionValue(
+		value: FilterValue['conditions'][number]['leftValue'],
+	): FilterValue['conditions'][number]['leftValue'] {
+		if (Array.isArray(value)) {
+			return [];
+		}
+		return null;
+	}
+
+	function sanitizeParameterValue(value: NodeParameterValueType): NodeParameterValueType {
+		if (value === null || value === undefined) {
+			return value;
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((item) => sanitizeParameterValue(item)) as NodeParameterValueType;
+		}
+
+		if (typeof value === 'string') {
+			return '';
+		}
+
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return null;
+		}
+
+		if (isResourceLocatorValue(value)) {
+			const {
+				cachedResultName: _cachedResultName,
+				cachedResultUrl: _cachedResultUrl,
+				...rest
+			} = value;
+			return {
+				...rest,
+				value: '',
+			};
+		}
+
+		if (isAssignmentCollectionValue(value)) {
+			return {
+				assignments:
+					value.assignments?.map((assignment) => {
+						const { value: _assignmentValue, ...rest } = assignment;
+						return { ...rest };
+					}) ?? [],
+			};
+		}
+
+		if (isResourceMapperValue(value)) {
+			return {
+				...value,
+				value: null,
+			};
+		}
+
+		if (isFilterValue(value)) {
+			return {
+				...value,
+				conditions: value.conditions.map((condition) => ({
+					...condition,
+					leftValue: sanitizeFilterConditionValue(condition.leftValue),
+					rightValue: sanitizeFilterConditionValue(condition.rightValue),
+				})),
+			};
+		}
+
+		if (typeof value === 'object') {
+			const sanitizedObject: INodeParameters = {};
+			for (const [key, childValue] of Object.entries(value)) {
+				sanitizedObject[key] = sanitizeParameterValue(childValue);
+			}
+			return sanitizedObject;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Processes node object before sending it to AI assistant
 	 * - Removes unnecessary properties
 	 * - Extracts expressions from the parameters and resolves them
@@ -100,26 +199,36 @@ export const useAIAssistantHelpers = () => {
 	 * @param propsToRemove properties to remove from the node object
 	 * @returns processed node
 	 */
-	async function processNodeForAssistant(node: INode, propsToRemove: string[]): Promise<INode> {
+	async function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		options?: AssistantProcessOptions,
+	): Promise<INode> {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		const resolvedParameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
-			nodeForLLM.parameters,
-		);
-		nodeForLLM.parameters = resolvedParameters;
+		if (options?.trimParameterValues) {
+			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
+		} else {
+			nodeForLLM.parameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeForLLM.parameters,
+			);
+		}
 		return nodeForLLM;
 	}
 
-	function getNodeInfoForAssistant(node: INode): ChatRequest.NodeInfo {
+	function getNodeInfoForAssistant(
+		node: INode,
+		options?: AssistantProcessOptions,
+	): ChatRequest.NodeInfo {
 		if (!node) {
 			return {};
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		const schemas = getNodesSchemas(referencedNodeNames, options?.trimParameterValues);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -131,15 +240,18 @@ export const useAIAssistantHelpers = () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
-		const ndvInput = ndvStore.ndvInputData;
-		if (isNodeReferencingInputData(node) && ndvInput?.length) {
-			const inputData = ndvStore.ndvInputData[0].json;
-			const inputNodeName = ndvStore.input.nodeName;
-			nodeInputData = {
-				inputNodeName,
-				inputData,
-			};
+		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
+		// Only include input data if the node references it and we are allowed to send it
+		if (!options?.trimParameterValues) {
+			const ndvInput = ndvStore.ndvInputData;
+			if (isNodeReferencingInputData(node) && ndvInput?.length) {
+				const inputData = ndvStore.ndvInputData[0].json;
+				const inputNodeName = ndvStore.input.nodeName;
+				nodeInputData = {
+					inputNodeName,
+					inputData,
+				};
+			}
 		}
 		return {
 			authType,
@@ -228,16 +340,16 @@ export const useAIAssistantHelpers = () => {
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
-		options: { compact?: boolean } = {},
+		options: { compact?: boolean; removeParameterValues?: boolean } = {},
 	): ChatRequest.ExecutionResultData {
-		const { compact = false } = options;
+		const { compact = false, removeParameterValues = false } = options;
 		const simplifiedResultData: ChatRequest.ExecutionResultData = {
 			runData: {},
 		};
 
-		// Handle optional error
+		// Handle optional error (can contain node parameter values, so we omit it if removeParameterValues is true)
 		if (data.error) {
-			simplifiedResultData.error = data.error;
+			simplifiedResultData.error = removeParameterValues ? undefined : data.error;
 		}
 
 		// Early return if runData is not present
@@ -285,12 +397,25 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
-		name: workflow.name,
-		active: workflow.active,
-		connections: workflow.connections,
-		nodes: workflow.nodes,
-	});
+	const simplifyWorkflowForAssistant = async (
+		workflow: IWorkflowDb,
+		options?: AssistantProcessOptions,
+	): Promise<Partial<IWorkflowDb>> => {
+		let nodes: INode[] = workflow.nodes;
+		if (options?.trimParameterValues) {
+			nodes = await Promise.all(
+				workflow.nodes.map(
+					async (node) => await processNodeForAssistant(node, [], { trimParameterValues: true }),
+				),
+			);
+		}
+		return {
+			name: workflow.name,
+			active: workflow.active,
+			connections: workflow.connections,
+			nodes,
+		};
+	};
 
 	/**
 	 * Extract all expressions from workflow nodes and resolve them to their values.

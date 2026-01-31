@@ -7,10 +7,11 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
+	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -22,6 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
@@ -35,6 +37,7 @@ export class AiController {
 		private readonly workflowBuilderService: WorkflowBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
+		private readonly aiUsageService: AiUsageService,
 	) {}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -257,6 +260,21 @@ export class AiController {
 				payload.messageId,
 			);
 			return { success };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Post('/usage-settings')
+	@GlobalScope('aiAssistant:manage')
+	async updateUsageSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiUsageSettingsRequestDto,
+	): Promise<void> {
+		try {
+			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
