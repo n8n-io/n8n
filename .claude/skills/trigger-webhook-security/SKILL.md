@@ -23,6 +23,10 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 - Zendesk: `nodes/Zendesk/ZendeskTrigger.node.ts` + `ZendeskTriggerHelpers.ts`
 - Slack: `nodes/Slack/SlackTrigger.node.ts` + `SlackTriggerHelpers.ts`
 
+**Test examples** (study these for patterns):
+- `nodes/Github/__tests__/GithubTriggerHelpers.test.ts`
+- `nodes/Zendesk/__tests__/ZendeskTriggerHelpers.test.ts`
+
 ## Implementation Patterns
 
 | Pattern | When | Secret Source |
