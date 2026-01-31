@@ -1210,6 +1210,23 @@ export interface ITriggerFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
+	/**
+	 * Persist the current run as a failed execution and run the error workflow if configured.
+	 * Use this when the trigger or poller encounters an error during a run (e.g. processing failed)
+	 * but the listener/connection is still healthy. The workflow stays active.
+	 *
+	 * @param error - The execution error to persist and pass to the error workflow
+	 */
+	saveFailedExecution(error: ExecutionError): void;
+	/**
+	 * Report a fatal trigger/poller error: deactivate the workflow, run the error workflow if configured,
+	 * and queue the workflow for reactivation with backoff. Use this when the trigger or poller cannot
+	 * continue (e.g. connection lost, auth failure). The workflow is removed from active workflows
+	 * and will be retried periodically until it activates successfully.
+	 *
+	 * @param error - The error that caused the trigger or poller to fail
+	 * @param responsePromise - Optional. When provided (e.g. in manual trigger mode), used to signal the error to the caller
+	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
