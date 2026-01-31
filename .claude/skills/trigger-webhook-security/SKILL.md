@@ -33,9 +33,12 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 
 ## What to Implement
 
-1. **`{NodeName}TriggerHelpers.ts`** - `verifySignature()` function using HMAC-SHA256
-2. **`{NodeName}Trigger.node.ts`** - Store secret in `create()`, verify in `webhook()`, cleanup in `delete()`
-3. **`__tests__/`** - Tests for valid/invalid signatures, backwards compatibility
+| File | Test File Required |
+|------|-------------------|
+| `{NodeName}TriggerHelpers.ts` | `__tests__/{NodeName}TriggerHelpers.test.ts` |
+| `{NodeName}Trigger.node.ts` | `__tests__/{NodeName}Trigger.node.test.ts` |
+
+**Every changed file must have a corresponding test file covering the changes.**
 
 ## Key Requirements
 
@@ -43,6 +46,7 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 - Backwards compatible: return `true` if no secret configured
 - Return 401 Unauthorized for invalid signatures
 - Store secret in `webhookData.webhookSecret` (workflow static data)
+- **All tests must pass before creating PR**
 
 ## Workflow
 
@@ -50,9 +54,10 @@ Given a Linear ticket (NODE-XXXX) for a trigger node, implement webhook signatur
 2. **Create branch** per AGENTS.md conventions
 3. **Research API docs** → find signature header, format, algorithm
 4. **Implement** based on pattern that fits
-5. **Write tests** → study existing test files for patterns
-6. **Validate** → `pnpm lint`, `pnpm typecheck`, `pnpm test`
-7. **Create PR** using `create-pr` skill
+5. **Write tests** for every changed file (study existing test files for patterns)
+6. **Run tests** → `pnpm test {NodeName}` - must all pass
+7. **Validate** → `pnpm lint`, `pnpm typecheck` - must pass
+8. **Create PR** using `create-pr` skill
 
 ## If API Doesn't Support Signatures
 
@@ -63,7 +68,9 @@ Comment on Linear ticket with:
 
 ## Success Criteria
 
-- [ ] Signature verification working
-- [ ] Tests passing
-- [ ] Lint/typecheck passing
-- [ ] PR created with proper title: `feat({NodeName} Trigger Node): Add webhook signature verification`
+- [ ] Signature verification implemented
+- [ ] Every changed file has corresponding test file
+- [ ] All tests pass (`pnpm test {NodeName}`)
+- [ ] Lint passes (`pnpm lint`)
+- [ ] Typecheck passes (`pnpm typecheck`)
+- [ ] PR created: `feat({NodeName} Trigger Node): Add webhook signature verification`
