@@ -463,6 +463,226 @@ describe('Image Edit Operation', () => {
 		});
 	});
 
+	describe('successful execution with GPT Image 1.5', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					model: 'gpt-image-1.5',
+					prompt: 'Transform this image with enhanced AI capabilities',
+					images: {
+						values: [{ binaryPropertyName: 'image1' }, { binaryPropertyName: 'image2' }],
+					},
+					n: 1,
+					size: '1536x1024',
+					quality: 'high',
+					options: {
+						background: 'transparent',
+						inputFidelity: 'high',
+						outputFormat: 'webp',
+						outputCompression: 85,
+					},
+				};
+				return params[paramName as keyof typeof params];
+			});
+		});
+
+		it('should edit image with GPT Image 1.5 model', async () => {
+			const mockBinaryFile1 = {
+				fileContent: Buffer.from('mock-image-data-1'),
+				contentType: 'image/jpeg',
+				filename: 'image1.jpg',
+			};
+
+			const mockBinaryFile2 = {
+				fileContent: Buffer.from('mock-image-data-2'),
+				contentType: 'image/png',
+				filename: 'image2.png',
+			};
+
+			const mockApiResponse = {
+				data: [
+					{
+						b64_json: 'base64encodedimagedata',
+					},
+				],
+			};
+
+			const mockBinaryData = {
+				data: 'base64encodedimagedata',
+				mimeType: 'image/webp',
+				fileName: 'data',
+			};
+
+			getBinaryDataFileSpy
+				.mockResolvedValueOnce(mockBinaryFile1)
+				.mockResolvedValueOnce(mockBinaryFile2);
+			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
+				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
+			apiRequestSpy.mockResolvedValue(mockApiResponse);
+			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
+				mockBinaryData,
+			);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(getBinaryDataFileSpy).toHaveBeenCalledTimes(2);
+			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(1, mockExecuteFunctions, 0, 'image1');
+			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'image2');
+
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+				'image[]',
+				mockBinaryFile1.fileContent,
+				{
+					filename: 'image1.jpg',
+					contentType: 'image/jpeg',
+				},
+			);
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+				'image[]',
+				mockBinaryFile2.fileContent,
+				{
+					filename: 'image2.png',
+					contentType: 'image/png',
+				},
+			);
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+				'prompt',
+				'Transform this image with enhanced AI capabilities',
+			);
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'gpt-image-1.5');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('background', 'transparent');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('input_fidelity', 'high');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('output_format', 'webp');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('output_compression', '85');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('quality', 'high');
+
+			expect(result).toEqual([
+				{
+					json: {
+						data: undefined,
+						mimeType: 'image/webp',
+						fileName: 'data',
+					},
+					binary: {
+						data: mockBinaryData,
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
+
+		it('should handle default images parameter for GPT Image 1.5', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					model: 'gpt-image-1.5',
+					prompt: 'Edit this image',
+					images: {
+						values: [{ binaryPropertyName: 'data' }],
+					},
+					n: 1,
+					size: 'auto',
+					quality: 'auto',
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			const mockBinaryFile = {
+				fileContent: Buffer.from('mock-image-data'),
+				contentType: 'image/png',
+				filename: 'data.png',
+			};
+
+			const mockApiResponse = {
+				data: [{ b64_json: 'base64encodedimagedata' }],
+			};
+
+			const mockBinaryData = {
+				data: 'base64encodedimagedata',
+				mimeType: 'image/png',
+				fileName: 'data',
+			};
+
+			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
+			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+				mockBinaryFile.fileContent,
+			);
+			apiRequestSpy.mockResolvedValue(mockApiResponse);
+			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
+				mockBinaryData,
+			);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+				'image[]',
+				mockBinaryFile.fileContent,
+				{
+					filename: 'data.png',
+					contentType: 'image/png',
+				},
+			);
+			expect(result).toHaveLength(1);
+		});
+
+		it('should handle GPT Image 1.5 with all quality levels', async () => {
+			const qualityLevels = ['high', 'medium', 'low', 'auto'];
+
+			for (const quality of qualityLevels) {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params = {
+						model: 'gpt-image-1.5',
+						prompt: 'Edit image',
+						images: {
+							values: [{ binaryPropertyName: 'data' }],
+						},
+						n: 1,
+						size: '1024x1024',
+						quality,
+						options: {},
+					};
+					return params[paramName as keyof typeof params];
+				});
+
+				const mockBinaryFile = {
+					fileContent: Buffer.from('mock-image-data'),
+					contentType: 'image/png',
+					filename: 'data.png',
+				};
+
+				const mockApiResponse = {
+					data: [{ b64_json: 'base64data' }],
+				};
+
+				const mockBinaryData = {
+					data: 'base64data',
+					mimeType: 'image/png',
+					fileName: 'data',
+				};
+
+				getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
+				(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+					mockBinaryFile.fileContent,
+				);
+				apiRequestSpy.mockResolvedValue(mockApiResponse);
+				(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
+					mockBinaryData,
+				);
+
+				await execute.call(mockExecuteFunctions, 0);
+
+				expect(mockFormDataInstance.append).toHaveBeenCalledWith('quality', quality);
+
+				jest.clearAllMocks();
+				mockFormDataInstance.append = jest.fn();
+				mockFormDataInstance.getHeaders = jest
+					.fn()
+					.mockReturnValue({ 'content-type': 'multipart/form-data' });
+			}
+		});
+	});
+
 	describe('parameter validation and edge cases', () => {
 		it('should handle missing response data', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
