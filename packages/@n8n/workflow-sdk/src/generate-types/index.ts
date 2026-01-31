@@ -82,6 +82,5 @@ export * from './zod-helpers';
 export {
 	type OutputSchemaEntry,
 	groupSchemasByDiscriminators,
-	generateOutputSchemaContent,
 	generateOutputSchemaJson,
 } from './generate-output-schemas';

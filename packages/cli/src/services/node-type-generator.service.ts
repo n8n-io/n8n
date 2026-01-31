@@ -17,7 +17,6 @@ import {
 	nodeNameToFileName,
 	getPackageName,
 	discoverSchemasForNode,
-	generateOutputSchemaContent,
 	generateOutputSchemaJson,
 	type NodeTypeDescription,
 } from '@n8n/workflow-sdk';
@@ -182,24 +181,13 @@ export class NodeTypeGeneratorService {
 							await fs.promises.writeFile(schemaFilePath, schemaContent, 'utf-8');
 						}
 
-						// Generate output schema files for pin data generation
+						// Generate output schema JSON file for pin data generation (runtime loading)
 						const outputSchemas = discoverSchemasForNode(
 							sourceNode.name,
 							version,
 							sourceNode.schemaPath,
 						);
 						if (outputSchemas.length > 0) {
-							const displayName = sourceNode.displayName || nodeName;
-							// Generate TypeScript file (for documentation)
-							const outputContent = generateOutputSchemaContent(
-								displayName,
-								version,
-								outputSchemas,
-							);
-							const outputFilePath = path.join(nodeDir, `${fileName}.output.ts`);
-							await fs.promises.writeFile(outputFilePath, outputContent, 'utf-8');
-
-							// Generate JSON file (for runtime loading)
 							const jsonContent = generateOutputSchemaJson(outputSchemas);
 							const jsonFilePath = path.join(nodeDir, `${fileName}.output.json`);
 							await fs.promises.writeFile(jsonFilePath, jsonContent, 'utf-8');
