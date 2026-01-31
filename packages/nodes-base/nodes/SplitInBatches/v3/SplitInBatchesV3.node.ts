@@ -75,8 +75,8 @@ export class SplitInBatchesV3 implements INodeType {
 
 		const options = this.getNodeParameter('options', 0, {});
 
-		if (nodeContext.items === undefined || options.reset === true) {
-			// Is the first time the node runs
+		if (nodeContext.items === undefined || options.reset === true || nodeContext.done === true) {
+			// Is the first time the node runs or the node was done and receives new input (nested loop case)
 
 			const sourceData = this.getInputSourceData();
 

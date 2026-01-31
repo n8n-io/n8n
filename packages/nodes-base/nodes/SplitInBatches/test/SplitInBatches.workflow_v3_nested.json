@@ -1,0 +1,195 @@
+{
+	"name": "SplitInBatches V3 Nested Loop Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-1",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Create 2 parent items, each with a different parentId\nreturn [\n  { json: { parentId: 'P1' } },\n  { json: { parentId: 'P2' } }\n];"
+			},
+			"id": "create-parents",
+			"name": "Create Parents",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [420, 300]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "outer-loop",
+			"name": "Outer Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [640, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// For each parent, create 2 child items\nconst parentId = $input.first().json.parentId;\nreturn [\n  { json: { parentId, childId: 'C1' } },\n  { json: { parentId, childId: 'C2' } }\n];"
+			},
+			"id": "create-children",
+			"name": "Create Children",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [860, 400]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "inner-loop",
+			"name": "Inner Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [1080, 400]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Mark this child as processed\nconst item = $input.first().json;\nreturn { json: { parentId: item.parentId, childId: item.childId, processed: true } };"
+			},
+			"id": "process-child",
+			"name": "Process Child",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1300, 480]
+		},
+		{
+			"parameters": {},
+			"id": "outer-done",
+			"name": "Outer Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [860, 200]
+		}
+	],
+	"pinData": {
+		"Outer Done": [
+			{
+				"json": {
+					"parentId": "P1",
+					"childId": "C1",
+					"processed": true
+				}
+			},
+			{
+				"json": {
+					"parentId": "P1",
+					"childId": "C2",
+					"processed": true
+				}
+			},
+			{
+				"json": {
+					"parentId": "P2",
+					"childId": "C1",
+					"processed": true
+				}
+			},
+			{
+				"json": {
+					"parentId": "P2",
+					"childId": "C2",
+					"processed": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Parents",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Parents": {
+			"main": [
+				[
+					{
+						"node": "Outer Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Outer Loop": {
+			"main": [
+				[
+					{
+						"node": "Outer Done",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Create Children",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Children": {
+			"main": [
+				[
+					{
+						"node": "Inner Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Inner Loop": {
+			"main": [
+				[
+					{
+						"node": "Outer Loop",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Process Child",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Process Child": {
+			"main": [
+				[
+					{
+						"node": "Inner Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "nested-loop-test-v1",
+	"id": "nested-loop-test",
+	"meta": {
+		"instanceId": "test"
+	},
+	"tags": []
+}
