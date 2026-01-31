@@ -402,8 +402,13 @@ export function createCodeBuilderSearchTool(nodeTypeParser: NodeTypeParser) {
 								// Get builder hint for related node too
 								const relatedBuilderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
 
+								// Get discriminator info for related node
+								const relatedDiscInfo = getDiscriminatorInfo(nodeTypeParser, relatedId, version);
+								const relatedDiscStr = formatDiscriminatorInfo(relatedDiscInfo, relatedId);
+
 								const relatedParts = [relatedBasicInfo];
 								if (relatedBuilderHint) relatedParts.push(relatedBuilderHint);
+								if (relatedDiscStr) relatedParts.push(relatedDiscStr);
 
 								allNodeLines.push(relatedParts.join('\n'));
 

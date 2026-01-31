@@ -248,6 +248,23 @@ const mockOutputParserStructuredNode: INodeTypeDescription = {
 	properties: [],
 };
 
+// Mock node that references Code node as related (for testing discriminators in related nodes)
+const mockCodeRunnerNode: INodeTypeDescription = {
+	name: 'n8n-nodes-base.codeRunner',
+	displayName: 'Code Runner',
+	description: 'A wrapper that runs code using the Code node',
+	group: ['transform'],
+	version: 1,
+	defaults: { name: 'Code Runner' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [],
+	builderHint: {
+		message: 'Use with n8n-nodes-base.code for executing custom JavaScript',
+		relatedNodes: ['n8n-nodes-base.code'],
+	},
+};
+
 describe('CodeBuilderSearchTool', () => {
 	describe('builder hints in search results', () => {
 		it('should include builder hint for Form Trigger node', async () => {
@@ -581,6 +598,28 @@ describe('CodeBuilderSearchTool', () => {
 
 			// Should show how to call get_nodes with discriminators
 			expect(result).toMatch(/get_nodes.*nodeId.*freshservice.*resource.*operation/s);
+		});
+
+		it('should include discriminators for related nodes', async () => {
+			// mockCodeRunnerNode has mockCodeNode as a related node
+			// mockCodeNode has mode discriminators
+			const nodeTypeParser = new NodeTypeParser([mockCodeRunnerNode, mockCodeNode]);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser);
+
+			// Search for "Code Runner" - should find codeRunner directly, Code as [RELATED]
+			const result = await tool.invoke({ queries: ['Code Runner'] });
+
+			// Code Runner should be found directly
+			expect(result).toContain('n8n-nodes-base.codeRunner');
+
+			// Code node should appear as [RELATED]
+			expect(result).toContain('[RELATED]');
+			expect(result).toContain('n8n-nodes-base.code');
+
+			// Code node (the related node) should include its discriminators
+			expect(result).toContain('mode:');
+			expect(result).toContain('runOnceForAllItems');
+			expect(result).toContain('runOnceForEachItem');
 		});
 	});
 
