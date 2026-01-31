@@ -12,8 +12,15 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getModels } from './methods/loadOptions';
 
 export class LmOllama implements INodeType {
+	methods = {
+		loadOptions: {
+			getModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Model',
 

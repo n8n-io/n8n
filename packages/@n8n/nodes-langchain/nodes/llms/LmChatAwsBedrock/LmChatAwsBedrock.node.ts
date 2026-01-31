@@ -14,8 +14,16 @@ import {
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getFoundationModels, getInferenceProfiles } from './methods/loadOptions';
 
 export class LmChatAwsBedrock implements INodeType {
+	methods = {
+		loadOptions: {
+			getFoundationModels,
+			getInferenceProfiles,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'AWS Bedrock Chat Model',
 
@@ -84,10 +92,12 @@ export class LmChatAwsBedrock implements INodeType {
 				description: 'Choose between on-demand foundation models or inference profiles',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				displayOptions: {
@@ -97,38 +107,7 @@ export class LmChatAwsBedrock implements INodeType {
 				},
 				typeOptions: {
 					loadOptionsDependsOn: ['modelSource'],
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'modelSummaries',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.modelName}}',
-											description: '={{$responseItem.modelArn}}',
-											value: '={{$responseItem.modelId}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsMethod: 'getFoundationModels',
 				},
 				routing: {
 					send: {
@@ -139,10 +118,12 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				allowArbitraryValues: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html">Learn more</a>.',
 				displayOptions: {
@@ -152,39 +133,7 @@ export class LmChatAwsBedrock implements INodeType {
 				},
 				typeOptions: {
 					loadOptionsDependsOn: ['modelSource'],
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/inference-profiles?maxResults=1000',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'inferenceProfileSummaries',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.inferenceProfileName}}',
-											description:
-												'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
-											value: '={{$responseItem.inferenceProfileId}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsMethod: 'getInferenceProfiles',
 				},
 				routing: {
 					send: {

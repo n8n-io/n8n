@@ -14,44 +14,16 @@ export const ollamaDescription: Partial<INodeTypeDescription> = {
 };
 
 export const ollamaModel: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 	displayName: 'Model',
 	name: 'model',
 	type: 'options',
 	default: 'llama3.2',
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 	description:
 		'The model which will generate the completion. To download models, visit <a href="https://ollama.ai/library">Ollama Models Library</a>.',
 	typeOptions: {
-		loadOptions: {
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/tags',
-				},
-				output: {
-					postReceive: [
-						{
-							type: 'rootProperty',
-							properties: {
-								property: 'models',
-							},
-						},
-						{
-							type: 'setKeyValue',
-							properties: {
-								name: '={{$responseItem.name}}',
-								value: '={{$responseItem.name}}',
-							},
-						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
-					],
-				},
-			},
-		},
+		loadOptionsMethod: 'getModels',
 	},
 	routing: {
 		send: {
