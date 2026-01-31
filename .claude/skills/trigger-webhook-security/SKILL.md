@@ -18,6 +18,32 @@ Adds HMAC signature verification to webhook trigger nodes for secure request val
 
 ## Implementation Workflow
 
+### Step 0: Set Up from Linear Ticket
+
+Before starting implementation, get the Linear ticket details and create a properly named branch:
+
+1. **Get Linear ticket details** using the Linear MCP:
+   ```
+   CallMcpTool: server="user-Linear", toolName="get_issue"
+   arguments: { "id": "NODE-XXXX" }
+   ```
+   The response includes `branchName` - use this for your git branch.
+
+2. **Create branch from fresh master** with the Linear-suggested branch name:
+   ```bash
+   git checkout master
+   git pull origin master
+   git checkout -b <branchName-from-linear>
+   ```
+
+3. **Note the trigger node** mentioned in the ticket (e.g., FigmaTrigger, LinearTrigger).
+
+4. **To comment on ticket** (for unsupported APIs or blockers):
+   ```
+   CallMcpTool: server="user-Linear", toolName="create_comment"
+   arguments: { "issueId": "NODE-XXXX", "body": "Your markdown comment" }
+   ```
+
 ### Step 1: Research the API's Webhook Signature Support
 
 Before implementing, research the service's webhook documentation:
@@ -327,14 +353,13 @@ popd
 
 If the API does not support webhook signatures:
 
-1. **Comment on Linear ticket** explaining the limitation:
+1. **Comment on Linear ticket** using the Linear MCP:
    ```
-   After researching [Service] webhook documentation:
-   - Docs reviewed: [URL]
-   - Finding: The API does not support webhook signature verification
-   - Reason: [No signing secret endpoint / No signature headers / etc.]
-   
-   Recommendation: [Alternative security measures if any]
+   CallMcpTool: server="user-Linear", toolName="create_comment"
+   arguments: {
+     "issueId": "NODE-XXXX",
+     "body": "## Webhook Signature Research\n\n**Docs reviewed:** [URL]\n\n**Finding:** The API does not support webhook signature verification.\n\n**Reason:** [No signing secret endpoint / No signature headers / etc.]\n\n**Recommendation:** [Alternative security measures if any]"
+   }
    ```
 
 2. **Do not implement** partial or insecure solutions.
