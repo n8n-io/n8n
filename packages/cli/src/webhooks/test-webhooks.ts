@@ -279,6 +279,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
+		chatSessionId?: string;
 		workflowIsActive?: boolean;
 	}) {
 		const {
@@ -289,6 +290,7 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			chatSessionId,
 			workflowIsActive,
 		} = options;
 
@@ -319,6 +321,9 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
+		const timeoutDuration = TEST_WEBHOOK_TIMEOUT;
+
+		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 		// Check if any webhook is a single webhook trigger and workflow is active
 		if (workflowIsActive) {
 			const singleWebhookTrigger = webhooks.find((w) =>
@@ -331,12 +336,20 @@ export class TestWebhooks implements IWebhookManager {
 			}
 		}
 
-		const timeout = setTimeout(
-			async () => await this.cancelWebhook(workflow.id),
-			TEST_WEBHOOK_TIMEOUT,
-		);
-
 		for (const webhook of webhooks) {
+			webhook.path = removeTrailingSlash(webhook.path);
+
+			// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
+			// IMPORTANT: This must happen BEFORE key generation
+			if (
+				chatSessionId &&
+				webhook.node &&
+				workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
+			) {
+				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
+				webhook.path = `${workflow.id}/${chatSessionId}`;
+			}
+
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
 
@@ -355,7 +368,6 @@ export class TestWebhooks implements IWebhookManager {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
-			webhook.path = removeTrailingSlash(webhook.path);
 			webhook.isTest = true;
 
 			/**

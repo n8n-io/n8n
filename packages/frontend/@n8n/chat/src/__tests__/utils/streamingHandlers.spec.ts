@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref, type Ref } from 'vue';
 
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
 import { StreamingMessageManager } from '@n8n/chat/utils/streaming';
 import {
 	handleStreamingChunk,
@@ -139,43 +139,118 @@ describe('streamingHandlers', () => {
 	});
 
 	describe('handleNodeComplete', () => {
-		it('should mark run as complete', () => {
+		const mockOptions: ChatOptions = {
+			webhookUrl: 'http://test.com',
+			i18n: {
+				en: {
+					title: '',
+					subtitle: '',
+					footer: '',
+					getStarted: '',
+					inputPlaceholder: '',
+					closeButtonTooltip: '',
+				},
+			},
+		};
+		const userMessage = 'test message';
+
+		it('should mark run as complete', async () => {
 			// Setup initial state
 			streamingManager.addRunToActive('node-1', 0);
 
-			handleNodeComplete('node-1', streamingManager, 0);
+			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions, messages);
 
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
 
-		it('should handle multiple runs completion', () => {
+		it('should handle multiple runs completion', async () => {
 			// Setup two runs
 			streamingManager.addRunToActive('node-1', 0);
 			streamingManager.addRunToActive('node-1', 1);
 
 			// Complete first run
-			handleNodeComplete('node-1', streamingManager, 0);
+			await handleNodeComplete('node-1', streamingManager, 0, userMessage, mockOptions, messages);
 			expect(streamingManager.areAllRunsComplete()).toBe(false);
 
 			// Complete second run
-			handleNodeComplete('node-1', streamingManager, 1);
+			await handleNodeComplete('node-1', streamingManager, 1, userMessage, mockOptions, messages);
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
 
-		it('should handle runs without runIndex', () => {
+		it('should handle runs without runIndex', async () => {
 			streamingManager.addRunToActive('node-1');
 
-			handleNodeComplete('node-1', streamingManager);
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				undefined,
+				userMessage,
+				mockOptions,
+				messages,
+			);
 
 			expect(streamingManager.areAllRunsComplete()).toBe(true);
 		});
 
-		it('should handle errors gracefully', () => {
+		it('should handle errors gracefully', async () => {
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
-			expect(() => {
-				handleNodeComplete('node-1', invalidStreamingManager);
-			}).not.toThrow();
+			await expect(
+				handleNodeComplete(
+					'node-1',
+					invalidStreamingManager,
+					undefined,
+					userMessage,
+					mockOptions,
+					messages,
+				),
+			).resolves.not.toThrow();
+		});
+
+		it('should call afterMessageSent hook when provided', async () => {
+			const afterMessageSent = vi.fn();
+			const optionsWithHook: ChatOptions = {
+				...mockOptions,
+				afterMessageSent,
+			};
+
+			// Setup and add a message
+			streamingManager.addRunToActive('node-1', 0);
+			const message = streamingManager.getRunMessage('node-1', 0);
+
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				0,
+				userMessage,
+				optionsWithHook,
+				messages,
+			);
+
+			expect(afterMessageSent).toHaveBeenCalledWith(userMessage, {
+				message,
+				hasReceivedChunks: true,
+			});
+		});
+
+		it('should not call afterMessageSent hook if no message exists', async () => {
+			const afterMessageSent = vi.fn();
+			const optionsWithHook: ChatOptions = {
+				...mockOptions,
+				afterMessageSent,
+			};
+
+			// Don't add any message
+			await handleNodeComplete(
+				'node-1',
+				streamingManager,
+				0,
+				userMessage,
+				optionsWithHook,
+				messages,
+			);
+
+			expect(afterMessageSent).not.toHaveBeenCalled();
 		});
 	});
 });

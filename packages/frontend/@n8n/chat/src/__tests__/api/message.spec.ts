@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { sendMessageStreaming } from '@n8n/chat/api';
+import { sendMessage, sendMessageStreaming } from '@n8n/chat/api';
 import type { ChatOptions } from '@n8n/chat/types';
 
 describe('sendMessageStreaming', () => {
@@ -526,5 +526,327 @@ describe('sendMessageStreaming', () => {
 				},
 			}),
 		});
+	});
+
+	describe('beforeMessageSent and afterMessageSent hooks', () => {
+		it('should call beforeMessageSent before sending message', async () => {
+			const beforeMessageSent = vi.fn();
+			const optionsWithHook: ChatOptions = {
+				...mockOptions,
+				beforeMessageSent,
+			};
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'end',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', optionsWithHook, {
+				onChunk: vi.fn(),
+				onEndMessage: vi.fn(),
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+			expect(beforeMessageSent).toHaveBeenCalledBefore(fetchSpy);
+		});
+
+		it('should call afterMessageSent after streaming completes', async () => {
+			const afterMessageSent = vi.fn();
+			const optionsWithHook: ChatOptions = {
+				...mockOptions,
+				afterMessageSent,
+			};
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'item',
+					content: 'Hello',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'end',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', optionsWithHook, {
+				onChunk: vi.fn(),
+				onEndMessage: vi.fn(),
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(afterMessageSent).toHaveBeenCalledWith('Test message', { hasReceivedChunks: true });
+		});
+
+		it('should support async onEndMessage handler', async () => {
+			const onEndMessage = vi.fn().mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'end',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk: vi.fn(),
+				onEndMessage,
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(onEndMessage).toHaveBeenCalledWith('node-1', undefined);
+		});
+
+		it('should await async onEndMessage on error chunks', async () => {
+			const onEndMessage = vi.fn().mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'error',
+					content: 'Something went wrong',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onEndMessage,
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(onChunk).toHaveBeenCalledWith('Error: Something went wrong', 'node-1', undefined);
+			expect(onEndMessage).toHaveBeenCalledWith('node-1', undefined);
+		});
+	});
+});
+
+describe('sendMessage', () => {
+	const mockOptions: ChatOptions = {
+		webhookUrl: 'https://test.example.com/webhook',
+		chatSessionKey: 'sessionId',
+		chatInputKey: 'chatInput',
+		i18n: {
+			en: {
+				title: 'Test',
+				subtitle: 'Test',
+				footer: 'Test',
+				getStarted: 'Test',
+				inputPlaceholder: 'Test',
+				closeButtonTooltip: 'Test',
+			},
+		},
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('should call beforeMessageSent hook before sending', async () => {
+		const beforeMessageSent = vi.fn();
+		const optionsWithHook: ChatOptions = {
+			...mockOptions,
+			webhookConfig: { method: 'POST' },
+			beforeMessageSent,
+		};
+
+		const mockResponseData = { output: 'Response' };
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			json: async () => mockResponseData,
+			clone: () => mockResponse,
+			text: async () => JSON.stringify(mockResponseData),
+			headers: new Headers(),
+		} as Response;
+
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessage('Test message', [], 'test-session-id', optionsWithHook);
+
+		expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+		expect(beforeMessageSent).toHaveBeenCalledBefore(fetchSpy);
+	});
+
+	it('should call afterMessageSent hook after sending', async () => {
+		const afterMessageSent = vi.fn();
+		const optionsWithHook: ChatOptions = {
+			...mockOptions,
+			webhookConfig: { method: 'POST' },
+			afterMessageSent,
+		};
+
+		const mockResponseData = { output: 'Response' };
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			json: async () => mockResponseData,
+			clone: () => mockResponse,
+			text: async () => JSON.stringify(mockResponseData),
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessage('Test message', [], 'test-session-id', optionsWithHook);
+
+		expect(afterMessageSent).toHaveBeenCalledWith('Test message', mockResponseData);
+	});
+
+	it('should handle file uploads with beforeMessageSent', async () => {
+		const beforeMessageSent = vi.fn();
+		const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+		const optionsWithHook: ChatOptions = {
+			...mockOptions,
+			beforeMessageSent,
+		};
+
+		const mockResponseData = { output: 'File received' };
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			json: async () => mockResponseData,
+			clone: () => mockResponse,
+			text: async () => JSON.stringify(mockResponseData),
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessage('Test message', [testFile], 'test-session-id', optionsWithHook);
+
+		expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+	});
+
+	it('should call hooks in correct order', async () => {
+		const callOrder: string[] = [];
+		const beforeMessageSent = vi.fn(() => {
+			callOrder.push('before');
+		});
+		const afterMessageSent = vi.fn(() => {
+			callOrder.push('after');
+		});
+
+		const optionsWithHooks: ChatOptions = {
+			...mockOptions,
+			webhookConfig: { method: 'POST' },
+			beforeMessageSent,
+			afterMessageSent,
+		};
+
+		const mockResponseData = { output: 'Response' };
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			json: async () => mockResponseData,
+			clone: () => mockResponse,
+			text: async () => JSON.stringify(mockResponseData),
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessage('Test message', [], 'test-session-id', optionsWithHooks);
+
+		expect(callOrder).toEqual(['before', 'after']);
 	});
 });

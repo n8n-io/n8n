@@ -80,13 +80,13 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await n8n.canvas.clickZoomToFitButton();
 
 			// Check that chat modal is not initially visible
-			await expect(n8n.canvas.getManualChatModal().locator('main')).toBeHidden();
+			await expect(n8n.canvas.getManualChatModal().getByTestId('canvas-chat-body')).toBeHidden();
 
 			// Open Node 1 and execute it
 			await n8n.canvas.openNode('Node 1');
 			await n8n.ndv.execute();
 			// Chat modal should now be visible
-			await expect(n8n.canvas.getManualChatModal().locator('main')).toBeVisible();
+			await expect(n8n.canvas.getManualChatModal().getByTestId('canvas-chat-body')).toBeVisible();
 
 			// Send first message
 			await n8n.canvas.logsPanel.sendManualChatMessage('Test');

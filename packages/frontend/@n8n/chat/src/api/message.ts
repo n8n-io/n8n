@@ -27,8 +27,15 @@ export async function sendMessage(
 	sessionId: string,
 	options: ChatOptions,
 ) {
+	// Call beforeMessageSent handler if provided
+	if (options.beforeMessageSent) {
+		await options.beforeMessageSent(message);
+	}
+
+	let response: SendMessageResponse;
+
 	if (files.length > 0) {
-		return await postWithFiles<SendMessageResponse>(
+		response = await postWithFiles<SendMessageResponse>(
 			`${options.webhookUrl}`,
 			{
 				action: 'sendMessage',
@@ -41,20 +48,28 @@ export async function sendMessage(
 				headers: options.webhookConfig?.headers,
 			},
 		);
+	} else {
+		const method = options.webhookConfig?.method === 'POST' ? post : get;
+		response = await method<SendMessageResponse>(
+			`${options.webhookUrl}`,
+			{
+				action: 'sendMessage',
+				[options.chatSessionKey as string]: sessionId,
+				[options.chatInputKey as string]: message,
+				...(options.metadata ? { metadata: options.metadata } : {}),
+			},
+			{
+				headers: options.webhookConfig?.headers,
+			},
+		);
 	}
-	const method = options.webhookConfig?.method === 'POST' ? post : get;
-	return await method<SendMessageResponse>(
-		`${options.webhookUrl}`,
-		{
-			action: 'sendMessage',
-			[options.chatSessionKey as string]: sessionId,
-			[options.chatInputKey as string]: message,
-			...(options.metadata ? { metadata: options.metadata } : {}),
-		},
-		{
-			headers: options.webhookConfig?.headers,
-		},
-	);
+
+	// Call afterMessageSent handler if provided
+	if (options.afterMessageSent) {
+		await options.afterMessageSent(message, response);
+	}
+
+	return response;
 }
 
 // Create a transform stream that parses newline-delimited JSON
@@ -106,7 +121,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 export interface StreamingEventHandlers {
 	onBeginMessage: (nodeId: string, runIndex?: number) => void;
 	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void;
-	onEndMessage: (nodeId: string, runIndex?: number) => void;
+	onEndMessage: (nodeId: string, runIndex?: number) => void | Promise<void>;
 }
 
 export async function sendMessageStreaming(
@@ -116,6 +131,11 @@ export async function sendMessageStreaming(
 	options: ChatOptions,
 	handlers: StreamingEventHandlers,
 ): Promise<{ hasReceivedChunks: boolean }> {
+	// Call beforeMessageSent handler if provided
+	if (options.beforeMessageSent) {
+		await options.beforeMessageSent(message);
+	}
+
 	// Build request
 	const response = await (files.length > 0
 		? sendWithFiles(message, files, sessionId, options)
@@ -152,17 +172,22 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
 					hasReceivedChunks = true;
 					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 			}
 		}
 	} finally {
 		reader.releaseLock();
+	}
+
+	// Call afterMessageSent handler if provided
+	if (options.afterMessageSent) {
+		await options.afterMessageSent(message, { hasReceivedChunks });
 	}
 
 	return { hasReceivedChunks };

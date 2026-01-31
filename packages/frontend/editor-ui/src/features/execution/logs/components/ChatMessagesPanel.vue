@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useI18n } from '@n8n/i18n';
-import MessagesList from '@n8n/chat/components/MessagesList.vue';
-import MessageOptionTooltip from './MessageOptionTooltip.vue';
-import MessageOptionAction from './MessageOptionAction.vue';
-import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
-import ChatInput from '@n8n/chat/components/Input.vue';
-import { computed, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import Chat from '@n8n/chat/components/Chat.vue';
+import { ChatPlugin } from '@n8n/chat/plugins';
+import {
+	computed,
+	createApp,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	useTemplateRef,
+	watch,
+	type App,
+} from 'vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useClipboard } from '@vueuse/core';
+import { useToast } from '@/app/composables/useToast';
+import { useChatState } from '@/features/execution/logs/composables/useChatState';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+
 interface Props {
-	pastChatMessages: string[];
-	messages: ChatMessage[];
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
@@ -29,129 +34,35 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	displayExecution: [id: string];
-	sendMessage: [message: string];
 	refreshSession: [];
 	close: [];
 	clickHeader: [];
+	hideChatPanel: [];
 }>();
 
-const clipboard = useClipboard();
-
 const locale = useI18n();
+const clipboard = useClipboard();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
+const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
-// -1 is a special value meaning we are not navigating history,
-// 0 is the oldest message, pastChatMessages.length - 1 is the most recent message
-const previousMessageIndex = ref(-1);
+// Use the chat state composable
+const {
+	chatTriggerNode,
+	isStreamingEnabled,
+	isFileUploadsAllowed,
+	allowedFilesMimeTypes,
+	isWorkflowReadyForChat,
+	chatOptions,
+} = useChatState(props.isReadOnly, () => props.sessionId);
 
-// Buffer to hold current input when navigating history
-const currentInputBuffer = ref('');
+let chatApp: App | null = null;
 
 const sessionIdText = computed(() =>
 	locale.baseText('chat.window.session.id', {
 		interpolate: { id: `${props.sessionId.slice(0, 5)}...` },
 	}),
 );
-
-const inputPlaceholder = computed(() => {
-	if (props.messages.length > 0) {
-		return locale.baseText('chat.window.chat.placeholder');
-	}
-	return locale.baseText('chat.window.chat.placeholderPristine');
-});
-/** Checks if message is a text message */
-function isTextMessage(message: ChatMessage): message is ChatMessageText {
-	return message.type === 'text' || !message.type;
-}
-
-/** Reposts the message */
-function repostMessage(message: ChatMessageText) {
-	void sendMessage(message.text);
-}
-
-/** Sets the message in input for reuse */
-function reuseMessage(message: ChatMessageText) {
-	chatEventBus.emit('setInputValue', message.text);
-}
-
-function sendMessage(message: string) {
-	previousMessageIndex.value = -1;
-	currentInputBuffer.value = '';
-	emit('sendMessage', message);
-}
-
-function onRefreshSession() {
-	emit('refreshSession');
-}
-
-function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
-	const pastMessages = props.pastChatMessages;
-
-	// Exit if no messages
-	if (pastMessages.length === 0) return;
-
-	// Reset navigation if input is empty (message was just sent)
-	if (currentInputValue.length === 0 && previousMessageIndex.value !== -1) {
-		previousMessageIndex.value = -1;
-		currentInputBuffer.value = '';
-	}
-
-	// Save current input if we're starting navigation
-	if (previousMessageIndex.value === -1 && currentInputValue.length > 0) {
-		currentInputBuffer.value = currentInputValue;
-	}
-
-	if (key === 'ArrowUp') {
-		// Temporarily blur to avoid cursor position issues
-		chatEventBus.emit('blurInput');
-
-		if (previousMessageIndex.value === -1) {
-			// Start with most recent message (last in array)
-			previousMessageIndex.value = pastMessages.length - 1;
-		} else if (previousMessageIndex.value > 0) {
-			// Move backwards through history (older messages)
-			previousMessageIndex.value--;
-		}
-
-		// Get message at current index
-		const selectedMessage = pastMessages[previousMessageIndex.value];
-		chatEventBus.emit('setInputValue', selectedMessage);
-
-		// Refocus and move cursor to end
-		chatEventBus.emit('focusInput');
-	} else if (key === 'ArrowDown') {
-		// Only navigate if we're in history mode
-		if (previousMessageIndex.value === -1) return;
-
-		// Temporarily blur to avoid cursor position issues
-		chatEventBus.emit('blurInput');
-
-		if (previousMessageIndex.value < pastMessages.length - 1) {
-			// Move forward through history (newer messages)
-			previousMessageIndex.value++;
-			const selectedMessage = pastMessages[previousMessageIndex.value];
-			chatEventBus.emit('setInputValue', selectedMessage);
-		} else {
-			// Reached the end - restore original input or clear
-			previousMessageIndex.value = -1;
-			chatEventBus.emit('setInputValue', currentInputBuffer.value);
-			currentInputBuffer.value = '';
-		}
-
-		// Refocus and move cursor to end
-		chatEventBus.emit('focusInput');
-	}
-}
-
-function onEscapeKey() {
-	// Only handle escape if we're in history navigation mode
-	if (previousMessageIndex.value === -1) return;
-
-	// Exit history mode and restore original input
-	previousMessageIndex.value = -1;
-	chatEventBus.emit('setInputValue', currentInputBuffer.value);
-	currentInputBuffer.value = '';
-}
 
 async function copySessionId() {
 	await clipboard.copy(props.sessionId);
@@ -161,6 +72,129 @@ async function copySessionId() {
 		type: 'success',
 	});
 }
+
+function initializeChat() {
+	if (!isWorkflowReadyForChat.value) {
+		return;
+	}
+
+	if (!chatContainer.value) {
+		return;
+	}
+
+	// Don't initialize if already initialized
+	if (chatApp) {
+		return;
+	}
+
+	// Create Vue app instance with chat SDK
+	chatApp = createApp(Chat);
+	chatApp.use(ChatPlugin, chatOptions.value);
+	chatApp.mount(chatContainer.value);
+}
+
+function destroyChat() {
+	if (chatApp && chatContainer.value) {
+		chatApp.unmount();
+		chatApp = null;
+		chatContainer.value.innerHTML = '';
+	}
+}
+
+// Watch for isOpen changes - but don't destroy/recreate the chat
+// Just let CSS handle visibility to preserve chat state
+watch(
+	() => props.isOpen,
+	async (newIsOpen) => {
+		if (newIsOpen && !chatApp) {
+			// Panel opened and chat not yet initialized - initialize it
+			destroyChat();
+			initializeChat();
+		}
+		// Note: We don't destroy when closing to preserve chat state
+	},
+);
+
+// Watch for ChatTrigger node changes
+watch(
+	() => chatTriggerNode.value,
+	async (newChatTrigger, oldChatTrigger) => {
+		if (props.isOpen) {
+			if (newChatTrigger && !oldChatTrigger) {
+				// ChatTrigger was added - initialize chat
+				await nextTick();
+				initializeChat();
+			} else if (!newChatTrigger && oldChatTrigger) {
+				// ChatTrigger was removed - destroy chat and hide panel
+				destroyChat();
+				emit('hideChatPanel');
+			}
+		}
+	},
+);
+
+// Watch for chatContainer ref becoming available
+watch(
+	() => chatContainer.value,
+	async (newContainer) => {
+		if (newContainer && props.isOpen && isWorkflowReadyForChat.value) {
+			initializeChat();
+		}
+	},
+);
+
+// Watch for workflow ID changes (important for webhook URL)
+watch(
+	() => workflowsStore.workflowId,
+	async (newWorkflowId, oldWorkflowId) => {
+		if (props.isOpen && isWorkflowReadyForChat.value && newWorkflowId !== oldWorkflowId) {
+			// Workflow ID changed and workflow is ready - reinitialize chat with new webhook URL
+			destroyChat();
+			initializeChat();
+		}
+	},
+);
+
+// Watch for streaming configuration changes
+watch(
+	() => isStreamingEnabled.value,
+	async (newStreaming, oldStreaming) => {
+		if (props.isOpen && isWorkflowReadyForChat.value && chatApp && newStreaming !== oldStreaming) {
+			// Reinitialize chat when streaming configuration changes and workflow is ready
+			destroyChat();
+			initializeChat();
+		}
+	},
+);
+
+// Watch for file upload configuration changes
+watch(
+	() => [isFileUploadsAllowed.value, allowedFilesMimeTypes.value],
+	async (newConfig, oldConfig) => {
+		if (
+			props.isOpen &&
+			isWorkflowReadyForChat.value &&
+			chatApp &&
+			JSON.stringify(newConfig) !== JSON.stringify(oldConfig)
+		) {
+			// Reinitialize chat when file upload configuration changes and workflow is ready
+			destroyChat();
+			initializeChat();
+		}
+	},
+);
+
+onMounted(async () => {
+	if (props.isOpen) {
+		// Wait for next tick to ensure DOM is ready
+		await nextTick();
+		void initializeChat();
+	}
+});
+
+onUnmounted(() => {
+	destroyChat();
+});
 </script>
 
 <template>
@@ -177,7 +211,7 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported && !isReadOnly">
+				<N8nTooltip v-if="!isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
@@ -193,7 +227,7 @@ async function copySessionId() {
 					>
 				</N8nTooltip>
 				<N8nTooltip
-					v-if="messages.length > 0 && !isReadOnly"
+					v-if="!isReadOnly"
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
@@ -205,79 +239,20 @@ async function copySessionId() {
 						icon-size="medium"
 						icon="undo-2"
 						:title="locale.baseText('chat.window.session.reset')"
-						@click.stop="onRefreshSession"
+						@click.stop="emit('refreshSession')"
 					/>
 				</N8nTooltip>
 			</template>
 		</LogsPanelHeader>
-		<main v-if="isOpen" :class="$style.chatBody" data-test-id="canvas-chat-body">
-			<MessagesList
-				:messages="messages"
-				:class="$style.messages"
-				:empty-text="locale.baseText('chat.window.chat.emptyChatMessage.v2')"
-			>
-				<template #beforeMessage="{ message }">
-					<MessageOptionTooltip
-						v-if="!isReadOnly && message.sender === 'bot' && !message.id.includes('preload')"
-						placement="right"
-						data-test-id="execution-id-tooltip"
-					>
-						{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
-						<a href="#" @click="emit('displayExecution', message.id)">{{ message.id }}</a>
-					</MessageOptionTooltip>
 
-					<MessageOptionAction
-						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
-						data-test-id="repost-message-button"
-						icon="redo-2"
-						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-						placement="left"
-						@click.once="repostMessage(message)"
-					/>
-
-					<MessageOptionAction
-						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
-						data-test-id="reuse-message-button"
-						icon="files"
-						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-						placement="left"
-						@click="reuseMessage(message)"
-					/>
-				</template>
-			</MessagesList>
+		<!-- Chat SDK Container -->
+		<main
+			v-show="isOpen && chatTriggerNode"
+			:class="$style.chatSdkContainer"
+			data-test-id="canvas-chat-body"
+		>
+			<div ref="chatContainer" :class="$style.chatContainer" />
 		</main>
-
-		<div v-if="isOpen" :class="$style.messagesInput">
-			<ChatInput
-				data-test-id="lm-chat-inputs"
-				:placeholder="inputPlaceholder"
-				@arrow-key-down="onArrowKeyDown"
-				@escape-key-down="onEscapeKey"
-			>
-				<template v-if="pastChatMessages.length > 0" #leftPanel>
-					<div :class="$style.messagesHistory">
-						<N8nButton
-							title="Navigate to previous message"
-							icon="chevron-up"
-							type="tertiary"
-							text
-							size="mini"
-							:disabled="previousMessageIndex === 0"
-							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
-						/>
-						<N8nButton
-							title="Navigate to next message"
-							icon="chevron-down"
-							type="tertiary"
-							text
-							size="mini"
-							:disabled="previousMessageIndex === -1"
-							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
-						/>
-					</div>
-				</template>
-			</ChatInput>
-		</div>
 	</div>
 </template>
 
@@ -342,42 +317,6 @@ async function copySessionId() {
 	background-color: var(--color--background--light-2);
 }
 
-.chatHeader {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	line-height: 18px;
-	text-align: left;
-	border-bottom: 1px solid var(--color--foreground);
-	padding: var(--chat--spacing);
-	background-color: var(--color--foreground--tint-2);
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.chatTitle {
-	font-weight: var(--font-weight--medium);
-}
-
-.session {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	color: var(--color--text);
-	max-width: 70%;
-}
-
-.sessionId {
-	display: inline-block;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-
-	&.copyable {
-		cursor: pointer;
-	}
-}
-
 .headerButton {
 	max-height: 1.1rem;
 	border: none;
@@ -388,69 +327,143 @@ async function copySessionId() {
 	color: var(--color--text--tint-1);
 }
 
-.chatBody {
+.chatSdkContainer {
 	display: flex;
 	height: 100%;
-	overflow: auto;
+	overflow: hidden;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
 }
 
-.messages {
-	border-radius: var(--radius);
+.chatContainer {
 	height: 100%;
 	width: 100%;
-	overflow: auto;
-	padding-top: var(--spacing--lg);
+	border-radius: 0;
 
-	&:not(:last-child) {
-		margin-right: 1em;
+	:global(.chat-layout) {
+		/* Font and Basic Styling */
+		--chat--font-family: var(--font-family);
+		--chat--border-radius: var(--radius);
+		--chat--spacing: var(--spacing--md);
+		--chat--transition-duration: 0.15s;
+
+		/* Colors - Primary and Secondary */
+		--chat--color--primary: var(--color--secondary);
+		--chat--color--secondary: var(--color--secondary);
+		--chat--color-light-shade-100: var(--color--foreground);
+		--chat--color-disabled: var(--color--text--tint-2);
+
+		/* Body and Footer */
+		--chat--body--background: var(--color--background--light-2);
+		--chat--footer--background: var(--color--background--light-2);
+		--chat--footer--color: var(--color--text);
+
+		/* Messages List */
+		--chat--messages-list--padding: var(--spacing--md);
+
+		/* Message Styling */
+		--chat--message--font-size: var(--font-size--sm);
+		--chat--message--padding: var(--spacing--sm) var(--spacing--md);
+		--chat--message--border-radius: var(--radius);
+		--chat--message-line-height: var(--line-height--md);
+		--chat--message--margin-bottom: var(--spacing--xs);
+
+		/* Bot Messages */
+		--chat--message--bot--background: none;
+		--chat--message--bot--color: var(--color--text--shade-1);
+		--chat--message--bot--border: none;
+
+		/* User Messages */
+		--chat--message--user--background: var(--color--text--tint-2);
+		--chat--message--user--color: var(--color--text--shade-1);
+		--chat--message--user--border: none;
+
+		/* Code blocks in messages */
+		--chat--message--pre--background: var(--color--background--light-3);
+
+		/* Footer Container */
+		--chat--footer--padding: var(--spacing--md);
+		--chat--footer--border-top: none;
+
+		/* Input Container - unified rounded container */
+		--chat--input--width: 95%;
+		--chat--input--background: transparent;
+		--chat--input--container--background: var(--color--background--light-3);
+		--chat--input--container--border: 1px solid var(--color--foreground--tint-1);
+		--chat--input--container--padding: 4px 8px;
+
+		/* Input Textarea */
+		--chat--input--font-size: var(--font-size--sm);
+		--chat--input--padding: var(--padding--xs) var(--padding--md);
+		--chat--input--border: none;
+		--chat--input--border-active: none;
+		--chat--input--background: transparent;
+		--chat--input--text-color: var(--color--text--shade-1);
+		--chat--input--line-height: var(--line-height--md);
+		--chat--input--placeholder--font-size: var(--font-size--sm);
+		--chat--textarea--height: 52px;
+		--chat--textarea--max-height: 200px;
+
+		/* Send Button - integrated into container */
+		--chat--input--send--button--color: var(--color--secondary);
+		--chat--input--send--button--color-hover: var(--color--primary);
+		--chat--input--send--button--background: transparent;
+		--chat--input--send--button--background-hover: var(--color--primary--shade-2);
+		--chat--input--send--button--border-radius: var(--radius--lg);
+		--chat--input--send--button--size: 36px;
+		--chat--input--send--button--margin: var(--spacing--sm);
+
+		/* File Button */
+		--chat--input--send--button--color: var(--color--secondary);
+		--chat--input--file--button--color-hover: var(--color--primary);
+		--chat--input--file--button--background: transparent;
+		--chat--input--file--button--background-hover: var(--color--primary--shade-2);
+
+		/* Message Action Buttons */
+		--chat--message--actions--color: var(--color--text--primary);
+		--chat--message--actions--gap: var(--spacing--sm);
+		--chat--message--actions--icon-size: 32px;
 	}
-}
 
-.messagesInput {
-	--input--border-color: var(--border-color);
-	--chat--input--border: none;
-
-	--chat--input--border-radius: 0.5rem;
-	--chat--input--send--button--background: transparent;
-	--chat--input--send--button--color: var(--color--primary);
-	--chat--input--file--button--background: transparent;
-	--chat--input--file--button--color: var(--color--primary);
-	--chat--input--border-active: var(--input--border-color--focus, var(--color--secondary));
-	--chat--files-spacing: var(--spacing--2xs);
-	--chat--input--background: transparent;
-	--chat--input--file--button--color: var(--button--color--text--secondary);
-	--chat--input--file--button--color-hover: var(--color--primary);
-
-	padding: var(--spacing--5xs);
-	margin: 0 var(--chat--spacing) var(--chat--spacing);
-	flex-grow: 1;
-	display: flex;
-	background: var(--lm-chat--bot--color--background);
-	border-radius: var(--chat--input--border-radius);
-	transition: border-color 200ms ease-in-out;
-	border: var(--input--border-color, var(--border-color))
-		var(--input--border-style, var(--border-style)) var(--input--border-width, var(--border-width));
-
-	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input--color--text, var(--color--text--shade-1));
-	}
-	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input--color--text, var(--color--text--shade-1));
+	/* Hide the default chat header since we use our own */
+	:global(.chat-header) {
+		display: none;
 	}
 
-	&:focus-within {
-		--input--border-color: #4538a3;
+	/* Fix typing indicator width */
+	:global(.chat-message-typing.chat-message) {
+		max-width: 100px;
 	}
-}
 
-.messagesHistory {
-	height: var(--chat--textarea--height);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
+	/* Dark Mode Overrides */
+	body[data-theme='dark'] & {
+		:global(.chat-layout) {
+			/* Body and Footer - darker background like the old design */
+			--chat--body--background: var(--color--background--light-2);
+			--chat--footer--background: var(--color--background--light-2);
+			--chat--footer--color: var(--color--text);
+			--chat--footer--border-top: none;
+
+			/* Bot Messages - darker background with subtle border */
+			--chat--message--bot--background: transparent;
+			--chat--message--bot--color: var(--color--text);
+			--chat--message--bot--border: 0;
+
+			/* User Messages - darker user message background */
+			--chat--message--user--background: var(--color--foreground);
+			--chat--message--user--color: white;
+
+			/* Code blocks */
+			--chat--message--pre--background: var(--color--background);
+
+			/* Input Area - match the old design's input styling */
+			--chat--input--background: transparent;
+			--chat--input--text-color: var(--color--text);
+			--chat--input--border: 1px solid var(--color--foreground);
+			--chat--input--border-active: 1px solid var(--color--primary);
+			--chat--color--primary-shade-50: var(--color--primary--shade-50);
+
+			--chat--message--actions--color: var(--chat--color-light-shade-100);
+		}
+	}
 }
 </style>
