@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -28,7 +29,8 @@ describe('TaskBrokerAuthController', () => {
 	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
 	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
-	const authController = new TaskBrokerAuthController(authService);
+	const mockLogger = mock<Logger>();
+	const authController = new TaskBrokerAuthController(authService, mockLogger);
 
 	const createMockGrantTokenReq = (token?: string) =>
 		({
@@ -91,7 +93,7 @@ describe('TaskBrokerAuthController', () => {
 			expect(res.json).toHaveBeenCalledWith({ code: 401, message: 'Unauthorized' });
 		});
 
-		it('should respond with 403 when grant token is invalid', async () => {
+		it('should respond with 403 and log warning when grant token is invalid', async () => {
 			const req = createMockReqWithToken('invalid');
 
 			await authController.authMiddleware(req, res, next);
@@ -99,6 +101,15 @@ describe('TaskBrokerAuthController', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(403);
 			expect(res.json).toHaveBeenCalledWith({ code: 403, message: 'Forbidden' });
+
+			// Verify warning log is emitted with helpful information
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('grant token'),
+				expect.objectContaining({
+					grantTokenTtlMs: TTL,
+					hint: expect.stringContaining('N8N_RUNNERS_GRANT_TOKEN_TTL'),
+				}),
+			);
 		});
 
 		it('should call next() when grant token is valid', async () => {
