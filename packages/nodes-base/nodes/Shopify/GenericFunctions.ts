@@ -113,8 +113,13 @@ export async function shopifyApiRequestAllItems(
 		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, {
 			resolveWithFullResponse: true,
 		});
-		if (responseData.headers.link) {
-			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
+		if (responseData.headers.link?.includes('rel="next"')) {
+			uri = responseData.headers.link
+				.split(', ')
+				.filter((s: string) => s.includes('rel="next"'))[0]
+				.split(';')[0]
+				.replace('<', '')
+				.replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
