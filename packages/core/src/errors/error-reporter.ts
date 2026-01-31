@@ -8,6 +8,9 @@ import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+import { SentryTracing } from './sentry-tracing';
+import { Tracing } from './tracing';
+
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
 type ErrorReporterInitOptions = {
@@ -137,8 +140,9 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		const { init, captureException, setTag } = await import('@sentry/node');
-		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
+		const sentry = await import('@sentry/node');
+		const { init, captureException, setTag, requestDataIntegration, rewriteFramesIntegration } =
+			sentry;
 
 		// Most of the integrations are listed here:
 		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
@@ -198,6 +202,8 @@ export class ErrorReporter {
 				...profilingIntegration,
 			],
 		});
+
+		Tracing.setTracingImplementation(new SentryTracing(sentry));
 
 		setTag('server_type', serverType);
 
