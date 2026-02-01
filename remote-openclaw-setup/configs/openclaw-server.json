@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.openclaw.ai/schema/config.json",
+  "_comment": "원격 Ubuntu PC에 배치할 OpenClaw 설정 파일. ~/.openclaw/openclaw.json 으로 복사하세요.",
+  "agent": {
+    "model": "anthropic/claude-opus-4-5"
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "sandbox": {
+        "mode": "non-main"
+      }
+    }
+  },
+  "gateway": {
+    "bind": "loopback",
+    "port": 18789,
+    "auth": {
+      "mode": "token"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": true
+    }
+  }
+}

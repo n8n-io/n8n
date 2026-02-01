@@ -1,0 +1,44 @@
+# =============================================================================
+# OpenClaw SSH 터널 systemd 서비스
+# 클라이언트 PC (이 PC)에 설치하여 원격 OpenClaw Gateway에 자동 연결
+#
+# 설치 방법:
+#   1. 이 파일의 User, ExecStart 부분을 환경에 맞게 수정
+#   2. sudo cp openclaw-tunnel.service /etc/systemd/system/
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable openclaw-tunnel
+#   5. sudo systemctl start openclaw-tunnel
+#
+# 상태 확인:
+#   sudo systemctl status openclaw-tunnel
+#   journalctl -u openclaw-tunnel -f
+# =============================================================================
+
+[Unit]
+Description=OpenClaw Remote SSH Tunnel (autossh)
+Documentation=https://docs.openclaw.ai/gateway/remote
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# ── 아래 값을 환경에 맞게 수정하세요 ──
+User=YOUR_LOCAL_USERNAME
+Environment="AUTOSSH_GATETIME=0"
+Environment="AUTOSSH_PORT=0"
+
+ExecStart=/usr/bin/autossh -M 0 -N \
+    -o "ServerAliveInterval=30" \
+    -o "ServerAliveCountMax=3" \
+    -o "ExitOnForwardFailure=yes" \
+    -o "StrictHostKeyChecking=accept-new" \
+    -i /home/YOUR_LOCAL_USERNAME/.ssh/id_ed25519 \
+    -L 18789:127.0.0.1:18789 \
+    REMOTE_USER@REMOTE_HOST_IP
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
