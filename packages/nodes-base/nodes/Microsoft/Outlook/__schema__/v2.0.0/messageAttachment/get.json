@@ -10,6 +10,9 @@
         "@odata.type": {
             "type": "string"
         },
+        "contentType": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -26,5 +29,5 @@
             "type": "integer"
         }
     },
-    "version": 6
+    "version": 7
 }
