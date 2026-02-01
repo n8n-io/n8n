@@ -10,6 +10,9 @@
                 "blobType": {
                     "type": "string"
                 },
+                "contentDisposition": {
+                    "type": "string"
+                },
                 "contentLength": {
                     "type": "integer"
                 },
@@ -52,5 +55,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

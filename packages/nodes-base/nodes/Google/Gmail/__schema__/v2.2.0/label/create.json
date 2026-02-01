@@ -1,18 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "createdDateTime": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
         },
-        "userPrincipalName": {
+        "labelListVisibility": {
+            "type": "string"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "name": {
             "type": "string"
         }
     },
-    "version": 6
+    "version": 1
 }
