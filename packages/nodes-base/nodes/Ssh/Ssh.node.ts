@@ -496,6 +496,22 @@ export class Ssh implements INodeType {
 					throw error;
 				}
 			}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return [
+					[
+						{
+							json: {
+								error: (error as Error).message,
+							},
+							pairedItem: {
+								item: 0,
+							},
+						},
+					],
+				];
+			}
+			throw error;
 		} finally {
 			ssh.dispose();
 		}
