@@ -1,9 +1,9 @@
 import type { Iso8601DateTimeString } from '@n8n/api-types';
+import { Time } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
 
-import { Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
 import { CacheService } from '@/services/cache/cache.service';
 
 type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;
@@ -107,5 +107,39 @@ export class CollaborationState {
 		const expiryTime = new Date(lastSeenString).getTime() + this.inactivityCleanUpTime;
 
 		return Date.now() > expiryTime;
+	}
+
+	/**
+	 * TTL for write locks. After this time without renewal, the lock expires.
+	 */
+	readonly writeLockTtl = 2 * Time.minutes.toMilliseconds;
+
+	async setWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		await this.cache.set(cacheKey, userId, this.writeLockTtl);
+	}
+
+	async renewWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		const currentHolder = await this.getWriteLock(workflowId);
+
+		if (currentHolder === userId) {
+			await this.cache.set(cacheKey, userId, this.writeLockTtl);
+		}
+	}
+
+	async getWriteLock(workflowId: Workflow['id']): Promise<User['id'] | null> {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		const userId = await this.cache.get<User['id']>(cacheKey);
+		return userId ?? null;
+	}
+
+	async releaseWriteLock(workflowId: Workflow['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		await this.cache.delete(cacheKey);
+	}
+
+	private formWriteLockCacheKey(workflowId: Workflow['id']) {
+		return `collaboration:write-lock:${workflowId}`;
 	}
 }

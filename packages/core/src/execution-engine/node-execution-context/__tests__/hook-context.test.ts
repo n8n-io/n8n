@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -13,7 +14,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
 
 import { HookContext } from '../hook-context';
 
@@ -142,6 +142,12 @@ describe('HookContext', () => {
 			const description = hookContext.getWebhookDescription('default');
 
 			expect(description).toEqual<IWebhookDescription>(webhookDescription);
+		});
+	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(hookContext.getExecutionContext()).toBeUndefined();
 		});
 	});
 });

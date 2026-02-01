@@ -10,5 +10,6 @@
         "username": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

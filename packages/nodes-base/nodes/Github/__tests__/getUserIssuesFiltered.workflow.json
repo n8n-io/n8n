@@ -1,0 +1,211 @@
+{
+	"name": "Github User getUserIssues Filtered Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getUserIssues",
+				"returnAll": true,
+				"getUserIssuesFilters": {
+					"state": "closed",
+					"labels": "enhancement"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get User Issues Filtered",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Issues Response"
+		}
+	],
+	"pinData": {
+		"Issues Response": [
+			{
+				"json": {
+					"url": "https://api.github.com/repos/testowner/closedrepo/issues/10",
+					"repository_url": "https://api.github.com/repos/testowner/closedrepo",
+					"labels_url": "https://api.github.com/repos/testowner/closedrepo/issues/10/labels{/name}",
+					"comments_url": "https://api.github.com/repos/testowner/closedrepo/issues/10/comments",
+					"events_url": "https://api.github.com/repos/testowner/closedrepo/issues/10/events",
+					"html_url": "https://github.com/testowner/closedrepo/issues/10",
+					"id": 10,
+					"number": 10,
+					"title": "Completed enhancement",
+					"user": {
+						"login": "enhancementauthor",
+						"id": 9,
+						"node_id": "MDQ6VXNlcjk=",
+						"avatar_url": "https://github.com/images/error/enhancementauthor_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/enhancementauthor",
+						"html_url": "https://github.com/enhancementauthor",
+						"type": "User",
+						"site_admin": false
+					},
+					"labels": [
+						{
+							"id": 208045947,
+							"node_id": "MDU6TGFiZWwyMDgwNDU5NDc=",
+							"url": "https://api.github.com/repos/testowner/closedrepo/labels/enhancement",
+							"name": "enhancement",
+							"description": "New feature or request",
+							"color": "a2eeef",
+							"default": true
+						}
+					],
+					"state": "closed",
+					"locked": false,
+					"assignee": {
+						"login": "testuser",
+						"id": 1,
+						"node_id": "MDQ6VXNlcjE=",
+						"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/testuser",
+						"html_url": "https://github.com/testuser",
+						"type": "User",
+						"site_admin": false
+					},
+					"assignees": [
+						{
+							"login": "testuser",
+							"id": 1,
+							"node_id": "MDQ6VXNlcjE=",
+							"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/testuser",
+							"html_url": "https://github.com/testuser",
+							"type": "User",
+							"site_admin": false
+						}
+					],
+					"milestone": null,
+					"comments": 5,
+					"created_at": "2011-04-10T13:33:48Z",
+					"updated_at": "2011-04-30T13:33:48Z",
+					"closed_at": "2011-04-30T13:33:48Z",
+					"author_association": "CONTRIBUTOR",
+					"active_lock_reason": null,
+					"body": "Enhancement has been completed successfully.",
+					"reactions": {
+						"url": "https://api.github.com/repos/testowner/closedrepo/issues/10/reactions",
+						"total_count": 3,
+						"+1": 2,
+						"-1": 0,
+						"laugh": 0,
+						"hooray": 1,
+						"confused": 0,
+						"heart": 0,
+						"rocket": 0,
+						"eyes": 0
+					},
+					"timeline_url": "https://api.github.com/repos/testowner/closedrepo/issues/10/timeline",
+					"performed_via_github_app": null,
+					"state_reason": "completed",
+					"repository": {
+						"id": 1296271,
+						"node_id": "MDEwOlJlcG9zaXRvcnkxMjk2Mjcx",
+						"name": "closedrepo",
+						"full_name": "testowner/closedrepo",
+						"owner": {
+							"login": "testowner",
+							"id": 10,
+							"node_id": "MDQ6VXNlcjEw",
+							"avatar_url": "https://github.com/images/error/testowner_happy.gif",
+							"gravatar_id": "",
+							"url": "https://api.github.com/users/testowner",
+							"html_url": "https://github.com/testowner",
+							"type": "User",
+							"site_admin": false
+						},
+						"private": false,
+						"html_url": "https://github.com/testowner/closedrepo",
+						"description": "Repository with closed enhancement issues",
+						"fork": false,
+						"url": "https://api.github.com/repos/testowner/closedrepo",
+						"created_at": "2011-01-26T19:01:12Z",
+						"updated_at": "2011-01-26T19:14:43Z",
+						"pushed_at": "2011-01-26T19:06:43Z",
+						"git_url": "git://github.com/testowner/closedrepo.git",
+						"ssh_url": "git@github.com:testowner/closedrepo.git",
+						"clone_url": "https://github.com/testowner/closedrepo.git",
+						"size": 128,
+						"stargazers_count": 25,
+						"watchers_count": 5,
+						"language": "Python",
+						"has_issues": true,
+						"has_projects": true,
+						"has_wiki": true,
+						"has_pages": false,
+						"forks_count": 2,
+						"mirror_url": null,
+						"archived": false,
+						"disabled": false,
+						"open_issues_count": 0,
+						"license": {
+							"key": "mit",
+							"name": "MIT License",
+							"spdx_id": "MIT",
+							"url": "https://api.github.com/licenses/mit",
+							"node_id": "MDc6TGljZW5zZW1pdA=="
+						},
+						"forks": 2,
+						"open_issues": 0,
+						"watchers": 5,
+						"default_branch": "main"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get User Issues Filtered",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get User Issues Filtered": {
+			"main": [
+				[
+					{
+						"node": "Issues Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

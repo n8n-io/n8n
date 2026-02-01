@@ -7,13 +7,13 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
@@ -51,21 +51,21 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			},
 		],
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: NodeConnectionType.AiDocument,
+				type: NodeConnectionTypes.AiDocument,
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
@@ -102,12 +102,12 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
+		const documentInput = (await this.getInputConnectionData(NodeConnectionTypes.AiDocument, 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			0,
 		)) as Embeddings;
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);

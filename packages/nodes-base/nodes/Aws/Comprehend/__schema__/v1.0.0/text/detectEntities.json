@@ -17,11 +17,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "BeginOffset",
-        "EndOffset",
-        "Score",
-        "Text",
-        "Type"
-    ]
+    "version": 1
 }

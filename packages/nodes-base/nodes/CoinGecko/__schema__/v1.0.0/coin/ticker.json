@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "properties": {
+        "base": {
+            "type": "string"
+        },
+        "coin_id": {
+            "type": "string"
+        },
+        "converted_last": {
+            "type": "object",
+            "properties": {
+                "btc": {
+                    "type": "number"
+                },
+                "eth": {
+                    "type": "number"
+                }
+            }
+        },
+        "is_anomaly": {
+            "type": "boolean"
+        },
+        "is_stale": {
+            "type": "boolean"
+        },
+        "last": {
+            "type": "number"
+        },
+        "last_fetch_at": {
+            "type": "string"
+        },
+        "last_traded_at": {
+            "type": "string"
+        },
+        "market": {
+            "type": "object",
+            "properties": {
+                "has_trading_incentive": {
+                    "type": "boolean"
+                },
+                "identifier": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "target": {
+            "type": "string"
+        },
+        "target_coin_id": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "token_info_url": {
+            "type": "null"
+        },
+        "trade_url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

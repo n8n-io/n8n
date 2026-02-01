@@ -1,0 +1,134 @@
+{
+	"name": "Kafka test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -100],
+			"id": "d0594d58-ebb3-4dc0-a241-3f2531212fd7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"topic": "test-topic",
+				"useKey": true,
+				"key": "messageKey",
+				"headersUi": {
+					"headerValues": [
+						{
+							"key": "header",
+							"value": "value"
+						}
+					]
+				},
+				"options": {
+					"acks": true,
+					"compression": true,
+					"timeout": 1000
+				}
+			},
+			"type": "n8n-nodes-base.kafka",
+			"typeVersion": 1,
+			"position": [440, -200],
+			"id": "f29d6af7-9ded-421a-8ada-cea80eac9464",
+			"name": "Send Input Data",
+			"credentials": {
+				"kafka": {
+					"id": "JJBjHkOrIfcj91EX",
+					"name": "Kafka account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"topic": "test-topic",
+				"sendInputData": false,
+				"message": "={{ JSON.stringify({foo: 'bar'}) }}",
+				"jsonParameters": true,
+				"useSchemaRegistry": true,
+				"schemaRegistryUrl": "https://test-kafka-registry.local",
+				"eventName": "test-event-name",
+				"headerParametersJson": "{\n  \"headerKey\": \"headerValue\"\n}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.kafka",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "d851834f-6b97-445d-8e69-cc2e873bdf80",
+			"name": "Schema Registry",
+			"credentials": {
+				"kafka": {
+					"id": "JJBjHkOrIfcj91EX",
+					"name": "Kafka account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"name\": \"First item\",\n    \"code\": 1\n  },\n  {\n    \"name\": \"Second item\",\n    \"code\": 2\n  }\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, -100],
+			"id": "50ce815c-cf9a-4d83-8739-c95f9c3d7ec6",
+			"name": "Test Data"
+		}
+	],
+	"pinData": {
+		"Send Input Data": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Schema Registry": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test Data": {
+			"main": [
+				[
+					{
+						"node": "Schema Registry",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Input Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "be4cbb16-225f-41ed-b897-895aaa34ea34",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "r7XhZVcfhaGvCbgE",
+	"tags": []
+}

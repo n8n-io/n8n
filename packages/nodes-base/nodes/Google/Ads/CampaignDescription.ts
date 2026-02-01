@@ -11,7 +11,7 @@ async function processCampaignSearchResponse(
 	_inputData: INodeExecutionData[],
 	responseData: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
+	const results = ((responseData.body as IDataObject).results as GoogleAdsCampaignElement) ?? [];
 
 	return results.map((result) => ({
 		json: {
@@ -41,7 +41,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v17/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
+						url: '={{"/v20/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
 							query:
 								'={{ "' +
@@ -89,7 +89,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v17/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
+						url: '={{"/v20/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
 							query:

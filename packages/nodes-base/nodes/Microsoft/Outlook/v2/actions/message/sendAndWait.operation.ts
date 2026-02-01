@@ -5,7 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { createEmailBody } from '../../../../../../utils/sendAndWait/email-templates';
+import {
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
+} from '../../../../../../utils/sendAndWait/email-templates';
 import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
@@ -31,12 +34,16 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 
-	const instanceId = this.getInstanceId();
-
-	const bodyContent = createEmailBody(config.message, buttons.join('\n'), instanceId);
+	let bodyContent: string;
+	if (config.appendAttribution !== false) {
+		const instanceId = this.getInstanceId();
+		bodyContent = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		bodyContent = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const fields: IDataObject = {
 		subject: config.title,

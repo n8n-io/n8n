@@ -1,231 +1,158 @@
 {
-	"type": "object",
-	"properties": {
-		"dealStages": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"group": {
-						"type": "string"
-					},
-					"title": {
-						"type": "string"
-					},
-					"color": {
-						"type": "string"
-					},
-					"order": {
-						"type": "string"
-					},
-					"width": {
-						"type": "string"
-					},
-					"dealOrder": {
-						"type": "string"
-					},
-					"cardRegion1": {
-						"type": "string"
-					},
-					"cardRegion2": {
-						"type": "string"
-					},
-					"cardRegion3": {
-						"type": "string"
-					},
-					"cardRegion4": {
-						"type": "string"
-					},
-					"cardRegion5": {
-						"type": "string"
-					},
-					"udate": {
-						"type": "string"
-					},
-					"links": {
-						"type": "object",
-						"properties": {
-							"group": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"group"
-						]
-					},
-					"id": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"group",
-					"title",
-					"color",
-					"order",
-					"width",
-					"dealOrder",
-					"cardRegion1",
-					"cardRegion2",
-					"cardRegion3",
-					"cardRegion4",
-					"cardRegion5",
-					"cdate",
-					"udate",
-					"links",
-					"id"
-				]
-			}
-		},
-		"deal": {
-			"type": "object",
-			"properties": {
-				"hash": {
-					"type": "string"
-				},
-				"owner": {
-					"type": "string"
-				},
-				"contact": {
-					"type": "string"
-				},
-				"organization": {
-					"type": "null"
-				},
-				"group": {
-					"type": "string"
-				},
-				"stage": {
-					"type": "string"
-				},
-				"title": {
-					"type": "string"
-				},
-				"description": {
-					"type": "string"
-				},
-				"percent": {
-					"type": "string"
-				},
-				"cdate": {
-					"type": "string"
-				},
-				"mdate": {
-					"type": "string"
-				},
-				"currency": {
-					"type": "string"
-				},
-				"activitycount": {
-					"type": "string"
-				},
-				"nextdealid": {
-					"type": "string"
-				},
-				"links": {
-					"type": "object",
-					"properties": {
-						"dealActivities": {
-							"type": "string"
-						},
-						"contact": {
-							"type": "string"
-						},
-						"contactDeals": {
-							"type": "string"
-						},
-						"group": {
-							"type": "string"
-						},
-						"nextTask": {
-							"type": "string"
-						},
-						"notes": {
-							"type": "string"
-						},
-						"account": {
-							"type": "string"
-						},
-						"customerAccount": {
-							"type": "string"
-						},
-						"organization": {
-							"type": "string"
-						},
-						"owner": {
-							"type": "string"
-						},
-						"scoreValues": {
-							"type": "string"
-						},
-						"stage": {
-							"type": "string"
-						},
-						"tasks": {
-							"type": "string"
-						},
-						"dealCustomFieldData": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"dealActivities",
-						"contact",
-						"contactDeals",
-						"group",
-						"nextTask",
-						"notes",
-						"account",
-						"customerAccount",
-						"organization",
-						"owner",
-						"scoreValues",
-						"stage",
-						"tasks",
-						"dealCustomFieldData"
-					]
-				},
-				"id": {
-					"type": "string"
-				},
-				"isDisabled": {
-					"type": "boolean"
-				},
-				"account": {
-					"type": "null"
-				},
-				"customerAccount": {
-					"type": "null"
-				}
-			},
-			"required": [
-				"hash",
-				"owner",
-				"contact",
-				"organization",
-				"group",
-				"stage",
-				"title",
-				"description",
-				"percent",
-				"cdate",
-				"mdate",
-				"nextdate",
-				"nexttaskid",
-				"value",
-				"currency",
-				"status",
-				"activitycount",
-				"nextdealid",
-				"edate",
-				"winProbability",
-				"winProbabilityMdate",
-				"links",
-				"fields",
-				"id",
-				"isDisabled",
-				"account",
-				"customerAccount"
-			]
-		}
-	}
+    "type": "object",
+    "properties": {
+        "deal": {
+            "type": "object",
+            "properties": {
+                "activitycount": {
+                    "type": "string"
+                },
+                "cdate": {
+                    "type": "string"
+                },
+                "contact": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDisabled": {
+                    "type": "boolean"
+                },
+                "links": {
+                    "type": "object",
+                    "properties": {
+                        "account": {
+                            "type": "string"
+                        },
+                        "contact": {
+                            "type": "string"
+                        },
+                        "contactDeals": {
+                            "type": "string"
+                        },
+                        "customerAccount": {
+                            "type": "string"
+                        },
+                        "dealActivities": {
+                            "type": "string"
+                        },
+                        "dealCustomFieldData": {
+                            "type": "string"
+                        },
+                        "group": {
+                            "type": "string"
+                        },
+                        "nextTask": {
+                            "type": "string"
+                        },
+                        "notes": {
+                            "type": "string"
+                        },
+                        "organization": {
+                            "type": "string"
+                        },
+                        "owner": {
+                            "type": "string"
+                        },
+                        "scoreValues": {
+                            "type": "string"
+                        },
+                        "stage": {
+                            "type": "string"
+                        },
+                        "tasks": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "mdate": {
+                    "type": "string"
+                },
+                "nextdealid": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "percent": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dealStages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "cardRegion1": {
+                        "type": "string"
+                    },
+                    "cardRegion2": {
+                        "type": "string"
+                    },
+                    "cardRegion3": {
+                        "type": "string"
+                    },
+                    "cardRegion4": {
+                        "type": "string"
+                    },
+                    "cardRegion5": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "dealOrder": {
+                        "type": "string"
+                    },
+                    "group": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "group": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "order": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "udate": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
 }

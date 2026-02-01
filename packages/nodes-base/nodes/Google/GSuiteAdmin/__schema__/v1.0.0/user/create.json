@@ -1,32 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
+        "creationTime": {
             "type": "string"
         },
-        "id": {
+        "customerId": {
             "type": "string"
         },
         "etag": {
             "type": "string"
         },
-        "primaryEmail": {
+        "id": {
             "type": "string"
-        },
-        "name": {
-            "type": "object",
-            "properties": {
-                "givenName": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "givenName",
-                "familyName"
-            ]
         },
         "isAdmin": {
             "type": "boolean"
@@ -34,17 +19,29 @@
         "isDelegatedAdmin": {
             "type": "boolean"
         },
-        "creationTime": {
+        "isMailboxSetup": {
+            "type": "boolean"
+        },
+        "kind": {
             "type": "string"
         },
-        "customerId": {
-            "type": "string"
+        "name": {
+            "type": "object",
+            "properties": {
+                "familyName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                }
+            }
         },
         "orgUnitPath": {
             "type": "string"
         },
-        "isMailboxSetup": {
-            "type": "boolean"
+        "primaryEmail": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -16,7 +16,7 @@ describe('components', () => {
 					default: 'This is a notice.',
 				},
 				global: {
-					stubs: ['n8n-text'],
+					stubs: ['N8nText'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -31,7 +31,7 @@ describe('components', () => {
 							content: 'This is a notice.',
 						},
 						global: {
-							stubs: ['n8n-text'],
+							stubs: ['N8nText'],
 						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
@@ -41,19 +41,19 @@ describe('components', () => {
 					const wrapper = render(N8nNotice, {
 						props: {
 							id: 'notice',
-							content: '<strong>Hello world!</strong> This is a notice.',
+							content: '<a href="https://example.com">Hello world!</a> This is a notice.',
 						},
 						global: {
 							directives: {
 								n8nHtml,
 							},
 							components: {
-								'n8n-text': N8nText,
+								N8nText,
 							},
 						},
 					});
 
-					expect(wrapper.container.querySelectorAll('strong')).toHaveLength(1);
+					expect(wrapper.container.querySelectorAll('a')).toHaveLength(1);
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 
@@ -64,7 +64,7 @@ describe('components', () => {
 							content: '<script>alert(1);</script> This is a notice.',
 						},
 						global: {
-							stubs: ['n8n-text'],
+							stubs: ['N8nText'],
 						},
 					});
 

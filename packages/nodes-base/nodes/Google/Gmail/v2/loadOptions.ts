@@ -1,37 +1,6 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
-
-/**
- * Get all the labels to display them to user so that they can select them easily
- */
-export async function getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-
-	const labels = await googleApiRequestAllItems.call(
-		this,
-		'labels',
-		'GET',
-		'/gmail/v1/users/me/labels',
-	);
-
-	for (const label of labels) {
-		returnData.push({
-			name: label.name,
-			value: label.id,
-		});
-	}
-
-	return returnData.sort((a, b) => {
-		if (a.name < b.name) {
-			return -1;
-		}
-		if (a.name > b.name) {
-			return 1;
-		}
-		return 0;
-	});
-}
+import { googleApiRequest, getLabels } from '../GenericFunctions';
 
 export async function getThreadMessages(
 	this: ILoadOptionsFunctions,
@@ -73,3 +42,5 @@ export async function getGmailAliases(
 
 	return returnData;
 }
+
+export { getLabels };

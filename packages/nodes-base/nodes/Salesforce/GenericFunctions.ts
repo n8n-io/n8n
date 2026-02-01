@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -241,4 +242,46 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 	}
 
 	return query;
+}
+
+/**
+ * Calculates the polling start date with safety margin to account for Salesforce indexing delays
+ */
+export function getPollStartDate(lastTimeChecked: string | undefined): string {
+	if (!lastTimeChecked) {
+		return DateTime.now().toISO();
+	}
+	const safetyMarginMinutes = 15;
+	return DateTime.fromISO(lastTimeChecked).minus({ minutes: safetyMarginMinutes }).toISO();
+}
+
+/**
+ * Filters out already processed items and manages the processed IDs list
+ */
+export function filterAndManageProcessedItems(
+	responseData: IDataObject[],
+	processedIds: string[],
+): { newItems: IDataObject[]; updatedProcessedIds: string[] } {
+	const processedIdsSet = new Set(processedIds);
+
+	const newItems: IDataObject[] = [];
+	const newItemIds: string[] = [];
+
+	for (const item of responseData) {
+		if (typeof item.Id !== 'string') continue;
+
+		const itemId = item.Id;
+		if (!processedIdsSet.has(itemId)) {
+			newItems.push(item);
+			newItemIds.push(itemId);
+		}
+	}
+
+	const remainingProcessedIds = Array.from(processedIdsSet);
+	const updatedProcessedIds = remainingProcessedIds.concat(newItemIds);
+
+	const MAX_IDS = 10000;
+	const trimmedProcessedIds = updatedProcessedIds.slice(-MAX_IDS);
+
+	return { newItems, updatedProcessedIds: trimmedProcessedIds };
 }

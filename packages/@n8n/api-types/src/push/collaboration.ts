@@ -6,7 +6,7 @@ export type Collaborator = {
 	lastSeen: Iso8601DateTimeString;
 };
 
-type CollaboratorsChanged = {
+export type CollaboratorsChanged = {
 	type: 'collaboratorsChanged';
 	data: {
 		workflowId: string;
@@ -14,4 +14,22 @@ type CollaboratorsChanged = {
 	};
 };
 
-export type CollaborationPushMessage = CollaboratorsChanged;
+export type WriteAccessAcquired = {
+	type: 'writeAccessAcquired';
+	data: {
+		workflowId: string;
+		userId: string;
+	};
+};
+
+export type WriteAccessReleased = {
+	type: 'writeAccessReleased';
+	data: {
+		workflowId: string;
+	};
+};
+
+export type CollaborationPushMessage =
+	| CollaboratorsChanged
+	| WriteAccessAcquired
+	| WriteAccessReleased;

@@ -1,7 +1,7 @@
 import isEmpty from 'lodash/isEmpty';
 import omit from 'lodash/omit';
 import moment from 'moment-timezone';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -50,8 +50,8 @@ export class GoToWebinar implements INodeType {
 			name: 'GoToWebinar',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'goToWebinarOAuth2Api',

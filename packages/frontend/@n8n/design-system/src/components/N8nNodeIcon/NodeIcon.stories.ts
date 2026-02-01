@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nNodeIcon from './NodeIcon.vue';
 
@@ -26,14 +26,14 @@ FileIcon.args = {
 export const FontIcon = DefaultTemplate.bind({});
 FontIcon.args = {
 	type: 'icon',
-	name: 'cogs',
+	name: 'cog',
 	size: 200,
 };
 
 export const Hoverable = DefaultTemplate.bind({});
 Hoverable.args = {
 	type: 'icon',
-	name: 'heart',
+	name: 'home',
 	color: 'red',
 	size: 200,
 	nodeTypeName: 'We ❤️ n8n',

@@ -1,20 +1,29 @@
+import {
+	mockInstance,
+	testDb,
+	getPersonalProject,
+	getAllSharedWorkflows,
+	getAllWorkflows,
+} from '@n8n/backend-test-utils';
+import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
+import '@/zod-alias-support';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../shared/mocking';
-import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createOwner } from '../shared/db/users';
-import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
+mockInstance(ActiveWorkflowManager);
+mockInstance(WorkflowPublishHistoryRepository);
+
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'User']);
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
@@ -41,8 +50,8 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -82,8 +91,8 @@ test('import:workflow should import active workflow from combined file and deact
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -93,6 +102,39 @@ test('import:workflow should import active workflow from combined file and deact
 			}),
 			expect.objectContaining({
 				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('import:workflow can import a single workflow object', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+	await command.run(['--input=./test/integration/commands/import-workflows/combined/single.json']);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+		],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
 				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),

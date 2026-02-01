@@ -1,6 +1,10 @@
 export type ScenarioData = {
 	/** Relative paths to the workflow files */
 	workflowFiles?: string[];
+	/** Relative paths to the credential files */
+	credentialFiles?: string[];
+	/** Relative paths to the data table files */
+	dataTableFile?: string;
 };
 
 /**
@@ -24,4 +28,6 @@ export type Scenario = ScenarioManifest & {
 	id: string;
 	/** Path to the directory containing the scenario */
 	scenarioDirPath: string;
+	/** ID of the data table created for the scenario, if any */
+	dataTableId?: string;
 };

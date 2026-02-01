@@ -1,8 +1,15 @@
-import type { IDataObject, INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, INode, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
-import type { ColumnInfo } from '../../v2/helpers/interfaces';
+import type {
+	ColumnInfo,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryMode,
+	QueryWithValues,
+} from '../../v2/helpers/interfaces';
 import {
 	addSortRules,
 	addReturning,
@@ -18,6 +25,9 @@ import {
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
+	isWhereClause,
+	getWhereClauses,
+	runQueriesAndHandleErrors,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -100,27 +110,11 @@ describe('Test PostgresV2, wrapData', () => {
 
 describe('Test PostgresV2, prepareErrorItem', () => {
 	it('should return error info item', () => {
-		const items = [
-			{
-				json: {
-					id: 1,
-					name: 'Name 1',
-				},
-			},
-			{
-				json: {
-					id: 2,
-					name: 'Name 2',
-				},
-			},
-		];
-
 		const error = new Error('Test error');
-		const item = prepareErrorItem(items, error, 1);
+		const item = prepareErrorItem(error, 1);
 		expect(item).toBeDefined();
 
-		expect((item.json.item as IDataObject)?.id).toEqual(2);
-		expect(item.json.message).toEqual('Test error');
+		expect((item.pairedItem as IPairedItemData).item).toEqual(1);
 		expect(item.json.error).toBeDefined();
 	});
 });
@@ -146,15 +140,15 @@ describe('Test PostgresV2, parsePostgresError', () => {
 
 	it('should update message with syntax error', () => {
 		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
-		const errorMessage = String.raw`syntax error at or near "seelect"`;
+		const errorMessage = String.raw`syntax error at or near "select"`;
 		const error = new Error();
 		error.message = errorMessage;
 
 		const parsedError = parsePostgresError(node, error, [
-			{ query: 'seelect * from my_table', values: [] },
+			{ query: 'select * from my_table', values: [] },
 		]);
 		expect(parsedError).toBeDefined();
-		expect(parsedError.message).toEqual('Syntax error at line 1 near "seelect"');
+		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
 	});
 });
@@ -201,7 +195,7 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
 	});
 
-	it('should ignore incorect combine conition ad use AND', () => {
+	it('should ignore incorrect combine condition ad use AND', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const whereClauses = [
@@ -246,7 +240,7 @@ describe('Test PostgresV2, addSortRules', () => {
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id']);
 	});
-	it('should ignore incorect direction', () => {
+	it('should ignore incorrect direction', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const sortRules = [{ column: 'id', direction: 'SELECT * FROM my_table' }];
@@ -340,7 +334,7 @@ describe('Test PostgresV2, replaceEmptyStringsByNulls', () => {
 });
 
 describe('Test PostgresV2, prepareItem', () => {
-	it('should convert fixedColections values to object', () => {
+	it('should convert fixedCollection values to object', () => {
 		const values = [
 			{
 				column: 'id',
@@ -428,36 +422,47 @@ describe('Test PostgresV2, hasJsonDataType', () => {
 });
 
 describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
-	it('should use pgp to properly convert values to JSON', () => {
-		const pgp = pgPromise();
-		const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const pgp = pgPromise();
+	const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const schema: ColumnInfo[] = [
+		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+	];
 
-		const schema: ColumnInfo[] = [
-			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-		];
-		const values = [
-			{
-				value: { data: [], id: 1 },
-				expected: { data: '[]', id: 1 },
-			},
-			{
-				value: { data: [0], id: 1 },
-				expected: { data: '[0]', id: 1 },
-			},
-			{
-				value: { data: { key: 2 }, id: 1 },
-				expected: { data: '{"key":2}', id: 1 },
-			},
-		];
+	beforeEach(() => {
+		pgpJsonSpy.mockClear();
+	});
 
-		values.forEach((value) => {
-			const data = value.value.data;
-
-			expect(convertValuesToJsonWithPgp(pgp, schema, value.value)).toEqual(value.expected);
-			expect(value.value).toEqual(value.expected);
+	it.each([
+		{
+			value: { data: [], id: 1 },
+			expected: { data: '[]', id: 1 },
+		},
+		{
+			value: { data: [0], id: 1 },
+			expected: { data: '[0]', id: 1 },
+		},
+		{
+			value: { data: { key: 2 }, id: 1 },
+			expected: { data: '{"key":2}', id: 1 },
+		},
+		{
+			value: { data: null, id: 1 },
+			expected: { data: null, id: 1 },
+			shouldSkipPgp: true,
+		},
+		{
+			value: { data: undefined, id: 1 },
+			expected: { data: undefined, id: 1 },
+			shouldSkipPgp: true,
+		},
+	])('should convert $value.data to json correctly', ({ value, expected, shouldSkipPgp }) => {
+		const data = value.data;
+		expect(convertValuesToJsonWithPgp(pgp, schema, value)).toEqual(expected);
+		expect(value).toEqual(expected);
+		if (!shouldSkipPgp) {
 			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
-		});
+		}
 	});
 });
 
@@ -524,9 +529,9 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			},
 		];
 
-		convertArraysToPostgresFormat(item, schema, node, 0);
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
 
-		expect(item).toEqual({
+		expect(result).toEqual({
 			jsonb_array: '{"{\\"key\\":\\"value44\\"}"}',
 			json_array: '{"{\\"key\\":\\"value54\\"}"}',
 			int_array: '{1,2,5}',
@@ -534,4 +539,213 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			bool_array: '{"true","false"}',
 		});
 	});
+
+	it('should not modify the original data object', () => {
+		const referenceItem = {
+			arr: [1, 2, 3],
+		};
+		const item = {
+			arr: [1, 2, 3],
+		};
+		const schema: ColumnInfo[] = [
+			{
+				column_name: 'arr',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_int4',
+				column_default: null,
+			},
+		];
+
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
+
+		expect(result).toEqual({
+			arr: '{1,2,3}',
+		});
+		expect(item).toEqual(referenceItem);
+	});
+
+	describe('where clause handling', () => {
+		const validOperations = [
+			'equal',
+			'=',
+			'!=',
+			'LIKE',
+			'>',
+			'<',
+			'>=',
+			'<=',
+			'IS NULL',
+			'IS NOT NULL',
+		];
+		const invalidOperations = ['=1 or 1--', '=>', ''];
+
+		test.each(validOperations)('isWhereClause returns true for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					condition: operation,
+					value: '1',
+				}),
+			).toBe(true);
+		});
+
+		test.each(invalidOperations)('isWhereClause returns false for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'name',
+					condition: operation,
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when column is missing', () => {
+			expect(
+				isWhereClause({
+					condition: 'equal',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when condition is missing', () => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test.each(invalidOperations)(
+			'getWhereClauses throws an exception for "%s" operation',
+			(operation) => {
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: [
+						{
+							column: 'test',
+							condition: '=',
+							value: '3',
+						},
+						{
+							column: 'id',
+							condition: operation,
+							value: '1',
+						},
+					],
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(() => getWhereClauses(ctx, 0)).toThrow();
+			},
+		);
+
+		test.each(validOperations)(
+			'getWhereClauses returns valid clauses for "%s" operation',
+			(operation) => {
+				const clauses = [
+					{
+						column: 'name',
+						condition: 'LIKE',
+						value: 'Wohn Jick',
+					},
+					{
+						column: 'id',
+						condition: operation,
+						value: '1',
+					},
+					{
+						column: 'condition',
+						condition: 'equal',
+						value: 'angry',
+					},
+				];
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: clauses,
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(getWhereClauses(ctx, 0)).toBe(clauses);
+			},
+		);
+	});
+});
+
+describe('Test PostgresV2, runQueriesAndHandleErrors', () => {
+	it.each([['single'], ['transaction']] as QueryMode[][])(
+		'should return errors without running queries when batching is %s',
+		async (batching) => {
+			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
+			const queries: QueryWithValues[] = [
+				{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+			];
+			const nodeOptions: PostgresNodeOptions = { queryBatching: batching };
+			const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+			errorItemsMap.set(1, { json: { error: new Error('Test error') }, pairedItem: { item: 1 } });
+
+			const result = await runQueriesAndHandleErrors(
+				runQueries,
+				queries,
+				nodeOptions,
+				errorItemsMap,
+			);
+
+			expect(result).toEqual([
+				{ json: { error: new Error('Test error') }, pairedItem: { item: 1 } },
+			]);
+			expect(runQueries).not.toHaveBeenCalled();
+		},
+	);
+
+	it('should run queries and return errors when batching is independently', async () => {
+		const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+			{ json: { id: 1 }, pairedItem: { item: 0 } },
+			{ json: { id: 3 }, pairedItem: { item: 2 } },
+		]);
+		const queries: QueryWithValues[] = [
+			{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+			{ query: 'INSERT INTO my_table (id) VALUES (3)', values: [] },
+		];
+		const nodeOptions: PostgresNodeOptions = { queryBatching: 'independently' };
+		const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+		errorItemsMap.set(1, { json: { error: new Error('Test error') }, pairedItem: { item: 1 } });
+
+		const result = await runQueriesAndHandleErrors(runQueries, queries, nodeOptions, errorItemsMap);
+
+		expect(result).toEqual([
+			{ json: { id: 1 }, pairedItem: { item: 0 } },
+			{ json: { error: new Error('Test error') }, pairedItem: { item: 1 } },
+			{ json: { id: 3 }, pairedItem: { item: 2 } },
+		]);
+	});
+
+	it.each([['single'], ['transaction'], ['independently']] as QueryMode[][])(
+		'should run queries when batching is %s and there are no errors',
+		async (batching) => {
+			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+				{ json: { id: 1 }, pairedItem: { item: 0 } },
+				{ json: { id: 2 }, pairedItem: { item: 1 } },
+				{ json: { id: 3 }, pairedItem: { item: 2 } },
+			]);
+			const queries: QueryWithValues[] = [
+				{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+				{ query: 'INSERT INTO my_table (id) VALUES (2)', values: [] },
+				{ query: 'INSERT INTO my_table (id) VALUES (3)', values: [] },
+			];
+			const nodeOptions: PostgresNodeOptions = { queryBatching: batching };
+			const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+
+			const result = await runQueriesAndHandleErrors(
+				runQueries,
+				queries,
+				nodeOptions,
+				errorItemsMap,
+			);
+
+			expect(result).toEqual([
+				{ json: { id: 1 }, pairedItem: { item: 0 } },
+				{ json: { id: 2 }, pairedItem: { item: 1 } },
+				{ json: { id: 3 }, pairedItem: { item: 2 } },
+			]);
+		},
+	);
 });

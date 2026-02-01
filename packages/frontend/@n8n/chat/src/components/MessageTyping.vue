@@ -18,7 +18,6 @@ const message: ChatMessage = {
 	id: 'typing',
 	text: '',
 	sender: 'bot',
-	createdAt: '',
 };
 const messageContainer = ref<InstanceType<typeof Message>>();
 const classes = computed(() => {

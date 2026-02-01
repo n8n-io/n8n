@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
@@ -16,6 +16,8 @@ import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
+import { getAwsCredentials } from '../../GenericFunctions';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -37,15 +39,11 @@ export class AwsS3V2 implements INodeType {
 				name: 'AWS S3',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
-			credentials: [
-				{
-					name: 'aws',
-					required: true,
-				},
-			],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: awsNodeCredentials,
 			properties: [
+				awsNodeAuthOptions,
 				{
 					displayName: 'Resource',
 					name: 'resource',
@@ -87,13 +85,14 @@ export class AwsS3V2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const { credentials } = await getAwsCredentials(this);
+
 		for (let i = 0; i < items.length; i++) {
 			let headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
-						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
@@ -656,6 +655,8 @@ export class AwsS3V2 implements INodeType {
 							fileName,
 							mimeType,
 						);
+
+						returnData.push(items[i]);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 					if (operation === 'delete') {
@@ -1058,16 +1059,11 @@ export class AwsS3V2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-					continue;
+				} else {
+					throw error;
 				}
-				throw error;
 			}
 		}
-		if (resource === 'file' && operation === 'download') {
-			// For file downloads the files get attached to the existing items
-			return [items];
-		} else {
-			return [returnData];
-		}
+		return [returnData];
 	}
 }

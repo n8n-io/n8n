@@ -418,7 +418,7 @@ export const itemFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'expressionAttributeValues',
-						displayName: 'Expression Attribute Vaue',
+						displayName: 'Expression Attribute Value',
 						values: [
 							{
 								displayName: 'Attribute',

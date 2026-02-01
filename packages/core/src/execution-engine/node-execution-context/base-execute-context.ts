@@ -1,5 +1,4 @@
-import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	Workflow,
 	INode,
@@ -20,22 +19,22 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	NodeConnectionType,
+	Result,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	NodeHelpers,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
+	createEnvProviderState,
 } from 'n8n-workflow';
-
-import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
-	protected readonly binaryDataService = Container.get(BinaryDataService);
-
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -49,6 +48,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		readonly abortSignal?: AbortSignal,
 	) {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
+	}
+
+	getExecutionContext() {
+		return this.runExecutionData.executionData?.runtimeData;
 	}
 
 	getExecutionCancelSignal() {
@@ -115,8 +118,22 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		options?: {
 			doNotWaitToFinish?: boolean;
 			parentExecution?: RelatedExecution;
+			executionMode?: WorkflowExecuteMode;
 		},
 	): Promise<ExecuteWorkflowData> {
+		if (options?.parentExecution) {
+			// We inject the execution context of the current execution
+			// to the sub-workflow so that it can be accessed there
+			// this should only happen for the direct parent execution
+			// if a workflow starts a sub-workflow for a workflow that is not itself
+			// then the context should not be passed down
+			if (
+				!options.parentExecution.executionContext &&
+				options.parentExecution.executionId === this.getExecutionId()
+			) {
+				options.parentExecution.executionContext = this.getExecutionContext();
+			}
+		}
 		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 			...options,
 			parentWorkflowId: this.workflow.id,
@@ -133,12 +150,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 		}
 
-		const data = await this.binaryDataService.duplicateBinaryData(
-			this.workflow.id,
-			this.additionalData.executionId!,
-			result.data,
-		);
-		return { ...result, data };
+		return result;
+	}
+
+	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
+		return await this.additionalData.getRunExecutionData(executionId);
 	}
 
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
@@ -159,7 +175,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return allItems;
 	}
 
-	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionType.Main): ISourceData {
+	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionTypes.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
 			throw new ApplicationError('Source data is missing');
@@ -223,5 +239,34 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
 			msg,
 		});
+	}
+
+	async startJob<T = unknown, E = unknown>(
+		jobType: string,
+		settings: unknown,
+		itemIndex: number,
+	): Promise<Result<T, E>> {
+		return await this.additionalData.startRunnerTask<T, E>(
+			this.additionalData,
+			jobType,
+			settings,
+			this as IExecuteFunctions,
+			this.inputData,
+			this.node,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			itemIndex,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			createEnvProviderState(),
+			this.executeData,
+		);
+	}
+
+	getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string } {
+		return this.additionalData.getRunnerStatus?.(taskType) ?? { available: true };
 	}
 }

@@ -1,15 +1,17 @@
+import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import config from '@/config';
-import { EventService } from '@/events/event.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
+import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
+import { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
@@ -18,27 +20,38 @@ import type { PubSub } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
+	private readonly commandChannel: string;
+
+	private readonly workerResponseChannel: string;
+
 	constructor(
 		private readonly logger: Logger,
-		private readonly redisClientService: RedisClientService,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly pubsubEventBus: PubSubEventBus,
+		private readonly redisClientService: RedisClientService,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (this.executionsConfig.mode !== 'queue') return;
 
 		this.logger = this.logger.scoped(['scaling', 'pubsub']);
+
+		// Build prefixed channel names for proper isolation between deployments
+		const prefix = this.globalConfig.redis.prefix;
+		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
+		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
 			const eventName = 'command' in msg ? msg.command : msg.response;
-			this.eventService.emit(eventName, msg.payload);
+			this.pubsubEventBus.emit(eventName, msg.payload);
 		};
 
 		const debouncedHandlerFn = debounce(handlerFn, 300);
 
-		this.client.on('message', (channel: PubSub.Channel, str) => {
+		this.client.on('message', (channel: string, str: string) => {
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
 			if (msg.debounce) debouncedHandlerFn(msg);
@@ -50,12 +63,20 @@ export class Subscriber {
 		return this.client;
 	}
 
+	getCommandChannel() {
+		return this.commandChannel;
+	}
+
+	getWorkerResponseChannel() {
+		return this.workerResponseChannel;
+	}
+
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		this.client.disconnect();
 	}
 
-	async subscribe(channel: PubSub.Channel) {
+	async subscribe(channel: string) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
@@ -66,7 +87,7 @@ export class Subscriber {
 		});
 	}
 
-	private parseMessage(str: string, channel: PubSub.Channel) {
+	private parseMessage(str: string, channel: string) {
 		const msg = jsonParse<PubSub.Command | PubSub.WorkerResponse | null>(str, {
 			fallbackValue: null,
 		});

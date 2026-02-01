@@ -10,10 +10,8 @@
                 "value": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "link"
-            ]
+            }
         }
-    }
+    },
+    "version": 1
 }

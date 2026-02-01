@@ -1,7 +1,7 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { SecretsProvider } from '@/interfaces';
-import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
+import { SecretsProvider } from '@/modules/external-secrets.ee/types';
+import type { SecretsProviderSettings } from '@/modules/external-secrets.ee/types';
 
 export class MockProviders {
 	providers: Record<string, { new (): SecretsProvider }> = {
@@ -12,8 +12,8 @@ export class MockProviders {
 		this.providers = providers;
 	}
 
-	getProvider(name: string): { new (): SecretsProvider } | null {
-		return this.providers[name] ?? null;
+	getProvider(name: string): { new (): SecretsProvider } {
+		return this.providers[name];
 	}
 
 	hasProvider(name: string) {
@@ -57,8 +57,6 @@ export class DummyProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
-
 	_updateSecrets: Record<string, string> = {
 		test1: 'value1',
 		test2: 'value2',
@@ -66,8 +64,8 @@ export class DummyProvider extends SecretsProvider {
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'connected';
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
 	}
 
 	async disconnect(): Promise<void> {}
@@ -93,6 +91,10 @@ export class DummyProvider extends SecretsProvider {
 	}
 }
 
+export class AnotherDummyProvider extends DummyProvider {
+	name = 'another_dummy';
+}
+
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
@@ -100,19 +102,18 @@ export class ErrorProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {
 		throw new Error();
 	}
 
-	async connect(): Promise<void> {
-		this.state = 'error';
-		throw new Error();
+	protected async doConnect(): Promise<void> {
+		throw new Error('Connection failed');
 	}
 
 	async disconnect(): Promise<void> {
-		throw new Error();
+		// no-op
 	}
 
 	async update(): Promise<void> {
@@ -143,12 +144,12 @@ export class FailedProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'error';
+	protected async doConnect(): Promise<void> {
+		throw new Error('Failed to connect');
 	}
 
 	async disconnect(): Promise<void> {}
@@ -179,7 +180,7 @@ export class TestFailProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	_updateSecrets: Record<string, string> = {
 		test1: 'value1',
@@ -188,8 +189,8 @@ export class TestFailProvider extends SecretsProvider {
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'connected';
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
 	}
 
 	async disconnect(): Promise<void> {}

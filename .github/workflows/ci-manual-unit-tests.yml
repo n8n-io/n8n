@@ -1,0 +1,135 @@
+name: 'CI: Manual Unit Tests'
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA or ref to check out
+        required: true
+      pr_number:
+        description: PR number (optional, for check reporting)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  create-check-run:
+    name: Create Check Run
+    runs-on: ubuntu-latest
+    if: inputs.pr_number != ''
+    outputs:
+      check_run_id: ${{ steps.create.outputs.check_run_id }}
+    steps:
+      - name: Create pending check run on PR
+        id: create
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: checkRun } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Build & Unit Tests - Checks',
+              head_sha: '${{ inputs.ref }}',
+              status: 'in_progress',
+              output: {
+                title: 'Build & Unit Tests - Checks',
+                summary: 'Running build, unit tests, and lint...'
+              }
+            });
+
+            core.setOutput('check_run_id', checkRun.id);
+            console.log(`Created check run ${checkRun.id} on commit ${{ inputs.ref }}`);
+
+  install-and-build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Run format check
+        run: pnpm format:check
+
+      - name: Run typecheck
+        run: pnpm typecheck
+
+  unit-tests:
+    name: Unit tests
+    needs: install-and-build
+    uses: ./.github/workflows/test-unit-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+
+  lint:
+    name: Lint
+    needs: install-and-build
+    uses: ./.github/workflows/test-linting-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+
+  post-build-unit-tests:
+    name: Build & Unit Tests - Checks
+    runs-on: ubuntu-latest
+    needs: [create-check-run, install-and-build, unit-tests, lint]
+    if: always()
+    steps:
+      - name: Update check run on PR (if triggered from PR comment)
+        if: inputs.pr_number != ''
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const checkRunId = '${{ needs.create-check-run.outputs.check_run_id }}';
+
+            if (!checkRunId) {
+              console.log('No check run ID found, skipping update');
+              return;
+            }
+
+            const buildResult = '${{ needs.install-and-build.result }}';
+            const testResult = '${{ needs.unit-tests.result }}';
+            const lintResult = '${{ needs.lint.result }}';
+
+            const conclusion = (buildResult === 'success' && testResult === 'success' && lintResult === 'success')
+              ? 'success'
+              : 'failure';
+
+            const summary = `
+            **Build**: ${buildResult}
+            **Unit Tests**: ${testResult}
+            **Lint**: ${lintResult}
+            `;
+
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: parseInt(checkRunId),
+              status: 'completed',
+              conclusion: conclusion,
+              output: {
+                title: 'Build & Unit Tests - Checks',
+                summary: summary
+              }
+            });
+
+            console.log(`Updated check run ${checkRunId} with conclusion: ${conclusion}`);
+
+      - name: Fail if any job failed
+        if: needs.install-and-build.result == 'failure' || needs.unit-tests.result == 'failure' || needs.lint.result == 'failure'
+        run: exit 1

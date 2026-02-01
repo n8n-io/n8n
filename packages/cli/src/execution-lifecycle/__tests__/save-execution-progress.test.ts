@@ -1,11 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
-import { Logger } from 'n8n-core';
-import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
-
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
-import { mockInstance } from '@test/mocking';
+import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 
 import { saveExecutionProgress } from '../save-execution-progress';
 
@@ -22,7 +21,7 @@ describe('saveExecutionProgress', () => {
 	const executionId = 'some-execution-id';
 	const nodeName = 'My Node';
 	const taskData = mock<ITaskData>();
-	const runExecutionData = mock<IRunExecutionData>();
+	const runExecutionData = createRunExecutionData();
 
 	const commonArgs = [workflowId, executionId, nodeName, taskData, runExecutionData] as const;
 
@@ -78,7 +77,7 @@ describe('saveExecutionProgress', () => {
 		await saveExecutionProgress(...commonArgs);
 
 		expect(fullExecutionData).toEqual({
-			data: {
+			data: createRunExecutionData({
 				executionData: runExecutionData.executionData,
 				resultData: {
 					lastNodeExecuted: nodeName,
@@ -87,7 +86,7 @@ describe('saveExecutionProgress', () => {
 					},
 				},
 				startData: {},
-			},
+			}),
 			status: 'running',
 		});
 

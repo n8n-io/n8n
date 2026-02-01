@@ -159,6 +159,19 @@ describe('DI Container', () => {
 
 			expect(() => Container.get(ErrorFactoryService)).toThrow('Factory error');
 		});
+
+		it('should handle factory with dependencies', () => {
+			const factory = jest.fn().mockReturnValue({});
+
+			@Service({ factory })
+			class FactoryWithDependencies {
+				constructor(readonly simpleService: SimpleService) {}
+			}
+
+			const instance = Container.get(FactoryWithDependencies);
+			expect(instance.simpleService).toBeUndefined();
+			expect(factory).toHaveBeenCalledWith(Container.get(SimpleService));
+		});
 	});
 
 	describe('instance management', () => {

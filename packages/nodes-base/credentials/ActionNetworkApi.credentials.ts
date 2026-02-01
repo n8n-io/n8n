@@ -11,7 +11,7 @@ export class ActionNetworkApi implements ICredentialType {
 
 	displayName = 'Action Network API';
 
-	documentationUrl = 'actionNetwork';
+	documentationUrl = 'actionnetwork';
 
 	properties: INodeProperties[] = [
 		{

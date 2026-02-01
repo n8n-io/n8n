@@ -4,8 +4,6 @@
 
 This repo contains nodes to use n8n in combination with [LangChain](https://langchain.com/).
 
-These nodes are still in Beta state and are only compatible with the Docker image `docker.n8n.io/n8nio/n8n:ai-beta`.
-
 ## License
 
 You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

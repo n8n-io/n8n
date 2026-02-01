@@ -1,0 +1,70 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d8d29d0a-bb31-4094-a252-8008932f5425",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "delete",
+				"site": {
+					"__rl": true,
+					"value": "site1",
+					"mode": "list",
+					"cachedResultName": "site1"
+				},
+				"list": {
+					"__rl": true,
+					"value": "list1",
+					"mode": "list",
+					"cachedResultName": "list1"
+				},
+				"item": {
+					"__rl": true,
+					"value": "item1",
+					"mode": "list",
+					"cachedResultName": "item1"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "0e19be10-9d94-4654-89e9-432daa8102cb",
+			"name": "Microsoft SharePoint",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "cXXnMCWyk397M5qJ",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft SharePoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft SharePoint": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		]
+	}
+}

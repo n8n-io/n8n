@@ -1,17 +1,15 @@
+import { randomName, mockInstance } from '@n8n/backend-test-utils';
+import type { WorkflowEntity } from '@n8n/db';
+import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { createOwner } from './shared/db/users';
-import { randomName } from './shared/random';
 import type { SuperAgentTest } from './shared/types';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -19,7 +17,7 @@ describe('DebugController', () => {
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
-	let testServer = setupTestServer({ endpointGroups: ['debug'] });
+	const testServer = setupTestServer({ endpointGroups: ['debug'] });
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {

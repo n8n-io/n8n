@@ -1,0 +1,567 @@
+{
+	"name": "Webhook Origin Isolation",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "webhook-response-data-text-html",
+				"options": {
+					"rawBody": false,
+					"responseData": "=<html>hello</html>",
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, -112],
+			"id": "75ca50eb-ce8e-4fac-a8ad-60d4c4ea4531",
+			"name": "Webhook response data content-type text/html",
+			"webhookId": "58545097-30ef-4d0e-b4dc-cf90c5d96213"
+		},
+		{
+			"parameters": {
+				"path": "webhook-response-data-wo-content-type",
+				"options": {
+					"rawBody": false,
+					"responseData": "=<html>hello</html>"
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 64],
+			"id": "d6a5cc31-1d88-4262-b26e-07be88ed190f",
+			"name": "Webhook response no content-type",
+			"webhookId": "2368182a-8993-474f-a7b9-9f2847553ea4"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-no-content-type-header",
+				"responseMode": "lastNode",
+				"options": {
+					"responsePropertyName": "html",
+					"rawBody": false
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 880],
+			"id": "ba3bee07-9335-45f4-93c4-2a6d8894813f",
+			"name": "Webhook last item no content-type",
+			"webhookId": "89ac20a0-d9a1-49b3-be17-25503f0f224e"
+		},
+		{
+			"parameters": {
+				"content": "## Respond Immediately",
+				"height": 624,
+				"width": 560
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-144, -192],
+			"id": "e1b4ddec-3946-44f9-9cbb-7f0a2e07b9bf",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"content": "## Respond When Last Node Finishes",
+				"height": 752,
+				"width": 560,
+				"color": 3
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-144, 464],
+			"id": "b0f2e246-db74-4567-8102-0a1d6701bd17",
+			"name": "Sticky Note1"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-text-html-header",
+				"responseMode": "lastNode",
+				"options": {
+					"rawBody": false,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 528],
+			"id": "6ac9df7e-3f59-4bd3-91b2-877e6550ec74",
+			"name": "Webhook last item header content-type html",
+			"webhookId": "dbabe15a-f4d1-4537-8c25-8b81ab42479c"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-text-html-content-type",
+				"responseMode": "lastNode",
+				"options": {
+					"rawBody": false,
+					"responseContentType": "text/html"
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 704],
+			"id": "08437d43-6466-4de6-825a-a1d0222f30e0",
+			"name": "Webhook last item content-type html",
+			"webhookId": "f11b3327-544d-48f4-bbd6-33c03f065f4c"
+		},
+		{
+			"parameters": {
+				"content": "## Respond When Last Node Finishes with Binary\n",
+				"height": 640,
+				"width": 624,
+				"color": 6
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [480, -208],
+			"id": "845987df-e85e-43d9-a8d3-e1a7e13cc685",
+			"name": "Sticky Note5"
+		},
+		{
+			"parameters": {
+				"jsCode": "const html = `<html>hello</html>`\n\nconst data = await this.helpers.prepareBinaryData(Buffer.from(html, \"utf8\"), \"index.html\", \"text/html\")\n\nreturn [{\n  binary: {\n    data\n  }\n}]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [768, 48],
+			"id": "2be64f65-6ab2-4f2d-8446-30c6adf9820a",
+			"name": "Build html file"
+		},
+		{
+			"parameters": {
+				"path": "webhook-response-data-csp-header",
+				"options": {
+					"rawBody": false,
+					"responseData": "=<html>hello</html>",
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-security-policy",
+								"value": "default-src *"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 256],
+			"id": "8ca428c2-c02f-4237-bdcc-98cfe430e06d",
+			"name": "Webhook response CSP header",
+			"webhookId": "2368182a-8993-474f-a7b9-9f2847553ea4"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-csp-header",
+				"responseMode": "lastNode",
+				"options": {
+					"responsePropertyName": "html",
+					"rawBody": false,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							},
+							{
+								"name": "content-security-policy",
+								"value": "default-src *"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-80, 1056],
+			"id": "1173f1bf-6b05-4757-b28b-62b44d95aa06",
+			"name": "Webhook last item CSP header",
+			"webhookId": "89ac20a0-d9a1-49b3-be17-25503f0f224e"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-binary-text-html",
+				"responseMode": "lastNode",
+				"responseData": "firstEntryBinary",
+				"options": {
+					"rawBody": false,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, -128],
+			"id": "a14be18e-edf6-4336-829a-2cac6edce677",
+			"name": "Webhook last item binary header content-type html",
+			"webhookId": "1139d68e-a281-42dd-923d-26678b74d6b2"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-binary-no-content-type",
+				"responseMode": "lastNode",
+				"responseData": "firstEntryBinary",
+				"options": {
+					"rawBody": false
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 48],
+			"id": "691ef5dc-3028-47bb-a7ad-10e6571e229c",
+			"name": "Webhook last item binary header no content-type",
+			"webhookId": "1213d407-18be-4acb-8ce2-57d32ecbf9e8"
+		},
+		{
+			"parameters": {
+				"path": "webhook-last-node-binary-csp-header",
+				"responseMode": "lastNode",
+				"responseData": "firstEntryBinary",
+				"options": {
+					"rawBody": false,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							},
+							{
+								"name": "content-security-policy",
+								"value": "default-src *"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 240],
+			"id": "7ad87e90-826f-4e27-88ed-d3a22b37f6b8",
+			"name": "Webhook last item binary CSP header",
+			"webhookId": "40eaf9c1-a15a-41f4-a242-1f8f33cb1940"
+		},
+		{
+			"parameters": {
+				"content": "## Respond Using Respond to Webhook",
+				"height": 800,
+				"width": 624,
+				"color": 7
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [480, 464],
+			"id": "ebd34041-d96b-43fd-b880-4007eae3a755",
+			"name": "Sticky Note2"
+		},
+		{
+			"parameters": {
+				"path": "respond-to-webhook-text-no-content-type",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 544],
+			"id": "0a37b594-7922-45e5-a8a3-e7cd874963d6",
+			"name": "Webhook respond to webhook",
+			"webhookId": "dbabe15a-f4d1-4537-8c25-8b81ab42479c"
+		},
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "<html>hello</html>",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [736, 544],
+			"id": "5fddd62d-85c1-4237-9049-c0608f3f1e0c",
+			"name": "Text No Content-Type"
+		},
+		{
+			"parameters": {
+				"path": "respond-to-webhook-text-content-type-text-html",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 720],
+			"id": "dd4e4711-a344-4bc0-ad64-c7aa925b128b",
+			"name": "Webhook respond to webhook2",
+			"webhookId": "dbabe15a-f4d1-4537-8c25-8b81ab42479c"
+		},
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "<html>hello</html>",
+				"options": {
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [736, 720],
+			"id": "adc677d6-07d0-446c-a455-794a1c0dd35d",
+			"name": "Text Content-Type Text Html"
+		},
+		{
+			"parameters": {
+				"path": "respond-to-webhook-text-csp-header",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 896],
+			"id": "2def671c-4ff2-42ee-abf9-17e455168dc6",
+			"name": "Webhook respond to webhook3",
+			"webhookId": "dbabe15a-f4d1-4537-8c25-8b81ab42479c"
+		},
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "<html>hello</html>",
+				"options": {
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							},
+							{
+								"name": "content-security-policy",
+								"value": "default-src *"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [736, 896],
+			"id": "95673f8e-2340-476c-825e-dc73b5c94148",
+			"name": "Text Content-Type Text CSP header"
+		},
+		{
+			"parameters": {
+				"path": "respond-to-webhook-json-as-text-html",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 1072],
+			"id": "fdf2dc4e-7852-43fd-9c04-c19174874c8c",
+			"name": "Webhook respond to webhook1",
+			"webhookId": "dbabe15a-f4d1-4537-8c25-8b81ab42479c"
+		},
+		{
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={\n  \"html\": \"<html>Hello</html>\"\n}",
+				"options": {
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [736, 1072],
+			"id": "9c6bcd19-71af-4b9a-aa9a-79c79996c2cd",
+			"name": "Json as text html"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5665c218-cfe8-4339-8114-b9d2af0c1d63",
+							"name": "html",
+							"value": "<html>hello</html>",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [128, 800],
+			"id": "adb4d88e-c7dc-4de1-849e-e89bafceefb2",
+			"name": "Set HTML"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook last item no content-type": {
+			"main": [
+				[
+					{
+						"node": "Set HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook last item header content-type html": {
+			"main": [
+				[
+					{
+						"node": "Set HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook last item content-type html": {
+			"main": [
+				[
+					{
+						"node": "Set HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build html file": {
+			"main": [[]]
+		},
+		"Webhook last item CSP header": {
+			"main": [
+				[
+					{
+						"node": "Set HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook last item binary header content-type html": {
+			"main": [
+				[
+					{
+						"node": "Build html file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook last item binary header no content-type": {
+			"main": [
+				[
+					{
+						"node": "Build html file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook last item binary CSP header": {
+			"main": [
+				[
+					{
+						"node": "Build html file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook respond to webhook": {
+			"main": [
+				[
+					{
+						"node": "Text No Content-Type",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook respond to webhook2": {
+			"main": [
+				[
+					{
+						"node": "Text Content-Type Text Html",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook respond to webhook3": {
+			"main": [
+				[
+					{
+						"node": "Text Content-Type Text CSP header",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook respond to webhook1": {
+			"main": [
+				[
+					{
+						"node": "Json as text html",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook response data content-type text/html": {
+			"main": [[]]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1b5d2b15-f24c-4674-9cc3-de22e4e839d4",
+	"meta": {},
+	"id": "PqXH1byI5mUqu1F4",
+	"tags": []
+}

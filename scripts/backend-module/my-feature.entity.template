@@ -1,0 +1,10 @@
+import { BaseEntity, Column, Entity } from '@n8n/typeorm';
+
+@Entity()
+export class MyFeatureEntity extends BaseEntity {
+	@Column()
+	name: string;
+
+	@Column()
+	count: number;
+}

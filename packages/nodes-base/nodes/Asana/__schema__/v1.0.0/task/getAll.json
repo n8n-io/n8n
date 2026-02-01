@@ -6,9 +6,13 @@
         },
         "name": {
             "type": "string"
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
         }
     },
-    "required": [
-        "gid"
-    ]
+    "version": 1
 }

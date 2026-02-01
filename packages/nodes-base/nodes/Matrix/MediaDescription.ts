@@ -81,6 +81,16 @@ export const mediaFields: INodeProperties[] = [
 				value: 'image',
 				description: 'Image media type',
 			},
+			{
+				name: 'Audio',
+				value: 'audio',
+				description: 'Audio media type',
+			},
+			{
+				name: 'Video',
+				value: 'video',
+				description: 'Video media type',
+			},
 		],
 		description: 'Type of file being uploaded',
 		placeholder: 'mxc://matrix.org/uploaded-media-uri',

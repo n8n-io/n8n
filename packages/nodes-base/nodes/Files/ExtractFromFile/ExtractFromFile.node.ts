@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as moveTo from './actions/moveTo.operation';
 import * as pdf from './actions/pdf.operation';
@@ -17,13 +17,13 @@ export class ExtractFromFile implements INodeType {
 		name: 'extractFromFile',
 		icon: { light: 'file:extractFromFile.svg', dark: 'file:extractFromFile.dark.svg' },
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Convert binary data to JSON',
 		defaults: {
 			name: 'Extract from File',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -114,12 +114,15 @@ export class ExtractFromFile implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		const version = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
 		if (spreadsheet.operations.includes(operation)) {
-			returnData = await spreadsheet.execute.call(this, items, 'operation');
+			returnData = await spreadsheet.execute.call(this, items, 'operation', {
+				failOnCsvBufferError: version > 1,
+			});
 		}
 
 		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {

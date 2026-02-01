@@ -1,9 +1,10 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
 	mockInstance(ActiveWorkflowManager);
@@ -39,7 +40,7 @@ describe('Auth Middleware', () => {
 	describe('Routes requiring Authorization', () => {
 		let authMemberAgent: SuperAgentTest;
 		beforeAll(async () => {
-			const member = await createUser({ role: 'global:member' });
+			const member = await createUser({ role: { slug: 'global:member' } });
 			authMemberAgent = testServer.authAgentFor(member);
 		});
 

@@ -1,11 +1,12 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter, type TextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type IDataObject,
+	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
@@ -20,13 +21,31 @@ import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
 
+function getInputs(parameters: IDataObject) {
+	const inputs: INodeInputConfiguration[] = [];
+
+	const textSplittingMode = parameters?.textSplittingMode;
+	// If text splitting mode is 'custom' or does not exist (v1), we need to add an input for the text splitter
+	if (!textSplittingMode || textSplittingMode === 'custom') {
+		inputs.push({
+			displayName: 'Text Splitter',
+			maxConnections: 1,
+			type: 'ai_textSplitter',
+			required: true,
+		});
+	}
+
+	return inputs;
+}
+
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Default Data Loader',
 		name: 'documentDefaultDataLoader',
 		icon: 'file:binary.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Load data from previous step in the workflow',
 		defaults: {
 			name: 'Default Data Loader',
@@ -44,17 +63,10 @@ export class DocumentDefaultDataLoader implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			{
-				displayName: 'Text Splitter',
-				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
-				required: true,
-			},
-		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
+
+		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			{
@@ -217,6 +229,31 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 			},
 			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Splits every 1000 characters with a 200 character overlap',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a custom text-splitting sub-node',
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -284,11 +321,29 @@ export class DocumentDefaultDataLoader implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const node = this.getNode();
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+
+		let textSplitter: TextSplitter | undefined;
+
+		if (node.typeVersion === 1.1) {
+			const textSplittingMode = this.getNodeParameter('textSplittingMode', itemIndex, 'simple') as
+				| 'simple'
+				| 'custom';
+
+			if (textSplittingMode === 'simple') {
+				textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
+			} else if (textSplittingMode === 'custom') {
+				textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+					| TextSplitter
+					| undefined;
+			}
+		} else {
+			textSplitter = (await this.getInputConnectionData(NodeConnectionTypes.AiTextSplitter, 0)) as
+				| TextSplitter
+				| undefined;
+		}
+
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
 		const processor =

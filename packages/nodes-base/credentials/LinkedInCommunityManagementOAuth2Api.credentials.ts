@@ -9,7 +9,7 @@ export class LinkedInCommunityManagementOAuth2Api implements ICredentialType {
 
 	displayName = 'LinkedIn Community Management OAuth2 API';
 
-	documentationUrl = 'linkedIn';
+	documentationUrl = 'linkedin';
 
 	properties: INodeProperties[] = [
 		{

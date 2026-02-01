@@ -1,0 +1,63 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v4/spreadsheets/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/values:batchUpdate",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"data": [
+					{
+						"range": "Sheet2!C2",
+						"values": [[11]]
+					}
+				],
+				"valueInputOption": "RAW"
+			},
+			"rawBytes": "eyJkYXRhIjpbeyJyYW5nZSI6IlNoZWV0MiFDMiIsInZhbHVlcyI6W1sxMV1dfV0sInZhbHVlSW5wdXRPcHRpb24iOiJSQVcifQ=="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-l2-request-path": ["l2-managed-6"],
+			"X-XSS-Protection": ["0"],
+			"X-Frame-Options": ["SAMEORIGIN"],
+			"X-Content-Type-Options": ["nosniff"],
+			"Vary": ["Origin", "X-Origin", "Referer"],
+			"Server": ["ESF"],
+			"Date": ["Thu, 04 Sep 2025 14:08:04 GMT"],
+			"Content-Type": ["application/json; charset=UTF-8"],
+			"Alt-Svc": ["h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"spreadsheetId": "1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs",
+				"totalUpdatedRows": 1,
+				"totalUpdatedColumns": 1,
+				"totalUpdatedCells": 1,
+				"totalUpdatedSheets": 1,
+				"responses": [
+					{
+						"spreadsheetId": "1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs",
+						"updatedRange": "Sheet2!C2",
+						"updatedRows": 1,
+						"updatedColumns": 1,
+						"updatedCells": 1
+					}
+				]
+			},
+			"rawBytes": "ewogICJzcHJlYWRzaGVldElkIjogIjF6SnU4ekx0RmMzcmJaUEFXcUtCaDdUSW91NTlTdEpyN0hMbjBuVXkwYnFzIiwKICAidG90YWxVcGRhdGVkUm93cyI6IDEsCiAgInRvdGFsVXBkYXRlZENvbHVtbnMiOiAxLAogICJ0b3RhbFVwZGF0ZWRDZWxscyI6IDEsCiAgInRvdGFsVXBkYXRlZFNoZWV0cyI6IDEsCiAgInJlc3BvbnNlcyI6IFsKICAgIHsKICAgICAgInNwcmVhZHNoZWV0SWQiOiAiMXpKdTh6THRGYzNyYlpQQVdxS0JoN1RJb3U1OVN0SnI3SExuMG5VeTBicXMiLAogICAgICAidXBkYXRlZFJhbmdlIjogIlNoZWV0MiFDMiIsCiAgICAgICJ1cGRhdGVkUm93cyI6IDEsCiAgICAgICJ1cGRhdGVkQ29sdW1ucyI6IDEsCiAgICAgICJ1cGRhdGVkQ2VsbHMiOiAxCiAgICB9CiAgXQp9Cg=="
+		}
+	},
+	"id": "1756994893550-sheets.googleapis.com-POST-_v4_spreadsheets_1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs_values_batchUpdate-19f43fca.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

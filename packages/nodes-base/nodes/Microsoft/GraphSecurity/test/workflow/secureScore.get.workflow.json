@@ -1,0 +1,82 @@
+{
+	"name": "Microsoft GraphSecurity SecureScore Get Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-id",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "secureScore",
+				"operation": "get",
+				"secureScoreId": "test-secure-score-id"
+			},
+			"id": "node-id",
+			"name": "Microsoft Graph Security",
+			"type": "n8n-nodes-base.microsoftGraphSecurity",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftGraphSecurityOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft Graph Security OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Graph Security": [
+			{
+				"json": {
+					"id": "test-secure-score-id",
+					"azureTenantId": "tenant-123",
+					"activeUserCount": 100,
+					"createdDateTime": "2023-01-01T00:00:00Z",
+					"currentScore": 85,
+					"maxScore": 100,
+					"averageComparativeScores": [
+						{
+							"basis": "AllTenants",
+							"averageScore": 75.5
+						}
+					],
+					"controlScores": [
+						{
+							"controlName": "Enable MFA",
+							"controlCategory": "Identity",
+							"score": 10,
+							"maxScore": 10
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Graph Security",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"id": "test-workflow-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"tags": []
+}

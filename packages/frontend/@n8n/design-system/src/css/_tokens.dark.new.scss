@@ -1,0 +1,74 @@
+// To be completed
+/* stylelint-disable */
+@mixin theme {
+	// Brand
+	--background--brand: var(--color--orange-300);
+	--background--brand--hover: var(--color--orange-400);
+	--background--brand--active: var(--color--orange-500);
+	--background--brand--focus: var(--color--orange-400);
+	--background--brand--disabled: var(--color--neutral-800);
+
+	// Surface
+	--background--surface: var(--color--neutral-900);
+	--background--surface--hover: var(--color--neutral-750);
+	--background--surface--active: var(--color--neutral-600);
+	--background--surface--focus: var(--color--neutral-750);
+	--background--surface--disabled: var(--color--neutral-800);
+
+	// Border
+	--border-color--subtle: var(--color--white-alpha-100);
+	--border-color: var(--color--white-alpha-200);
+	--border-color--strong: var(--color--white-alpha-300);
+
+	// Icon
+	--icon-color--subtle: var(--color--neutral-600);
+	--icon-color: var(--color--neutral-300);
+	--icon-color--strong: var(--color--neutral-white);
+
+	// Text
+	--text-color: var(--color--neutral-white);
+	--text-color--subtle: var(--color--neutral-250);
+	--text-color--subtler: var(--color--neutral-400);
+
+	// Success
+	--background--success: var(--color--green-950);
+	--border-color--success: var(--color--green-800);
+	--text-color--success: var(--color--green-50);
+	--icon-color--success: var(--color--green-50);
+
+	// Warning
+	--background--warning: var(--color--yellow-900);
+	--border-color--warning: var(--color--yellow-800);
+	--text-color--warning: var(--color--yellow-100);
+	--icon-color--warning: var(--color--yellow-100);
+
+	// Danger
+	--background--danger: var(--color--red-950);
+	--border-color--danger: var(--color--red-800);
+	--text-color--danger: var(--color--red-50);
+	--icon-color--danger: var(--color--red-50);
+
+	// Info
+	--background--info: var(--color--blue-900);
+	--border-color--info: var(--color--blue-800);
+	--text-color--info: var(--color--blue-50);
+	--icon-color--info: var(--color--blue-50);
+
+	// Inverse
+	--background--inverse: var(--color--neutral-white);
+	--border-color--inverse: var(--color--neutral-200);
+	--text-color--inverse: var(--color--neutral-800);
+	--icon-color--inverse: var(--color--neutral-800);
+}
+
+body[data-theme='dark'] {
+	@include theme;
+	color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
+		@include theme;
+		color-scheme: dark;
+	}
+}

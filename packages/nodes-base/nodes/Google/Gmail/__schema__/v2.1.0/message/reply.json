@@ -4,14 +4,15 @@
         "id": {
             "type": "string"
         },
-        "threadId": {
-            "type": "string"
-        },
         "labelIds": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "threadId": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

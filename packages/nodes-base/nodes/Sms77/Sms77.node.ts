@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -22,8 +22,8 @@ export class Sms77 implements INodeType {
 			name: 'seven',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sms77Api',

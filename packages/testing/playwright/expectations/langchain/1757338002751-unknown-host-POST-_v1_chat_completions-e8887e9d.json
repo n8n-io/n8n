@@ -1,0 +1,120 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/chat/completions",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "gpt-4.1-mini",
+				"stream": false,
+				"tools": [
+					{
+						"type": "function",
+						"function": {
+							"name": "calculator",
+							"description": "Useful for getting the result of a math expression. The input to this tool should be a valid mathematical expression that could be executed by a simple calculator.",
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"input": {
+										"type": "string"
+									}
+								},
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							}
+						}
+					}
+				],
+				"messages": [
+					{
+						"role": "user",
+						"content": "What is 1000 * 10?"
+					},
+					{
+						"role": "assistant",
+						"content": "",
+						"tool_calls": [
+							{
+								"id": "call_88I326c3cCx7lOEXL3Wpp30c",
+								"type": "function",
+								"function": {
+									"name": "calculator",
+									"arguments": "{\"input\":\"1000 * 10\"}"
+								}
+							}
+						]
+					},
+					{
+						"role": "tool",
+						"content": "10000",
+						"tool_call_id": "call_88I326c3cCx7lOEXL3Wpp30c"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImdwdC00LjEtbWluaSIsInN0cmVhbSI6ZmFsc2UsInRvb2xzIjpbeyJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoiY2FsY3VsYXRvciIsImRlc2NyaXB0aW9uIjoiVXNlZnVsIGZvciBnZXR0aW5nIHRoZSByZXN1bHQgb2YgYSBtYXRoIGV4cHJlc3Npb24uIFRoZSBpbnB1dCB0byB0aGlzIHRvb2wgc2hvdWxkIGJlIGEgdmFsaWQgbWF0aGVtYXRpY2FsIGV4cHJlc3Npb24gdGhhdCBjb3VsZCBiZSBleGVjdXRlZCBieSBhIHNpbXBsZSBjYWxjdWxhdG9yLiIsInBhcmFtZXRlcnMiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsiaW5wdXQiOnsidHlwZSI6InN0cmluZyJ9fSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn19fV0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJXaGF0IGlzIDEwMDAgKiAxMD8ifSx7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIiwidG9vbF9jYWxscyI6W3siaWQiOiJjYWxsXzg4STMyNmMzY0N4N2xPRVhMM1dwcDMwYyIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJjYWxjdWxhdG9yIiwiYXJndW1lbnRzIjoie1wiaW5wdXRcIjpcIjEwMDAgKiAxMFwifSJ9fV19LHsicm9sZSI6InRvb2wiLCJjb250ZW50IjoiMTAwMDAiLCJ0b29sX2NhbGxfaWQiOiJjYWxsXzg4STMyNmMzY0N4N2xPRVhMM1dwcDMwYyJ9XX0="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-request-id": ["req_65b7f6b5aad740e0965555ae8df92d43"],
+			"x-ratelimit-reset-tokens": ["0s"],
+			"x-ratelimit-reset-requests": ["2ms"],
+			"x-ratelimit-remaining-tokens": ["149999992"],
+			"x-ratelimit-remaining-requests": ["29999"],
+			"x-ratelimit-limit-tokens": ["150000000"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"id": "chatcmpl-CDWBEPUWN3El2oq4aRaezkvUlRjv8",
+				"object": "chat.completion",
+				"created": 1757338000,
+				"model": "gpt-4.1-mini-2025-04-14",
+				"choices": [
+					{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": "1000 multiplied by 10 equals 10,000.",
+							"refusal": null,
+							"annotations": []
+						},
+						"logprobs": null,
+						"finish_reason": "stop"
+					}
+				],
+				"usage": {
+					"prompt_tokens": 102,
+					"completion_tokens": 13,
+					"total_tokens": 115,
+					"prompt_tokens_details": {
+						"cached_tokens": 0,
+						"audio_tokens": 0
+					},
+					"completion_tokens_details": {
+						"reasoning_tokens": 0,
+						"audio_tokens": 0,
+						"accepted_prediction_tokens": 0,
+						"rejected_prediction_tokens": 0
+					}
+				},
+				"service_tier": "default",
+				"system_fingerprint": "fp_4fce0778af"
+			},
+			"rawBytes": "ewogICJpZCI6ICJjaGF0Y21wbC1DRFdCRVBVV04zRWwyb3E0YVJhZXprdlVsUmp2OCIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc1NzMzODAwMCwKICAibW9kZWwiOiAiZ3B0LTQuMS1taW5pLTIwMjUtMDQtMTQiLAogICJjaG9pY2VzIjogWwogICAgewogICAgICAiaW5kZXgiOiAwLAogICAgICAibWVzc2FnZSI6IHsKICAgICAgICAicm9sZSI6ICJhc3Npc3RhbnQiLAogICAgICAgICJjb250ZW50IjogIjEwMDAgbXVsdGlwbGllZCBieSAxMCBlcXVhbHMgMTAsMDAwLiIsCiAgICAgICAgInJlZnVzYWwiOiBudWxsLAogICAgICAgICJhbm5vdGF0aW9ucyI6IFtdCiAgICAgIH0sCiAgICAgICJsb2dwcm9icyI6IG51bGwsCiAgICAgICJmaW5pc2hfcmVhc29uIjogInN0b3AiCiAgICB9CiAgXSwKICAidXNhZ2UiOiB7CiAgICAicHJvbXB0X3Rva2VucyI6IDEwMiwKICAgICJjb21wbGV0aW9uX3Rva2VucyI6IDEzLAogICAgInRvdGFsX3Rva2VucyI6IDExNSwKICAgICJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJjYWNoZWRfdG9rZW5zIjogMCwKICAgICAgImF1ZGlvX3Rva2VucyI6IDAKICAgIH0sCiAgICAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgInJlYXNvbmluZ190b2tlbnMiOiAwLAogICAgICAiYXVkaW9fdG9rZW5zIjogMCwKICAgICAgImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwKICAgICAgInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMAogICAgfQogIH0sCiAgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwKICAic3lzdGVtX2ZpbmdlcnByaW50IjogImZwXzRmY2UwNzc4YWYiCn0K"
+		}
+	},
+	"id": "1757338002751-unknown-host-POST-_v1_chat_completions-e8887e9d.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

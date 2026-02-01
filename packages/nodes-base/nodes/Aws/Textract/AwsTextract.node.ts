@@ -1,5 +1,6 @@
 import {
-	NodeConnectionType,
+	BINARY_ENCODING,
+	NodeConnectionTypes,
 	type ICredentialDataDecryptedObject,
 	type ICredentialsDecrypted,
 	type ICredentialTestFunctions,
@@ -13,6 +14,7 @@ import {
 
 import type { IExpenseDocument } from './GenericFunctions';
 import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,15 +29,11 @@ export class AwsTextract implements INodeType {
 			name: 'AWS Textract',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -117,11 +115,13 @@ export class AwsTextract implements INodeType {
 				if (operation === 'analyzeExpense') {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					// Convert the binary buffer to a base64 string
+					const binaryData = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
 
 					const body: IDataObject = {
 						Document: {
-							Bytes: binaryData.data,
+							Bytes: binaryData,
 						},
 					};
 

@@ -1,15 +1,12 @@
 {
-	"type": "object",
-	"properties": {
-		"ok": {
-			"type": "boolean"
-		},
-		"presence": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"ok",
-		"presence"
-	]
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "presence": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

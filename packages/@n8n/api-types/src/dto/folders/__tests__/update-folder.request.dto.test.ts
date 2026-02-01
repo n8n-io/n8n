@@ -21,6 +21,12 @@ describe('UpdateFolderDto', () => {
 					tagIds: [],
 				},
 			},
+			{
+				name: 'string parentFolderId',
+				request: {
+					parentFolderId: 'test',
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = UpdateFolderDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -49,6 +55,13 @@ describe('UpdateFolderDto', () => {
 					tagIds: 0,
 				},
 				expectedErrorPath: ['tagIds'],
+			},
+			{
+				name: 'non string parentFolderId',
+				request: {
+					parentFolderId: 0,
+				},
+				expectedErrorPath: ['parentFolderId'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateFolderDto.safeParse(request);

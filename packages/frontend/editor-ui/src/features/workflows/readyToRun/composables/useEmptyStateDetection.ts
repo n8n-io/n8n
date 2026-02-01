@@ -1,0 +1,49 @@
+import type { RouteLocationNormalized } from 'vue-router';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useRoute } from 'vue-router';
+
+/**
+ * Determines if the instance is truly empty and should show the simplified layout
+ */
+export function useEmptyStateDetection() {
+	const foldersStore = useFoldersStore();
+	const projectPages = useProjectPages();
+	const route = useRoute();
+
+	/**
+	 * Checks if the current state qualifies as "truly empty"
+	 * - No workflows exist in the instance
+	 * - User is on the main workflows view (not in a specific folder)
+	 * - User is on overview page or personal project workflows
+	 * - No search filters are applied
+	 * - Not currently refreshing data
+	 */
+	const isTrulyEmpty = (currentRoute: RouteLocationNormalized = route) => {
+		const hasNoWorkflows =
+			foldersStore.workflowsCountLoaded && foldersStore.totalWorkflowCount === 0;
+		const isNotInSpecificFolder = !currentRoute.params?.folderId;
+		const isMainWorkflowsPage = projectPages.isOverviewSubPage;
+
+		// Check for any search or filter parameters that would indicate filtering is active
+		const hasSearchQuery = !!currentRoute.query?.search;
+		const hasFilters = !!(
+			currentRoute.query?.status ||
+			currentRoute.query?.tags ||
+			currentRoute.query?.showArchived ||
+			currentRoute.query?.homeProject
+		);
+
+		return (
+			hasNoWorkflows &&
+			isNotInSpecificFolder &&
+			isMainWorkflowsPage &&
+			!hasSearchQuery &&
+			!hasFilters
+		);
+	};
+
+	return {
+		isTrulyEmpty,
+	};
+}

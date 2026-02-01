@@ -1,11 +1,11 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
-import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
-import { mockInstance } from '@test/mocking';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
@@ -26,8 +26,9 @@ describe('TaskRunnerProcess', () => {
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal';
+	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();
-	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
+	let taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
 
 	afterEach(async () => {
 		spawnMock.mockClear();
@@ -37,14 +38,14 @@ describe('TaskRunnerProcess', () => {
 		it('should throw if runner mode is external', () => {
 			runnerConfig.mode = 'external';
 
-			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
+			expect(() => new JsTaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
 
 			runnerConfig.mode = 'internal';
 		});
 
 		it('should register listener for `runner:failed-heartbeat-check` event', () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
-			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
 
 			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
 				'runner:failed-heartbeat-check',
@@ -54,7 +55,7 @@ describe('TaskRunnerProcess', () => {
 
 		it('should register listener for `runner:timed-out-during-task` event', () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
-			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
 
 			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
 				'runner:timed-out-during-task',
@@ -65,7 +66,7 @@ describe('TaskRunnerProcess', () => {
 
 	describe('start', () => {
 		beforeEach(() => {
-			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
+			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
 		});
 
 		test.each([
@@ -78,6 +79,7 @@ describe('TaskRunnerProcess', () => {
 			'DEPLOYMENT_NAME',
 			'NODE_PATH',
 			'GENERIC_TIMEZONE',
+			'N8N_RUNNERS_INSECURE_MODE',
 		])('should propagate %s from env as is', async (envVar) => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';
@@ -119,7 +121,37 @@ describe('TaskRunnerProcess', () => {
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
 		});
 
-		it('should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+		it('should pass N8N_RUNNERS_TASK_TIMEOUT if set', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.taskTimeout = 123;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					N8N_RUNNERS_TASK_TIMEOUT: '123',
+				}),
+			);
+		});
+
+		it('should pass N8N_RUNNERS_HEARTBEAT_INTERVAL if set', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.heartbeatInterval = 456;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					N8N_RUNNERS_HEARTBEAT_INTERVAL: '456',
+				}),
+			);
+		});
+
+		it('on secure mode, should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 
 			await taskRunnerProcess.start();
@@ -127,6 +159,23 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				'--disallow-code-generation-from-strings',
 				'--disable-proto=delete',
+				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
+			]);
+		});
+
+		it('on insecure mode, should not use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.insecureMode = true;
+			const insecureTaskRunnerProcess = new JsTaskRunnerProcess(
+				logger,
+				runnerConfig,
+				authService,
+				mock(),
+			);
+
+			await insecureTaskRunnerProcess.start();
+
+			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
 			]);
 		});

@@ -1,9 +1,10 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -24,7 +25,11 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: Connection): void;
-	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract sendToOneConnection(
+		connection: Connection,
+		data: string,
+		isBinary: boolean,
+	): void;
 	protected abstract ping(connection: Connection): void;
 
 	constructor(
@@ -68,7 +73,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
@@ -79,7 +84,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		for (const pushRef of pushRefs) {
 			const connection = this.connections[pushRef];
 			assert(connection);
-			this.sendToOneConnection(connection, stringifiedPayload);
+			this.sendToOneConnection(connection, stringifiedPayload, asBinary);
 		}
 	}
 
@@ -93,13 +98,13 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.sendTo(pushMsg, Object.keys(this.connections));
 	}
 
-	sendToOne(pushMsg: PushMessage, pushRef: string) {
+	sendToOne(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
 		if (this.connections[pushRef] === undefined) {
-			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
+			this.logger.debug(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendTo(pushMsg, [pushRef]);
+		this.sendTo(pushMsg, [pushRef], asBinary);
 	}
 
 	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {

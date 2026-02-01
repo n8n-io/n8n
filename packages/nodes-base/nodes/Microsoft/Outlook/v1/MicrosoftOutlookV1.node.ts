@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
@@ -42,8 +42,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Outlook',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftOutlookOAuth2Api',

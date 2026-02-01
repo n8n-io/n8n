@@ -6,7 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from './GenericFunctions';
@@ -24,7 +24,7 @@ export class LinearTrigger implements INodeType {
 			name: 'Linear Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'linearApi',

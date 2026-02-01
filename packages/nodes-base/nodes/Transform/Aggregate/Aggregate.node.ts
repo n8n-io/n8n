@@ -9,7 +9,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IPairedItemData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type NodeExecutionHint,
 } from 'n8n-workflow';
 
@@ -28,8 +28,8 @@ export class Aggregate implements INodeType {
 		defaults: {
 			name: 'Aggregate',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Aggregate',

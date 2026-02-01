@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'path';
 import { $, which, tmpfile } from 'zx';
 
+import { AppMetricsPoller } from '@/test-execution/app-metrics-poller';
 import { buildTestReport, type K6Tag } from '@/test-execution/test-report';
 import type { Scenario } from '@/types/scenario';
 export type { K6Tag };
@@ -13,12 +14,19 @@ export type K6ExecutorOpts = {
 	vus: number;
 	/** Test duration, e.g. 1m or 30s */
 	duration: string;
+	k6Out?: string;
 	k6ApiToken?: string;
 	n8nApiBaseUrl: string;
 	tags?: K6Tag[];
 	resultsWebhook?: {
 		url: string;
 		authHeader: string;
+	};
+	/** Configuration for polling app metrics during test runs */
+	appMetricsPolling?: {
+		enabled: boolean;
+		/** Poll interval in milliseconds. Defaults to 5000ms (5 seconds) */
+		intervalMs?: number;
 	};
 };
 
@@ -64,7 +72,9 @@ export function handleSummary(data) {
 			['--vus', this.opts.vus],
 		];
 
-		if (!this.opts.resultsWebhook && this.opts.k6ApiToken) {
+		if (this.opts.k6Out) {
+			flags.push(['--out', this.opts.k6Out]);
+		} else if (!this.opts.resultsWebhook && this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
 		}
 
@@ -72,25 +82,50 @@ export function handleSummary(data) {
 
 		const k6ExecutablePath = await this.resolveK6ExecutablePath();
 
-		await $({
-			cwd: runDirPath,
-			env: {
-				API_BASE_URL: this.opts.n8nApiBaseUrl,
-				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
-			},
-			stdio: 'inherit',
-		})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;
+		// Start app metrics polling if enabled
+		let metricsPoller: AppMetricsPoller | undefined;
+		if (this.opts.appMetricsPolling?.enabled) {
+			const metricsUrl = `${this.opts.n8nApiBaseUrl}/metrics`;
+			const intervalMs = this.opts.appMetricsPolling.intervalMs ?? 5000;
+			metricsPoller = new AppMetricsPoller(metricsUrl, intervalMs);
+			metricsPoller.start();
+			console.log(`Started polling app metrics from ${metricsUrl} every ${intervalMs}ms`);
+		}
+
+		try {
+			await $({
+				cwd: runDirPath,
+				env: {
+					API_BASE_URL: this.opts.n8nApiBaseUrl,
+					DATA_TABLE_ID: scenario.dataTableId,
+					K6_CLOUD_TOKEN: this.opts.k6ApiToken,
+				},
+				stdio: 'inherit',
+			})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;
+		} finally {
+			// Stop metrics polling regardless of test outcome
+			if (metricsPoller) {
+				metricsPoller.stop();
+				console.log('Stopped polling app metrics');
+			}
+		}
 
 		console.log('\n');
 
 		if (this.opts.resultsWebhook) {
 			const endOfTestSummary = this.loadEndOfTestSummary(runDirPath, scenarioRunName);
+			const appMetricsData = metricsPoller?.getMetricsData();
 
-			const testReport = buildTestReport(scenario, endOfTestSummary, [
-				...(this.opts.tags ?? []),
-				{ name: 'Vus', value: this.opts.vus.toString() },
-				{ name: 'Duration', value: this.opts.duration.toString() },
-			]);
+			const testReport = buildTestReport(
+				scenario,
+				endOfTestSummary,
+				[
+					...(this.opts.tags ?? []),
+					{ name: 'Vus', value: this.opts.vus.toString() },
+					{ name: 'Duration', value: this.opts.duration.toString() },
+				],
+				appMetricsData,
+			);
 
 			await this.sendTestReport(testReport);
 		}

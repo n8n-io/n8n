@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 import type { ICreateMemberBody } from './Interfaces';
@@ -27,8 +27,8 @@ export class Egoi implements INodeType {
 			name: 'E-goi',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'egoiApi',

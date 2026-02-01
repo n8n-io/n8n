@@ -1,14 +1,23 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
-import { FORM_NODE_TYPE, Workflow } from 'n8n-workflow';
+import { getWebhookSandboxCSP } from 'n8n-core';
+import {
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WAITING_FORMS_EXECUTION_STATUS,
+	Workflow,
+} from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
+import { applyCors } from '@/utils/cors.util';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -24,14 +33,14 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	private getWorkflow(execution: IExecutionResponse) {
+	protected getWorkflow(execution: IExecutionResponse) {
 		const { workflowData } = execution;
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -69,10 +78,31 @@ export class WaitingForms extends WaitingWebhooks {
 
 		this.logReceivedWebhook(req.method, executionId);
 
+		sanitizeWebhookRequest(req);
+
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
+			let status: string = execution?.status ?? 'null';
+			const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
+
+			if (node && status === 'waiting') {
+				if (node.type === FORM_NODE_TYPE) {
+					status = 'form-waiting';
+				}
+				if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
+					status = 'form-waiting';
+				}
+			}
+
+			applyCors(req, res);
+
+			res.send(status);
+			return { noWebhookResponse: true };
+		}
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
@@ -85,7 +115,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
+			return { noWebhookResponse: true };
 		}
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -102,6 +132,7 @@ export class WaitingForms extends WaitingWebhooks {
 			);
 
 			if (!completionPage) {
+				res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 				res.render('form-trigger-completion', {
 					title: 'Form Submitted',
 					message: 'Your response has been recorded',
@@ -116,11 +147,7 @@ export class WaitingForms extends WaitingWebhooks {
 			}
 		}
 
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,

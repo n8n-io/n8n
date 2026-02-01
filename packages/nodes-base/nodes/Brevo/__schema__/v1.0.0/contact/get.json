@@ -1,24 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "email": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "emailBlacklisted": {
-            "type": "boolean"
-        },
-        "smsBlacklisted": {
-            "type": "boolean"
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "modifiedAt": {
-            "type": "string"
-        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -27,11 +9,30 @@
                 }
             }
         },
+        "createdAt": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailBlacklisted": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
         "listIds": {
             "type": "array",
             "items": {
                 "type": "integer"
             }
+        },
+        "modifiedAt": {
+            "type": "string"
+        },
+        "smsBlacklisted": {
+            "type": "boolean"
         }
-    }
+    },
+    "version": 2
 }

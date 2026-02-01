@@ -1,0 +1,202 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"input": [
+					{
+						"type": "message",
+						"role": "user",
+						"content": "Send welcome email to john@gmail.com"
+					}
+				],
+				"model": "gpt-5-mini",
+				"stream": false,
+				"tools": [
+					{
+						"type": "function",
+						"name": "Code_Tool",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"toolParameters": {
+									"type": "object",
+									"properties": {
+										"receiver": {
+											"type": "string"
+										},
+										"body": {
+											"type": "string"
+										}
+									},
+									"required": ["receiver", "body"],
+									"additionalProperties": false,
+									"description": "Input parameters for the tool"
+								},
+								"hitlParameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": false,
+									"description": "Parameters for the Human-in-the-Loop layer"
+								}
+							},
+							"required": ["toolParameters", "hitlParameters"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						},
+						"description": "Send email",
+						"strict": false
+					}
+				],
+				"text": {}
+			},
+			"rawBytes": "eyJpbnB1dCI6W3sidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJTZW5kIHdlbGNvbWUgZW1haWwgdG8gam9obkBnbWFpbC5jb20ifV0sIm1vZGVsIjoiZ3B0LTUtbWluaSIsInN0cmVhbSI6ZmFsc2UsInRvb2xzIjpbeyJ0eXBlIjoiZnVuY3Rpb24iLCJuYW1lIjoiQ29kZV9Ub29sIiwicGFyYW1ldGVycyI6eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0b29sUGFyYW1ldGVycyI6eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZWNlaXZlciI6eyJ0eXBlIjoic3RyaW5nIn0sImJvZHkiOnsidHlwZSI6InN0cmluZyJ9fSwicmVxdWlyZWQiOlsicmVjZWl2ZXIiLCJib2R5Il0sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZSwiZGVzY3JpcHRpb24iOiJJbnB1dCBwYXJhbWV0ZXJzIGZvciB0aGUgdG9vbCJ9LCJoaXRsUGFyYW1ldGVycyI6eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6e30sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZSwiZGVzY3JpcHRpb24iOiJQYXJhbWV0ZXJzIGZvciB0aGUgSHVtYW4taW4tdGhlLUxvb3AgbGF5ZXIifX0sInJlcXVpcmVkIjpbInRvb2xQYXJhbWV0ZXJzIiwiaGl0bFBhcmFtZXRlcnMiXSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn0sImRlc2NyaXB0aW9uIjoiU2VuZCBlbWFpbCIsInN0cmljdCI6ZmFsc2V9XSwidGV4dCI6e319"
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-request-id": ["req_b8f47474cc284fd088c72c6a307ae70b"],
+			"x-ratelimit-reset-tokens": ["0s"],
+			"x-ratelimit-reset-requests": ["2ms"],
+			"x-ratelimit-remaining-tokens": ["180000000"],
+			"x-ratelimit-remaining-requests": ["29999"],
+			"x-ratelimit-limit-tokens": ["180000000"],
+			"x-ratelimit-limit-requests": ["30000"],
+			"x-envoy-upstream-service-time": ["6515"],
+			"openai-version": ["2020-10-01"],
+			"openai-project": ["proj_QgifAq942u8NFReEIvfWVd00"],
+			"openai-processing-ms": ["6512"],
+			"openai-organization": ["n8n-1"],
+			"cf-cache-status": ["DYNAMIC"],
+			"alt-svc": ["h3=\":443\"; ma=86400"],
+			"X-Content-Type-Options": ["nosniff"],
+			"Strict-Transport-Security": ["max-age=31536000; includeSubDomains; preload"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 23 Jan 2026 11:12:46 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9c26db76885dbff0-WAW"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"id": "resp_0d23c6d00dcfbae200697357a78b6c8190802337e438aed2c0",
+				"object": "response",
+				"created_at": 1769166759,
+				"status": "completed",
+				"background": false,
+				"billing": {
+					"payer": "developer"
+				},
+				"completed_at": 1769166765,
+				"error": null,
+				"frequency_penalty": 0,
+				"incomplete_details": null,
+				"instructions": null,
+				"max_output_tokens": null,
+				"max_tool_calls": null,
+				"model": "gpt-5-mini-2025-08-07",
+				"output": [
+					{
+						"id": "rs_0d23c6d00dcfbae200697357a7c430819085e20f2f1ec1bb05",
+						"type": "reasoning",
+						"summary": []
+					},
+					{
+						"id": "fc_0d23c6d00dcfbae200697357ac456c8190b1ef5b2c0f23d37b",
+						"type": "function_call",
+						"status": "completed",
+						"arguments": "{\"toolParameters\":{\"receiver\":\"john@gmail.com\",\"body\":\"Subject: Welcome to Our Service!\\n\\nHi John,\\n\\nWelcome! We're thrilled to have you with us. If you have any questions or need help getting started, reply to this email or visit our Help Center. Here are a few resources to help you begin:\\n\\n- Getting started guide: https://example.com/getting-started\\n- Support: support@example.com\\n\\nWe look forward to helping you get the most out of our service.\\n\\nBest regards,\\nThe Team\"},\"hitlParameters\":{}}",
+						"call_id": "call_mv4VUael9WUlQA306fQ9c8Kq",
+						"name": "Code_Tool"
+					}
+				],
+				"parallel_tool_calls": true,
+				"presence_penalty": 0,
+				"previous_response_id": null,
+				"prompt_cache_key": null,
+				"prompt_cache_retention": null,
+				"reasoning": {
+					"effort": "medium",
+					"summary": null
+				},
+				"safety_identifier": null,
+				"service_tier": "default",
+				"store": true,
+				"temperature": 1,
+				"text": {
+					"format": {
+						"type": "text"
+					},
+					"verbosity": "medium"
+				},
+				"tool_choice": "auto",
+				"tools": [
+					{
+						"type": "function",
+						"description": "Send email",
+						"name": "Code_Tool",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"toolParameters": {
+									"type": "object",
+									"properties": {
+										"receiver": {
+											"type": "string"
+										},
+										"body": {
+											"type": "string"
+										}
+									},
+									"required": ["receiver", "body"],
+									"additionalProperties": false,
+									"description": "Input parameters for the tool"
+								},
+								"hitlParameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": false,
+									"description": "Parameters for the Human-in-the-Loop layer"
+								}
+							},
+							"required": ["toolParameters", "hitlParameters"],
+							"additionalProperties": false
+						},
+						"strict": false
+					}
+				],
+				"top_logprobs": 0,
+				"top_p": 1,
+				"truncation": "disabled",
+				"usage": {
+					"input_tokens": 78,
+					"input_tokens_details": {
+						"cached_tokens": 0
+					},
+					"output_tokens": 457,
+					"output_tokens_details": {
+						"reasoning_tokens": 320
+					},
+					"total_tokens": 535
+				},
+				"user": null,
+				"metadata": {}
+			},
+			"rawBytes": "ewogICJpZCI6ICJyZXNwXzBkMjNjNmQwMGRjZmJhZTIwMDY5NzM1N2E3OGI2YzgxOTA4MDIzMzdlNDM4YWVkMmMwIiwKICAib2JqZWN0IjogInJlc3BvbnNlIiwKICAiY3JlYXRlZF9hdCI6IDE3NjkxNjY3NTksCiAgInN0YXR1cyI6ICJjb21wbGV0ZWQiLAogICJiYWNrZ3JvdW5kIjogZmFsc2UsCiAgImJpbGxpbmciOiB7CiAgICAicGF5ZXIiOiAiZGV2ZWxvcGVyIgogIH0sCiAgImNvbXBsZXRlZF9hdCI6IDE3NjkxNjY3NjUsCiAgImVycm9yIjogbnVsbCwKICAiZnJlcXVlbmN5X3BlbmFsdHkiOiAwLjAsCiAgImluY29tcGxldGVfZGV0YWlscyI6IG51bGwsCiAgImluc3RydWN0aW9ucyI6IG51bGwsCiAgIm1heF9vdXRwdXRfdG9rZW5zIjogbnVsbCwKICAibWF4X3Rvb2xfY2FsbHMiOiBudWxsLAogICJtb2RlbCI6ICJncHQtNS1taW5pLTIwMjUtMDgtMDciLAogICJvdXRwdXQiOiBbCiAgICB7CiAgICAgICJpZCI6ICJyc18wZDIzYzZkMDBkY2ZiYWUyMDA2OTczNTdhN2M0MzA4MTkwODVlMjBmMmYxZWMxYmIwNSIsCiAgICAgICJ0eXBlIjogInJlYXNvbmluZyIsCiAgICAgICJzdW1tYXJ5IjogW10KICAgIH0sCiAgICB7CiAgICAgICJpZCI6ICJmY18wZDIzYzZkMDBkY2ZiYWUyMDA2OTczNTdhYzQ1NmM4MTkwYjFlZjViMmMwZjIzZDM3YiIsCiAgICAgICJ0eXBlIjogImZ1bmN0aW9uX2NhbGwiLAogICAgICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgICAgICJhcmd1bWVudHMiOiAie1widG9vbFBhcmFtZXRlcnNcIjp7XCJyZWNlaXZlclwiOlwiam9obkBnbWFpbC5jb21cIixcImJvZHlcIjpcIlN1YmplY3Q6IFdlbGNvbWUgdG8gT3VyIFNlcnZpY2UhXFxuXFxuSGkgSm9obixcXG5cXG5XZWxjb21lISBXZSdyZSB0aHJpbGxlZCB0byBoYXZlIHlvdSB3aXRoIHVzLiBJZiB5b3UgaGF2ZSBhbnkgcXVlc3Rpb25zIG9yIG5lZWQgaGVscCBnZXR0aW5nIHN0YXJ0ZWQsIHJlcGx5IHRvIHRoaXMgZW1haWwgb3IgdmlzaXQgb3VyIEhlbHAgQ2VudGVyLiBIZXJlIGFyZSBhIGZldyByZXNvdXJjZXMgdG8gaGVscCB5b3UgYmVnaW46XFxuXFxuLSBHZXR0aW5nIHN0YXJ0ZWQgZ3VpZGU6IGh0dHBzOi8vZXhhbXBsZS5jb20vZ2V0dGluZy1zdGFydGVkXFxuLSBTdXBwb3J0OiBzdXBwb3J0QGV4YW1wbGUuY29tXFxuXFxuV2UgbG9vayBmb3J3YXJkIHRvIGhlbHBpbmcgeW91IGdldCB0aGUgbW9zdCBvdXQgb2Ygb3VyIHNlcnZpY2UuXFxuXFxuQmVzdCByZWdhcmRzLFxcblRoZSBUZWFtXCJ9LFwiaGl0bFBhcmFtZXRlcnNcIjp7fX0iLAogICAgICAiY2FsbF9pZCI6ICJjYWxsX212NFZVYWVsOVdVbFFBMzA2ZlE5YzhLcSIsCiAgICAgICJuYW1lIjogIkNvZGVfVG9vbCIKICAgIH0KICBdLAogICJwYXJhbGxlbF90b29sX2NhbGxzIjogdHJ1ZSwKICAicHJlc2VuY2VfcGVuYWx0eSI6IDAuMCwKICAicHJldmlvdXNfcmVzcG9uc2VfaWQiOiBudWxsLAogICJwcm9tcHRfY2FjaGVfa2V5IjogbnVsbCwKICAicHJvbXB0X2NhY2hlX3JldGVudGlvbiI6IG51bGwsCiAgInJlYXNvbmluZyI6IHsKICAgICJlZmZvcnQiOiAibWVkaXVtIiwKICAgICJzdW1tYXJ5IjogbnVsbAogIH0sCiAgInNhZmV0eV9pZGVudGlmaWVyIjogbnVsbCwKICAic2VydmljZV90aWVyIjogImRlZmF1bHQiLAogICJzdG9yZSI6IHRydWUsCiAgInRlbXBlcmF0dXJlIjogMS4wLAogICJ0ZXh0IjogewogICAgImZvcm1hdCI6IHsKICAgICAgInR5cGUiOiAidGV4dCIKICAgIH0sCiAgICAidmVyYm9zaXR5IjogIm1lZGl1bSIKICB9LAogICJ0b29sX2Nob2ljZSI6ICJhdXRvIiwKICAidG9vbHMiOiBbCiAgICB7CiAgICAgICJ0eXBlIjogImZ1bmN0aW9uIiwKICAgICAgImRlc2NyaXB0aW9uIjogIlNlbmQgZW1haWwiLAogICAgICAibmFtZSI6ICJDb2RlX1Rvb2wiLAogICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgInRvb2xQYXJhbWV0ZXJzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAicmVjZWl2ZXIiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAiYm9keSI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAicmVjZWl2ZXIiLAogICAgICAgICAgICAgICJib2R5IgogICAgICAgICAgICBdLAogICAgICAgICAgICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiBmYWxzZSwKICAgICAgICAgICAgImRlc2NyaXB0aW9uIjogIklucHV0IHBhcmFtZXRlcnMgZm9yIHRoZSB0b29sIgogICAgICAgICAgfSwKICAgICAgICAgICJoaXRsUGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7fSwKICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogZmFsc2UsCiAgICAgICAgICAgICJkZXNjcmlwdGlvbiI6ICJQYXJhbWV0ZXJzIGZvciB0aGUgSHVtYW4taW4tdGhlLUxvb3AgbGF5ZXIiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAidG9vbFBhcmFtZXRlcnMiLAogICAgICAgICAgImhpdGxQYXJhbWV0ZXJzIgogICAgICAgIF0sCiAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogZmFsc2UKICAgICAgfSwKICAgICAgInN0cmljdCI6IGZhbHNlCiAgICB9CiAgXSwKICAidG9wX2xvZ3Byb2JzIjogMCwKICAidG9wX3AiOiAxLjAsCiAgInRydW5jYXRpb24iOiAiZGlzYWJsZWQiLAogICJ1c2FnZSI6IHsKICAgICJpbnB1dF90b2tlbnMiOiA3OCwKICAgICJpbnB1dF90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgImNhY2hlZF90b2tlbnMiOiAwCiAgICB9LAogICAgIm91dHB1dF90b2tlbnMiOiA0NTcsCiAgICAib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjogewogICAgICAicmVhc29uaW5nX3Rva2VucyI6IDMyMAogICAgfSwKICAgICJ0b3RhbF90b2tlbnMiOiA1MzUKICB9LAogICJ1c2VyIjogbnVsbCwKICAibWV0YWRhdGEiOiB7fQp9"
+		}
+	},
+	"id": "1769166878316-unknown-host-POST-_v1_responses-2bb80a7e.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

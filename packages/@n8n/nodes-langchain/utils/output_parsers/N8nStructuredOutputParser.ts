@@ -1,11 +1,11 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import { StructuredOutputParser } from '@langchain/classic/output_parsers';
 import get from 'lodash/get';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { logAiEvent } from '../helpers';
+import { logAiEvent, unwrapNestedOutput } from '../helpers';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -28,22 +28,51 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		_callbacks?: Callbacks,
 		errorMapper?: (error: Error) => Error,
 	): Promise<object> {
-		const { index } = this.context.addInputData(NodeConnectionType.AiOutputParser, [
+		const { index } = this.context.addInputData(NodeConnectionTypes.AiOutputParser, [
 			[{ json: { action: 'parse', text } }],
 		]);
+
 		try {
-			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
+			// Extract JSON from markdown code fence if present
+			// Use line-based approach to avoid matching backticks inside JSON content
+			let jsonString = text.trim();
+
+			// Look for markdown code fence by finding lines that start with ```
+			const lines = jsonString.split('\n');
+			let fenceStartIndex = -1;
+			let fenceEndIndex = -1;
+
+			for (let i = 0; i < lines.length; i++) {
+				const trimmedLine = lines[i].trim();
+				// Opening fence: line starting with ``` optionally followed by language identifier
+				if (fenceStartIndex === -1 && trimmedLine.match(/^```(?:json)?$/)) {
+					fenceStartIndex = i;
+				} else if (fenceStartIndex !== -1 && trimmedLine === '```') {
+					// Closing fence: line with just ```
+					fenceEndIndex = i;
+					break;
+				}
+			}
+
+			// If we found both opening and closing fences, extract the content between them
+			if (fenceStartIndex !== -1 && fenceEndIndex !== -1) {
+				jsonString = lines.slice(fenceStartIndex + 1, fenceEndIndex).join('\n');
+			}
+
 			const json = JSON.parse(jsonString.trim());
 			const parsed = await this.schema.parseAsync(json);
 
-			const result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
+			let result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
 				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed) as Record<string, unknown>;
 
+			// Unwrap any doubly-nested output structures (e.g., {output: {output: {...}}})
+			result = unwrapNestedOutput(result);
+
 			logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
 
-			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
+			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, [
 				[{ json: { action: 'parse', response: result } }],
 			]);
 
@@ -58,12 +87,30 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				},
 			);
 
+			// Add additional context to the error
+			if (e instanceof SyntaxError) {
+				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
+			} else if (
+				(typeof text === 'string' && text.trim() === '{}') ||
+				(e instanceof z.ZodError &&
+					e.issues?.[0] &&
+					e.issues?.[0].code === 'invalid_type' &&
+					e.issues?.[0].path?.[0] === 'output' &&
+					e.issues?.[0].expected === 'object' &&
+					e.issues?.[0].received === 'undefined')
+			) {
+				nodeError.context.outputParserFailReason = 'Model output wrapper is an empty object';
+			} else if (e instanceof z.ZodError) {
+				nodeError.context.outputParserFailReason =
+					'Model output does not match the expected schema';
+			}
+
 			logAiEvent(this.context, 'ai-output-parsed', {
 				text,
 				response: e.message ?? e,
 			});
 
-			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, nodeError);
+			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, nodeError);
 			if (errorMapper) {
 				throw errorMapper(e);
 			}
@@ -103,9 +150,13 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 						},
 					),
 			});
-		} else {
+		} else if (nodeVersion < 1.3) {
 			returnSchema = z.object({
 				output: zodSchema.optional(),
+			});
+		} else {
+			returnSchema = z.object({
+				output: zodSchema,
 			});
 		}
 

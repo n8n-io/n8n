@@ -4,10 +4,10 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "labelListVisibility": {
             "type": "string"
         },
-        "type": {
+        "messageListVisibility": {
             "type": "string"
         },
         "messagesTotal": {
@@ -16,26 +16,18 @@
         "messagesUnread": {
             "type": "integer"
         },
+        "name": {
+            "type": "string"
+        },
         "threadsTotal": {
             "type": "integer"
         },
         "threadsUnread": {
             "type": "integer"
         },
-        "messageListVisibility": {
-            "type": "string"
-        },
-        "labelListVisibility": {
+        "type": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "messagesTotal",
-        "messagesUnread",
-        "threadsTotal",
-        "threadsUnread"
-    ]
+    "version": 1
 }

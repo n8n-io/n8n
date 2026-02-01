@@ -4,7 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getPollResponse } from './trigger/GenericFunctions';
@@ -32,7 +32,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',

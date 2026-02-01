@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { messageBirdApiRequest } from './GenericFunctions';
 
@@ -23,8 +23,8 @@ export class MessageBird implements INodeType {
 			name: 'MessageBird',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'messageBirdApi',

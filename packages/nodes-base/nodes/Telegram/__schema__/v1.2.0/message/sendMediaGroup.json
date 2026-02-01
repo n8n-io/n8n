@@ -9,54 +9,47 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "message_id": {
-                        "type": "integer"
-                    },
-                    "from": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "is_bot": {
-                                "type": "boolean"
-                            },
-                            "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "is_bot",
-                            "first_name",
-                            "username"
-                        ]
+                    "caption": {
+                        "type": "string"
                     },
                     "chat": {
                         "type": "object",
                         "properties": {
+                            "first_name": {
+                                "type": "string"
+                            },
                             "id": {
                                 "type": "integer"
                             },
                             "type": {
                                 "type": "string"
                             },
+                            "username": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "date": {
+                        "type": "integer"
+                    },
+                    "from": {
+                        "type": "object",
+                        "properties": {
                             "first_name": {
                                 "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "is_bot": {
+                                "type": "boolean"
                             },
                             "username": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "id",
-                            "type"
-                        ]
+                        }
                     },
-                    "date": {
+                    "message_id": {
                         "type": "integer"
                     },
                     "photo": {
@@ -67,64 +60,24 @@
                                 "file_id": {
                                     "type": "string"
                                 },
+                                "file_size": {
+                                    "type": "integer"
+                                },
                                 "file_unique_id": {
                                     "type": "string"
                                 },
-                                "file_size": {
+                                "height": {
                                     "type": "integer"
                                 },
                                 "width": {
                                     "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "file_id",
-                                "file_unique_id",
-                                "file_size",
-                                "width",
-                                "height"
-                            ]
-                        }
-                    },
-                    "caption": {
-                        "type": "string"
-                    },
-                    "caption_entities": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "offset": {
-                                    "type": "integer"
-                                },
-                                "length": {
-                                    "type": "integer"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "offset",
-                                "length",
-                                "type"
-                            ]
+                            }
                         }
                     }
-                },
-                "required": [
-                    "message_id",
-                    "chat",
-                    "date"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

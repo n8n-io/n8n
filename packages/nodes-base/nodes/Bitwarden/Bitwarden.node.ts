@@ -1,6 +1,6 @@
 import isEmpty from 'lodash/isEmpty';
 import partialRight from 'lodash/partialRight';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -43,8 +43,8 @@ export class Bitwarden implements INodeType {
 			name: 'Bitwarden',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bitwardenApi',

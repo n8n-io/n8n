@@ -1,6 +1,10 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type { IBinaryData } from 'n8n-workflow';
-import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
+import {
+	type IBinaryData,
+	setGlobalState,
+	type CodeExecutionMode,
+	type IDataObject,
+} from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -9,7 +13,6 @@ import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
@@ -30,6 +33,11 @@ import {
 jest.mock('ws');
 
 const defaultConfig = new MainConfig();
+defaultConfig.jsRunnerConfig ??= {
+	allowedBuiltInModules: '',
+	allowedExternalModules: '',
+	insecureMode: false,
+};
 
 describe('JsTaskRunner', () => {
 	const createRunnerWithOpts = (
@@ -54,6 +62,8 @@ describe('JsTaskRunner', () => {
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
 			},
 		});
 
@@ -122,6 +132,26 @@ describe('JsTaskRunner', () => {
 			runner,
 		});
 	};
+
+	describe('Buffer security', () => {
+		it('should redirect Buffer.allocUnsafe to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafe(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should redirect Buffer.allocUnsafeSlow to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafeSlow(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+	});
 
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
@@ -227,7 +257,7 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson(needsWrapping ? { val: expected } : expected)]);
+			expect(outcome.result).toEqual(needsWrapping ? { val: expected } : expected);
 		};
 
 		const testExpressionForEachItem = async (
@@ -240,22 +270,28 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([
-				withPairedItem(0, wrapIntoJson(needsWrapping ? { val: expected } : expected)),
-			]);
+			// if expected has json property, use it, else use entire result
+			const expectedJson =
+				expected !== null && typeof expected === 'object' && 'json' in expected
+					? expected.json
+					: needsWrapping
+						? { val: expected }
+						: expected;
+
+			expect(outcome.result).toEqual([{ json: expectedJson, pairedItem: { item: 0 } }]);
 		};
 
 		const testGroups = {
 			// https://docs.n8n.io/code/builtin/current-node-input/
 			'current node input': [
-				['$input.first()', inputItems[0]],
-				['$input.last()', inputItems[inputItems.length - 1]],
+				['$input.first()', { json: inputItems[0] }],
+				['$input.last()', { json: inputItems[inputItems.length - 1] }],
 				['$input.params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/output-other-nodes/
 			'output of other nodes': [
-				['$("Trigger").first()', inputItems[0]],
-				['$("Trigger").last()', inputItems[inputItems.length - 1]],
+				['$("Trigger").first()', { json: inputItems[0] }],
+				['$("Trigger").last()', { json: inputItems[inputItems.length - 1] }],
 				['$("Trigger").params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/date-time/
@@ -350,7 +386,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: 'value' })]);
+				expect(outcome.result).toEqual({ val: 'value' });
 			});
 
 			it('should be possible to access env if it has been blocked', async () => {
@@ -401,7 +437,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
+				expect(outcome.result).toEqual({ val: undefined });
 			});
 		});
 
@@ -412,16 +448,21 @@ describe('JsTaskRunner', () => {
 					timezone: 'Europe/Helsinki',
 				};
 
-				const outcome = await execTaskWithParams({
+				const outcome = (await execTaskWithParams({
 					task: newTaskParamsWithSettings({
 						code: 'return { val: $now.toSeconds() }',
 						nodeMode: 'runOnceForAllItems',
 					}),
 					taskData,
-				});
-
+				})) as { result: { val: number } };
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+
+				// Expect the shape of the result
+				expect(outcome.result).toEqual({ val: expect.any(Number) });
+
+				// Expect the times to be within 500ms of each other
+				const runnerTimeNow = outcome.result.val;
+				expect(Math.abs(helsinkiTimeNow - runnerTimeNow)).toBeLessThan(0.5);
 			});
 
 			it('should use the default timezone', async () => {
@@ -438,7 +479,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 0) });
 			});
 		});
 
@@ -456,7 +497,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the global workflow static data available in runOnceForEachItem', async () => {
@@ -549,7 +590,7 @@ describe('JsTaskRunner', () => {
 					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the node workflow static data available in runOnceForEachItem', async () => {
@@ -735,7 +776,7 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+			expect(outcomeAll.result).toEqual({ val: 'test-buffer' });
 
 			const outcomePer = await execTaskWithParams({
 				task: newTaskParamsWithSettings({
@@ -779,29 +820,6 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForAllItems({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
-
-			it('should throw a ValidationError if some items are wrapped in json and some are not', async () => {
-				await expect(
-					executeForAllItems({
-						code: 'return [{b: 1}, {json: {b: 2}}]',
-						inputItems: [{ a: 1 }],
-					}),
-				).rejects.toThrow(ValidationError);
-			});
-		});
-
 		it('should return static items', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return [{json: {b: 1}}]',
@@ -833,19 +851,19 @@ describe('JsTaskRunner', () => {
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: [{ b: 1 }],
 				customData: undefined,
 			});
 		});
 
-		it('should wrap single item into an array and json', async () => {
+		it('should not wrap single item into an array and json', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return {b: 1}',
 				inputItems: [{ a: 1 }],
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: { b: 1 },
 				customData: undefined,
 			});
 		});
@@ -893,20 +911,42 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow('Error message');
 			});
-		});
 
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"'], ['[]'], ['[1,2,3]']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForEachItem({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
+			it('should not duplicate binary data in json property when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } } }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
+
+			it('should not include metadata properties in json when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } }, pairedItem: 1 }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		describe('chunked execution', () => {
@@ -989,7 +1029,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 
@@ -1001,7 +1041,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 		});
@@ -1093,7 +1133,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1119,7 +1159,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1132,7 +1172,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});
@@ -1155,7 +1195,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1181,7 +1221,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1194,7 +1234,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});
@@ -1435,6 +1475,168 @@ describe('JsTaskRunner', () => {
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
 		});
+
+		it('should allow prototype mutation when `insecureMode` is true', async () => {
+			const runner = createRunnerWithOpts({
+				insecureMode: true,
+			});
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+
+					Object.prototype.maliciousProperty = 'compromised';
+
+					return [{ json: {
+						prototypeMutated: obj.maliciousProperty === 'compromised'
+					}}];
+				`,
+				inputItems: [{ a: 1 }],
+				runner,
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeMutated: true })]);
+
+			// @ts-expect-error Non-existing property
+			delete Object.prototype.maliciousProperty;
+		});
+	});
+
+	describe('Error.prepareStackTrace RCE prevention', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.prepareStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.prepareStackTrace } }]'
+							: 'return { json: { result: Error.prepareStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.captureStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.captureStackTrace } }]'
+							: 'return { json: { result: Error.captureStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should prevent Object.defineProperty from setting Error.prepareStackTrace in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				// First try to define prepareStackTrace, then check if it's still undefined
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return [{ json: { result: Error.prepareStackTrace } }];
+							`
+							: `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return { json: { result: Error.prepareStackTrace } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// prepareStackTrace should still be undefined because defineProperty is neutered
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test('should prevent full RCE exploit chain via prepareStackTrace', async () => {
+			// This is the actual exploit payload - should NOT execute system commands
+			// Even though the code runs without throwing, the exploit should not work
+			// because Object.defineProperty is neutered and prepareStackTrace remains undefined
+			const outcome = await executeForAllItems({
+				code: `
+					Object.defineProperty(Error, 'prepareStackTrace', {
+						value: (e, stack) => {
+							const g = stack[0].getThis();
+							return g.global.process.getBuiltinModule('child_process').execSync('echo pwned').toString();
+						}
+					});
+					const result = new Error().stack;
+					// Check if the result contains 'pwned' - if so, exploit succeeded
+					const exploited = typeof result === 'string' && result.includes('pwned');
+					return [{ json: { exploited, result: typeof result } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+			// The exploit should fail - prepareStackTrace wasn't actually set
+			// so .stack returns a normal stack trace string, not 'pwned'
+			const result = outcome.result as Array<{ json: IDataObject }>;
+			expect(result[0].json.exploited).toBe(false);
+			expect(result[0].json.result).toBe('string'); // Normal stack trace
+		});
+	});
+
+	describe('Object.defineProperty security', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperty in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return [{ json: { hasProperty: 'test' in obj, value: obj.test } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return { json: { hasProperty: 'test' in obj, value: obj.test } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// defineProperty is neutered, property won't be defined
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasProperty).toBe(false);
+				expect(result[0].json.value).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperties in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return [{ json: { hasA: 'a' in obj, hasB: 'b' in obj } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return { json: { hasA: 'a' in obj, hasB: 'b' in obj } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasA).toBe(false);
+				expect(result[0].json.hasB).toBe(false);
+			},
+		);
 	});
 
 	describe('stack trace', () => {
@@ -1472,6 +1674,17 @@ describe('JsTaskRunner', () => {
 					lineNumber: 2, // from user-defined function
 				},
 			});
+		});
+	});
+
+	describe('expressions', () => {
+		it('should evaluate expressions with $evaluateExpression', async () => {
+			const outcome = await executeForAllItems({
+				code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
+				inputItems: [],
+			});
+
+			expect(outcome.result).toEqual({ val: 2 });
 		});
 	});
 });

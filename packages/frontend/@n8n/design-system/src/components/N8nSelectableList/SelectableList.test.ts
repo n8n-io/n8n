@@ -19,6 +19,9 @@ describe('N8nSelectableList', () => {
 				modelValue: {},
 				inputs: [{ name: 'propA', initialValue: '' }],
 			},
+			global: {
+				stubs: ['N8nIcon'],
+			},
 		});
 
 		expect(wrapper.getByTestId('selectable-list-selectable-propA')).toBeInTheDocument();
@@ -31,6 +34,8 @@ describe('N8nSelectableList', () => {
 		await fireEvent.click(wrapper.getByTestId('selectable-list-remove-slot-propA'));
 
 		expect(wrapper.queryByTestId('selectable-list-slot-propA')).not.toBeInTheDocument();
+		expect(wrapper.emitted('removeItem')).toHaveLength(1);
+		expect(wrapper.emitted('removeItem')[0]).toEqual(['propA']);
 	});
 
 	it('renders multiple elements with some pre-selected', () => {
@@ -46,6 +51,9 @@ describe('N8nSelectableList', () => {
 					{ name: 'propB', initialValue: 3 },
 					{ name: 'propA', initialValue: '' },
 				],
+			},
+			global: {
+				stubs: ['N8nIcon'],
 			},
 		});
 
@@ -84,6 +92,9 @@ describe('N8nSelectableList', () => {
 					{ name: 'propB', initialValue: '' },
 					{ name: 'propC', initialValue: '' },
 				],
+			},
+			global: {
+				stubs: ['N8nIcon'],
 			},
 		});
 

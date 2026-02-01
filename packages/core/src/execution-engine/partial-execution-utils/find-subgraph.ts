@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 
 import type { GraphConnection } from './directed-graph';
 import { DirectedGraph } from './directed-graph';
@@ -57,7 +57,7 @@ function findSubgraphRecursive(
 		// Skip parents that are connected via non-Main connection types. They are
 		// only utility nodes for AI and are not part of the data or control flow
 		// and can never lead too the trigger.
-		if (parentConnection.type !== NodeConnectionType.Main) {
+		if (parentConnection.type !== NodeConnectionTypes.Main) {
 			continue;
 		}
 
@@ -107,7 +107,7 @@ export function findSubgraph(options: {
 		const parentConnections = graph.getParentConnections(node);
 
 		for (const connection of parentConnections) {
-			if (connection.type === NodeConnectionType.Main) {
+			if (connection.type === NodeConnectionTypes.Main) {
 				continue;
 			}
 

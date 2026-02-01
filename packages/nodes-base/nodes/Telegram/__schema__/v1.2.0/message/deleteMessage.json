@@ -7,5 +7,6 @@
         "result": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

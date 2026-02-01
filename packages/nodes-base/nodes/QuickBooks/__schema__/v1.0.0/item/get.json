@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "properties": {
+        "Active": {
+            "type": "boolean"
+        },
+        "DeferredRevenue": {
+            "type": "boolean"
+        },
+        "Description": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IncomeAccountRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "Name": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        },
+        "TrackQtyOnHand": {
+            "type": "boolean"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "UnitPrice": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

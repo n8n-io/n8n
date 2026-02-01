@@ -14,7 +14,7 @@ export async function nasaApiRequest(
 	endpoint: string,
 	qs: IDataObject,
 	option: IDataObject = {},
-	uri?: string | undefined,
+	uri?: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('nasaApi');
 

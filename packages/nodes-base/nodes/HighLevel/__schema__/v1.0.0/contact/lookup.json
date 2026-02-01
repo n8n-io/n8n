@@ -1,16 +1,39 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "address1": {
             "type": "string"
+        },
+        "assignedTo": {
+            "type": "string"
+        },
+        "city": {
+            "type": "string"
+        },
+        "country": {
+            "type": "string"
+        },
+        "customField": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "dateAdded": {
             "type": "string"
         },
-        "type": {
+        "email": {
             "type": "string"
         },
-        "locationId": {
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "fingerprint": {
             "type": "string"
         },
         "firstName": {
@@ -22,31 +45,28 @@
         "fullNameLowerCase": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "lastName": {
             "type": "string"
         },
         "lastNameLowerCase": {
             "type": "string"
         },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
+        "locationId": {
             "type": "string"
         },
         "phone": {
             "type": "string"
         },
-        "country": {
+        "postalCode": {
             "type": "string"
         },
         "source": {
             "type": "string"
         },
-        "timezone": {
-            "type": "string"
-        },
-        "fingerprint": {
+        "state": {
             "type": "string"
         },
         "tags": {
@@ -55,35 +75,12 @@
                 "type": "string"
             }
         },
-        "customField": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        },
-        "assignedTo": {
+        "timezone": {
             "type": "string"
         },
-        "address1": {
-            "type": "string"
-        },
-        "city": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "postalCode": {
+        "type": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

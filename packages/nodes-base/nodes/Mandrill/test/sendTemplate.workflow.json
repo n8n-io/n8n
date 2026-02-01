@@ -1,0 +1,71 @@
+{
+	"name": "sendTemplate",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "test-trigger-node-id",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "sendTemplate",
+				"template": "test-template",
+				"fromEmail": "sender@example.com",
+				"toEmail": "recipient@example.com",
+				"options": {
+					"subAccount": "test-subaccount"
+				}
+			},
+			"id": "test-mandrill-node-id",
+			"name": "Mandrill",
+			"type": "n8n-nodes-base.mandrill",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"mandrillApi": {
+					"id": "test-credentials-id",
+					"name": "Test Mandrill API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Mandrill",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Mandrill": [
+			{
+				"json": {
+					"email": "recipient@example.com",
+					"status": "sent",
+					"reject_reason": null,
+					"_id": "test-message-id-456"
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"meta": {
+		"instanceId": "test-instance"
+	},
+	"id": "test-workflow-id",
+	"tags": []
+}

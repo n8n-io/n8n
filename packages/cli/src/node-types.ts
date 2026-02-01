@@ -1,8 +1,7 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
-import { readdir } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { RoutingNode } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
@@ -10,13 +9,12 @@ import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
+import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {}
+	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
 
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
@@ -31,6 +29,35 @@ export class NodeTypes implements INodeTypes {
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
 	}
 
+	/**
+	 * Get a node type description with its translation loaded (if available for the locale).
+	 */
+	async getDescriptionWithTranslation(
+		nodeTypeName: string,
+		version: number,
+		locale: string,
+	): Promise<INodeTypeDescription> {
+		const { description, sourcePath } = this.getWithSourcePath(nodeTypeName, version);
+
+		if (locale !== 'en') {
+			const translationPath = await this.getNodeTranslationPath({
+				nodeSourcePath: sourcePath,
+				longNodeType: description.name,
+				locale,
+			});
+
+			try {
+				const translation = await readFile(translationPath, 'utf8');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				description.translation = JSON.parse(translation);
+			} catch {
+				// ignore - no translation exists at path
+			}
+		}
+
+		return description;
+	}
+
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return this.loadNodesAndCredentials.getNode(nodeType).type;
 	}
@@ -38,15 +65,18 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		const { communityPackages } = this.globalConfig.nodes;
-		const allowToolUsage = communityPackages.allowToolUsage
-			? true
-			: nodeType.startsWith('n8n-nodes-base');
 		const toolRequested = nodeType.endsWith('Tool');
 
+		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
+		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
+			const node = this.loadNodesAndCredentials.getNode(nodeType);
+			return NodeHelpers.getVersionedNodeType(node.type, version);
+		}
+
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
-		if (allowToolUsage && toolRequested) {
-			nodeType = nodeType.replace(/Tool$/, '');
+		// Handle both regular Tool suffix and HitlTool suffix
+		if (toolRequested) {
+			nodeType = nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
 		}
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
@@ -55,13 +85,7 @@ export class NodeTypes implements INodeTypes {
 			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
 		}
 
-		if (
-			!versionedNodeType.execute &&
-			!versionedNodeType.poll &&
-			!versionedNodeType.trigger &&
-			!versionedNodeType.webhook &&
-			!versionedNodeType.methods
-		) {
+		if (shouldAssignExecuteMethod(versionedNodeType)) {
 			versionedNodeType.execute = async function (this: ExecuteContext) {
 				const routingNode = new RoutingNode(this, versionedNodeType);
 				const data = await routingNode.runNode();
@@ -71,12 +95,16 @@ export class NodeTypes implements INodeTypes {
 
 		if (!toolRequested) return versionedNodeType;
 
-		if (!versionedNodeType.description.usableAsTool)
-			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
-
 		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {
 			return loadedNodes[origType].type as INodeType;
+		}
+
+		// Check if this is an HITL tool (ends with 'HitlTool')
+		const isHitlTool = origType.endsWith('HitlTool');
+
+		if (!isHitlTool && !versionedNodeType.description.usableAsTool) {
+			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
 		}
 
 		// Instead of modifying the existing type, we extend it into a new type object
@@ -84,13 +112,16 @@ export class NodeTypes implements INodeTypes {
 			versionedNodeType.description.properties,
 		) as INodeTypeDescription['properties'];
 		const clonedDescription = Object.create(versionedNodeType.description, {
-			properties: { value: clonedProperties },
+			properties: { value: clonedProperties, writable: isHitlTool },
 		}) as INodeTypeDescription;
 		const clonedNode = Object.create(versionedNodeType, {
 			description: { value: clonedDescription },
 		}) as INodeType;
-		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
-		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
+
+		// For HITL tools, use convertNodeToHitlTool; for regular AI tools, use convertNodeToAiTool
+		const tool = isHitlTool ? convertNodeToHitlTool(clonedNode) : convertNodeToAiTool(clonedNode);
+
+		loadedNodes[origType] = { sourcePath: '', type: tool };
 		return tool;
 	}
 

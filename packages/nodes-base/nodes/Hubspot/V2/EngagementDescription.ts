@@ -77,6 +77,22 @@ export const engagementFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Due Date',
+		name: 'dueDate',
+		type: 'dateTime',
+		required: true,
+		description: 'The due date for the task',
+		displayOptions: {
+			show: {
+				resource: ['engagement'],
+				operation: ['create'],
+				type: ['task'],
+				'@version': [{ _cnd: { gte: 2.2 } }],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Metadata',
 		name: 'metadata',
 		type: 'collection',
@@ -411,6 +427,22 @@ export const engagementFields: INodeProperties[] = [
 						name: 'ownerIds',
 						type: 'string',
 						default: '',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 2.2 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'ownerId',
+						type: 'number',
+						default: 0,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 2.2 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Ticket IDs',

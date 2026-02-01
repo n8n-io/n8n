@@ -1,0 +1,67 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-opus-4-5-20251101",
+				"stream": true,
+				"max_tokens": 8192,
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hi"
+					}
+				],
+				"system": "You are a helpful assistant.\n\nThe user's current local date and time is: 2025-01-15T07:00:00.000-05:00 (timezone: America/New_York).\nWhen you need to reference \"now\", use this date and time.\n\nYou can only produce text responses.\nYou cannot create, generate, edit, or display images, videos, or other non-text content.\nIf the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools."
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIaSJ9XSwic3lzdGVtIjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50LlxuXG5UaGUgdXNlcidzIGN1cnJlbnQgbG9jYWwgZGF0ZSBhbmQgdGltZSBpczogMjAyNS0wMS0xNVQwNzowMDowMC4wMDAtMDU6MDAgKHRpbWV6b25lOiBBbWVyaWNhL05ld19Zb3JrKS5cbldoZW4geW91IG5lZWQgdG8gcmVmZXJlbmNlIFwibm93XCIsIHVzZSB0aGlzIGRhdGUgYW5kIHRpbWUuXG5cbllvdSBjYW4gb25seSBwcm9kdWNlIHRleHQgcmVzcG9uc2VzLlxuWW91IGNhbm5vdCBjcmVhdGUsIGdlbmVyYXRlLCBlZGl0LCBvciBkaXNwbGF5IGltYWdlcywgdmlkZW9zLCBvciBvdGhlciBub24tdGV4dCBjb250ZW50LlxuSWYgdGhlIHVzZXIgYXNrcyB5b3UgdG8gZ2VuZXJhdGUgb3IgZWRpdCBhbiBpbWFnZSAob3Igb3RoZXIgbWVkaWEpLCBleHBsYWluIHRoYXQgeW91IGFyZSBub3QgYWJsZSB0byBkbyB0aGF0IGFuZCwgaWYgaGVscGZ1bCwgZGVzY3JpYmUgaW4gd29yZHMgd2hhdCB0aGUgaW1hZ2UgY291bGQgbG9vayBsaWtlIG9yIGhvdyB0aGV5IGNvdWxkIGNyZWF0ZSBpdCB1c2luZyBleHRlcm5hbCB0b29scy4ifQ=="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1805"],
+			"request-id": ["req_011CWDRUKykDvYJ3WeiKHZ7g"],
+			"anthropic-ratelimit-tokens-reset": ["2025-12-18T03:13:18Z"],
+			"anthropic-ratelimit-tokens-remaining": ["4800000"],
+			"anthropic-ratelimit-tokens-limit": ["4800000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-12-18T03:13:18Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["800000"],
+			"anthropic-ratelimit-output-tokens-limit": ["800000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-12-18T03:13:18Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["4000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["4000000"],
+			"anthropic-organization-id": ["00000000-0000-0000-0000-000000000000"],
+			"X-Robots-Tag": ["none"],
+			"Vary": ["accept-encoding"],
+			"Strict-Transport-Security": ["max-age=31536000; includeSubDomains; preload"],
+			"Server": ["cloudflare"],
+			"Date": ["Thu, 18 Dec 2025 03:13:20 GMT"],
+			"Content-Type": ["text/event-stream; charset=utf-8"],
+			"Cache-Control": ["no-cache"],
+			"CF-RAY": ["9afb7bcc7c833917-TXL"],
+			"CF-Cache-Status": ["DYNAMIC"]
+		},
+		"body": {
+			"type": "STRING",
+			"string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-opus-4-5-20251101\",\"id\":\"msg_01GnJwv8Y713tP5evWJaWuj3\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":149,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\"}}      }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" there\"}             }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"! How can I help you today?\"}              }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0         }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"input_tokens\":149,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":13}             }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"   }\n\n",
+			"rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtb3B1cy00LTUtMjAyNTExMDEiLCJpZCI6Im1zZ18wMUduSnd2OFk3MTN0UDVldldKYVd1ajMiLCJ0eXBlIjoibWVzc2FnZSIsInJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24iOm51bGwsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTQ5LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MSwic2VydmljZV90aWVyIjoic3RhbmRhcmQifX0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IkhpIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgdGhlcmUifSAgICAgICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiEgSG93IGNhbiBJIGhlbHAgeW91IHRvZGF5PyJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxNDksImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsIm91dHB1dF90b2tlbnMiOjEzfSAgICAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICB9Cgo=",
+			"contentType": "text/event-stream; charset=utf-8"
+		}
+	},
+	"id": "1766027610251-unknown-host-POST-_v1_messages-51dd0005.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

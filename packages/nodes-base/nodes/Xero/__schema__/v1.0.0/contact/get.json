@@ -1,0 +1,122 @@
+{
+    "type": "object",
+    "properties": {
+        "Addresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "AddressLine1": {
+                        "type": "string"
+                    },
+                    "AddressType": {
+                        "type": "string"
+                    },
+                    "City": {
+                        "type": "string"
+                    },
+                    "Country": {
+                        "type": "string"
+                    },
+                    "PostalCode": {
+                        "type": "string"
+                    },
+                    "Region": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "BankAccountDetails": {
+            "type": "string"
+        },
+        "ContactGroups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "ContactGroupID": {
+                        "type": "string"
+                    },
+                    "HasValidationErrors": {
+                        "type": "boolean"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "Status": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "ContactID": {
+            "type": "string"
+        },
+        "ContactPersons": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "EmailAddress": {
+                        "type": "string"
+                    },
+                    "FirstName": {
+                        "type": "string"
+                    },
+                    "IncludeInEmails": {
+                        "type": "boolean"
+                    },
+                    "LastName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "ContactStatus": {
+            "type": "string"
+        },
+        "EmailAddress": {
+            "type": "string"
+        },
+        "HasAttachments": {
+            "type": "boolean"
+        },
+        "HasValidationErrors": {
+            "type": "boolean"
+        },
+        "IsCustomer": {
+            "type": "boolean"
+        },
+        "IsSupplier": {
+            "type": "boolean"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Phones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "PhoneAreaCode": {
+                        "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                        "type": "string"
+                    },
+                    "PhoneNumber": {
+                        "type": "string"
+                    },
+                    "PhoneType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "UpdatedDateUTC": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

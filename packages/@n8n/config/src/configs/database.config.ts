@@ -1,4 +1,9 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+
+const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
+type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
 @Config
 class LoggingConfig {
@@ -9,8 +14,8 @@ class LoggingConfig {
 	/**
 	 * Database logging level. Requires `DB_LOGGING_MAX_EXECUTION_TIME` to be higher than `0`.
 	 */
-	@Env('DB_LOGGING_OPTIONS')
-	options: 'query' | 'error' | 'schema' | 'warn' | 'info' | 'log' | 'all' = 'error';
+	@Env('DB_LOGGING_OPTIONS', dbLoggingOptionsSchema)
+	options: DbLoggingOptions = 'error';
 
 	/**
 	 * Only queries that exceed this time (ms) will be logged. Set `0` to disable.
@@ -79,32 +84,19 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
 	connectionTimeoutMs: number = 20_000;
 
+	/** Postgres idle connection timeout (ms) */
+	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
+	idleTimeoutMs: number = 30_000;
+
+	/** Postgres statement timeout (ms). If a query takes longer than this time to complete, it is terminated. Set `0` to disable. */
+	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
+	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
+
 	@Nested
 	ssl: PostgresSSLConfig;
 }
 
-@Config
-class MysqlConfig {
-	/** @deprecated MySQL database name */
-	@Env('DB_MYSQLDB_DATABASE')
-	database: string = 'n8n';
-
-	/** MySQL database host */
-	@Env('DB_MYSQLDB_HOST')
-	host: string = 'localhost';
-
-	/** MySQL database password */
-	@Env('DB_MYSQLDB_PASSWORD')
-	password: string = '';
-
-	/** MySQL database port */
-	@Env('DB_MYSQLDB_PORT')
-	port: number = 3306;
-
-	/** MySQL database user */
-	@Env('DB_MYSQLDB_USER')
-	user: string = 'root';
-}
+const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
 
 @Config
 export class SqliteConfig {
@@ -112,15 +104,9 @@ export class SqliteConfig {
 	@Env('DB_SQLITE_DATABASE')
 	database: string = 'database.sqlite';
 
-	/** SQLite database pool size. Set to `0` to disable pooling. */
-	@Env('DB_SQLITE_POOL_SIZE')
-	poolSize: number = 0;
-
-	/**
-	 * Enable SQLite WAL mode.
-	 */
-	@Env('DB_SQLITE_ENABLE_WAL')
-	enableWAL: boolean = this.poolSize > 1;
+	/** SQLite database pool size. Must be equal to or higher than `1`. */
+	@Env('DB_SQLITE_POOL_SIZE', sqlitePoolSizeSchema)
+	poolSize: number = 3;
 
 	/**
 	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
@@ -131,24 +117,30 @@ export class SqliteConfig {
 	executeVacuumOnStartup: boolean = false;
 }
 
+const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
+type DbType = z.infer<typeof dbTypeSchema>;
+
 @Config
 export class DatabaseConfig {
 	/** Type of database to use */
-	@Env('DB_TYPE')
-	type: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' = 'sqlite';
+	@Env('DB_TYPE', dbTypeSchema)
+	type: DbType = 'sqlite';
 
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
 	tablePrefix: string = '';
+
+	/**
+	 * The interval in seconds to ping the database to check if the connection is still alive.
+	 */
+	@Env('DB_PING_INTERVAL_SECONDS')
+	pingIntervalSeconds: number = 2;
 
 	@Nested
 	logging: LoggingConfig;
 
 	@Nested
 	postgresdb: PostgresConfig;
-
-	@Nested
-	mysqldb: MysqlConfig;
 
 	@Nested
 	sqlite: SqliteConfig;

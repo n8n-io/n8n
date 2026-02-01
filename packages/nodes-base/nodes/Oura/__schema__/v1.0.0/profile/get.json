@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "age": {
+            "type": "integer"
+        },
+        "biological_sex": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "height": {
+            "type": "number"
+        },
+        "id": {
+            "type": "string"
+        },
+        "weight": {
+            "type": "number"
+        }
+    },
+    "version": 1
+}

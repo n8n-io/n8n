@@ -1,6 +1,6 @@
 import type { DateTimeUnit, DurationUnit } from 'luxon';
 import { DateTime } from 'luxon';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -30,8 +30,8 @@ export class DateTimeV2 implements INodeType {
 				color: '#408000',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			description: 'Manipulate date and time values',
 			properties: [
 				{

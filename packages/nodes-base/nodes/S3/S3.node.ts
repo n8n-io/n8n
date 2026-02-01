@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
@@ -30,8 +30,8 @@ export class S3 implements INodeType {
 			name: 'S3',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 's3',
@@ -229,7 +229,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._ as string;
+						const region = responseData.LocationConstraint?._ as string | undefined;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -295,7 +295,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -324,7 +324,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						responseData = await s3ApiRequestSOAPAllItems.call(
 							this,
@@ -420,7 +420,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -558,7 +558,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -597,7 +597,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						region = region.LocationConstraint._;
+						region = region.LocationConstraint?._;
 
 						const response = await s3ApiRequestREST.call(
 							this,
@@ -656,7 +656,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -699,7 +699,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -833,7 +833,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = responseData.LocationConstraint?._;
 
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);

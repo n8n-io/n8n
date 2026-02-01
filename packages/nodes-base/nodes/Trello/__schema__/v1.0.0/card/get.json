@@ -1,12 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "badges": {
             "type": "object",
             "properties": {
+                "attachments": {
+                    "type": "integer"
+                },
                 "attachmentsByType": {
                     "type": "object",
                     "properties": {
@@ -19,34 +19,9 @@
                                 "card": {
                                     "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "board",
-                                "card"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "trello"
-                    ]
-                },
-                "location": {
-                    "type": "boolean"
-                },
-                "votes": {
-                    "type": "integer"
-                },
-                "viewingMemberVoted": {
-                    "type": "boolean"
-                },
-                "subscribed": {
-                    "type": "boolean"
-                },
-                "attachments": {
-                    "type": "integer"
-                },
-                "fogbugz": {
-                    "type": "string"
+                    }
                 },
                 "checkItems": {
                     "type": "integer"
@@ -66,29 +41,31 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
                 "lastUpdatedByAi": {
                     "type": "boolean"
+                },
+                "location": {
+                    "type": "boolean"
+                },
+                "subscribed": {
+                    "type": "boolean"
+                },
+                "viewingMemberVoted": {
+                    "type": "boolean"
+                },
+                "votes": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed",
-                "attachments",
-                "fogbugz",
-                "checkItems",
-                "checkItemsChecked",
-                "checkItemsEarliestDue",
-                "comments",
-                "description",
-                "due",
-                "dueComplete",
-                "lastUpdatedByAi",
-                "start"
-            ]
+            }
+        },
+        "cardRole": {
+            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -101,18 +78,25 @@
                     "state": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "idCheckItem",
-                    "state"
-                ]
+                }
             }
         },
         "closed": {
             "type": "boolean"
         },
-        "dueComplete": {
-            "type": "boolean"
+        "cover": {
+            "type": "object",
+            "properties": {
+                "brightness": {
+                    "type": "string"
+                },
+                "idUploadedBackground": {
+                    "type": "null"
+                },
+                "size": {
+                    "type": "string"
+                }
+            }
         },
         "dateLastActivity": {
             "type": "string"
@@ -120,13 +104,25 @@
         "desc": {
             "type": "string"
         },
+        "dueComplete": {
+            "type": "boolean"
+        },
         "email": {
             "type": "null"
+        },
+        "id": {
+            "type": "string"
         },
         "idBoard": {
             "type": "string"
         },
         "idChecklists": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idLabels": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -143,6 +139,9 @@
         },
         "idShort": {
             "type": "integer"
+        },
+        "isTemplate": {
+            "type": "boolean"
         },
         "labels": {
             "type": "array",
@@ -167,26 +166,19 @@
                     "uses": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "idBoard",
-                    "name",
-                    "color",
-                    "uses"
-                ]
-            }
-        },
-        "idLabels": {
-            "type": "array",
-            "items": {
-                "type": "string"
+                }
             }
         },
         "manualCoverAttachment": {
             "type": "boolean"
         },
+        "mirrorSourceId": {
+            "type": "null"
+        },
         "name": {
+            "type": "string"
+        },
+        "nodeId": {
             "type": "string"
         },
         "pinned": {
@@ -203,37 +195,7 @@
         },
         "url": {
             "type": "string"
-        },
-        "cover": {
-            "type": "object",
-            "properties": {
-                "idUploadedBackground": {
-                    "type": "null"
-                },
-                "size": {
-                    "type": "string"
-                },
-                "brightness": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "idAttachment",
-                "color",
-                "idUploadedBackground",
-                "size",
-                "brightness",
-                "idPlugin"
-            ]
-        },
-        "isTemplate": {
-            "type": "boolean"
-        },
-        "cardRole": {
-            "type": "null"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

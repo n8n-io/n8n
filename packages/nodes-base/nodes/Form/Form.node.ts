@@ -6,7 +6,6 @@ import type {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import {
 	Node,
@@ -15,16 +14,21 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseJsonToFormFields,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
-import { renderFormCompletion } from './formCompletionUtils';
-import { renderFormNode } from './formNodeUtils';
+import { renderFormCompletion } from './utils/formCompletionUtils';
+import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
+import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
-import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, resolveRawData } from '../Form/utils';
+import {
+	formDescription,
+	formFields,
+	formFieldsDynamic,
+	formTitle,
+} from '../Form/common.descriptions';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -71,17 +75,28 @@ export const formFieldsProperties: INodeProperties[] = [
 			rows: 5,
 		},
 		default:
-			'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
+			'[\n  {\n    "fieldLabel": "Name",\n    "placeholder": "enter your name",\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Age",\n    "fieldType": "number",\n    "placeholder": "enter your age"\n  },\n  {\n    "fieldLabel": "Email",\n    "fieldType": "email",\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Textarea",\n    "fieldType": "textarea"\n  },\n  {\n    "fieldLabel": "Dropdown Options",\n    "fieldType": "dropdown",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    },\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Checkboxes",\n    "fieldType": "checkbox",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    }\n  },\n  {\n    "fieldLabel": "Radio",\n    "fieldType": "radio",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    }\n  },\n  {\n    "fieldLabel": "Email",\n    "fieldType": "email",\n    "placeholder": "me@mail.con"\n  },\n  {\n    "fieldLabel": "File",\n    "fieldType": "file",\n    "multipleFiles": true,\n    "acceptFileTypes": ".jpg, .png"\n  },\n  {\n    "fieldLabel": "Number",\n    "fieldType": "number"\n  },\n  {\n    "fieldLabel": "Password",\n    "fieldType": "password"\n  }\n]\n',
 		validateType: 'form-fields',
 		ignoreValidationDuringExecution: true,
-		hint: '<a href="hhttps://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/" target="_blank">See docs</a> for field syntax',
+		hint: '<a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/" target="_blank">See docs</a> for field syntax',
 		displayOptions: {
 			show: {
 				defineForm: ['json'],
 			},
 		},
 	},
-	{ ...formFields, displayOptions: { show: { defineForm: ['fields'] } } },
+	{
+		...formFields,
+		displayOptions: {
+			show: { '@version': [{ _cnd: { lt: 2.5 } }], defineForm: ['fields'] },
+		},
+	},
+	{
+		...formFieldsDynamic,
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 2.5 } }], defineForm: ['fields'] },
+		},
+	},
 ];
 
 const pageProperties = updateDisplayOptions(
@@ -153,6 +168,11 @@ const completionProperties = updateDisplayOptions(
 					value: 'showText',
 					description: 'Display simple text or HTML',
 				},
+				{
+					name: 'Return Binary File',
+					value: 'returnBinary',
+					description: 'Return incoming binary file',
+				},
 			],
 		},
 		{
@@ -176,7 +196,7 @@ const completionProperties = updateDisplayOptions(
 			required: true,
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -190,7 +210,7 @@ const completionProperties = updateDisplayOptions(
 			},
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -209,6 +229,21 @@ const completionProperties = updateDisplayOptions(
 			default: '',
 			placeholder: 'e.g. Thanks for filling the form',
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
+		},
+		{
+			displayName: 'Input Data Field Name',
+			name: 'inputDataFieldName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					respondWith: ['returnBinary'],
+				},
+			},
+			default: 'data',
+			placeholder: 'e.g. data',
+			description:
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
+			hint: 'The name of the input field containing the binary file data to be returned',
 		},
 		...waitTimeProperties,
 		{
@@ -233,7 +268,7 @@ const completionProperties = updateDisplayOptions(
 			],
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary', 'redirect'],
 				},
 			},
 		},
@@ -248,13 +283,17 @@ export class Form extends Node {
 		name: 'form',
 		icon: 'file:form.svg',
 		group: ['input'],
-		version: 1,
+		// since trigger and node are sharing descriptions and logic we need to sync the versions
+		// and keep them aligned in both nodes
+		version: [1, 2.3, 2.4, 2.5],
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip:
+			'=Execution will continue when form is submitted on <a href="{{ $execution.resumeFormUrl }}" target="_blank">{{ $execution.resumeFormUrl }}</a>',
 		webhooks: [
 			{
 				name: 'default',
@@ -263,7 +302,7 @@ export class Form extends Node {
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -272,12 +311,11 @@ export class Form extends Node {
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'An n8n Form Trigger node must be set up before this node',
 				name: 'triggerNotice',
 				type: 'notice',
@@ -310,12 +348,9 @@ export class Form extends Node {
 
 		const operation = context.getNodeParameter('operation', '') as string;
 
-		const parentNodes = context.getParentNodes(context.getNode().name);
-		const trigger = parentNodes.find(
-			(node) => node.type === 'n8n-nodes-base.formTrigger',
-		) as NodeTypeAndVersion;
+		const trigger = getFormTriggerNode(context);
 
-		const mode = context.evaluateExpression(`{{ $('${trigger?.name}').first().json.formMode }}`) as
+		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -336,15 +371,7 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-				(field) => {
-					if (field.fieldType === 'hiddenField') {
-						field.fieldLabel = field.fieldName as string;
-					}
-
-					return field;
-				},
-			);
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
 
 		const method = context.getRequestObject().method;
@@ -364,7 +391,7 @@ export class Form extends Node {
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger?.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {

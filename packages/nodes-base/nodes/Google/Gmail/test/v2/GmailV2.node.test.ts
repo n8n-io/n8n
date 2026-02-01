@@ -1,13 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import nock from 'nock';
 
-import { testWorkflows } from '@test/nodes/Helpers';
-
-import labels from './fixtures/labels.json';
-import messages from './fixtures/messages.json';
 import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOptions';
+import labels from '../fixtures/labels.json';
+import messages from '../fixtures/messages.json';
 
 describe('Test Gmail Node v2', () => {
 	beforeAll(() => {
@@ -129,10 +128,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['messages.workflow.json'],
 		});
 	});
 
@@ -154,10 +153,10 @@ describe('Test Gmail Node v2', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['labels.workflow.json'],
 		});
 	});
 
@@ -176,7 +175,7 @@ describe('Test Gmail Node v2', () => {
 							mail
 								.replace(/boundary=".*"/g, 'boundary="--test-boundary"')
 								.replace(/----.*/g, '----test-boundary')
-								.replace(/Message-ID:.*/g, 'Message-ID: test-message-id'),
+								.replace(/Message-ID:.*/g, 'Message-ID: <test-message-id@mail.com>'),
 							'utf-8',
 						).toString('base64');
 
@@ -185,15 +184,25 @@ describe('Test Gmail Node v2', () => {
 						return body;
 					}
 				})
-				.post('/v1/users/me/drafts', {
-					message: {
-						raw: 'Q29udGVudC1UeXBlOiBtdWx0aXBhcnQvbWl4ZWQ7IGJvdW5kYXJ5PSItLXRlc3QtYm91bmRhcnkiDQpGcm9tOiB0ZXN0LWFsaWFzQG44bi5pbw0KVG86IHRlc3QtdG9AbjhuLmlvDQpDYzogdGVzdC1jY0BuOG4uaW8NCkJjYzogdGVzdC1iY2NAbjhuLmlvDQpSZXBseS1UbzogdGVzdC1yZXBseUBuOG4uaW8NClN1YmplY3Q6IFRlc3QgRHJhZnQgU3ViamVjdA0KTWVzc2FnZS1JRDogdGVzdC1tZXNzYWdlLWlkDQpEYXRlOiBNb24sIDE2IERlYyAyMDI0IDEyOjM0OjU2ICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KDQotLS0tdGVzdC1ib3VuZGFyeQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA3Yml0DQoNClRlc3QgRHJhZnQgTWVzc2FnZQ0KLS0tLXRlc3QtYm91bmRhcnkNCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbjsgbmFtZT1maWxlLmpzb24NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IGJhc2U2NA0KQ29udGVudC1EaXNwb3NpdGlvbjogYXR0YWNobWVudDsgZmlsZW5hbWU9ZmlsZS5qc29uDQoNClczc2lZbWx1WVhKNUlqcDBjblZsZlYwPQ0KLS0tLXRlc3QtYm91bmRhcnkNCg==',
-						threadId: 'test-thread-id',
-					},
+				.post('/v1/users/me/drafts', (body) => {
+					return (
+						typeof body.message?.raw === 'string' && body.message.threadId === 'test-thread-id'
+					);
 				})
 				.query({ userId: 'me', uploadType: 'media' })
 				.reply(200, messages[0]);
 			gmailNock.delete('/v1/users/me/drafts/test-draft-id').reply(200, messages[0]);
+			gmailNock
+				.get('/v1/users/me/threads/test-thread-id')
+				.query({
+					format: 'metadata',
+					metadataHeaders: 'Message-ID',
+				})
+				.reply(200, {
+					messages: [
+						{ payload: { headers: [{ name: 'Message-ID', value: '<test-message-id@mail.com>' }] } },
+					],
+				});
 			gmailNock
 				.get('/v1/users/me/drafts/test-draft-id')
 				.query({ format: 'raw' })
@@ -244,10 +253,10 @@ describe('Test Gmail Node v2', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['drafts.workflow.json'],
 		});
 	});
 
@@ -307,10 +316,10 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['threads.workflow.json'],
 		});
 	});
 

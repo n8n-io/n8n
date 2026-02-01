@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
 import { ldapFields } from './LdapDescription';
@@ -29,8 +29,8 @@ export class Ldap implements INodeType {
 			name: 'LDAP',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

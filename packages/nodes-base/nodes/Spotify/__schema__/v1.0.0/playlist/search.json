@@ -13,10 +13,7 @@
                 "spotify": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "spotify"
-            ]
+            }
         },
         "href": {
             "type": "string"
@@ -32,12 +29,7 @@
                     "url": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "height",
-                    "url",
-                    "width"
-                ]
+                }
             }
         },
         "name": {
@@ -55,10 +47,7 @@
                         "spotify": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
+                    }
                 },
                 "href": {
                     "type": "string"
@@ -72,15 +61,7 @@
                 "uri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "display_name",
-                "external_urls",
-                "href",
-                "id",
-                "type",
-                "uri"
-            ]
+            }
         },
         "snapshot_id": {
             "type": "string"
@@ -94,11 +75,7 @@
                 "total": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "href",
-                "total"
-            ]
+            }
         },
         "type": {
             "type": "string"
@@ -107,7 +84,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "primary_color"
-    ]
+    "version": 1
 }

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
@@ -10,6 +10,7 @@ import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descript
 import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../utils/sendAndWait/utils';
 
@@ -21,15 +22,17 @@ export class WhatsApp implements INodeType {
 		name: 'whatsApp',
 		icon: 'file:whatsapp.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
 		defaults: {
 			name: 'WhatsApp Business Cloud',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{
@@ -83,11 +86,12 @@ export class WhatsApp implements INodeType {
 					);
 
 					const config = getSendAndWaitConfig(this);
+					const instanceId = this.getInstanceId();
 
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
-						createMessage(config, phoneNumberId, recipientPhoneNumber),
+						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
 					);
 
 					const waitTill = configureWaitTillDate(this);

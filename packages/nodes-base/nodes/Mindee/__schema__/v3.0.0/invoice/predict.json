@@ -1,77 +1,53 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"number_of_pages": {
-			"type": "integer"
-		},
-		"customer_name": {
-			"type": "string"
-		},
-		"date": {
-			"type": "string"
-		},
-		"document_type": {
-			"type": "string"
-		},
-		"invoice_number": {
-			"type": "string"
-		},
-		"line_items": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"description": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"description",
-					"product_code",
-					"quantity",
-					"tax_amount",
-					"tax_rate",
-					"total_amount",
-					"unit_price"
-				]
-			}
-		},
-		"currency": {
-			"type": "string"
-		},
-		"supplier_address": {
-			"type": "string"
-		},
-		"supplier_name": {
-			"type": "string"
-		},
-		"supplier_email": {
-			"type": "string"
-		},
-		"supplier_phone_number": {
-			"type": "string"
-		},
-		"customer_id": {
-			"type": "string"
-		},
-		"supplier_website": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"name",
-		"number_of_pages",
-		"document_type",
-		"line_items",
-		"currency",
-		"total_amount",
-		"total_net"
-	]
+    "type": "object",
+    "properties": {
+        "currency": {
+            "type": "string"
+        },
+        "customer_name": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "document_type": {
+            "type": "string"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "invoice_number": {
+            "type": "string"
+        },
+        "line_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "number_of_pages": {
+            "type": "integer"
+        },
+        "payment_date": {
+            "type": "string"
+        },
+        "supplier_address": {
+            "type": "string"
+        },
+        "supplier_name": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

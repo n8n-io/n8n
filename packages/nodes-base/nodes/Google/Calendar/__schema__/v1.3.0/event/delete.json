@@ -1,11 +1,9 @@
 {
-	"type": "object",
-	"properties": {
-		"success": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"success"
-	]
+    "type": "object",
+    "properties": {
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
 }

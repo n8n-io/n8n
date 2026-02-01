@@ -1,0 +1,95 @@
+{
+	"name": "Memory Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11111111-1111-1111-1111-111111111111",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [380, 240]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "testData",
+							"value": "={{ Array.from({length: 100}, (_, i) => `Item ${i}`).join(',') }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "22222222-2222-2222-2222-222222222222",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [580, 240]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Simple processing to simulate some work\nconst data = $input.item.json;\ndata.processed = true;\ndata.timestamp = new Date().toISOString();\nreturn data;"
+			},
+			"id": "33333333-3333-3333-3333-333333333333",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [780, 240]
+		},
+		{
+			"parameters": {},
+			"id": "44444444-4444-4444-4444-444444444444",
+			"name": "No Operation",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [980, 240]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "No Operation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-0000-0000-000000000001",
+	"id": "memoryTestWorkflow",
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"tags": []
+}

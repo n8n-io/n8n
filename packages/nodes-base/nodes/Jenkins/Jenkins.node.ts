@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
 
@@ -34,8 +34,8 @@ export class Jenkins implements INodeType {
 			name: 'Jenkins',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'jenkinsApi',

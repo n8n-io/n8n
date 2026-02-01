@@ -1,22 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "Modified Date": {
-            "type": "string"
-        },
-        "Created Date": {
+        "_id": {
             "type": "string"
         },
         "Created By": {
             "type": "string"
         },
-        "_id": {
+        "Created Date": {
+            "type": "string"
+        },
+        "Modified Date": {
             "type": "string"
         }
     },
-    "required": [
-        "Modified Date",
-        "Created Date",
-        "_id"
-    ]
+    "version": 1
 }

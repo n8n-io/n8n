@@ -169,8 +169,17 @@
                             "type": {
                                 "type": "string"
                             },
+                            "privacy_setting": {
+                                "type": "string"
+                            },
+                            "default_access_level": {
+                                "type": "string"
+                            },
                             "is_formula_field": {
                                 "type": "boolean"
+                            },
+                            "precision": {
+                                "type": "integer"
                             }
                         },
                         "required": [
@@ -401,5 +410,6 @@
         "start_on",
         "team",
         "workspace"
-    ]
+    ],
+    "version": 1
 }

@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
+"<div class="vue-flow__resize-control top line nodrag"></div>
+<div class="vue-flow__resize-control right line nodrag"></div>
+<div class="vue-flow__resize-control bottom line nodrag"></div>
+<div class="vue-flow__resize-control left line nodrag"></div>
+<div class="vue-flow__resize-control top left handle nodrag" style="scale: 1;"></div>
+<div class="vue-flow__resize-control top right handle nodrag" style="scale: 1;"></div>
+<div class="vue-flow__resize-control bottom left handle nodrag" style="scale: 1;"></div>
+<div class="vue-flow__resize-control bottom right handle nodrag" style="scale: 1;"></div>
+<div class="n8n-sticky sticky clickable color-1 sticky" style="height: 180px; width: 240px;" data-test-id="sticky">
+  <div class="wrapper">
+    <div class="n8n-markdown">
+      <!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
+      <!-- eslint-disable vue/no-v-html -->
+      <div class="sticky"></div>
+    </div>
+  </div>
+  <div class="sticky-textarea" style="display: none;">
+    <div class="el-textarea el-input--large n8n-input">
+      <!-- input -->
+      <!-- textarea --><textarea class="el-textarea__inner" name="sticky-input" rows="5" title="" tabindex="0" autocomplete="off" placeholder=""></textarea>
+      <!--v-if-->
+    </div>
+  </div>
+  <!--v-if-->
+</div>"
+`;

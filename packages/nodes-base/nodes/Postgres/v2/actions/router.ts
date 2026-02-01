@@ -3,6 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as database from './database/Database.resource';
 import type { PostgresType } from './node.type';
+import { addExecutionHints } from '../../../../utils/utilities';
 import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials, PostgresNodeOptions } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
@@ -53,12 +54,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			);
 	}
 
-	if (operation === 'select' && items.length > 1 && !node.executeOnce) {
-		this.addExecutionHints({
-			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
-			location: 'outputPane',
-		});
-	}
+	addExecutionHints(this, node, items, operation, node.executeOnce);
 
 	return [returnData];
 }

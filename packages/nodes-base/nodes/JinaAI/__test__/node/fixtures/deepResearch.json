@@ -1,0 +1,37 @@
+{
+	"id": "123",
+	"object": "chat.completion",
+	"created": 1746186539,
+	"system_fingerprint": "fp_123",
+	"choices": [
+		{
+			"index": 0,
+			"message": {
+				"role": "assistant",
+				"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+				"type": "text",
+				"annotations": [
+					{
+						"type": "url_citation",
+						"url_citation": {
+							"title": "Lorem ipsum dolor sit amet",
+							"exactQuote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+							"url": "https://some.referenced.site.com/article",
+							"dateTime": "Aug 30, 2024"
+						}
+					}
+				]
+			},
+			"logprobs": null,
+			"finish_reason": "stop"
+		}
+	],
+	"usage": {
+		"prompt_tokens": 123,
+		"completion_tokens": 456,
+		"total_tokens": 579
+	},
+	"visitedURLs": ["https://first.com/some/path", "https://second.com/?foo=bar"],
+	"readURLs": ["https://example.com", "https://example.com/2", "https://some.other.site.com/path"],
+	"numURLs": 5
+}

@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { autopilotApiRequest } from './GenericFunctions';
 
@@ -24,7 +24,7 @@ export class AutopilotTrigger implements INodeType {
 			name: 'Autopilot Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'autopilotApi',

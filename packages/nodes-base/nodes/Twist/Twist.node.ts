@@ -1,5 +1,6 @@
 import moment from 'moment-timezone';
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,7 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -19,6 +20,7 @@ import {
 	messageConversationOperations,
 } from './MessageConversationDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { prepareBinariesDataList } from '../../utils/binary';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +36,8 @@ export class Twist implements INodeType {
 			name: 'Twist',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'twistOAuth2Api',
@@ -245,7 +247,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 
@@ -343,7 +347,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 
@@ -411,7 +417,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 
@@ -525,7 +533,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 
@@ -598,7 +608,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 
@@ -695,7 +707,9 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(
+								body.binaryProperties as string | string[] | IBinaryData | IBinaryData[],
+							);
 
 							const attachments: IDataObject[] = [];
 

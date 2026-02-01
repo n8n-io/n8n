@@ -1,84 +1,52 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "content": {
+            "type": "string"
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "id": {
             "type": "string"
         },
         "name": {
             "type": "string"
         },
-        "orderindex": {
-            "type": "integer"
-        },
-        "content": {
+        "permission_level": {
             "type": "string"
-        },
-        "task_count": {
-            "type": "integer"
-        },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
         },
         "space": {
             "type": "object",
             "properties": {
+                "access": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
+            }
         },
-        "archived": {
-            "type": "boolean"
-        },
-        "permission_level": {
-            "type": "string"
+        "task_count": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "orderindex",
-        "status",
-        "priority",
-        "assignee",
-        "task_count",
-        "due_date",
-        "start_date",
-        "folder",
-        "space",
-        "archived",
-        "override_statuses",
-        "permission_level"
-    ]
+    "version": 1
 }

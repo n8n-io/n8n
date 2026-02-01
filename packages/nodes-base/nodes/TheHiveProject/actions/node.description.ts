@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as alert from './alert';
 import * as case_ from './case';
@@ -22,8 +22,8 @@ export const description: INodeTypeDescription = {
 		name: 'TheHive 5',
 	},
 	usableAsTool: true,
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'theHiveProjectApi',

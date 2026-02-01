@@ -1,15 +1,17 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
+import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,17 +44,17 @@ export class EmbeddingsAwsBedrock implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -105,18 +107,37 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const credentials = await this.getCredentials<{
+			region: string;
+			secretAccessKey: string;
+			accessKeyId: string;
+			sessionToken: string;
+		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
+		const clientConfig: BedrockRuntimeClientConfig = {
+			region: credentials.region,
+			credentials: {
+				secretAccessKey: credentials.secretAccessKey,
+				accessKeyId: credentials.accessKeyId,
+				sessionToken: credentials.sessionToken,
+			},
+		};
+
+		const proxyAgent = getNodeProxyAgent();
+		if (proxyAgent) {
+			clientConfig.requestHandler = new NodeHttpHandler({
+				httpAgent: proxyAgent,
+				httpsAgent: proxyAgent,
+			});
+		}
+
+		const client = new BedrockRuntimeClient(clientConfig);
 		const embeddings = new BedrockEmbeddings({
-			region: credentials.region as string,
+			client,
 			model: modelName,
 			maxRetries: 3,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
+			region: credentials.region,
 		});
 
 		return {

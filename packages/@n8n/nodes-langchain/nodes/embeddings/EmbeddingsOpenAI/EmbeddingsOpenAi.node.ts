@@ -1,15 +1,18 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
-	type SupplyData,
 	type ISupplyDataFunctions,
-	type INodeProperties,
+	type SupplyData,
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -37,7 +40,12 @@ const modelParameter: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ $responseItem.id.includes('embed') }}",
+								// If the baseURL is not set or is set to api.openai.com, include only embedding models
+								pass: `={{
+									($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+									($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
+									$responseItem.id.includes('embed')
+								}}`,
 							},
 						},
 						{
@@ -98,10 +106,10 @@ export class EmbeddingsOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
@@ -109,7 +117,7 @@ export class EmbeddingsOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				...modelParameter,
 				default: 'text-embedding-ada-002',
@@ -200,6 +208,23 @@ export class EmbeddingsOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Encoding Format',
+						name: 'encodingFormat',
+						type: 'options',
+						description: 'The format to return the embeddings in',
+						default: undefined,
+						options: [
+							{
+								name: 'Float',
+								value: 'float',
+							},
+							{
+								name: 'Base64',
+								value: 'base64',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -215,27 +240,35 @@ export class EmbeddingsOpenAi implements INodeType {
 			stripNewLines?: boolean;
 			timeout?: number;
 			dimensions?: number | undefined;
+			encodingFormat?: 'float' | 'base64' | undefined;
 		};
 
 		if (options.timeout === -1) {
 			options.timeout = undefined;
 		}
 
-		const configuration: ClientOptions = {};
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+
+		const configuration: ClientOptions = {
+			defaultHeaders,
+		};
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-				openAIApiKey: credentials.apiKey as string,
-				...options,
-			},
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+		};
+
+		const embeddings = new OpenAIEmbeddings({
+			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			apiKey: credentials.apiKey as string,
+			...options,
 			configuration,
-		);
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

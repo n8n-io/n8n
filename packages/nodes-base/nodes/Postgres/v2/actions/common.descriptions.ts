@@ -1,4 +1,43 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+
+export const operatorOptions: INodePropertyOptions[] = [
+	{
+		name: 'Equal',
+		value: 'equal',
+	},
+	{
+		name: 'Not Equal',
+		value: '!=',
+	},
+	{
+		name: 'Like',
+		value: 'LIKE',
+	},
+	{
+		name: 'Greater Than',
+		value: '>',
+	},
+	{
+		name: 'Less Than',
+		value: '<',
+	},
+	{
+		name: 'Greater Than Or Equal',
+		value: '>=',
+	},
+	{
+		name: 'Less Than Or Equal',
+		value: '<=',
+	},
+	{
+		name: 'Is Null',
+		value: 'IS NULL',
+	},
+	{
+		name: 'Is Not Null',
+		value: 'IS NOT NULL',
+	},
+];
 
 export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
@@ -52,7 +91,7 @@ export const optionsCollection: INodeProperties = {
 					description: 'A single query for all incoming items',
 				},
 				{
-					name: 'Independently',
+					name: 'Independent',
 					value: 'independently',
 					description: 'Execute one query per incoming item of the run',
 				},
@@ -241,44 +280,7 @@ export const whereFixedCollection: INodeProperties = {
 					description:
 						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-					options: [
-						{
-							name: 'Equal',
-							value: 'equal',
-						},
-						{
-							name: 'Not Equal',
-							value: '!=',
-						},
-						{
-							name: 'Like',
-							value: 'LIKE',
-						},
-						{
-							name: 'Greater Than',
-							value: '>',
-						},
-						{
-							name: 'Less Than',
-							value: '<',
-						},
-						{
-							name: 'Greater Than Or Equal',
-							value: '>=',
-						},
-						{
-							name: 'Less Than Or Equal',
-							value: '<=',
-						},
-						{
-							name: 'Is Null',
-							value: 'IS NULL',
-						},
-						{
-							name: 'Is Not Null',
-							value: 'IS NOT NULL',
-						},
-					],
+					options: operatorOptions,
 					default: 'equal',
 				},
 				{

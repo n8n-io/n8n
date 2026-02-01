@@ -7,15 +7,22 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypes,
-	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createEnvProviderState, NodeConnectionType, Workflow } from 'n8n-workflow';
+import {
+	createEnvProviderState,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	Workflow,
+} from 'n8n-workflow';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+
+jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
@@ -78,7 +85,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 						[
 							{
 								node: 'Code',
-								type: NodeConnectionType.Main,
+								type: NodeConnectionTypes.Main,
 								index: 0,
 							},
 						],
@@ -101,13 +108,14 @@ describe('JS TaskRunner execution on internal mode', () => {
 			main: [inputData],
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData = createRunExecutionData({
 			startData: {},
 			resultData: {
 				runData: {
 					ManualTrigger: [
 						{
 							startTime: Date.now(),
+							executionIndex: 0,
 							executionTime: 0,
 							executionStatus: 'success',
 							source: [],
@@ -126,7 +134,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		return {
 			additionalData: mock<IWorkflowExecuteAdditionalData>(),
@@ -184,12 +192,12 @@ describe('JS TaskRunner execution on internal mode', () => {
 
 		it('should execute a simple JS task', async () => {
 			// Act
-			const result = await runTaskWithCode('return [{ hello: "world" }]');
+			const result = await runTaskWithCode('return { hello: "world" }');
 
 			// Assert
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { hello: 'world' } }],
+				result: { hello: 'world' },
 			});
 		});
 	});
@@ -209,17 +217,17 @@ describe('JS TaskRunner execution on internal mode', () => {
 			// Act
 			const result = await runTaskWithCode(`
 				const crypto = require("crypto");
-				return [{
+				return {
 					digest: crypto
 						.createHmac("sha256", Buffer.from("MySecretKey"))
 						.update("MESSAGE")
 						.digest("base64")
-				}]
+				}
 			`);
 
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { digest: 'T09DMv7upNDKMD3Ht36FkwzrmWSgWpPiUNlcIX9/yaI=' } }],
+				result: { digest: 'T09DMv7upNDKMD3Ht36FkwzrmWSgWpPiUNlcIX9/yaI=' },
 			});
 		});
 
@@ -227,13 +235,13 @@ describe('JS TaskRunner execution on internal mode', () => {
 			// Act
 			const result = await runTaskWithCode(`
 				const fs = require("fs");
-				return [{ file: fs.readFileSync("test.txt") }]
+				return { file: fs.readFileSync("test.txt") }
 			`);
 
 			expect(result).toEqual({
 				ok: false,
 				error: expect.objectContaining({
-					message: "Cannot find module 'fs' [line 2]",
+					message: "Module 'fs' is disallowed [line 2]",
 				}),
 			});
 		});
@@ -242,12 +250,12 @@ describe('JS TaskRunner execution on internal mode', () => {
 			// Act
 			const result = await runTaskWithCode(`
 				const moment = require("moment");
-				return [{ time: moment("1995-12-25").format("YYYY-MM-DD") }]
+				return { time: moment("1995-12-25").format("YYYY-MM-DD") }
 			`);
 
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { time: '1995-12-25' } }],
+				result: { time: '1995-12-25' },
 			});
 		});
 
@@ -261,7 +269,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			expect(result).toEqual({
 				ok: false,
 				error: expect.objectContaining({
-					message: "Cannot find module 'lodash' [line 2]",
+					message: "Module 'lodash' is disallowed [line 2]",
 				}),
 			});
 		});

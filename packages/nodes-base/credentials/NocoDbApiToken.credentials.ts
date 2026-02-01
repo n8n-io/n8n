@@ -10,7 +10,7 @@ export class NocoDbApiToken implements ICredentialType {
 
 	displayName = 'NocoDB API Token';
 
-	documentationUrl = 'nocoDb';
+	documentationUrl = 'nocodb';
 
 	properties: INodeProperties[] = [
 		{

@@ -9,7 +9,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sanitizeFilename,
+} from 'n8n-workflow';
 import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
 import type { Readable } from 'stream';
@@ -60,8 +65,8 @@ export class Ssh implements INodeType {
 			name: 'SSH',
 			color: '#000000',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sshPassword',
@@ -444,11 +449,15 @@ export class Ssh implements INodeType {
 							try {
 								await writeFile(binaryFile.path, uploadData);
 
+								// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+								const rawFileName = fileName || binaryData.fileName || '';
+								const sanitizedFileName = sanitizeFilename(rawFileName);
+
 								await ssh.putFile(
 									binaryFile.path,
 									`${parameterPath}${
 										parameterPath.charAt(parameterPath.length - 1) === '/' ? '' : '/'
-									}${fileName || binaryData.fileName}`,
+									}${sanitizedFileName}`,
 								);
 
 								returnItems.push({

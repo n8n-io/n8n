@@ -1,29 +1,30 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "childFolderCount": {
+            "type": "integer"
         },
         "displayName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
+        "isHidden": {
+            "type": "boolean"
+        },
         "parentFolderId": {
             "type": "string"
         },
-        "childFolderCount": {
-            "type": "integer"
-        },
-        "unreadItemCount": {
+        "sizeInBytes": {
             "type": "integer"
         },
         "totalItemCount": {
             "type": "integer"
         },
-        "sizeInBytes": {
+        "unreadItemCount": {
             "type": "integer"
-        },
-        "isHidden": {
-            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

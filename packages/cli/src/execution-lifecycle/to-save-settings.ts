@@ -1,6 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { IWorkflowSettings } from 'n8n-workflow';
-
-import config from '@/config';
 
 export type ExecutionSaveSettings = {
 	error: boolean | 'all' | 'none';
@@ -17,12 +17,14 @@ export type ExecutionSaveSettings = {
  * - `manual`: Whether to save successful or failed manual executions.
  * - `progress`: Whether to save execution progress, i.e. after each node's execution.
  */
-export function toSaveSettings(workflowSettings: IWorkflowSettings = {}): ExecutionSaveSettings {
+export function toSaveSettings(
+	workflowSettings: IWorkflowSettings | null = {},
+): ExecutionSaveSettings {
 	const DEFAULTS = {
-		ERROR: config.getEnv('executions.saveDataOnError'),
-		SUCCESS: config.getEnv('executions.saveDataOnSuccess'),
-		MANUAL: config.getEnv('executions.saveDataManualExecutions'),
-		PROGRESS: config.getEnv('executions.saveExecutionProgress'),
+		ERROR: Container.get(GlobalConfig).executions.saveDataOnError,
+		SUCCESS: Container.get(GlobalConfig).executions.saveDataOnSuccess,
+		MANUAL: Container.get(GlobalConfig).executions.saveDataManualExecutions,
+		PROGRESS: Container.get(GlobalConfig).executions.saveExecutionProgress,
 	};
 
 	const {
@@ -30,7 +32,7 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}): Execut
 		saveDataSuccessExecution = DEFAULTS.SUCCESS,
 		saveManualExecutions = DEFAULTS.MANUAL,
 		saveExecutionProgress = DEFAULTS.PROGRESS,
-	} = workflowSettings;
+	} = workflowSettings ?? {};
 
 	return {
 		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution === 'all',

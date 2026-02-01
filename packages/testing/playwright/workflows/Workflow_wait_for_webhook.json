@@ -1,0 +1,41 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "42c6e003-10e7-4100-aff8-8865c49f384c",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "77614c15-c41e-4b8c-95d6-084d48fed328",
+			"name": "Wait node",
+			"webhookId": "62aad98c-81b3-4c44-9adb-b33a23d1271d"
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Wait node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "eea4a7b09aa7ee308bc067003a65466862f88be8d9309a2bb16297f6bb2616ec"
+	}
+}

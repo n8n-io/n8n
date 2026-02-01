@@ -1,0 +1,205 @@
+{
+	"name": "Jina AI -> Reader -> Search",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-360, 40],
+			"id": "b7e0a085-eb10-48a7-a25e-853b36aef252",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"searchQuery": "Jina AI",
+				"simplify": false,
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [-140, -160],
+			"id": "ea197991-8539-4221-9798-842f4026f31b",
+			"name": "No options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"searchQuery": "Jina AI",
+				"simplify": false,
+				"options": {
+					"outputFormat": "markdown",
+					"siteFilter": "jina.ai",
+					"pageNumber": 2
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [-140, 40],
+			"id": "dbfbbf4a-caa1-4922-b200-723748636773",
+			"name": "With options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"searchQuery": "Jina AI",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [-140, 240],
+			"id": "91ca27b2-eab4-4131-a544-5ae4794ac0b3",
+			"name": "Simplified",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"No options": [
+			{
+				"json": {
+					"code": 200,
+					"status": 20000,
+					"data": [
+						{
+							"title": "Jina AI - Your Search Foundation, Supercharged.",
+							"url": "https://jina.ai/",
+							"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+							"usage": {
+								"tokens": 123
+							}
+						},
+						{
+							"title": "Jina AI",
+							"url": "https://github.com/jina-ai",
+							"description": "Your Search Foundation, Supercharged! Jina AI has 243 repositories available. Follow their code on GitHub.",
+							"date": "Mar 24, 2025",
+							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+							"usage": {
+								"tokens": 123
+							}
+						}
+					],
+					"meta": {
+						"usage": {
+							"tokens": 246
+						}
+					}
+				}
+			}
+		],
+		"With options": [
+			{
+				"json": {
+					"code": 200,
+					"status": 20000,
+					"data": [
+						{
+							"title": "Jina AI - Your Search Foundation, Supercharged.",
+							"url": "https://jina.ai/",
+							"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+							"usage": {
+								"tokens": 123
+							}
+						},
+						{
+							"title": "Jina AI",
+							"url": "https://github.com/jina-ai",
+							"description": "Your Search Foundation, Supercharged! Jina AI has 243 repositories available. Follow their code on GitHub.",
+							"date": "Mar 24, 2025",
+							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+							"usage": {
+								"tokens": 123
+							}
+						}
+					],
+					"meta": {
+						"usage": {
+							"tokens": 246
+						}
+					}
+				}
+			}
+		],
+		"Simplified": [
+			{
+				"json": {
+					"title": "Jina AI - Your Search Foundation, Supercharged.",
+					"url": "https://jina.ai/",
+					"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
+					}
+				}
+			},
+			{
+				"json": {
+					"title": "Jina AI",
+					"url": "https://github.com/jina-ai",
+					"description": "Your Search Foundation, Supercharged! Jina AI has 243 repositories available. Follow their code on GitHub.",
+					"date": "Mar 24, 2025",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "No options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Simplified",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b425b5ec-f0b1-4f81-a83b-ca6a787d7a1d",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "QVbuEahHyMKrgfFc",
+	"tags": []
+}

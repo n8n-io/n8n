@@ -1,0 +1,41 @@
+{
+	"name": "Node versions",
+	"nodes": [
+		{
+			"id": "2acca986-10a6-451e-b20a-86e95b50e627",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"id": "1ea0a87c-3395-4bd9-84fb-cf8b0f769cc4",
+			"name": "Function",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [960, 460]
+		},
+		{
+			"id": "30bb9fab-bc89-4309-b42b-0fc586519c76",
+			"name": "Edit Fields (old)",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [800, 460]
+		},
+		{
+			"id": "a266b96c-3539-4034-b24c-c86c6d0ca31e",
+			"name": "Edit Fields (no typeVersion)",
+			"type": "n8n-nodes-base.set",
+			"position": [1120, 460]
+		},
+		{
+			"id": "273f60c9-08e7-457e-b01d-31e16c565171",
+			"name": "Edit Fields (latest)",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [640, 460]
+		}
+	],
+	"connections": {},
+	"pinData": {}
+}

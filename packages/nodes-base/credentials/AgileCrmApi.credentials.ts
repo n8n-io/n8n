@@ -5,7 +5,7 @@ export class AgileCrmApi implements ICredentialType {
 
 	displayName = 'AgileCRM API';
 
-	documentationUrl = 'agileCrm';
+	documentationUrl = 'agilecrm';
 
 	properties: INodeProperties[] = [
 		{

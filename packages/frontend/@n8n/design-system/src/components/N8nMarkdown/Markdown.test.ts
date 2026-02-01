@@ -24,6 +24,33 @@ describe('components', () => {
 			});
 		});
 
+		it('should render image urls', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '![alt text](fileId:2)\n',
+					images: [
+						{
+							id: '1',
+							url: 'https://example.com/image.png',
+						},
+						{
+							id: '2',
+							url: 'https://example.com/image.png"> foo="',
+						},
+					],
+				},
+			});
+
+			expect(wrapper.html()).toContain(
+				'<p><img src="https://example.com/image.png&quot;> foo=&quot;" alt="alt text"></p>',
+			);
+		});
+
 		it('should render checked checkboxes', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
@@ -84,6 +111,38 @@ describe('components', () => {
 			expect(wrapper.html()).toContain(
 				'&lt;input type=“text” data-testid=“text-input” value=“Something”/&gt;',
 			);
+		});
+
+		it('should render YouTube embed player', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '@[youtube](ZCuL2e4zC_4)\n',
+				},
+			});
+
+			expect(wrapper.html()).toContain(
+				'<p><iframe width="100%" src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe></p>',
+			);
+		});
+
+		it('should not render YouTube embed player with extra parameters', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '@[youtube](ZCuL2e4zC_4?autoplay=1 )\n',
+				},
+			});
+
+			expect(wrapper.html()).toContain('<p>@<a href="" target="_blank">youtube</a></p>');
 		});
 	});
 });

@@ -4,7 +4,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { twilioTriggerApiRequest } from './GenericFunctions';
@@ -23,7 +23,7 @@ export class TwilioTrigger implements INodeType {
 			name: 'Twilio Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'twilioApi',

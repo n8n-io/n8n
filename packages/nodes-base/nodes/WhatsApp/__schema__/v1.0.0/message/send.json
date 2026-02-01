@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "messaging_product": {
-            "type": "string"
-        },
         "contacts": {
             "type": "array",
             "items": {
@@ -15,11 +12,7 @@
                     "wa_id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "input",
-                    "wa_id"
-                ]
+                }
             }
         },
         "messages": {
@@ -30,11 +23,12 @@
                     "id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id"
-                ]
+                }
             }
+        },
+        "messaging_product": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

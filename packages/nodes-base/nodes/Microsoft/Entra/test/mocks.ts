@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased-id */
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 
 export const microsoftEntraApiResponse = {

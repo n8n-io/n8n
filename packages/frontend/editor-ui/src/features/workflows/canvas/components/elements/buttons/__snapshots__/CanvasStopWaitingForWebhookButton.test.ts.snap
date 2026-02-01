@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasStopCurrentExecutionButton > should render correctly 1`] = `"<n8n-icon-button-stub icon="square" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="secondary" class="stop-execution" title="Stop waiting for webhook call" data-test-id="stop-execution-waiting-for-webhook-button"></n8n-icon-button-stub>"`;

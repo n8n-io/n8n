@@ -7,16 +7,17 @@
                 "xmlns": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "xmlns"
-            ]
+            }
         },
-        "LastModified": {
+        "ChecksumCRC64NVME": {
             "type": "string"
         },
         "ETag": {
             "type": "string"
+        },
+        "LastModified": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

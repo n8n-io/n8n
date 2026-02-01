@@ -4,5 +4,6 @@
         "id": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

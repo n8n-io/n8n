@@ -3,21 +3,21 @@
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
-			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-400, 420]
+			"position": [-160, 340],
+			"id": "0cc16e22-72e3-4f2c-a920-b1613fd4bcaf",
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    category: 'red',\n    text: 'foo',\n    char: 'a',\n    value: 1,\n  },\n  {\n    category: 'blue',\n    text: 'spam',\n    char: 'b',\n    value: 2,\n  },\n  {\n    category: 'green',\n    text: 'bar',\n    char: 'c',\n    value: 3,\n  },\n  {\n    category: 'red',\n    text: 'foo',\n    char: 'a',\n    value: 4,\n  },\n  {\n    category: 'red',\n    text: 'bar',\n    char: 'a',\n    value: 5,\n  },\n  {\n    category: 'blue',\n    text: 'foo',\n    char: 'a',\n    value: 6,\n  },\n  {\n    category: 'blue',\n    text: 'foo',\n    char: 'a',\n    value: 7,\n  },\n];"
+				"jsCode": "return [\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 1,\n    \"params.interval\": \"1 day\",\n    params: {\n      interval: \"1 day\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"spam\",\n    char: \"b\",\n    value: 2,\n    params: {\n      interval: \"1 hour\",\n    },\n  },\n  {\n    category: \"green\",\n    text: \"bar\",\n    char: \"c\",\n    value: 3,\n  },\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 4,\n  },\n  {\n    category: \"red\",\n    text: \"bar\",\n    char: \"a\",\n    value: 5,\n    params: {\n      interval: \"1 minute\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 6,\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 7,\n     params: {\n      interval: \"1 second\",\n    },\n  },\n];\n"
 			},
-			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"id": "5a71d6f2-96fb-4616-94b7-5644c71e3bfb",
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [-180, 420]
+			"position": [60, 340]
 		},
 		{
 			"parameters": {
@@ -44,11 +44,11 @@
 				"fieldsToSplitBy": "category, text",
 				"options": {}
 			},
-			"id": "1dedf668-b766-4283-9efd-90db28404f0b",
-			"name": "Item Lists",
+			"id": "281b21e0-5737-4150-bce8-8331a3f83366",
+			"name": "Summarize1",
 			"type": "n8n-nodes-base.summarize",
 			"typeVersion": 1,
-			"position": [40, 220]
+			"position": [280, -60]
 		},
 		{
 			"parameters": {
@@ -77,11 +77,11 @@
 					"outputFormat": "singleItem"
 				}
 			},
-			"id": "8fd0f819-226c-4b29-87c7-b724dd72605c",
-			"name": "Item Lists1",
+			"id": "04bf538c-24d4-46d8-9c43-76ebc4fe7368",
+			"name": "Summarize2",
 			"type": "n8n-nodes-base.summarize",
 			"typeVersion": 1,
-			"position": [40, 420]
+			"position": [280, 140]
 		},
 		{
 			"parameters": {
@@ -116,15 +116,53 @@
 				"fieldsToSplitBy": "category",
 				"options": {}
 			},
-			"id": "33e0367d-42d9-4f82-8fc8-8e2019aa3734",
-			"name": "Item Lists2",
+			"id": "e6f750f2-15c1-4de9-80a1-a255649d6e99",
+			"name": "Summarize3",
 			"type": "n8n-nodes-base.summarize",
 			"typeVersion": 1,
-			"position": [40, 620]
+			"position": [280, 340]
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "params.interval"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [280, 540],
+			"id": "bfe0521a-c060-454f-99bb-b682aab44f63",
+			"name": "Dot notation"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "params.interval"
+						}
+					]
+				},
+				"options": {
+					"disableDotNotation": true
+				}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [280, 740],
+			"id": "b2c05f23-449f-49aa-80a3-4e1cd9156aa1",
+			"name": "Dot notation (disabled)"
 		}
 	],
 	"pinData": {
-		"Item Lists": [
+		"Summarize1": [
 			{
 				"json": {
 					"category": "red",
@@ -176,7 +214,7 @@
 				}
 			}
 		],
-		"Item Lists1": [
+		"Summarize2": [
 			{
 				"json": {
 					"red": {
@@ -218,7 +256,7 @@
 				}
 			}
 		],
-		"Item Lists2": [
+		"Summarize3": [
 			{
 				"json": {
 					"category": "red",
@@ -249,10 +287,24 @@
 					"appended_value": [3]
 				}
 			}
+		],
+		"Dot notation": [
+			{
+				"json": {
+					"appended_params_interval": ["1 day", "1 hour", "1 minute", "1 second"]
+				}
+			}
+		],
+		"Dot notation (disabled)": [
+			{
+				"json": {
+					"appended_params_interval": ["1 day"]
+				}
+			}
 		]
 	},
 	"connections": {
-		"When clicking \"Execute Workflow\"": {
+		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
 					{
@@ -267,17 +319,27 @@
 			"main": [
 				[
 					{
-						"node": "Item Lists",
+						"node": "Summarize1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Item Lists1",
+						"node": "Summarize2",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Item Lists2",
+						"node": "Summarize3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dot notation",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dot notation (disabled)",
 						"type": "main",
 						"index": 0
 					}
@@ -286,11 +348,13 @@
 		}
 	},
 	"active": false,
-	"settings": {},
-	"versionId": "bee0d911-844d-4fe6-bd52-a1716dd74dd8",
-	"id": "105",
-	"meta": {
-		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	"settings": {
+		"executionOrder": "v1"
 	},
+	"versionId": "60e793d6-8c99-4bd2-aeb8-8ff350fc3101",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "0HNQZNduHDmRCBBW",
 	"tags": []
 }

@@ -1,337 +1,29 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
+        "active": {
+            "type": "boolean"
         },
-        "login": {
-            "type": "string"
-        },
-        "firstname": {
-            "type": "string"
-        },
-        "lastname": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "image_source": {
-            "type": "null"
-        },
-        "web": {
-            "type": "string"
-        },
-        "mobile": {
-            "type": "string"
-        },
-        "street": {
-            "type": "string"
-        },
-        "zip": {
-            "type": "string"
+        "authorization_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
         },
         "city": {
             "type": "string"
         },
-        "vip": {
-            "type": "boolean"
-        },
-        "verified": {
-            "type": "boolean"
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "note": {
+        "created_at": {
             "type": "string"
-        },
-        "login_failed": {
-            "type": "integer"
-        },
-        "out_of_office": {
-            "type": "boolean"
-        },
-        "out_of_office_start_at": {
-            "type": "null"
-        },
-        "out_of_office_end_at": {
-            "type": "null"
-        },
-        "out_of_office_replacement_id": {
-            "type": "null"
-        },
-        "preferences": {
-            "type": "object",
-            "properties": {
-                "notification_config": {
-                    "type": "object",
-                    "properties": {
-                        "matrix": {
-                            "type": "object",
-                            "properties": {
-                                "create": {
-                                    "type": "object",
-                                    "properties": {
-                                        "criteria": {
-                                            "type": "object",
-                                            "properties": {
-                                                "owned_by_me": {
-                                                    "type": "boolean"
-                                                },
-                                                "owned_by_nobody": {
-                                                    "type": "boolean"
-                                                },
-                                                "subscribed": {
-                                                    "type": "boolean"
-                                                },
-                                                "no": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "owned_by_me",
-                                                "owned_by_nobody",
-                                                "subscribed",
-                                                "no"
-                                            ]
-                                        },
-                                        "channel": {
-                                            "type": "object",
-                                            "properties": {
-                                                "email": {
-                                                    "type": "boolean"
-                                                },
-                                                "online": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "email",
-                                                "online"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "criteria",
-                                        "channel"
-                                    ]
-                                },
-                                "update": {
-                                    "type": "object",
-                                    "properties": {
-                                        "criteria": {
-                                            "type": "object",
-                                            "properties": {
-                                                "owned_by_me": {
-                                                    "type": "boolean"
-                                                },
-                                                "owned_by_nobody": {
-                                                    "type": "boolean"
-                                                },
-                                                "subscribed": {
-                                                    "type": "boolean"
-                                                },
-                                                "no": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "owned_by_me",
-                                                "owned_by_nobody",
-                                                "subscribed",
-                                                "no"
-                                            ]
-                                        },
-                                        "channel": {
-                                            "type": "object",
-                                            "properties": {
-                                                "email": {
-                                                    "type": "boolean"
-                                                },
-                                                "online": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "email",
-                                                "online"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "criteria",
-                                        "channel"
-                                    ]
-                                },
-                                "reminder_reached": {
-                                    "type": "object",
-                                    "properties": {
-                                        "criteria": {
-                                            "type": "object",
-                                            "properties": {
-                                                "owned_by_me": {
-                                                    "type": "boolean"
-                                                },
-                                                "owned_by_nobody": {
-                                                    "type": "boolean"
-                                                },
-                                                "subscribed": {
-                                                    "type": "boolean"
-                                                },
-                                                "no": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "owned_by_me",
-                                                "owned_by_nobody",
-                                                "subscribed",
-                                                "no"
-                                            ]
-                                        },
-                                        "channel": {
-                                            "type": "object",
-                                            "properties": {
-                                                "email": {
-                                                    "type": "boolean"
-                                                },
-                                                "online": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "email",
-                                                "online"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "criteria",
-                                        "channel"
-                                    ]
-                                },
-                                "escalation": {
-                                    "type": "object",
-                                    "properties": {
-                                        "criteria": {
-                                            "type": "object",
-                                            "properties": {
-                                                "owned_by_me": {
-                                                    "type": "boolean"
-                                                },
-                                                "owned_by_nobody": {
-                                                    "type": "boolean"
-                                                },
-                                                "subscribed": {
-                                                    "type": "boolean"
-                                                },
-                                                "no": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "owned_by_me",
-                                                "owned_by_nobody",
-                                                "subscribed",
-                                                "no"
-                                            ]
-                                        },
-                                        "channel": {
-                                            "type": "object",
-                                            "properties": {
-                                                "email": {
-                                                    "type": "boolean"
-                                                },
-                                                "online": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "email",
-                                                "online"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "criteria",
-                                        "channel"
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "create",
-                                "update",
-                                "reminder_reached",
-                                "escalation"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "matrix"
-                    ]
-                },
-                "locale": {
-                    "type": "string"
-                },
-                "intro": {
-                    "type": "boolean"
-                },
-                "theme": {
-                    "type": "string"
-                },
-                "secondaryAction": {
-                    "type": "string"
-                },
-                "tickets_closed": {
-                    "type": "integer"
-                },
-                "tickets_open": {
-                    "type": "integer"
-                },
-                "notification_sound": {
-                    "type": "object",
-                    "properties": {
-                        "file": {
-                            "type": "string"
-                        },
-                        "enabled": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "file",
-                        "enabled"
-                    ]
-                }
-            },
-            "required": [
-                "locale"
-            ]
-        },
-        "updated_by_id": {
-            "type": "integer"
         },
         "created_by_id": {
             "type": "integer"
         },
-        "created_at": {
+        "email": {
             "type": "string"
         },
-        "updated_at": {
+        "firstname": {
             "type": "string"
-        },
-        "role_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "two_factor_preference_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
         },
         "group_ids": {
             "type": "object",
@@ -343,48 +35,234 @@
                     }
                 }
             }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "lastname": {
+            "type": "string"
+        },
+        "login": {
+            "type": "string"
+        },
+        "login_failed": {
+            "type": "integer"
+        },
+        "mobile": {
+            "type": "string"
+        },
+        "out_of_office": {
+            "type": "boolean"
+        },
+        "preferences": {
+            "type": "object",
+            "properties": {
+                "intro": {
+                    "type": "boolean"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "notification_config": {
+                    "type": "object",
+                    "properties": {
+                        "matrix": {
+                            "type": "object",
+                            "properties": {
+                                "create": {
+                                    "type": "object",
+                                    "properties": {
+                                        "channel": {
+                                            "type": "object",
+                                            "properties": {
+                                                "email": {
+                                                    "type": "boolean"
+                                                },
+                                                "online": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "criteria": {
+                                            "type": "object",
+                                            "properties": {
+                                                "no": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_me": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_nobody": {
+                                                    "type": "boolean"
+                                                },
+                                                "subscribed": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "escalation": {
+                                    "type": "object",
+                                    "properties": {
+                                        "channel": {
+                                            "type": "object",
+                                            "properties": {
+                                                "email": {
+                                                    "type": "boolean"
+                                                },
+                                                "online": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "criteria": {
+                                            "type": "object",
+                                            "properties": {
+                                                "no": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_me": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_nobody": {
+                                                    "type": "boolean"
+                                                },
+                                                "subscribed": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "reminder_reached": {
+                                    "type": "object",
+                                    "properties": {
+                                        "channel": {
+                                            "type": "object",
+                                            "properties": {
+                                                "email": {
+                                                    "type": "boolean"
+                                                },
+                                                "online": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "criteria": {
+                                            "type": "object",
+                                            "properties": {
+                                                "no": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_me": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_nobody": {
+                                                    "type": "boolean"
+                                                },
+                                                "subscribed": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "update": {
+                                    "type": "object",
+                                    "properties": {
+                                        "channel": {
+                                            "type": "object",
+                                            "properties": {
+                                                "email": {
+                                                    "type": "boolean"
+                                                },
+                                                "online": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "criteria": {
+                                            "type": "object",
+                                            "properties": {
+                                                "no": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_me": {
+                                                    "type": "boolean"
+                                                },
+                                                "owned_by_nobody": {
+                                                    "type": "boolean"
+                                                },
+                                                "subscribed": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "notification_sound": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "file": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "secondaryAction": {
+                    "type": "string"
+                },
+                "theme": {
+                    "type": "string"
+                },
+                "tickets_closed": {
+                    "type": "integer"
+                },
+                "tickets_open": {
+                    "type": "integer"
+                }
+            }
+        },
+        "role_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "street": {
+            "type": "string"
+        },
+        "two_factor_preference_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "verified": {
+            "type": "boolean"
+        },
+        "vip": {
+            "type": "boolean"
+        },
+        "web": {
+            "type": "string"
+        },
+        "zip": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "organization_id",
-        "login",
-        "firstname",
-        "lastname",
-        "email",
-        "image",
-        "image_source",
-        "web",
-        "phone",
-        "fax",
-        "mobile",
-        "department",
-        "street",
-        "zip",
-        "city",
-        "country",
-        "address",
-        "vip",
-        "verified",
-        "active",
-        "note",
-        "last_login",
-        "source",
-        "login_failed",
-        "out_of_office",
-        "out_of_office_start_at",
-        "out_of_office_end_at",
-        "out_of_office_replacement_id",
-        "preferences",
-        "updated_by_id",
-        "created_by_id",
-        "created_at",
-        "updated_at",
-        "role_ids",
-        "two_factor_preference_ids",
-        "organization_ids",
-        "authorization_ids",
-        "overview_sorting_ids",
-        "group_ids"
-    ]
+    "version": 1
 }

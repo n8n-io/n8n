@@ -4,23 +4,32 @@
         "cdate": {
             "type": "string"
         },
-        "links": {
-            "type": "object",
-            "properties": {
-                "tag": {
-                    "type": "string"
-                },
-                "contact": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "tag",
-                "contact"
-            ]
+        "created_by": {
+            "type": "null"
+        },
+        "created_timestamp": {
+            "type": "string"
         },
         "id": {
             "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        },
+        "updated_by": {
+            "type": "null"
+        },
+        "updated_timestamp": {
+            "type": "string"
         }
-    }
+    },
+    "version": 2
 }

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as table from './table/Table.resource';
 import * as workbook from './workbook/Workbook.resource';
@@ -10,14 +10,14 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'microsoftExcel',
 	icon: 'file:excel.svg',
 	group: ['input'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Microsoft Excel API',
 	defaults: {
 		name: 'Microsoft Excel 365',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',

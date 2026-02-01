@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { groupFields, groupOperations, userFields, userOperations } from './descriptions';
 import { getGroupProperties, getGroups, getUserProperties, getUsers } from './GenericFunctions';
@@ -20,13 +20,13 @@ export class MicrosoftEntra implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with Micosoft Entra ID API',
+		description: 'Interact with Microsoft Entra ID API',
 		defaults: {
-			name: 'Micosoft Entra ID',
+			name: 'Microsoft Entra ID',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftEntraOAuth2Api',
@@ -34,10 +34,11 @@ export class MicrosoftEntra implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://graph.microsoft.com/v1.0',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			baseURL:
+				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0',
 		},
 		properties: [
 			{

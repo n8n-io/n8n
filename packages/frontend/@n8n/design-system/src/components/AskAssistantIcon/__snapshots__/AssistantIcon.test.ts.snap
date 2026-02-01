@@ -23,15 +23,15 @@ exports[`AssistantIcon > renders blank icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>
@@ -62,15 +62,15 @@ exports[`AssistantIcon > renders default icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>
@@ -101,15 +101,15 @@ exports[`AssistantIcon > renders large icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>
@@ -140,15 +140,15 @@ exports[`AssistantIcon > renders medium icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>
@@ -179,15 +179,15 @@ exports[`AssistantIcon > renders mini icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>
@@ -218,15 +218,15 @@ exports[`AssistantIcon > renders small icon correctly 1`] = `
         y2="9.82667"
       >
         <stop
-          stop-color="var(--color-assistant-highlight-1)"
+          stop-color="var(--assistant--color--highlight-1)"
         />
         <stop
           offset="0.495"
-          stop-color="var(--color-assistant-highlight-2)"
+          stop-color="var(--assistant--color--highlight-2)"
         />
         <stop
           offset="1"
-          stop-color="var(--color-assistant-highlight-3)"
+          stop-color="var(--assistant--color--highlight-3)"
         />
       </lineargradient>
     </defs>

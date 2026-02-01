@@ -1,10 +1,99 @@
 {
     "type": "object",
     "properties": {
-        "owner": {
+        "annual_revenue": {
+            "type": "integer"
+        },
+        "base_opportunity_amount": {
+            "type": "integer"
+        },
+        "base_total": {
+            "type": "integer"
+        },
+        "company": {
             "type": "string"
         },
+        "conversion_rate": {
+            "type": "integer"
+        },
         "creation": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "customer_name": {
+            "type": "string"
+        },
+        "disabled": {
+            "type": "integer"
+        },
+        "docstatus": {
+            "type": "integer"
+        },
+        "doctype": {
+            "type": "string"
+        },
+        "idx": {
+            "type": "integer"
+        },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "__unsaved": {
+                        "type": "integer"
+                    },
+                    "creation": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "docstatus": {
+                        "type": "integer"
+                    },
+                    "doctype": {
+                        "type": "string"
+                    },
+                    "idx": {
+                        "type": "integer"
+                    },
+                    "item_name": {
+                        "type": "string"
+                    },
+                    "modified": {
+                        "type": "string"
+                    },
+                    "modified_by": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "owner": {
+                        "type": "string"
+                    },
+                    "parent": {
+                        "type": "string"
+                    },
+                    "parentfield": {
+                        "type": "string"
+                    },
+                    "parenttype": {
+                        "type": "string"
+                    },
+                    "qty": {
+                        "type": "integer"
+                    },
+                    "rate": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "language": {
             "type": "string"
         },
         "modified": {
@@ -13,33 +102,45 @@
         "modified_by": {
             "type": "string"
         },
-        "docstatus": {
-            "type": "integer"
-        },
-        "idx": {
-            "type": "integer"
+        "name": {
+            "type": "string"
         },
         "naming_series": {
             "type": "string"
         },
-        "language": {
+        "no_of_employees": {
             "type": "string"
         },
-        "disabled": {
+        "opportunity_amount": {
             "type": "integer"
         },
-        "doctype": {
+        "opportunity_from": {
+            "type": "string"
+        },
+        "opportunity_type": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "party_name": {
+            "type": "string"
+        },
+        "probability": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "total": {
+            "type": "integer"
+        },
+        "transaction_date": {
             "type": "string"
         }
     },
-    "required": [
-        "name",
-        "owner",
-        "creation",
-        "modified",
-        "modified_by",
-        "docstatus",
-        "idx",
-        "doctype"
-    ]
+    "version": 2
 }

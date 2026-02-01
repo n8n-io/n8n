@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nAlert from './Alert.vue';
 import N8nIcon from '../N8nIcon';

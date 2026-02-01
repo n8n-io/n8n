@@ -1,12 +1,14 @@
-import { Post, RestController, GlobalScope } from '@/decorators';
+import { Post, RestController, GlobalScope } from '@n8n/decorators';
+import type { AuthenticatedRequest } from '@n8n/db';
+
 import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 @RestController('/orchestration')
 export class OrchestrationController {
 	constructor(
 		private readonly licenseService: License,
-		private readonly publisher: Publisher,
+		private readonly workerStatusService: WorkerStatusService,
 	) {}
 
 	/**
@@ -15,9 +17,9 @@ export class OrchestrationController {
 	 */
 	@GlobalScope('orchestration:read')
 	@Post('/worker/status')
-	async getWorkersStatusAll() {
+	async getWorkersStatusAll(req: AuthenticatedRequest) {
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 
-		return await this.publisher.publishCommand({ command: 'get-worker-status' });
+		return await this.workerStatusService.requestWorkerStatus(req.user.id);
 	}
 }

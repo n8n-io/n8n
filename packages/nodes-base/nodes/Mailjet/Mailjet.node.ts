@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { emailFields, emailOperations } from './EmailDescription';
 import type { IMessage } from './GenericFunctions';
@@ -26,8 +26,8 @@ export class Mailjet implements INodeType {
 			name: 'Mailjet',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mailjetEmailApi',
@@ -192,6 +192,12 @@ export class Mailjet implements INodeType {
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
 						}
+						if (additionalFields.customCampaign) {
+							body.CustomCampaign = additionalFields.customCampaign as string;
+						}
+						if (additionalFields.deduplicateCampaign) {
+							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
+						}
 						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
 							Messages: [body],
 						});
@@ -280,6 +286,12 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
+						}
+						if (additionalFields.customCampaign) {
+							body.CustomCampaign = additionalFields.customCampaign as string;
+						}
+						if (additionalFields.deduplicateCampaign) {
+							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
 						}
 						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
 							Messages: [body],

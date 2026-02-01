@@ -1,0 +1,168 @@
+{
+	"createdAt": "2025-09-24T12:19:51.268Z",
+	"updatedAt": "2025-09-24T12:20:45.000Z",
+	"name": "Data table node",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [688, 0],
+			"id": "a7eeb256-a47e-4fe9-a0e1-b33015912b15",
+			"name": "Respond to Webhook"
+		},
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "data-table-node-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [-288, 0],
+			"id": "b54681a1-6cfc-4970-ad33-25cb8fec6936",
+			"name": "Webhook",
+			"webhookId": "4748ca75-3b3c-4e4a-8913-3590fdc1867d"
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [96, 0],
+			"id": "019d451f-604f-4ed6-8f40-1beb86445061",
+			"name": "Split Out"
+		},
+		{
+			"parameters": {
+				"dataTableId": {
+					"__rl": true,
+					"value": "={{ $('Webhook').item.json.body.dataTableId }}",
+					"mode": "list"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"isActive": "={{ $json.isActive }}",
+						"firstName": "={{ $json.firstName }}",
+						"birthDate": "={{ $json.birthDate }}",
+						"age": "={{ $json.age }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "firstName",
+							"displayName": "firstName",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"readOnly": false,
+							"removed": false
+						},
+						{
+							"id": "age",
+							"displayName": "age",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "number",
+							"readOnly": false,
+							"removed": false
+						},
+						{
+							"id": "birthDate",
+							"displayName": "birthDate",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "dateTime",
+							"readOnly": false,
+							"removed": false
+						},
+						{
+							"id": "isActive",
+							"displayName": "isActive",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "boolean",
+							"readOnly": false,
+							"removed": false
+						},
+						{
+							"id": "empty",
+							"displayName": "empty",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"readOnly": false,
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [448, 0],
+			"id": "05a47403-6c7d-4aad-b0eb-ca726e7594c9",
+			"name": "Insert row"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Insert row": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Insert row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"versionId": "cdd59544-4b5d-42c0-a07f-8ab48a9d849c",
+	"triggerCount": 1,
+	"tags": [],
+	"meta": {
+		"responseMode": "lastNode",
+		"options": {}
+	}
+}

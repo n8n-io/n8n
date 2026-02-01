@@ -1,0 +1,233 @@
+import { Logger } from '@n8n/backend-common';
+import {
+	CredentialResolver,
+	CredentialResolverConfiguration,
+	CredentialResolverDataNotFoundError,
+	CredentialResolverHandle,
+	CredentialResolverValidationError,
+	ICredentialResolver,
+} from '@n8n/decorators';
+import { Cipher } from 'n8n-core';
+import { ICredentialContext, ICredentialDataDecryptedObject, jsonParse } from 'n8n-workflow';
+import z from 'zod';
+
+import type { ITokenIdentifier } from './identifiers/identifier-interface';
+import {
+	OAuth2IntrospectionOptionsSchema,
+	OAuth2TokenIntrospectionIdentifier,
+} from './identifiers/oauth2-introspection-identifier';
+import {
+	OAuth2UserInfoIdentifier,
+	OAuth2UserInfoOptionsSchema,
+} from './identifiers/oauth2-userinfo-identifier';
+import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage';
+
+const OAuthCredentialResolverOptionsSchema = z.discriminatedUnion('validation', [
+	OAuth2IntrospectionOptionsSchema,
+	OAuth2UserInfoOptionsSchema,
+]);
+
+type OAuthCredentialResolverOptions = z.infer<typeof OAuthCredentialResolverOptionsSchema>;
+
+/**
+ * OAuth2 token introspection-based credential resolver.
+ * Resolves user identity via OAuth2 token introspection and stores credentials
+ * encrypted in the database, keyed by the introspected subject.
+ */
+@CredentialResolver()
+export class OAuthCredentialResolver implements ICredentialResolver {
+	constructor(
+		private readonly logger: Logger,
+		private readonly oAuth2TokenIntrospectionIdentifier: OAuth2TokenIntrospectionIdentifier,
+		private readonly oAuth2UserInfoIdentifier: OAuth2UserInfoIdentifier,
+		private readonly storage: DynamicCredentialEntryStorage,
+		private readonly cipher: Cipher,
+	) {}
+
+	metadata = {
+		name: 'credential-resolver.oauth2-1.0',
+		description: 'OAuth2 based credential resolver',
+		displayName: 'OAuth2 Resolver',
+		options: [
+			{
+				displayName: 'Metadata URL',
+				name: 'metadataUri',
+				type: 'string' as const,
+				required: true,
+				default: '',
+				placeholder: 'https://auth.example.com/.well-known/openid-configuration',
+				description: 'OAuth2 server metadata endpoint URL',
+			},
+			{
+				displayName: 'Validation Method',
+				name: 'validation',
+				type: 'options' as const,
+				options: [
+					{
+						name: 'OAuth2 Token Introspection',
+						value: 'oauth2-introspection',
+						description: 'Validate token via OAuth2 Token Introspection Endpoint',
+					},
+					{
+						name: 'OAuth2 UserInfo Endpoint',
+						value: 'oauth2-userinfo',
+						description: 'Validate token via OAuth2 UserInfo Endpoint',
+					},
+				],
+				default: 'oauth2-introspection',
+				description: 'Validation method to use for token validation',
+			},
+			{
+				displayName: 'Client ID',
+				name: 'clientId',
+				type: 'string' as const,
+				default: '',
+				description: 'OAuth2 client ID for introspection',
+				displayOptions: {
+					hide: {
+						validation: ['oauth2-userinfo'],
+					},
+					show: {
+						validation: ['oauth2-introspection'],
+					},
+				},
+			},
+			{
+				displayName: 'Client Secret',
+				name: 'clientSecret',
+				type: 'string' as const,
+				default: '',
+				typeOptions: { password: true },
+				description: 'OAuth2 client secret for introspection',
+				displayOptions: {
+					hide: {
+						validation: ['oauth2-userinfo'],
+					},
+					show: {
+						validation: ['oauth2-introspection'],
+					},
+				},
+			},
+			{
+				displayName: 'Subject Claim',
+				name: 'subjectClaim',
+				type: 'string' as const,
+				default: 'sub',
+				description: 'Token claim to use as subject identifier',
+			},
+		],
+	};
+
+	/**
+	 * Retrieves stored credential data for the given identity.
+	 * @throws {CredentialResolverDataNotFoundError} When no data exists for the key
+	 */
+	async getSecret(
+		credentialId: string,
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<ICredentialDataDecryptedObject> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		const key = await this.resolveIdentifier(context, parsedOptions);
+
+		const data = await this.storage.getCredentialData(
+			credentialId,
+			key,
+			handle.resolverId,
+			parsedOptions,
+		);
+
+		if (!data) {
+			throw new CredentialResolverDataNotFoundError();
+		}
+		const plaintext = this.cipher.decrypt(data);
+		try {
+			const secret = jsonParse<ICredentialDataDecryptedObject>(plaintext);
+			return secret;
+		} catch (error) {
+			this.logger.error('Failed to parse decrypted credential data', { error });
+			throw new CredentialResolverDataNotFoundError();
+		}
+	}
+
+	/** Stores credential data for the given identity */
+	async setSecret(
+		credentialId: string,
+		context: ICredentialContext,
+		data: ICredentialDataDecryptedObject,
+		handle: CredentialResolverHandle,
+	): Promise<void> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		const key = await this.resolveIdentifier(context, parsedOptions);
+
+		const encryptedData = this.cipher.encrypt(data);
+
+		await this.storage.setCredentialData(
+			credentialId,
+			key,
+			handle.resolverId,
+			encryptedData,
+			parsedOptions,
+		);
+	}
+
+	/** Deletes credential data for the given identity. Succeeds silently if not found. */
+	async deleteSecret(
+		credentialId: string,
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<void> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		const key = await this.resolveIdentifier(context, parsedOptions);
+		await this.storage.deleteCredentialData(credentialId, key, handle.resolverId, parsedOptions);
+	}
+
+	async deleteAllSecrets(handle: CredentialResolverHandle): Promise<void> {
+		await this.storage.deleteAllCredentialData(handle);
+	}
+
+	private async parseOptions(options: CredentialResolverConfiguration) {
+		const result = await OAuthCredentialResolverOptionsSchema.safeParseAsync(options);
+		if (result.error) {
+			this.logger.error('Invalid options provided to OAuthCredentialResolver', {
+				error: result.error,
+			});
+			throw new CredentialResolverValidationError(
+				`Invalid options for OAuthCredentialResolver: ${result.error.message}`,
+			);
+		}
+		return result.data;
+	}
+
+	async validateOptions(options: CredentialResolverConfiguration): Promise<void> {
+		const [identifier, parsedOptions] = await this.getIdentifier(options);
+		await identifier.validateOptions(parsedOptions);
+	}
+
+	private async getIdentifier(
+		options: CredentialResolverConfiguration,
+	): Promise<[ITokenIdentifier, OAuthCredentialResolverOptions]> {
+		const parsedOptions = await this.parseOptions(options);
+		if (parsedOptions.validation === 'oauth2-introspection') {
+			return [this.oAuth2TokenIntrospectionIdentifier, parsedOptions];
+		} else {
+			return [this.oAuth2UserInfoIdentifier, parsedOptions];
+		}
+	}
+
+	private async resolveIdentifier(
+		context: ICredentialContext,
+		options: CredentialResolverConfiguration,
+	): Promise<string> {
+		const [identifier, parsedOptions] = await this.getIdentifier(options);
+		return await identifier.resolve(context, parsedOptions);
+	}
+
+	async validateIdentity(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<void> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		await this.resolveIdentifier(context, parsedOptions);
+	}
+}

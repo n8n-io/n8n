@@ -1,0 +1,196 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-180, -520],
+			"id": "8218dacc-3b5f-460a-a773-817faf012ba9",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [20, -520],
+			"id": "4568cad5-4e55-4370-9fbe-7f19e03faa67",
+			"name": "getAllContainers",
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "iTUZNEdLdLW0RpF9",
+					"name": "Azure Cosmos DB account "
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllContainers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"getAllContainers": {
+			"main": [[]]
+		}
+	},
+	"pinData": {
+		"getAllContainers": [
+			{
+				"json": {
+					"id": "newOne3",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/id"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "newId",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/id"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"uniqueKeyPolicy": {
+						"uniqueKeys": []
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					},
+					"fullTextPolicy": {
+						"defaultLanguage": "en-US",
+						"fullTextPaths": []
+					},
+					"computedProperties": []
+				}
+			},
+			{
+				"json": {
+					"id": "ContainerWithNameAsKey",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/Name"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"uniqueKeyPolicy": {
+						"uniqueKeys": []
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					},
+					"fullTextPolicy": {
+						"defaultLanguage": "en-US",
+						"fullTextPaths": []
+					},
+					"computedProperties": []
+				}
+			},
+			{
+				"json": {
+					"id": "ContainerWithPhoneNrAsKey",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/PhoneNumber"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					}
+				}
+			}
+		]
+	}
+}

@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
@@ -26,7 +26,7 @@ export class OnfleetTrigger implements INodeType {
 			name: 'Onfleet Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',
@@ -79,7 +79,7 @@ export class OnfleetTrigger implements INodeType {
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+						'The Webhook can not work on "localhost". Please setup n8n on a custom domain.',
 					);
 				}
 				// Webhook name according to the field
@@ -138,7 +138,7 @@ export class OnfleetTrigger implements INodeType {
 			/*                             Validation request                             */
 			/* -------------------------------------------------------------------------- */
 			const res = this.getResponseObject();
-			res.status(200).send(req.query.check);
+			res.status(200).type('text/plain').send(req.query.check);
 			return { noWebhookResponse: true };
 		}
 

@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

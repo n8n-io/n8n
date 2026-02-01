@@ -13,7 +13,6 @@ export interface ChatMessageText extends ChatMessageBase {
 
 interface ChatMessageBase {
 	id: string;
-	createdAt: string;
 	transparent?: boolean;
 	sender: 'user' | 'bot';
 	files?: File[];

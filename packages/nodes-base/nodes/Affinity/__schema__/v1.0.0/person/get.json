@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "list_entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "creator_id": {
+                        "type": "integer"
+                    },
+                    "entity_id": {
+                        "type": "integer"
+                    },
+                    "entity_type": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "list_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "organization_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

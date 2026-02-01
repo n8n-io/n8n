@@ -1,4 +1,4 @@
-import { type StoryFn } from '@storybook/vue3';
+import { type StoryFn } from '@storybook/vue3-vite';
 
 import Sizes from './Sizes.vue';
 
@@ -17,5 +17,5 @@ export const Spacing: StoryFn = () => ({
 		Sizes,
 	},
 	template:
-		"<sizes :variables=\"['--spacing-5xs','--spacing-4xs','--spacing-3xs','--spacing-2xs','--spacing-xs','--spacing-s','--spacing-m','--spacing-l','--spacing-xl','--spacing-2xl','--spacing-3xl','--spacing-4xl','--spacing-5xl']\" />",
+		"<sizes :variables=\"['--spacing--5xs','--spacing--4xs','--spacing--3xs','--spacing--2xs','--spacing--xs','--spacing--sm','--spacing--md','--spacing--lg','--spacing--xl','--spacing--2xl','--spacing--3xl','--spacing--4xl','--spacing--5xl']\" />",
 });

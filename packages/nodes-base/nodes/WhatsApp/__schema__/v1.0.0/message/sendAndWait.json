@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

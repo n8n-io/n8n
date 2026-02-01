@@ -4,12 +4,16 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 const userScopes = [
 	'channels:read',
 	'channels:write',
+	'channels:history',
 	'chat:write',
 	'files:read',
 	'files:write',
 	'groups:read',
+	'groups:history',
 	'im:read',
+	'im:history',
 	'mpim:read',
+	'mpim:history',
 	'reactions:read',
 	'reactions:write',
 	'stars:read',
@@ -19,6 +23,7 @@ const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	'search:read',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {

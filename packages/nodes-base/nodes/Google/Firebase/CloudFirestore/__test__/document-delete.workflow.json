@@ -1,0 +1,61 @@
+{
+	"name": "CloudFirestore Document Delete Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "document",
+				"operation": "delete",
+				"projectId": "test-project",
+				"database": "(default)",
+				"collection": "users",
+				"documentId": "test-doc-id"
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [200, 0],
+			"id": "cloudFirestore-delete",
+			"name": "Delete Document",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "cloudFirestore-oauth-id",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Document": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Delete Document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

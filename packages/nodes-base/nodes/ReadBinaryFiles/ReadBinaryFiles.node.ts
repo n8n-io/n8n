@@ -1,6 +1,6 @@
 import glob from 'fast-glob';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -22,8 +22,8 @@ export class ReadBinaryFiles implements INodeType {
 			name: 'Read Binary Files',
 			color: '#44AA44',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'File Selector',
@@ -54,7 +54,7 @@ export class ReadBinaryFiles implements INodeType {
 
 		const items: INodeExecutionData[] = [];
 		for (const filePath of files) {
-			const stream = await this.helpers.createReadStream(filePath);
+			const stream = await this.helpers.createReadStream(await this.helpers.resolvePath(filePath));
 			items.push({
 				binary: {
 					[dataPropertyName]: await this.helpers.prepareBinaryData(stream, filePath),

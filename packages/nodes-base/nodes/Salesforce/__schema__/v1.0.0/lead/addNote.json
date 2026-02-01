@@ -8,9 +8,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "success",
-        "errors"
-    ]
+    "version": 1
 }

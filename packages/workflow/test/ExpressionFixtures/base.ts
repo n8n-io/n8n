@@ -1,5 +1,5 @@
-import { ExpressionError } from '@/errors/expression.error';
-import type { GenericValue, IDataObject } from '@/Interfaces';
+import { ExpressionError } from '../../src/errors/expression.error';
+import type { GenericValue, IDataObject } from '../../src/interfaces';
 
 interface ExpressionTestBase {
 	type: 'evaluation' | 'transform';
@@ -273,10 +273,15 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [],
-				error: new ExpressionError('No execution data available', {
+				error: new ExpressionError("Node 'node' hasn't been executed", {
 					runIndex: 0,
-					itemIndex: 0,
+					itemIndex: -1,
 					type: 'no_execution_data',
+					functionality: 'pairedItem',
+					messageTemplate:
+						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+					descriptionKey: 'pairedItemNoConnection',
+					nodeCause: 'node',
 				}),
 			},
 			{ type: 'transform' },

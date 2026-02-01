@@ -9,7 +9,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 interface CustomProperty {
 	name: string;
@@ -38,8 +38,8 @@ export class Chargebee implements INodeType {
 			name: 'Chargebee',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'chargebeeApi',

@@ -1,62 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "engagement": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "portalId": {
-                    "type": "integer"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "createdAt": {
-                    "type": "integer"
-                },
-                "lastUpdated": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "integer"
-                },
-                "bodyPreview": {
-                    "type": "string"
-                },
-                "bodyPreviewIsTruncated": {
-                    "type": "boolean"
-                },
-                "bodyPreviewHtml": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "portalId",
-                "active",
-                "createdAt",
-                "lastUpdated",
-                "type",
-                "timestamp",
-                "allAccessibleTeamIds",
-                "queueMembershipIds"
-            ]
-        },
         "associations": {
             "type": "object",
             "properties": {
-                "contactIds": {
+                "companyIds": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
-                "companyIds": {
+                "contactIds": {
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -80,21 +34,42 @@
                         "type": "integer"
                     }
                 }
-            },
-            "required": [
-                "contactIds",
-                "companyIds",
-                "dealIds",
-                "ownerIds",
-                "workflowIds",
-                "ticketIds",
-                "contentIds",
-                "quoteIds",
-                "marketingEventIds",
-                "partnerClientIds",
-                "orderIds",
-                "cartIds"
-            ]
+            }
+        },
+        "engagement": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "bodyPreview": {
+                    "type": "string"
+                },
+                "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "bodyPreviewIsTruncated": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastUpdated": {
+                    "type": "integer"
+                },
+                "portalId": {
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
         },
         "metadata": {
             "type": "object",
@@ -104,5 +79,6 @@
                 }
             }
         }
-    }
+    },
+    "version": 1
 }

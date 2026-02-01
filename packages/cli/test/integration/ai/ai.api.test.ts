@@ -1,21 +1,22 @@
+import { testDb } from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { AiService } from '@/services/ai.service';
 
 import { createOwner } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 const createAiCreditsResponse = {
 	apiKey: randomUUID(),
@@ -36,8 +37,12 @@ let ownerPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 
+beforeAll(async () => {
+	await initCredentialsTypes();
+});
+
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 
 	owner = await createOwner();
 
@@ -73,6 +78,7 @@ describe('POST /ai/free-credits', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:update',
 			].sort(),
 		);

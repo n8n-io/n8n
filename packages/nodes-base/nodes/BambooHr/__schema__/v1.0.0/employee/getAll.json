@@ -1,7 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "canUploadPhoto": {
+            "type": "integer"
+        },
+        "department": {
             "type": "string"
         },
         "displayName": {
@@ -10,11 +13,17 @@
         "firstName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
+        "jobTitle": {
+            "type": "string"
+        },
         "lastName": {
             "type": "string"
         },
-        "pronouns": {
-            "type": "null"
+        "location": {
+            "type": "string"
         },
         "photoUploaded": {
             "type": "boolean"
@@ -22,22 +31,15 @@
         "photoUrl": {
             "type": "string"
         },
-        "canUploadPhoto": {
-            "type": "integer"
+        "pronouns": {
+            "type": "null"
+        },
+        "supervisor": {
+            "type": "string"
+        },
+        "workEmail": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "displayName",
-        "firstName",
-        "lastName",
-        "preferredName",
-        "jobTitle",
-        "workEmail",
-        "department",
-        "pronouns",
-        "photoUploaded",
-        "photoUrl",
-        "canUploadPhoto"
-    ]
+    "version": 5
 }

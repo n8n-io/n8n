@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 
+import { PrometheusMetricsParser } from '@/test-execution/prometheus-metrics-parser';
 import type { Scenario } from '@/types/scenario';
 
 export type K6Tag = {
@@ -29,6 +30,20 @@ export type TrendMetric = {
 	'p(90)': number;
 };
 
+export type AppMetricStats = {
+	max: number;
+	avg: number;
+	min: number;
+	count: number;
+};
+
+export type AppMetricsReport = {
+	heapSizeTotal?: AppMetricStats;
+	heapSizeUsed?: AppMetricStats;
+	externalMemory?: AppMetricStats;
+	eventLoopLag?: AppMetricStats;
+};
+
 export type TestReport = {
 	runId: string;
 	ts: string; // ISO8601
@@ -45,6 +60,7 @@ export type TestReport = {
 		httpRequestWaiting: TrendMetric;
 	};
 	checks: Check[];
+	appMetrics?: AppMetricsReport;
 };
 
 function k6CheckToCheck(check: K6Check): Check {
@@ -76,13 +92,45 @@ function k6TrendToTrend(trend: K6TrendMetric): TrendMetric {
 }
 
 /**
+ * Builds an app metrics report from collected Prometheus metrics data
+ */
+export function buildAppMetricsReport(metricsData: string[]): AppMetricsReport {
+	const heapSizeTotal = PrometheusMetricsParser.calculateMetricStats(
+		metricsData,
+		'n8n_nodejs_heap_size_total_bytes',
+	);
+	const heapSizeUsed = PrometheusMetricsParser.calculateMetricStats(
+		metricsData,
+		'n8n_nodejs_heap_size_used_bytes',
+	);
+	const externalMemory = PrometheusMetricsParser.calculateMetricStats(
+		metricsData,
+		'n8n_nodejs_external_memory_bytes',
+	);
+	const eventLoopLag = PrometheusMetricsParser.calculateMetricStats(
+		metricsData,
+		'n8n_nodejs_eventloop_lag_seconds',
+	);
+
+	return {
+		...(heapSizeTotal && { heapSizeTotal }),
+		...(heapSizeUsed && { heapSizeUsed }),
+		...(externalMemory && { externalMemory }),
+		...(eventLoopLag && { eventLoopLag }),
+	};
+}
+
+/**
  * Converts the k6 test summary to a test report
  */
 export function buildTestReport(
 	scenario: Scenario,
 	endOfTestSummary: K6EndOfTestSummary,
 	tags: K6Tag[],
+	appMetricsData?: string[],
 ): TestReport {
+	const appMetrics = appMetricsData ? buildAppMetricsReport(appMetricsData) : undefined;
+
 	return {
 		runId: nanoid(),
 		ts: new Date().toISOString(),
@@ -99,5 +147,6 @@ export function buildTestReport(
 			httpRequestWaiting: k6TrendToTrend(endOfTestSummary.metrics.http_req_waiting),
 			iterations: k6CounterToCounter(endOfTestSummary.metrics.iterations),
 		},
+		...(appMetrics && { appMetrics }),
 	};
 }

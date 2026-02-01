@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -19,15 +19,15 @@ export class MicrosoftOneDrive implements INodeType {
 		name: 'microsoftOneDrive',
 		icon: 'file:oneDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft OneDrive API',
 		defaults: {
 			name: 'Microsoft OneDrive',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftOneDriveOAuth2Api',
@@ -63,6 +63,7 @@ export class MicrosoftOneDrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
+		const nodeVersion = this.getNode().typeVersion;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -217,12 +218,20 @@ export class MicrosoftOneDrive implements INodeType {
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							let encodedFilename;
 
-							if (fileName !== '') {
-								encodedFilename = encodeURIComponent(fileName);
-							}
+							if (nodeVersion >= 1.1) {
+								if (fileName !== '') {
+									encodedFilename = encodeURIComponent(fileName);
+								} else if (binaryData.fileName !== undefined) {
+									encodedFilename = encodeURIComponent(binaryData.fileName);
+								}
+							} else {
+								if (fileName !== '') {
+									encodedFilename = encodeURIComponent(fileName);
+								}
 
-							if (binaryData.fileName !== undefined) {
-								encodedFilename = encodeURIComponent(binaryData.fileName);
+								if (binaryData.fileName !== undefined) {
+									encodedFilename = encodeURIComponent(binaryData.fileName);
+								}
 							}
 
 							responseData = await microsoftApiRequest.call(

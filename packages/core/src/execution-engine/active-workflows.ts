@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
+	CronContext,
 	INode,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -9,16 +11,15 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	toCronExpression,
 	TriggerCloseError,
+	UserError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
@@ -149,7 +150,7 @@ export class ActiveWorkflows {
 		};
 
 		// Get all the trigger times
-		const cronTimes = (pollTimes.item || []).map(toCronExpression);
+		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
 			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
@@ -177,15 +178,19 @@ export class ActiveWorkflows {
 		// Execute the trigger directly to be able to know if it works
 		await executeTrigger(true);
 
-		for (const cronTime of cronTimes) {
-			const cronTimeParts = cronTime.split(' ');
-			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute.',
-				);
+		for (const expression of cronExpressions) {
+			if (expression.split(' ').at(0)?.includes('*')) {
+				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, cronTime, executeTrigger);
+			const ctx: CronContext = {
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+				nodeId: node.id,
+				expression,
+			};
+
+			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
 		}
 	}
 
@@ -211,9 +216,17 @@ export class ActiveWorkflows {
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		for (const workflowId of Object.keys(this.activeWorkflows)) {
+		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+
+		if (activeWorkflowIds.length === 0) return;
+
+		for (const workflowId of activeWorkflowIds) {
 			await this.remove(workflowId);
 		}
+
+		this.logger.debug('Deactivated all trigger- and poller-based workflows', {
+			workflowIds: activeWorkflowIds,
+		});
 	}
 
 	private async closeTrigger(response: ITriggerResponse, workflowId: string) {

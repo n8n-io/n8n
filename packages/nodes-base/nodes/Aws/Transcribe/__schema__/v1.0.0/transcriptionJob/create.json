@@ -7,16 +7,19 @@
         "IdentifyLanguage": {
             "type": "boolean"
         },
+        "LanguageCode": {
+            "type": "string"
+        },
         "Media": {
             "type": "object",
             "properties": {
                 "MediaFileUri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "MediaFileUri"
-            ]
+            }
+        },
+        "StartTime": {
+            "type": "number"
         },
         "TranscriptionJobName": {
             "type": "string"
@@ -24,5 +27,6 @@
         "TranscriptionJobStatus": {
             "type": "string"
         }
-    }
+    },
+    "version": 2
 }
