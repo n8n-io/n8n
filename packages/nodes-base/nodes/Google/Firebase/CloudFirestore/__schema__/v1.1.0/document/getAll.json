@@ -12,7 +12,16 @@
         },
         "_updateTime": {
             "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "updateTime": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
