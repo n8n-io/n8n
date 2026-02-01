@@ -10,6 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
+	computeIntervalsHash,
 	intervalToRecurrence,
 	recurrenceCheck,
 	toCronExpression,
@@ -426,9 +427,13 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
 			recurrenceRules: number[];
+			intervalsHash?: string;
 		};
-		if (!staticData.recurrenceRules) {
+
+		const currentHash = computeIntervalsHash(intervals);
+		if (!staticData.recurrenceRules || staticData.intervalsHash !== currentHash) {
 			staticData.recurrenceRules = [];
+			staticData.intervalsHash = currentHash;
 		}
 
 		if (version >= 1.3) {
