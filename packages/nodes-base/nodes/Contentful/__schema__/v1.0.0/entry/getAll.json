@@ -1,9 +1,100 @@
 {
     "type": "object",
     "properties": {
+        "fields": {
+            "type": "object",
+            "properties": {
+                "internalName": {
+                    "type": "string"
+                }
+            }
+        },
         "name": {
             "type": "string"
+        },
+        "sys": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "object",
+                    "properties": {
+                        "sys": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "linkType": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "environment": {
+                    "type": "object",
+                    "properties": {
+                        "sys": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "linkType": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "publishedVersion": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "space": {
+                    "type": "object",
+                    "properties": {
+                        "sys": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "linkType": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 1
+    "version": 2
 }
