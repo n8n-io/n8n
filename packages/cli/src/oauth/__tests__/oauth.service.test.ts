@@ -386,6 +386,11 @@ describe('OauthService', () => {
 	});
 
 	describe('decodeCsrfState', () => {
+		// Auth logic: dynamic credentials (origin === 'dynamic-credential') always skip user validation.
+		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true
+		// (e.g. embed/iframe); otherwise req.user.id must match decryptedState.userId (BOLA prevention).
+		// skipAuthOnOAuthCallback is read at module load, so the "skip for static" path is not tested here.
+
 		it('should decode valid CSRF state', () => {
 			const csrfData = {
 				cid: 'credential-id',
@@ -505,7 +510,7 @@ describe('OauthService', () => {
 			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
 		});
 
-		it('should bypass user validation for dynamic-credential origin', () => {
+		it('should bypass user validation for dynamic-credential origin (no userId check)', () => {
 			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',

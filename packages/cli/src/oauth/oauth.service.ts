@@ -224,7 +224,7 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// user validation not required for dynamic credentials
+		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
 		if (decryptedState.origin === 'dynamic-credential') {
 			return {
 				...decoded,
@@ -232,8 +232,15 @@ export class OauthService {
 			};
 		}
 
-		// if we skip auth on oauth callback, we cannot validate user id
-		if (!skipAuthOnOAuthCallback && decryptedState.userId !== req.user?.id) {
+		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
+		if (skipAuthOnOAuthCallback) {
+			return {
+				...decoded,
+				...decryptedState,
+			};
+		}
+
+		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
