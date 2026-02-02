@@ -68,6 +68,8 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "saml:*",
   "securityAudit:generate",
   "securityAudit:*",
+  "securitySettings:manage",
+  "securitySettings:*",
   "sourceControl:pull",
   "sourceControl:push",
   "sourceControl:manage",

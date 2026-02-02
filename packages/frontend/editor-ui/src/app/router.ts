@@ -103,6 +103,8 @@ const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -593,6 +595,28 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'personal',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('PERSONAL_SECURITY_SETTINGS');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
 							};
 						},
 					},

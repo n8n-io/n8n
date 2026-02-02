@@ -26,6 +26,7 @@ describe('permissions', () => {
 			saml: {},
 			provisioning: {},
 			securityAudit: {},
+			securitySettings: {},
 			sourceControl: {},
 			tag: {},
 			user: {},
@@ -119,6 +120,7 @@ describe('permissions', () => {
 			mcp: {},
 			mcpApiKey: {},
 			securityAudit: {},
+			securitySettings: {},
 			sourceControl: {},
 			tag: {
 				create: true,
