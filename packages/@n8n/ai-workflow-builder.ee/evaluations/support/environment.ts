@@ -36,11 +36,9 @@ export interface StageModels {
 	responder?: ModelId;
 	/** Model for discovery stage (node discovery) */
 	discovery?: ModelId;
-	/** Model for builder stage (workflow structure) */
+	/** Model for builder stage (workflow structure and configuration) */
 	builder?: ModelId;
-	/** Model for configurator stage (node configuration) */
-	configurator?: ModelId;
-	/** Model for parameter updater (within configurator) */
+	/** Model for parameter updater (within builder) */
 	parameterUpdater?: ModelId;
 	/** Model for LLM judge evaluation */
 	judge?: ModelId;
@@ -56,7 +54,6 @@ export interface ResolvedStageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 	judge: BaseChatModel;
 }
@@ -97,21 +94,18 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 	const defaultLLM = await setupLLM(stageModels.default);
 
 	// For stages without specific model, use default
-	// For parameter updater, fall back to configurator if not specified
-	const configuratorLLM = stageModels.configurator
-		? await setupLLM(stageModels.configurator)
-		: defaultLLM;
+	// For parameter updater, fall back to builder if not specified
+	const builderLLM = stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM;
 
 	return {
 		default: defaultLLM,
 		supervisor: stageModels.supervisor ? await setupLLM(stageModels.supervisor) : defaultLLM,
 		responder: stageModels.responder ? await setupLLM(stageModels.responder) : defaultLLM,
 		discovery: stageModels.discovery ? await setupLLM(stageModels.discovery) : defaultLLM,
-		builder: stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM,
-		configurator: configuratorLLM,
+		builder: builderLLM,
 		parameterUpdater: stageModels.parameterUpdater
 			? await setupLLM(stageModels.parameterUpdater)
-			: configuratorLLM,
+			: builderLLM,
 		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
 	};
 }
@@ -226,7 +220,6 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			responder: llms.responder,
 			discovery: llms.discovery,
 			builder: llms.builder,
-			configurator: llms.configurator,
 			parameterUpdater: llms.parameterUpdater,
 		},
 		checkpointer: new MemorySaver(),

@@ -47,7 +47,6 @@ export interface StageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 }
 

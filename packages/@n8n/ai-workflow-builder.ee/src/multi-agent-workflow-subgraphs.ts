@@ -9,12 +9,10 @@ import { SupervisorAgent } from './agents/supervisor.agent';
 import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
-	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
-import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
@@ -41,7 +39,6 @@ function routeToNode(next: string): string {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
 		builder: 'builder_subgraph',
-		configurator: 'configurator_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
 }
@@ -147,7 +144,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
-	const configuratorSubgraph = new ConfiguratorSubgraph();
 
 	// Compile subgraphs with per-stage LLMs
 	const compiledDiscovery = discoverySubgraph.create({
@@ -159,12 +155,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.builder,
-		logger,
-		featureFlags,
-	});
-	const compiledConfigurator = configuratorSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.configurator,
 		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
@@ -276,20 +266,9 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_BUILDER_ITERATIONS,
 				),
 			)
-			.addNode(
-				'configurator_subgraph',
-				createSubgraphNodeHandler(
-					configuratorSubgraph,
-					compiledConfigurator,
-					'configurator_subgraph',
-					logger,
-					MAX_CONFIGURATOR_ITERATIONS,
-				),
-			)
 			// Connect all subgraphs to process_operations
 			.addEdge('discovery_subgraph', 'process_operations')
 			.addEdge('builder_subgraph', 'process_operations')
-			.addEdge('configurator_subgraph', 'process_operations')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
