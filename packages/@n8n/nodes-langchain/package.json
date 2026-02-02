@@ -243,7 +243,7 @@
     "n8n-workflow": "workspace:*",
     "openai": "^6.9.0",
     "pdf-parse": "1.1.1",
-    "pg": "8.12.0",
+    "pg": "catalog:",
     "proxy-from-env": "^1.1.0",
     "redis": "4.6.14",
     "sanitize-html": "2.12.1",

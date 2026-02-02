@@ -62,6 +62,7 @@ catalog:
   mysql2: 3.15.0
   nanoid: 3.3.8
   nodemailer: 7.0.11
+  pg: 8.17.0
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
