@@ -100,7 +100,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			where,
 			relations: {
 				credentials: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			},
 		});
