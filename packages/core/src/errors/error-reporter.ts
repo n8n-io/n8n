@@ -8,6 +8,8 @@ import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+import { Tracing, SentryTracing } from '@/observability';
+
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
 type ErrorReporterInitOptions = {
@@ -56,7 +58,10 @@ export class ErrorReporter {
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly tracing: Tracing,
+	) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
 	}
@@ -137,8 +142,9 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		const { init, captureException, setTag } = await import('@sentry/node');
-		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
+		const sentry = await import('@sentry/node');
+		const { init, captureException, setTag, requestDataIntegration, rewriteFramesIntegration } =
+			sentry;
 
 		// Most of the integrations are listed here:
 		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
@@ -156,6 +162,8 @@ export class ErrorReporter {
 			tracingIntegrations
 				.filter((integrationName) => !!eligibleIntegrations[integrationName])
 				.forEach((integrationName) => enabledIntegrations.add(integrationName));
+
+			this.tracing.setTracingImplementation(new SentryTracing(sentry));
 		}
 
 		const isProfilingEnabled = profilesSampleRate > 0;
