@@ -60,6 +60,7 @@ import {
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import {
@@ -141,6 +142,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROMPT_MFA_CODE_MODAL_KEY,
 				SOURCE_CONTROL_PUSH_MODAL_KEY,
 				SOURCE_CONTROL_PULL_MODAL_KEY,
+				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 				SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 				DEBUG_PAYWALL_MODAL_KEY,
