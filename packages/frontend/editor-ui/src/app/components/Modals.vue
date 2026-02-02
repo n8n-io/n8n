@@ -57,6 +57,7 @@ import {
 } from '@/features/core/folders/folders.constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
@@ -97,6 +98,7 @@ import ProjectMoveResourceModal from '@/features/collaboration/projects/componen
 import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
+import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
 import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
@@ -276,6 +278,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SourceControlPullModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_PULL_RESULT_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullResultModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

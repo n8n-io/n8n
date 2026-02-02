@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { GlobalConfig } from '@n8n/config';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -63,7 +62,6 @@ import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -999,36 +997,6 @@ export class WorkflowExecute {
 		return inputData;
 	}
 
-	/**
-	 * Validates execution data for JSON compatibility and reports issues to Sentry
-	 */
-	private reportJsonIncompatibleOutput(
-		data: INodeExecutionData[][] | null,
-		workflow: Workflow,
-		node: INode,
-	): void {
-		if (Container.get(GlobalConfig).sentry.backendDsn) {
-			// If data is not json compatible then log it as incorrect output
-			// Does not block the execution from continuing
-			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
-			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error('node execution returned incorrect output', {
-					shouldBeLogged: false,
-					extra: {
-						nodeName: node.name,
-						nodeType: node.type,
-						nodeVersion: node.typeVersion,
-						workflowId: workflow.id,
-						workflowName: workflow.name ?? 'Unnamed workflow',
-						executionId: this.additionalData.executionId ?? 'unsaved-execution',
-						errorPath: jsonCompatibleResult.errorPath,
-						errorMessage: jsonCompatibleResult.errorMessage,
-					},
-				});
-			}
-		}
-	}
-
 	private async executeNode(
 		workflow: Workflow,
 		node: INode,
@@ -1078,8 +1046,6 @@ export class WorkflowExecute {
 		if (isEngineRequest(data)) {
 			return data;
 		}
-
-		this.reportJsonIncompatibleOutput(data, workflow, node);
 
 		const closeFunctionsResults = await Promise.allSettled(
 			closeFunctions.map(async (fn) => await fn()),

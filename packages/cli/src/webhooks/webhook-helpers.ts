@@ -39,6 +39,7 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
 	tryToParseUrl,
@@ -75,6 +76,7 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
+import merge from 'lodash/merge';
 
 export function handleHostedChatResponse(
 	res: express.Response,
@@ -328,6 +330,13 @@ export function prepareExecutionData(
 		},
 	];
 
+	if (
+		workflowStartNode.type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE &&
+		runExecutionData?.executionData?.nodeExecutionStack
+	) {
+		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
+	}
+
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
 			nodeExecutionStack,
@@ -451,7 +460,9 @@ export async function executeWebhook(
 		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE) {
+		if (
+			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({
@@ -567,9 +578,14 @@ export async function executeWebhook(
 			return;
 		}
 
-		// For "onReceived" mode, we need to defer response sending until after the execution
-		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
+		// Now that we know that the workflow should run we can return the default response
+		// directly if responseMode it set to "onReceived" and a response should be sent
+		if (responseMode === 'onReceived' && !didSendResponse) {
+			const responseBody = extractWebhookOnReceivedResponse(responseData, webhookResultData);
+			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
+			responseCallback(null, webhookResponse);
+			didSendResponse = true;
+		}
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -626,7 +642,7 @@ export async function executeWebhook(
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
-			!didSendResponse && !shouldDeferOnReceivedResponse,
+			!didSendResponse,
 			executionId,
 			responsePromise,
 		);
@@ -636,32 +652,6 @@ export async function executeWebhook(
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 */
 		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
-
-		if (shouldDeferOnReceivedResponse) {
-			additionalKeys.$executionId = executionId;
-			additionalKeys.$execution = {
-				id: executionId,
-				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
-			};
-			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseData,
-				executionMode,
-				additionalKeys,
-				undefined,
-				'firstEntryJson',
-			) as string | undefined;
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
-				webhookResultData,
-			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responseCallback(null, webhookResponse);
-			didSendResponse = true;
-		}
 
 		Container.get(EventService).emit('workflow-executed', {
 			workflowId: workflowData.id,

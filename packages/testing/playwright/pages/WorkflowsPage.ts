@@ -20,7 +20,7 @@ export class WorkflowsPage extends BasePage {
 	 * This is the new workflow button on the workflows page, visible when there are no workflows.
 	 */
 	async clickNewWorkflowButtonFromOverview() {
-		await this.clickByTestId('start-from-scratch-button');
+		await this.clickByTestId('new-workflow-card');
 	}
 
 	async clickNewWorkflowButtonFromProject() {

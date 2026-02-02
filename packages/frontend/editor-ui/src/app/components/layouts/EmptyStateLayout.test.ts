@@ -76,6 +76,9 @@ describe('EmptyStateLayout', () => {
 		} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
 
 		bannersStore.bannersHeight = 0;
+
+		// Default: feature disabled (control variant)
+		recommendedTemplatesStore.isFeatureEnabled = false;
 	});
 
 	afterEach(() => {
@@ -84,7 +87,7 @@ describe('EmptyStateLayout', () => {
 
 	describe('when recommended templates feature is enabled', () => {
 		beforeEach(() => {
-			recommendedTemplatesStore.isFeatureEnabled.mockReturnValue(true);
+			recommendedTemplatesStore.isFeatureEnabled = true;
 		});
 
 		it('should render welcome heading with user name', () => {
@@ -129,7 +132,7 @@ describe('EmptyStateLayout', () => {
 
 	describe('when recommended templates feature is disabled', () => {
 		beforeEach(() => {
-			recommendedTemplatesStore.isFeatureEnabled.mockReturnValue(false);
+			recommendedTemplatesStore.isFeatureEnabled = false;
 		});
 
 		it('should render heading with user name', () => {
@@ -174,7 +177,7 @@ describe('EmptyStateLayout', () => {
 
 	describe('when in read-only environment', () => {
 		beforeEach(() => {
-			recommendedTemplatesStore.isFeatureEnabled.mockReturnValue(true);
+			recommendedTemplatesStore.isFeatureEnabled = true;
 			sourceControlStore.preferences = {
 				branchReadOnly: true,
 			} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
@@ -195,7 +198,7 @@ describe('EmptyStateLayout', () => {
 
 	describe('when user does not have workflow create permission', () => {
 		beforeEach(() => {
-			recommendedTemplatesStore.isFeatureEnabled.mockReturnValue(true);
+			recommendedTemplatesStore.isFeatureEnabled = true;
 			projectsStore.personalProject = {
 				id: 'personal-project-1',
 				name: 'Personal Project',

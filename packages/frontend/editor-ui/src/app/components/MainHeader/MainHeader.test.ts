@@ -6,6 +6,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { STORES } from '@n8n/stores';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: vi.fn(() => ({
@@ -86,6 +88,9 @@ const renderComponent = createComponentRenderer(MainHeader, {
 			},
 			GithubButton: { template: '<div></div>' },
 			TabBar: { template: '<div></div>' },
+		},
+		provide: {
+			[WorkflowIdKey]: computed(() => 'test-workflow-id'),
 		},
 	},
 });

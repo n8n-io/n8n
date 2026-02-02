@@ -2,19 +2,19 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import { useRecommendedTemplatesStore, NUMBER_OF_TEMPLATES } from './recommendedTemplates.store';
-import { VIEWS } from '@/app/constants';
+import { EMPTY_STATE_EXPERIMENT, VIEWS } from '@/app/constants';
 
-const { getDynamicRecommendedTemplates, mockTelemetry, mockPostHog, mockFetchTemplateById } =
+const { getDynamicRecommendedTemplates, mockTelemetry, mockFetchTemplateById, mockPostHog } =
 	vi.hoisted(() => {
 		return {
 			getDynamicRecommendedTemplates: vi.fn(),
 			mockTelemetry: {
 				track: vi.fn(),
 			},
-			mockPostHog: {
-				isVariantEnabled: vi.fn(),
-			},
 			mockFetchTemplateById: vi.fn(),
+			mockPostHog: {
+				getVariant: vi.fn(),
+			},
 		};
 	});
 
@@ -68,12 +68,21 @@ describe('useRecommendedTemplatesStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+		// Default to templates variant enabled
+		mockPostHog.getVariant.mockReturnValue(EMPTY_STATE_EXPERIMENT.variantTemplates);
 		store = useRecommendedTemplatesStore();
 	});
 
 	describe('isFeatureEnabled', () => {
-		it('should return true when templates are enabled and no custom host', () => {
-			expect(store.isFeatureEnabled()).toBe(true);
+		it('should return true when templates are enabled, no custom host, and variant is templates', () => {
+			expect(store.isFeatureEnabled).toBe(true);
+		});
+
+		it('should return false when variant is not templates', () => {
+			mockPostHog.getVariant.mockReturnValue(EMPTY_STATE_EXPERIMENT.control);
+			// Need to recreate the store after changing the mock
+			store = useRecommendedTemplatesStore();
+			expect(store.isFeatureEnabled).toBe(false);
 		});
 	});
 
@@ -142,102 +151,84 @@ describe('useRecommendedTemplatesStore', () => {
 	});
 
 	describe('loadRecommendedTemplates', () => {
-		describe('when dynamic templates experiment is enabled', () => {
-			beforeEach(() => {
-				mockPostHog.isVariantEnabled.mockReturnValue(true);
-			});
+		it('should fetch templates from dynamic API on success', async () => {
+			const mockTemplates = [
+				{ workflow: createMockTemplate(1) },
+				{ workflow: createMockTemplate(2) },
+				{ workflow: createMockTemplate(3) },
+			];
+			getDynamicRecommendedTemplates.mockResolvedValue({ templates: mockTemplates });
 
-			it('should fetch templates from dynamic API on success', async () => {
-				const mockTemplates = [
-					{ workflow: createMockTemplate(1) },
-					{ workflow: createMockTemplate(2) },
-					{ workflow: createMockTemplate(3) },
-				];
-				getDynamicRecommendedTemplates.mockResolvedValue({ templates: mockTemplates });
+			const result = await store.loadRecommendedTemplates();
 
-				const result = await store.loadRecommendedTemplates();
-
-				expect(getDynamicRecommendedTemplates).toHaveBeenCalledWith({ baseUrl: '/rest' });
-				expect(result).toHaveLength(3);
-				expect(result[0].id).toBe(1);
-				expect(result[1].id).toBe(2);
-				expect(result[2].id).toBe(3);
-			});
-
-			it('should limit templates to NUMBER_OF_TEMPLATES', async () => {
-				const mockTemplates = Array.from({ length: 10 }, (_, i) => ({
-					workflow: createMockTemplate(i + 1),
-				}));
-				getDynamicRecommendedTemplates.mockResolvedValue({ templates: mockTemplates });
-
-				const result = await store.loadRecommendedTemplates();
-
-				expect(result).toHaveLength(NUMBER_OF_TEMPLATES);
-			});
-
-			it('should fallback to static IDs when API fails', async () => {
-				const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-				getDynamicRecommendedTemplates.mockRejectedValue(new Error('API Error'));
-
-				const mockTemplate = createMockTemplate(7607);
-				mockFetchTemplateById.mockResolvedValue(mockTemplate);
-
-				const result = await store.loadRecommendedTemplates();
-
-				expect(consoleSpy).toHaveBeenCalledWith(
-					'Dynamic templates failed, falling back to static IDs',
-					expect.any(Error),
-				);
-				expect(mockFetchTemplateById).toHaveBeenCalled();
-				expect(result.length).toBeGreaterThan(0);
-
-				consoleSpy.mockRestore();
-			});
-
-			it('should return empty array when API returns empty templates', async () => {
-				getDynamicRecommendedTemplates.mockResolvedValue({ templates: [] });
-
-				const result = await store.loadRecommendedTemplates();
-
-				expect(result).toEqual([]);
-			});
+			expect(getDynamicRecommendedTemplates).toHaveBeenCalledWith({ baseUrl: '/rest' });
+			expect(result).toHaveLength(3);
+			expect(result[0].id).toBe(1);
+			expect(result[1].id).toBe(2);
+			expect(result[2].id).toBe(3);
 		});
 
-		describe('when dynamic templates experiment is disabled', () => {
-			beforeEach(() => {
-				mockPostHog.isVariantEnabled.mockReturnValue(false);
-			});
+		it('should limit templates to NUMBER_OF_TEMPLATES', async () => {
+			const mockTemplates = Array.from({ length: 10 }, (_, i) => ({
+				workflow: createMockTemplate(i + 1),
+			}));
+			getDynamicRecommendedTemplates.mockResolvedValue({ templates: mockTemplates });
 
-			it('should fetch templates using static IDs', async () => {
-				const mockTemplate = createMockTemplate(7607);
-				mockFetchTemplateById.mockResolvedValue(mockTemplate);
+			const result = await store.loadRecommendedTemplates();
 
-				const result = await store.loadRecommendedTemplates();
+			expect(result).toHaveLength(NUMBER_OF_TEMPLATES);
+		});
 
-				expect(getDynamicRecommendedTemplates).not.toHaveBeenCalled();
-				expect(mockFetchTemplateById).toHaveBeenCalled();
-				expect(result.length).toBeGreaterThan(0);
-			});
+		it('should fallback to static IDs when dynamic API fails', async () => {
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			getDynamicRecommendedTemplates.mockRejectedValue(new Error('API Error'));
 
-			it('should filter out failed template fetches', async () => {
-				// Setup: 4 successful, 1 null, 1 rejected
-				mockFetchTemplateById
-					.mockResolvedValueOnce(createMockTemplate(1))
-					.mockResolvedValueOnce(null)
-					.mockResolvedValueOnce(createMockTemplate(3))
-					.mockRejectedValueOnce(new Error('Fetch error'))
-					.mockResolvedValueOnce(createMockTemplate(5))
-					.mockResolvedValueOnce(createMockTemplate(6));
+			const mockTemplate = createMockTemplate(7607);
+			mockFetchTemplateById.mockResolvedValue(mockTemplate);
 
-				const result = await store.loadRecommendedTemplates();
+			const result = await store.loadRecommendedTemplates();
 
-				// Verify no null values in result
-				expect(result.every((t) => t !== null)).toBe(true);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				'Dynamic templates failed, falling back to static IDs',
+				expect.any(Error),
+			);
+			expect(mockFetchTemplateById).toHaveBeenCalled();
+			expect(result.length).toBeGreaterThan(0);
 
-				// Verify only successfully fetched templates are included (4 out of 6)
-				expect(result).toHaveLength(4);
-				expect(result.map((t) => t.id)).toEqual([1, 3, 5, 6]);
-			});
+			consoleSpy.mockRestore();
+		});
+
+		it('should return empty array when API returns empty templates', async () => {
+			getDynamicRecommendedTemplates.mockResolvedValue({ templates: [] });
+
+			const result = await store.loadRecommendedTemplates();
+
+			expect(result).toEqual([]);
+		});
+
+		it('should filter out failed template fetches during fallback', async () => {
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			getDynamicRecommendedTemplates.mockRejectedValue(new Error('API Error'));
+
+			// Setup: 4 successful, 1 null, 1 rejected
+			mockFetchTemplateById
+				.mockResolvedValueOnce(createMockTemplate(1))
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce(createMockTemplate(3))
+				.mockRejectedValueOnce(new Error('Fetch error'))
+				.mockResolvedValueOnce(createMockTemplate(5))
+				.mockResolvedValueOnce(createMockTemplate(6));
+
+			const result = await store.loadRecommendedTemplates();
+
+			// Verify no null values in result
+			expect(result.every((t) => t !== null)).toBe(true);
+
+			// Verify only successfully fetched templates are included (4 out of 6)
+			expect(result).toHaveLength(4);
+			expect(result.map((t) => t.id)).toEqual([1, 3, 5, 6]);
+
+			consoleSpy.mockRestore();
 		});
 	});
 });

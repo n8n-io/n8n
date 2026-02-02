@@ -1687,4 +1687,470 @@ describe('JsTaskRunner', () => {
 			expect(outcome.result).toEqual({ val: 2 });
 		});
 	});
+
+	describe('runCode mode', () => {
+		const executeRunCode = async ({
+			code,
+			additionalProperties = {},
+			runner = defaultTaskRunner,
+		}: {
+			code: string;
+			additionalProperties?: Record<string, unknown>;
+			runner?: JsTaskRunner;
+		}) => {
+			const task = newTaskParamsWithSettings({
+				code,
+				nodeMode: 'runCode',
+				additionalProperties,
+			});
+
+			// runCode mode doesn't fetch data, so we can pass empty response
+			jest.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
+
+			return await runner.executeTask(task, new AbortController().signal);
+		};
+
+		describe('basic execution', () => {
+			it('should execute simple code and return result', async () => {
+				const outcome = await executeRunCode({
+					code: 'return 1 + 1',
+				});
+
+				expect(outcome.result).toBe(2);
+			});
+
+			it('should execute code returning an object', async () => {
+				const outcome = await executeRunCode({
+					code: 'return { result: "success", value: 42 }',
+				});
+
+				expect(outcome.result).toEqual({ result: 'success', value: 42 });
+			});
+
+			it('should execute code returning an array', async () => {
+				const outcome = await executeRunCode({
+					code: 'return [1, 2, 3, 4, 5]',
+				});
+
+				expect(outcome.result).toEqual([1, 2, 3, 4, 5]);
+			});
+
+			it('should execute code returning a string', async () => {
+				const outcome = await executeRunCode({
+					code: 'return "hello world"',
+				});
+
+				expect(outcome.result).toBe('hello world');
+			});
+
+			it('should execute code returning null', async () => {
+				const outcome = await executeRunCode({
+					code: 'return null',
+				});
+
+				expect(outcome.result).toBeNull();
+			});
+
+			it('should execute code returning undefined', async () => {
+				const outcome = await executeRunCode({
+					code: 'return undefined',
+				});
+
+				expect(outcome.result).toBeUndefined();
+			});
+
+			it('should execute async code', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const result = await Promise.resolve(42);
+						return result * 2;
+					`,
+				});
+
+				expect(outcome.result).toBe(84);
+			});
+		});
+
+		describe('additional properties', () => {
+			it('should have access to additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.length',
+					additionalProperties: {
+						items: [{ a: 1 }, { b: 2 }, { c: 3 }],
+					},
+				});
+
+				expect(outcome.result).toBe(3);
+			});
+
+			it('should be able to manipulate additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.map(item => item.value * 2)',
+					additionalProperties: {
+						items: [{ value: 1 }, { value: 2 }, { value: 3 }],
+					},
+				});
+
+				expect(outcome.result).toEqual([2, 4, 6]);
+			});
+
+			it('should have access to multiple additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.filter(item => item.value > threshold)',
+					additionalProperties: {
+						items: [{ value: 1 }, { value: 5 }, { value: 10 }],
+						threshold: 4,
+					},
+				});
+
+				expect(outcome.result).toEqual([{ value: 5 }, { value: 10 }]);
+			});
+
+			it('should execute sort operation with items', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.sort((a, b) => { return a.json.value - b.json.value })',
+					additionalProperties: {
+						items: [{ json: { value: 3 } }, { json: { value: 1 } }, { json: { value: 2 } }],
+					},
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { value: 1 } },
+					{ json: { value: 2 } },
+					{ json: { value: 3 } },
+				]);
+			});
+		});
+
+		describe('available global variables', () => {
+			test.each([
+				['$input', 'return $input.all()'],
+				['$execution', 'return $execution.id'],
+				['$workflow', 'return $workflow.name'],
+				['$vars', 'return $vars'],
+				['$now', 'return $now'],
+				['$today', 'return $today'],
+				['helpers', 'return helpers'],
+				['items', 'return items'],
+				['Buffer', 'return Buffer.from("test").toString()'],
+				['setTimeout', 'return setTimeout'],
+				['setInterval', 'return setInterval'],
+				['setImmediate', 'return setImmediate'],
+				['clearTimeout', 'return clearTimeout'],
+				['clearInterval', 'return clearInterval'],
+				['clearImmediate', 'return clearImmediate'],
+			])('%s should not be available', async (_name, code) => {
+				await expect(executeRunCode({ code })).rejects.toThrow(/is not defined/);
+			});
+		});
+
+		describe('console methods', () => {
+			it('should allow console.log without making RPC calls', async () => {
+				const rpcSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall');
+
+				const outcome = await executeRunCode({
+					code: `
+						console.log('test message');
+						return 'success';
+					`,
+				});
+
+				expect(outcome.result).toBe('success');
+				expect(rpcSpy).not.toHaveBeenCalled();
+			});
+
+			it('should allow other console methods', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						console.warn('warning');
+						console.error('error');
+						console.info('info');
+						return 'success';
+					`,
+				});
+
+				expect(outcome.result).toBe('success');
+			});
+		});
+
+		describe('module access', () => {
+			it('should not allow requiring modules', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return require("crypto")',
+					}),
+				).rejects.toThrow();
+			});
+
+			it('should not allow requiring built-in modules even with * allowed', async () => {
+				const runner = createRunnerWithOpts({
+					allowedBuiltInModules: '*',
+				});
+
+				await expect(
+					executeRunCode({
+						code: 'return require("crypto")',
+						runner,
+					}),
+				).rejects.toThrow();
+			});
+		});
+
+		describe('built-in JS features', () => {
+			it('should not have access to Buffer', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return Buffer.from("test").toString("base64")',
+					}),
+				).rejects.toThrow();
+			});
+
+			it('should have access to standard JS objects', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const date = new Date('2024-01-01');
+						const map = new Map([['key', 'value']]);
+						const set = new Set([1, 2, 3]);
+						return {
+							dateYear: date.getFullYear(),
+							mapValue: map.get('key'),
+							setSize: set.size,
+						};
+					`,
+				});
+
+				expect(outcome.result).toEqual({
+					dateYear: 2024,
+					mapValue: 'value',
+					setSize: 3,
+				});
+			});
+
+			it('should have access to Math functions', async () => {
+				const outcome = await executeRunCode({
+					code: 'return Math.sqrt(16) + Math.max(1, 2, 3)',
+				});
+
+				expect(outcome.result).toBe(7);
+			});
+
+			it('should have access to JSON methods', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = { name: 'test', value: 42 };
+						const str = JSON.stringify(obj);
+						const parsed = JSON.parse(str);
+						return parsed;
+					`,
+				});
+
+				expect(outcome.result).toEqual({ name: 'test', value: 42 });
+			});
+		});
+
+		describe('error handling', () => {
+			it('should throw ExecutionError for runtime errors', async () => {
+				await expect(
+					executeRunCode({
+						code: 'throw new Error("test error")',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for undefined variable access', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return undefinedVariable',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for syntax errors', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return {invalid syntax}',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for null property access', async () => {
+				await expect(
+					executeRunCode({
+						code: 'const obj = null; return obj.property',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+		});
+
+		describe('timeout handling', () => {
+			it('should timeout long-running code', async () => {
+				const runner = createRunnerWithOpts({}, { taskTimeout: 1 });
+
+				await expect(
+					executeRunCode({
+						code: 'while(true) {}',
+						runner,
+					}),
+				).rejects.toThrow();
+			});
+		});
+
+		describe('return value structure', () => {
+			it('should return result without staticData or customData', async () => {
+				const outcome = await executeRunCode({
+					code: 'return { test: "value" }',
+				});
+
+				expect(outcome).toEqual({
+					result: { test: 'value' },
+					customData: undefined,
+					staticData: undefined,
+				});
+			});
+
+			it('should handle complex nested objects', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						return {
+							nested: {
+								deeply: {
+									value: [1, 2, { key: 'value' }]
+								}
+							},
+							array: [{ a: 1 }, { b: 2 }]
+						}
+					`,
+				});
+
+				expect(outcome.result).toEqual({
+					nested: {
+						deeply: {
+							value: [1, 2, { key: 'value' }],
+						},
+					},
+					array: [{ a: 1 }, { b: 2 }],
+				});
+			});
+		});
+
+		describe('security features', () => {
+			it('should prevent prototype pollution with Object.setPrototypeOf', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Object.setPrototypeOf(obj, { malicious: 'value' });
+						return obj.malicious === undefined;
+					`,
+				});
+
+				expect(outcome.result).toBe(true);
+			});
+
+			it('should prevent prototype pollution with Reflect.setPrototypeOf', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Reflect.setPrototypeOf(obj, { malicious: 'value' });
+						return obj.malicious === undefined;
+					`,
+				});
+
+				expect(outcome.result).toBe(true);
+			});
+
+			it('should neuter Object.defineProperty', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Object.defineProperty(obj, 'test', { value: 123 });
+						return 'test' in obj;
+					`,
+				});
+
+				expect(outcome.result).toBe(false);
+			});
+		});
+
+		describe('real-world use cases', () => {
+			it('should execute array sorting with custom comparator', async () => {
+				const items = [
+					{ json: { name: 'Charlie', age: 30 } },
+					{ json: { name: 'Alice', age: 25 } },
+					{ json: { name: 'Bob', age: 35 } },
+				];
+
+				const outcome = await executeRunCode({
+					code: 'return items.sort((a, b) => a.json.age - b.json.age)',
+					additionalProperties: { items },
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { name: 'Alice', age: 25 } },
+					{ json: { name: 'Charlie', age: 30 } },
+					{ json: { name: 'Bob', age: 35 } },
+				]);
+			});
+
+			it('should execute array filtering with complex logic', async () => {
+				const items = [
+					{ json: { status: 'active', score: 85 } },
+					{ json: { status: 'inactive', score: 92 } },
+					{ json: { status: 'active', score: 78 } },
+					{ json: { status: 'active', score: 95 } },
+				];
+
+				const outcome = await executeRunCode({
+					code: `
+						return items.filter(item =>
+							item.json.status === 'active' && item.json.score >= 80
+						)
+					`,
+					additionalProperties: { items },
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { status: 'active', score: 85 } },
+					{ json: { status: 'active', score: 95 } },
+				]);
+			});
+
+			it('should execute data transformation', async () => {
+				const data = [
+					{ id: 1, value: 10 },
+					{ id: 2, value: 20 },
+					{ id: 3, value: 30 },
+				];
+
+				const outcome = await executeRunCode({
+					code: `
+						return data.reduce((acc, item) => {
+							acc[item.id] = item.value * 2;
+							return acc;
+						}, {})
+					`,
+					additionalProperties: { data },
+				});
+
+				expect(outcome.result).toEqual({
+					1: 20,
+					2: 40,
+					3: 60,
+				});
+			});
+
+			it('should handle string manipulation', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						return text
+							.split(' ')
+							.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+							.join(' ')
+					`,
+					additionalProperties: { text: 'hello world from n8n' },
+				});
+
+				expect(outcome.result).toBe('Hello World From N8n');
+			});
+		});
+	});
 });

@@ -152,6 +152,8 @@ import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
@@ -300,10 +302,7 @@ const hideNodeIssues = ref(false);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
-const workflowId = computed(() => {
-	const name = route.params.name;
-	return Array.isArray(name) ? name[0] : name;
-});
+const workflowId = injectStrict(WorkflowIdKey);
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;

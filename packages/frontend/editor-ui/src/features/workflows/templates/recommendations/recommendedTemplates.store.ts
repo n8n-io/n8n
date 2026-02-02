@@ -1,11 +1,12 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { DYNAMIC_TEMPLATES_EXPERIMENT, VIEWS } from '@/app/constants';
+import { computed } from 'vue';
+import { EMPTY_STATE_EXPERIMENT, VIEWS } from '@/app/constants';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
+import { usePostHog } from '@/app/stores/posthog.store';
 import templateIds from './data/recommendedTemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import sampleSize from 'lodash/sampleSize';
@@ -21,16 +22,15 @@ export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', 
 	const posthogStore = usePostHog();
 	const rootStore = useRootStore();
 
-	const isFeatureEnabled = () => {
-		return settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost;
-	};
-
-	const isDynamicTemplatesEnabled = () => {
-		return posthogStore.isVariantEnabled(
-			DYNAMIC_TEMPLATES_EXPERIMENT.name,
-			DYNAMIC_TEMPLATES_EXPERIMENT.variant,
+	const isFeatureEnabled = computed(() => {
+		const emptyStateVariant = posthogStore.getVariant(EMPTY_STATE_EXPERIMENT.name);
+		const isTemplatesVariant = emptyStateVariant === EMPTY_STATE_EXPERIMENT.variantTemplates;
+		return (
+			settingsStore.isTemplatesEnabled &&
+			!templatesStore.hasCustomTemplatesHost &&
+			isTemplatesVariant
 		);
-	};
+	});
 
 	async function getTemplateData(templateId: number): Promise<ITemplatesWorkflowFull | null> {
 		return await templatesStore.fetchTemplateById(templateId.toString());
@@ -61,19 +61,15 @@ export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', 
 	async function loadRecommendedTemplates(): Promise<ITemplatesWorkflowFull[]> {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 
-		if (isDynamicTemplatesEnabled()) {
-			try {
-				const response = await getDynamicRecommendedTemplates(rootStore.restApiContext);
-				return response.templates
-					.map((template) => template.workflow)
-					.slice(0, NUMBER_OF_TEMPLATES);
-			} catch (error) {
-				// Fallback to existing behavior on error
-				console.warn('Dynamic templates failed, falling back to static IDs', error);
-			}
+		// Always try dynamic templates first, fallback to static on error
+		try {
+			const response = await getDynamicRecommendedTemplates(rootStore.restApiContext);
+			return response.templates.map((template) => template.workflow).slice(0, NUMBER_OF_TEMPLATES);
+		} catch (error) {
+			console.warn('Dynamic templates failed, falling back to static IDs', error);
 		}
 
-		// Existing behavior (fallback or flag disabled)
+		// Fallback to static template IDs
 		const ids = getRandomTemplateIds();
 		const promises = ids.map(async (id) => await getTemplateData(id));
 		const results = await Promise.allSettled(promises);

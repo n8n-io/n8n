@@ -6,6 +6,7 @@ export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
+export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
@@ -50,7 +51,10 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
-export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
+export {
+	PullWorkFolderRequestDto,
+	AUTO_PUBLISH_MODE,
+} from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 

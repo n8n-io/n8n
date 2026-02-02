@@ -1,4 +1,5 @@
 import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
+import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -142,11 +143,15 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
-export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [
+	CHAT_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+];
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,

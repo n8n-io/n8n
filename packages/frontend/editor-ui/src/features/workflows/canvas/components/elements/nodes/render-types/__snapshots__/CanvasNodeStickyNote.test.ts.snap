@@ -18,9 +18,17 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
     </div>
   </div>
   <div class="sticky-textarea" style="display: none;">
-    <div class="el-textarea el-input--large n8n-input">
-      <!-- input -->
-      <!-- textarea --><textarea class="el-textarea__inner" name="sticky-input" rows="5" title="" tabindex="0" autocomplete="off" placeholder=""></textarea>
+    <div class="n8n-input inputContainer large">
+      <!-- Prepend slot (outside input container, before) -->
+      <!--v-if-->
+      <!-- Prefix slot -->
+      <!--v-if-->
+      <!-- Input element -->
+      <!-- Textarea element --><textarea class="input textarea" placeholder="" rows="5" autocomplete="off" name="sticky-input" value=""></textarea><!-- Suffix slot -->
+      <!--v-if-->
+      <!-- Clear button -->
+      <!--v-if-->
+      <!-- Append slot (outside input container, after) -->
       <!--v-if-->
     </div>
   </div>
