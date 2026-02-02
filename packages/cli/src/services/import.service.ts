@@ -181,7 +181,7 @@ export class ImportService {
 		// Directly update the index for the important workflows, since they don't generate
 		// workflow-update events during import.
 		for (const workflow of insertedWorkflows) {
-			await this.workflowIndexService.updateIndexFor(workflow);
+			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
 	}
 
