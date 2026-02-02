@@ -185,6 +185,37 @@ export async function resolveAutocompleteExpression(expression: string, contextN
 	});
 }
 
+/**
+ * Async version of resolveAutocompleteExpression that supports CRDT mode.
+ * When a CRDT resolver is available (via facet), uses it instead of stores.
+ *
+ * @param expression - The expression to resolve
+ * @param contextNodeName - Optional node name context
+ * @param crdtResolver - Optional CRDT resolver from facet
+ * @returns The resolved value, or null if resolution fails
+ */
+export async function resolveAutocompleteExpressionAsync(
+	expression: string,
+	contextNodeName?: string,
+	crdtResolver?: { resolve(expression: string, contextNodeName?: string): Promise<unknown> },
+): Promise<unknown> {
+	// If CRDT resolver provided, use it
+	if (crdtResolver) {
+		try {
+			return await crdtResolver.resolve(expression, contextNodeName);
+		} catch {
+			return null;
+		}
+	}
+
+	// Fall back to synchronous store-based resolution
+	try {
+		return resolveAutocompleteExpression(expression, contextNodeName);
+	} catch {
+		return null;
+	}
+}
+
 // ----------------------------------
 //        state-based utils
 // ----------------------------------

@@ -19,7 +19,11 @@ import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs';
 import * as SQLite from 'wa-sqlite';
 import { AccessHandlePoolVFS } from 'wa-sqlite/src/examples/AccessHandlePoolVFS.js';
 import { getAllTableSchemas } from './db';
-import { loadNodeTypes as loadNodeTypesOp } from './operations/loadNodeTypes';
+import {
+	loadNodeTypes as loadNodeTypesOp,
+	getAllNodeTypes as getAllNodeTypesOp,
+} from './operations/loadNodeTypes';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import {
 	exec as execOp,
 	query as queryOp,
@@ -217,6 +221,13 @@ async function getStoredVersion(): Promise<string | null> {
 	return await getStoredVersionOp(state);
 }
 
+/**
+ * Get all node types from the local database
+ */
+async function getAllNodeTypes(): Promise<INodeTypeDescription[]> {
+	return await getAllNodeTypesOp(state);
+}
+
 // Export the worker API
 export const dataWorkerApi = {
 	initialize,
@@ -228,6 +239,7 @@ export const dataWorkerApi = {
 	loadNodeTypes,
 	storeVersion,
 	getStoredVersion,
+	getAllNodeTypes,
 };
 
 export type DataWorkerApi = typeof dataWorkerApi;

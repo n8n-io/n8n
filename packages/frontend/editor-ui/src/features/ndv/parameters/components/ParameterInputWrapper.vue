@@ -122,6 +122,8 @@ const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,
 	stringifyObject: props.parameter.type !== 'multiOptions',
+	// For CRDT mode: path is used to look up pre-computed resolved values
+	paramPath: props.path,
 });
 
 const parsedParameterName = computed(() => {

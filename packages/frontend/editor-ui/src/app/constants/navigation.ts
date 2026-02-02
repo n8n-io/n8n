@@ -11,6 +11,9 @@ export const enum VIEWS {
 	CREDENTIALS = 'CredentialsView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
+	WORKFLOW_CRDT = 'NodeViewExistingCRDT',
+	WORKFLOW_WORKER_MODE = 'NodeViewWorkerMode',
+	WORKFLOW_SERVER_MODE = 'NodeViewServerMode',
 	DEMO = 'WorkflowDemo',
 	DEMO_DIFF = 'WorkflowDemoDiff',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
@@ -67,6 +70,7 @@ export const enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	CRDT_TEST = 'CRDTTest',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }

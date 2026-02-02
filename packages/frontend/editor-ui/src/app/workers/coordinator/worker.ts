@@ -36,13 +36,36 @@ import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
 } from './operations/storeVersion';
+import { initializeCrdtSubscription, cleanupCrdtSubscription } from './operations/crdt';
+import { executeWorkflow as executeWorkflowOp } from './operations/execute';
+import { ensurePushConnection as ensurePushConnectionOp } from './operations/executionPush';
 import { initialize as initializeOp } from './initialize';
+import {
+	resolveExpressionForAutocomplete,
+	getRunDataFromExecDoc,
+	getPinDataFromWorkflowDoc,
+} from './operations/resolveExpressions';
+
+// Create nodeTypes promise that will be resolved when loadNodeTypes completes
+let nodeTypesResolver: (() => void) | null = null;
+const nodeTypesPromise = new Promise<void>((resolve) => {
+	nodeTypesResolver = resolve;
+});
 
 const state: CoordinatorState = {
 	tabs: new Map(),
 	activeTabId: null,
 	initialized: false,
 	version: null,
+	baseUrl: null,
+	// CRDT state
+	crdtSubscriptions: new Map(),
+	crdtDocuments: new Map(),
+	crdtExecutionDocuments: new Map(),
+	crdtProvider: null,
+	nodeTypes: null,
+	nodeTypesPromise,
+	nodeTypesResolver,
 };
 
 // ============================================================================
@@ -51,16 +74,25 @@ const state: CoordinatorState = {
 
 const coordinatorApi = {
 	/**
-	 * Register a tab and its dedicated data worker with the coordinator
+	 * Register a tab and its dedicated data worker with the coordinator.
+	 * Also accepts a CRDT port for binary CRDT messages.
+	 *
+	 * @param dataWorkerPort - Port to communicate with the tab's data worker
+	 * @param crdtPort - Port for CRDT binary messages (established once per tab)
 	 */
-	async registerTab(dataWorkerPort: MessagePort): Promise<string> {
-		return registerTabOp(state, dataWorkerPort);
+	async registerTab(dataWorkerPort: MessagePort, crdtPort: MessagePort): Promise<string> {
+		const tabId = registerTabOp(state, dataWorkerPort);
+		// Initialize CRDT subscription with the provided port
+		initializeCrdtSubscription(state, tabId, crdtPort);
+		return tabId;
 	},
 
 	/**
 	 * Unregister a tab when it closes
 	 */
 	async unregisterTab(tabId: string): Promise<void> {
+		// Clean up CRDT subscriptions first (unsubscribes from all documents)
+		cleanupCrdtSubscription(state, tabId);
 		unregisterTabOp(state, tabId);
 	},
 
@@ -68,9 +100,10 @@ const coordinatorApi = {
 	 * Initialize the database (routes to active tab's worker)
 	 *
 	 * @param options.version - The current n8n version from settings
+	 * @param options.baseUrl - The base URL for REST API calls (e.g., http://localhost:5678)
 	 */
-	async initialize({ version }: { version: string }): Promise<void> {
-		await initializeOp(state, { version });
+	async initialize({ version, baseUrl }: { version: string; baseUrl: string }): Promise<void> {
+		await initializeOp(state, { version, baseUrl });
 	},
 
 	/**
@@ -135,6 +168,75 @@ const coordinatorApi = {
 	async getStoredVersion(): Promise<string | null> {
 		return await getStoredVersionOp(state);
 	},
+
+	/**
+	 * Execute a workflow using the Coordinator's synced Workflow instance.
+	 *
+	 * Flow:
+	 * 1. Ensure push connection exists (shared across all executions)
+	 * 2. Call execution API with pushRef in header
+	 * 3. Receive execution updates via push (logged to console)
+	 *
+	 * @param workflowId - The workflow ID to execute
+	 * @param baseUrl - The base URL for API and push endpoints
+	 * @param triggerNodeName - Optional trigger node to start from
+	 * @returns The execution ID if successful, null otherwise
+	 */
+	async executeWorkflow(
+		workflowId: string,
+		baseUrl: string,
+		triggerNodeName?: string,
+	): Promise<string | null> {
+		try {
+			// Ensure single push connection exists (shared across all executions)
+			// Pass state so push handler can access CRDT documents
+			const pushRef = await ensurePushConnectionOp(baseUrl, state);
+
+			// Execute workflow with that pushRef
+			const executionId = await executeWorkflowOp(state, workflowId, pushRef, triggerNodeName);
+
+			return executionId;
+		} catch {
+			return null;
+		}
+	},
+
+	/**
+	 * Resolve an arbitrary expression for autocomplete purposes.
+	 * Uses the coordinator's synced Workflow instance and execution data.
+	 *
+	 * @param workflowId - The workflow ID
+	 * @param expression - The expression to resolve (e.g., "={{ $json }}")
+	 * @param nodeName - The node context for resolution
+	 * @returns The resolved value, or null if resolution fails
+	 */
+	async resolveExpression(
+		workflowId: string,
+		expression: string,
+		nodeName: string,
+	): Promise<unknown> {
+		const docState = state.crdtDocuments.get(workflowId);
+		const execDocState = state.crdtExecutionDocuments.get(`exec-${workflowId}`);
+
+		if (!docState?.workflow) {
+			return null;
+		}
+
+		try {
+			const runData = execDocState ? getRunDataFromExecDoc(execDocState) : null;
+			const pinData = getPinDataFromWorkflowDoc(docState.doc);
+
+			return resolveExpressionForAutocomplete(
+				docState.workflow,
+				nodeName,
+				expression,
+				runData,
+				pinData,
+			);
+		} catch {
+			return null;
+		}
+	},
 };
 
 export type CoordinatorApi = typeof coordinatorApi;
@@ -155,8 +257,8 @@ self.onconnect = (e: MessageEvent) => {
 	// Create a wrapped API that tracks the tab ID on registration
 	const wrappedApi = {
 		...coordinatorApi,
-		async registerTab(dataWorkerPort: MessagePort): Promise<string> {
-			connectedTabId = await coordinatorApi.registerTab(dataWorkerPort);
+		async registerTab(dataWorkerPort: MessagePort, crdtPort: MessagePort): Promise<string> {
+			connectedTabId = await coordinatorApi.registerTab(dataWorkerPort, crdtPort);
 			return connectedTabId;
 		},
 	};
@@ -165,6 +267,8 @@ self.onconnect = (e: MessageEvent) => {
 	port.onmessageerror = () => {
 		ports.delete(port);
 		if (connectedTabId) {
+			// Clean up CRDT subscriptions first
+			cleanupCrdtSubscription(state, connectedTabId);
 			handleTabDisconnect(state, connectedTabId);
 		}
 	};

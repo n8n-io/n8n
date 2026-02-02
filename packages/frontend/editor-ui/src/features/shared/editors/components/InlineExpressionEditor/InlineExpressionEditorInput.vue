@@ -75,6 +75,7 @@ const {
 	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
+	paramPath: props.path,
 });
 
 watch(segments.display, (newSegments) => {

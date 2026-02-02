@@ -465,3 +465,26 @@ export const TARGET_NODE_PARAMETER_FACET = Facet.define<
 >({
 	combine: (values) => values[0],
 });
+
+/**
+ * Interface for CRDT autocomplete resolver.
+ * When provided, completions will use this to resolve expressions
+ * instead of the standard store-based resolution.
+ */
+export interface CrdtAutocompleteResolver {
+	/** Resolve an expression and return the value */
+	resolve(expression: string, contextNodeName?: string): Promise<unknown>;
+	/** The workflow ID for this resolver */
+	workflowId: string;
+}
+
+/**
+ * Facet for providing CRDT autocomplete resolver to completions.
+ * When set, completions will use async resolution via the coordinator.
+ */
+export const CRDT_AUTOCOMPLETE_RESOLVER_FACET = Facet.define<
+	CrdtAutocompleteResolver | undefined,
+	CrdtAutocompleteResolver | undefined
+>({
+	combine: (values) => values[0],
+});

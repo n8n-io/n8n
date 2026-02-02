@@ -39,6 +39,14 @@ describe('Coordinator Tab Operations', () => {
 			activeTabId: null,
 			initialized: false,
 			version: null,
+			baseUrl: null,
+			crdtSubscriptions: new Map(),
+			crdtDocuments: new Map(),
+			crdtExecutionDocuments: new Map(),
+			crdtProvider: null,
+			nodeTypes: null,
+			nodeTypesPromise: null,
+			nodeTypesResolver: null,
 			...overrides,
 		};
 	}

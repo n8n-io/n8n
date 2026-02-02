@@ -14,6 +14,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import {
+	CRDT_AUTOCOMPLETE_RESOLVER_FACET,
 	METADATA_SECTION,
 	PREVIOUS_NODES_SECTION,
 	RECOMMENDED_SECTION,
@@ -59,6 +60,10 @@ export async function dollarCompletions(
 export async function dollarOptions(context: CompletionContext): Promise<Completion[]> {
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
+
+	// Check if we're in CRDT mode - if so, skip store-based checks
+	const crdtResolver = context.state.facet(CRDT_AUTOCOMPLETE_RESOLVER_FACET);
+	const isCrdtMode = crdtResolver !== undefined;
 
 	if (isInHttpNodePagination()) {
 		recommendedCompletions = [
@@ -122,26 +127,38 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 
-	if (!hasActiveNode(targetNodeParameterContext)) {
+	// In CRDT mode, we have node context via facet; in standard mode, check stores
+	if (!isCrdtMode && !hasActiveNode(targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (await receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	// In CRDT mode, skip binary check (would need async resolution)
+	// In standard mode, check if node receives binary data
+	if (!isCrdtMode && (await receivesNoBinaryData(targetNodeParameterContext?.nodeName))) {
+		SKIP.add('$binary');
+	}
 
-	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
-		(nodeName) => {
-			const label = `$('${escapeMappingString(nodeName)}')`;
-			return {
-				label,
-				info: createInfoBoxRenderer({
-					name: label,
-					returnType: 'Object',
-					description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-				}),
-				section: PREVIOUS_NODES_SECTION,
-			};
-		},
-	);
+	// In CRDT mode, skip previous nodes completions (would need workflow structure from coordinator)
+	// TODO: Add CRDT-aware previous nodes lookup via coordinator
+	let previousNodesCompletions: Completion[] = [];
+	if (!isCrdtMode) {
+		previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
+			(nodeName) => {
+				const label = `$('${escapeMappingString(nodeName)}')`;
+				return {
+					label,
+					info: createInfoBoxRenderer({
+						name: label,
+						returnType: 'Object',
+						description: i18n.baseText('codeNodeEditor.completer.$()', {
+							interpolate: { nodeName },
+						}),
+					}),
+					section: PREVIOUS_NODES_SECTION,
+				};
+			},
+		);
+	}
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)

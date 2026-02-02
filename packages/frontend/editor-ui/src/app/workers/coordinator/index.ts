@@ -29,9 +29,11 @@ export const coordinator = Comlink.wrap<CoordinatorApi>(sharedWorker.port);
 const tabState: {
 	tabId: string | null;
 	isRegistered: boolean;
+	crdtPort: MessagePort | null;
 } = {
 	tabId: null,
 	isRegistered: false,
+	crdtPort: null,
 };
 
 /**
@@ -43,21 +45,28 @@ export async function registerTab(): Promise<string> {
 		return tabState.tabId;
 	}
 
-	console.log('[Coordinator] Registering tab...');
-
 	// Create a MessageChannel to pass the data worker to the coordinator
-	const channel = new MessageChannel();
+	const dataWorkerChannel = new MessageChannel();
 
 	// Connect one end to the data worker
 	// The data worker will expose its API on this port via its onmessage handler
-	dataWorker.postMessage({ type: 'connect', port: channel.port1 }, [channel.port1]);
+	dataWorker.postMessage({ type: 'connect', port: dataWorkerChannel.port1 }, [
+		dataWorkerChannel.port1,
+	]);
 
-	// Register with the coordinator, passing port2 for it to communicate with our data worker
-	const newTabId = await coordinator.registerTab(Comlink.transfer(channel.port2, [channel.port2]));
+	// Create a MessageChannel for CRDT binary messages
+	// This port is established once during registration, not on-demand
+	const crdtChannel = new MessageChannel();
+	tabState.crdtPort = crdtChannel.port1; // Keep locally
+	tabState.crdtPort.start();
+
+	// Register with the coordinator, passing both ports
+	const newTabId = await coordinator.registerTab(
+		Comlink.transfer(dataWorkerChannel.port2, [dataWorkerChannel.port2]),
+		Comlink.transfer(crdtChannel.port2, [crdtChannel.port2]),
+	);
 	tabState.tabId = newTabId;
 	tabState.isRegistered = true;
-
-	console.log(`[Coordinator] Registered as tab: ${newTabId}`);
 
 	// Set up cleanup on page unload
 	setupCleanupHandlers();
@@ -70,9 +79,13 @@ export async function registerTab(): Promise<string> {
  */
 function unregisterCurrentTab(): void {
 	if (tabState.tabId) {
-		coordinator.unregisterTab(tabState.tabId).catch(console.error);
+		void coordinator.unregisterTab(tabState.tabId);
 		tabState.isRegistered = false;
 		tabState.tabId = null;
+		if (tabState.crdtPort) {
+			tabState.crdtPort.close();
+			tabState.crdtPort = null;
+		}
 	}
 }
 
@@ -88,16 +101,14 @@ function setupCleanupHandlers(): void {
 	// Re-register when page is restored from bfcache
 	window.addEventListener('pageshow', (event) => {
 		if (event.persisted && !tabState.isRegistered) {
-			console.log('[Coordinator] Page restored from bfcache, re-registering...');
-			registerTab().catch(console.error);
+			void registerTab();
 		}
 	});
 
 	// Re-register when page becomes visible again (e.g., on mobile after switching apps)
 	document.addEventListener('visibilitychange', () => {
 		if (document.visibilityState === 'visible' && !tabState.isRegistered) {
-			console.log('[Coordinator] Page became visible, re-registering...');
-			registerTab().catch(console.error);
+			void registerTab();
 		}
 	});
 }
@@ -107,6 +118,15 @@ function setupCleanupHandlers(): void {
  */
 export function getTabId(): string | null {
 	return tabState.tabId;
+}
+
+/**
+ * Get the CRDT MessagePort for this tab.
+ * The port is established during registration, not on-demand.
+ * Returns null if the tab is not registered yet.
+ */
+export function getCrdtPort(): MessagePort | null {
+	return tabState.crdtPort;
 }
 
 /**
@@ -122,6 +142,47 @@ export async function getCoordinatorInfo(): Promise<{
 		tabCount: await coordinator.getTabCount(),
 		isInitialized: await coordinator.isInitialized(),
 	};
+}
+
+/**
+ * Execute a workflow using the Coordinator's synced Workflow instance.
+ *
+ * The Coordinator has an up-to-date Workflow instance that's kept in sync
+ * with the CRDT document. This function:
+ * 1. Connects to the push endpoint (gets a pushRef)
+ * 2. Calls the execution API with the workflow data and pushRef
+ * 3. Receives execution updates via push (logged to console)
+ *
+ * @param workflowId - The workflow ID to execute
+ * @param baseUrl - The base URL for API and push endpoints
+ * @param triggerNodeName - Optional trigger node to start from
+ * @returns The execution ID if successful, null otherwise
+ */
+export async function executeWorkflow(
+	workflowId: string,
+	baseUrl: string,
+	triggerNodeName?: string,
+): Promise<string | null> {
+	return await coordinator.executeWorkflow(workflowId, baseUrl, triggerNodeName);
+}
+
+/**
+ * Resolve an expression for autocomplete purposes.
+ *
+ * The Coordinator has the synced Workflow instance and execution data.
+ * This function resolves arbitrary expressions on-demand for autocomplete.
+ *
+ * @param workflowId - The workflow ID
+ * @param expression - The expression to resolve (e.g., "={{ $json }}")
+ * @param nodeName - The node context for resolution
+ * @returns The resolved value, or null if resolution fails
+ */
+export async function resolveExpression(
+	workflowId: string,
+	expression: string,
+	nodeName: string,
+): Promise<unknown> {
+	return await coordinator.resolveExpression(workflowId, expression, nodeName);
 }
 
 // Re-export types

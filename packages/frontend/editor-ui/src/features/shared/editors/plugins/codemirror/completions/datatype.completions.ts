@@ -21,6 +21,7 @@ import {
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
+	CRDT_AUTOCOMPLETE_RESOLVER_FACET,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
 	LUXON_SECTIONS,
@@ -57,6 +58,7 @@ import {
 	longestCommonPrefix,
 	prefixMatch,
 	resolveAutocompleteExpression,
+	resolveAutocompleteExpressionAsync,
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
@@ -68,11 +70,13 @@ import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatur
 
 /**
  * Resolution-based completions offered according to datatype.
+ * Supports async resolution when CRDT mode is active.
  */
 export async function datatypeCompletions(
 	context: CompletionContext,
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const crdtResolver = context.state.facet(CRDT_AUTOCOMPLETE_RESOLVER_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -98,24 +102,39 @@ export async function datatypeCompletions(
 		options = secretProvidersOptions();
 	} else {
 		let resolved: Resolved | null = null;
-		try {
-			resolved = await resolveAutocompleteExpression(
-				`={{ ${base} }}`,
-				targetNodeParameterContext?.nodeName,
-			);
-		} catch (error) {
-			if (!isPairedItemIntermediateNodesError(error)) {
-				return null;
-			}
 
-			// Fallback on first item to provide autocomplete when intermediate nodes have not run
+		if (crdtResolver) {
+			// CRDT mode: use async resolution via coordinator
+			try {
+				resolved = (await resolveAutocompleteExpressionAsync(
+					`={{ ${base} }}`,
+					targetNodeParameterContext?.nodeName,
+					crdtResolver,
+				)) as Resolved;
+			} catch {
+				resolved = null;
+			}
+		} else {
+			// Standard mode: use async store-based resolution
 			try {
 				resolved = await resolveAutocompleteExpression(
-					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					`={{ ${base} }}`,
 					targetNodeParameterContext?.nodeName,
 				);
-			} catch {
-				return null;
+			} catch (error) {
+				if (!isPairedItemIntermediateNodesError(error)) {
+					return null;
+				}
+
+				// Fallback on first item to provide autocomplete when intermediate nodes have not run
+				try {
+					resolved = await resolveAutocompleteExpression(
+						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+						targetNodeParameterContext?.nodeName,
+					);
+				} catch {
+					return null;
+				}
 			}
 		}
 

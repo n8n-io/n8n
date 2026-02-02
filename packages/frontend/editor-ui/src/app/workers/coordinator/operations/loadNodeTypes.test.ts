@@ -25,6 +25,9 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			close: vi.fn().mockResolvedValue(undefined),
 			isInitialized: vi.fn().mockReturnValue(true),
 			loadNodeTypes: vi.fn().mockResolvedValue(undefined),
+			getAllNodeTypes: vi.fn().mockResolvedValue([]),
+			storeVersion: vi.fn().mockResolvedValue(undefined),
+			getStoredVersion: vi.fn().mockResolvedValue(null),
 			...overrides,
 		} as unknown as Comlink.Remote<DataWorkerApi>;
 	}
@@ -45,6 +48,14 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			activeTabId: null,
 			initialized: false,
 			version: null,
+			baseUrl: null,
+			crdtSubscriptions: new Map(),
+			crdtDocuments: new Map(),
+			crdtExecutionDocuments: new Map(),
+			crdtProvider: null,
+			nodeTypes: null,
+			nodeTypesPromise: null,
+			nodeTypesResolver: null,
 			...overrides,
 		};
 	}
@@ -65,7 +76,7 @@ describe('Coordinator loadNodeTypes Operation', () => {
 
 	describe('loadNodeTypes', () => {
 		it('should throw error when no active data worker is available', async () => {
-			const state = createMockState({ version: '1.0.0' }); // Version required for ensureInitialized
+			const state = createMockState({ version: '1.0.0', baseUrl: 'http://localhost:5678' });
 
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow(
 				'[Coordinator] No active data worker available',
@@ -83,10 +94,30 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			expect(worker?.loadNodeTypes).toHaveBeenCalledWith(baseUrl);
 		});
 
+		it('should populate state.nodeTypes with all node types from worker', async () => {
+			const mockNodeTypes = [
+				{ name: 'n8n-nodes-base.httpRequest', version: 1 },
+				{ name: 'n8n-nodes-base.set', version: 2 },
+			];
+			const state = createStateWithActiveTab({
+				getAllNodeTypes: vi.fn().mockResolvedValue(mockNodeTypes),
+			});
+			state.initialized = true;
+
+			await loadNodeTypes(state, 'http://localhost:5678');
+
+			expect(state.nodeTypes).not.toBeNull();
+			// Keys are now "name@version" format
+			expect(state.nodeTypes?.size).toBe(2);
+			expect(state.nodeTypes?.get('n8n-nodes-base.httpRequest@1')).toEqual(mockNodeTypes[0]);
+			expect(state.nodeTypes?.get('n8n-nodes-base.set@2')).toEqual(mockNodeTypes[1]);
+		});
+
 		it('should ensure initialization before loading node types', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
-			state.version = '1.0.0'; // Required for ensureInitialized
+			state.version = '1.0.0';
+			state.baseUrl = 'http://localhost:5678';
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await loadNodeTypes(state, 'http://localhost:5678');
@@ -151,7 +182,8 @@ describe('Coordinator loadNodeTypes Operation', () => {
 				initialize: vi.fn().mockRejectedValue(new Error('Initialization failed')),
 			});
 			state.initialized = false;
-			state.version = '1.0.0'; // Required for ensureInitialized
+			state.version = '1.0.0';
+			state.baseUrl = 'http://localhost:5678';
 
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow(
 				'Initialization failed',
@@ -170,6 +202,29 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow();
 
 			expect(loadNodeTypesFn).not.toHaveBeenCalled();
+		});
+
+		it('should resolve nodeTypesPromise when node types are loaded', async () => {
+			let resolverCalled = false;
+			const state = createStateWithActiveTab();
+			state.initialized = true;
+			state.nodeTypesResolver = () => {
+				resolverCalled = true;
+			};
+
+			await loadNodeTypes(state, 'http://localhost:5678');
+
+			expect(resolverCalled).toBe(true);
+			expect(state.nodeTypesResolver).toBeNull();
+		});
+
+		it('should handle missing nodeTypesResolver gracefully', async () => {
+			const state = createStateWithActiveTab();
+			state.initialized = true;
+			state.nodeTypesResolver = null;
+
+			// Should not throw
+			await expect(loadNodeTypes(state, 'http://localhost:5678')).resolves.toBeUndefined();
 		});
 	});
 });

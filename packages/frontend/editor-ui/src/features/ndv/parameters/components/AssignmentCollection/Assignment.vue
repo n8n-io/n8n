@@ -106,6 +106,8 @@ const resolvedAdditionalExpressionData = computed(() => {
 const { resolvedExpressionString, isExpression } = useResolvedExpression({
 	expression: value,
 	additionalData: resolvedAdditionalExpressionData,
+	// For CRDT mode: path is used to look up pre-computed resolved values
+	paramPath: computed(() => `${props.path}.value`),
 });
 
 const hint = computed(() => resolvedExpressionString.value);

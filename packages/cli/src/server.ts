@@ -63,6 +63,7 @@ import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
+import { CRDTWebSocketService } from './crdt/crdt-websocket.service';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
@@ -186,6 +187,9 @@ export class Server extends AbstractServer {
 
 		const push = Container.get(Push);
 		push.setupPushHandler(restEndpoint, app);
+
+		// Set up CRDT endpoint handler (after cookie-parser so auth works)
+		Container.get(CRDTWebSocketService).setupCRDTHandler(restEndpoint, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
@@ -466,5 +470,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+
+		// Set up CRDT WebSocket upgrade handler (endpoint handler is set up later after cookie-parser)
+		Container.get(CRDTWebSocketService).setupWebSocketServer(restEndpoint, server, app);
 	}
 }

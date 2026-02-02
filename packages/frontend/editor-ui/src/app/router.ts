@@ -428,6 +428,57 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/workflow-crdt/:name/:nodeId?',
+		name: VIEWS.WORKFLOW_CRDT,
+		component: async () => await import('@/features/crdt/views/CRDTTestView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+		props: true,
+		beforeEnter: (_to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
+	},
+	{
+		path: '/workflow-worker/:name/:nodeId?',
+		name: VIEWS.WORKFLOW_WORKER_MODE,
+		component: async () => await import('@/features/crdt/views/WorkerModeTestView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+		props: true,
+		beforeEnter: (_to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
+	},
+	{
+		path: '/workflow-server/:name/:nodeId?',
+		name: VIEWS.WORKFLOW_SERVER_MODE,
+		component: async () => await import('@/features/crdt/views/ServerModeTestView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+		props: true,
+		beforeEnter: (_to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
+	},
+	{
 		path: '/workflow',
 		redirect: '/workflow/new',
 	},

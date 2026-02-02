@@ -15,11 +15,14 @@ import {
 
 import { ensureSyntaxTree } from '@codemirror/language';
 import type { IDataObject } from 'n8n-workflow';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { Expression, ExpressionError, ExpressionExtensions } from 'n8n-workflow';
 
 import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
 	ExpressionLocalResolveContextSymbol,
+	CrdtAutocompleteResolverKey,
+	CrdtExpressionResolverKey,
+	CrdtNodeIdKey,
 } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
@@ -47,7 +50,10 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
-import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
+import {
+	TARGET_NODE_PARAMETER_FACET,
+	CRDT_AUTOCOMPLETE_RESOLVER_FACET,
+} from '../plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
@@ -62,6 +68,7 @@ export const useExpressionEditor = ({
 	isReadOnly = false,
 	disableSearchDialog = false,
 	onChange = () => {},
+	paramPath,
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
@@ -73,6 +80,8 @@ export const useExpressionEditor = ({
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
+	/** Parameter path for CRDT expression lookup (e.g., "parameters.value" or "value") */
+	paramPath?: MaybeRefOrGetter<string | undefined>;
 }) => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
@@ -92,6 +101,16 @@ export const useExpressionEditor = ({
 	let updateSegmentsGeneration = 0;
 	const expressionLocalResolveContext = inject(
 		ExpressionLocalResolveContextSymbol,
+		computed(() => undefined),
+	);
+	const crdtAutocompleteResolver = inject(
+		CrdtAutocompleteResolverKey,
+		computed(() => undefined),
+	);
+	// CRDT pre-computed expression resolver (reads from execution doc)
+	const crdtExpressionResolver = inject(CrdtExpressionResolverKey, undefined);
+	const crdtNodeId = inject(
+		CrdtNodeIdKey,
 		computed(() => undefined),
 	);
 
@@ -240,6 +259,7 @@ export const useExpressionEditor = ({
 						? { nodeName: expressionLocalResolveContext.value.nodeName, parameterPath: '' }
 						: toValue(targetNodeParameterContext),
 				),
+				CRDT_AUTOCOMPLETE_RESOLVER_FACET.of(crdtAutocompleteResolver.value),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
@@ -347,6 +367,51 @@ export const useExpressionEditor = ({
 			error: false,
 			fullError: null,
 		};
+
+		// CRDT mode: read pre-computed values from CRDT execution document
+		// The coordinator worker resolves expressions and stores results in CRDT
+		if (crdtExpressionResolver && crdtNodeId.value) {
+			const path = toValue(paramPath);
+			if (path) {
+				const crdtResolved = crdtExpressionResolver.getResolved(crdtNodeId.value, path);
+				if (crdtResolved) {
+					if (crdtResolved.state === 'valid') {
+						// Expression resolved successfully - show green highlighting
+						// Use display string (formatted like production: [Object: {...}])
+						result.resolved = crdtResolved.display;
+						result.error = false;
+						result.fullError = null;
+						return result;
+					} else if (crdtResolved.state === 'pending') {
+						// Expression needs execution data - show yellow highlighting
+						const error = new ExpressionError('No execution data', {
+							type: 'no_execution_data',
+						});
+						result.resolved = `[${getExpressionErrorMessage(error, false)}]`;
+						result.error = true;
+						result.fullError = error;
+						return result;
+					} else {
+						// Expression is invalid - show red highlighting
+						const error = new ExpressionError(crdtResolved.error ?? 'Invalid expression', {
+							type: 'internal',
+						});
+						result.resolved = `[ERROR: ${crdtResolved.error ?? 'Invalid expression'}]`;
+						result.error = true;
+						result.fullError = error;
+						return result;
+					}
+				}
+			}
+			// No paramPath or no resolved value yet - default to pending
+			const error = new ExpressionError('No execution data', {
+				type: 'no_execution_data',
+			});
+			result.resolved = `[${getExpressionErrorMessage(error, false)}]`;
+			result.error = true;
+			result.fullError = error;
+			return result;
+		}
 
 		try {
 			if (expressionLocalResolveContext.value) {
@@ -489,6 +554,9 @@ export const useExpressionEditor = ({
 		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	// CRDT mode: re-resolve when resolvedParams changes in CRDT
+	watch(() => crdtExpressionResolver?.version.value, debouncedUpdateSegments);
 
 	watch(targetItem, updateSegments);
 

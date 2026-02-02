@@ -89,7 +89,6 @@ export async function selectNewActiveTab(state: CoordinatorState): Promise<void>
  * @param tabId - The ID of the disconnected tab
  */
 export function handleTabDisconnect(state: CoordinatorState, tabId: string): void {
-	console.log(`[Coordinator] Tab disconnected: ${tabId}`);
 	const tab = state.tabs.get(tabId);
 
 	if (tab) {
