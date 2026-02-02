@@ -91,8 +91,55 @@ export class DummyProvider extends SecretsProvider {
 	}
 }
 
-export class AnotherDummyProvider extends DummyProvider {
+export class AnotherDummyProvider extends SecretsProvider {
+	properties: INodeProperties[] = [
+		{
+			name: 'username',
+			displayName: 'Username',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+	];
+
+	secrets: Record<string, string> = {};
+
+	displayName = 'Another Dummy Provider';
+
 	name = 'another_dummy';
+
+	_updateSecrets: Record<string, string> = {
+		test1: 'value1',
+		test2: 'value2',
+	};
+
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
+	}
+
+	async disconnect(): Promise<void> {}
+
+	async update(): Promise<void> {
+		this.secrets = this._updateSecrets;
+	}
+
+	async test(): Promise<[boolean] | [boolean, string]> {
+		return [true];
+	}
+
+	getSecret(name: string): IDataObject | undefined {
+		return this.secrets[name] as unknown as IDataObject | undefined;
+	}
+
+	hasSecret(name: string): boolean {
+		return name in this.secrets;
+	}
+
+	getSecretNames(): string[] {
+		return Object.keys(this.secrets);
+	}
 }
 
 export class ErrorProvider extends SecretsProvider {

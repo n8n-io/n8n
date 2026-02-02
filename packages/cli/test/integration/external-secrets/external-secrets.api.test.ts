@@ -28,6 +28,8 @@ import {
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
+import { Cipher } from 'n8n-core';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -70,6 +72,8 @@ const resetManager = async () => {
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -84,6 +88,8 @@ const resetManager = async () => {
 			providerLifecycle,
 			retryManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 
@@ -135,6 +141,8 @@ beforeAll(async () => {
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -149,6 +157,8 @@ beforeAll(async () => {
 			providerLifecycle,
 			retryManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 });
