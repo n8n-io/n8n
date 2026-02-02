@@ -51,7 +51,10 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
-export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
+export {
+	PullWorkFolderRequestDto,
+	AUTO_PUBLISH_MODE,
+} from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 
