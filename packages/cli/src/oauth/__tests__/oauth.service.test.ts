@@ -1185,7 +1185,8 @@ describe('OauthService', () => {
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, {
+			const generateAOuth2AuthUriBound = service.generateAOauth2AuthUri.bind(service);
+			const authUri = await generateAOuth2AuthUriBound(credential, {
 				cid: credential.id,
 				origin: 'static-credential',
 				userId: 'user-id',
@@ -1203,6 +1204,31 @@ describe('OauthService', () => {
 					state: expect.any(String), // base64State
 				}),
 			]);
+
+			// Reject javascript: and data: protocols in OAuth2 URLs (XSS)
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				...oauthCredentials,
+				authUrl: "javascript:alert('Hacked')//",
+			});
+			const promiseJs = generateAOuth2AuthUriBound(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promiseJs).rejects.toThrow(BadRequestError);
+			await expect(promiseJs).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				...oauthCredentials,
+				accessTokenUrl: 'data:text/html,<script>alert(1)</script>',
+			});
+			const promiseData = generateAOuth2AuthUriBound(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promiseData).rejects.toThrow(BadRequestError);
+			await expect(promiseData).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
 		});
 
 		it('should generate auth URI with PKCE flow', async () => {
@@ -1582,6 +1608,28 @@ describe('OauthService', () => {
 				[],
 			);
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth1.authenticate', expect.any(Array));
+		});
+
+		it('should reject javascript: protocol in OAuth1 URL (XSS)', async () => {
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: "javascript:alert('Hacked')//",
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			const promise = service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
 		});
 
 		it('should generate auth URI with different signature methods', async () => {

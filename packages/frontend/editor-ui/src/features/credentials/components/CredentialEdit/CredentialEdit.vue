@@ -1057,6 +1057,33 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
+	if (url === undefined || url === '') {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
+	// Prevent javascript:, data:, vbscript: and other non-http(s) protocols (XSS)
+	const allowedOAuthUrlProtocols = ['http:', 'https:'];
+	try {
+		const parsedUrl = new URL(url);
+		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			toast.showError(
+				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+			);
+			return;
+		}
+	} catch {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
 	const params =
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);

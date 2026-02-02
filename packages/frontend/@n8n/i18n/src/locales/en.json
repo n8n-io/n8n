@@ -884,6 +884,8 @@
 	"credentialEdit.credentialEdit.showError.deleteCredential.title": "Problem deleting credential",
 	"credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message": "There was a problem generating the authorization URL",
 	"credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title": "OAuth Authorization Error",
+	"credentialEdit.credentialEdit.showError.invalidOAuthUrl.message": "Authorization URL must use HTTP or HTTPS protocol.",
+	"credentialEdit.credentialEdit.showError.invalidOAuthUrl.title": "Invalid OAuth URL",
 	"credentialEdit.credentialEdit.showError.loadCredential.title": "Problem loading credential",
 	"credentialEdit.credentialEdit.showError.updateCredential.title": "Problem updating credential",
 	"credentialEdit.credentialEdit.showMessage.title": "Credential deleted",

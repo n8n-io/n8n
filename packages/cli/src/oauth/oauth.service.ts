@@ -19,6 +19,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
@@ -74,6 +75,15 @@ export class OauthService {
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
+
+	private validateOAuthUrlOrThrow(url: string): void {
+		try {
+			validateOAuthUrl(url);
+		} catch (e) {
+			this.logger.error('Invalid OAuth URL', { url, error: e });
+			throw e;
+		}
+	}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
 		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}`;
@@ -387,6 +397,9 @@ export class OauthService {
 			}
 		}
 
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
@@ -431,6 +444,10 @@ export class OauthService {
 	): Promise<string> {
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
