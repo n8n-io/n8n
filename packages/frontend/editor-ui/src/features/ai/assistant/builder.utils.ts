@@ -35,7 +35,7 @@ export async function createBuilderPayload(
 
 	if (options.workflow) {
 		workflowContext.currentWorkflow = {
-			...assistantHelpers.simplifyWorkflowForAssistant(options.workflow),
+			...(await assistantHelpers.simplifyWorkflowForAssistant(options.workflow)),
 			id: options.workflow.id,
 		};
 	}

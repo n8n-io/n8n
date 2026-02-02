@@ -12,6 +12,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -154,6 +155,10 @@ describe('FrontendService', () => {
 		hasInstanceOwner: jest.fn().mockReturnValue(false),
 	});
 
+	const aiUsageService = mock<AiUsageService>({
+		getAiUsageSettings: jest.fn().mockResolvedValue(true),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -180,6 +185,7 @@ describe('FrontendService', () => {
 				moduleRegistry,
 				mfaService,
 				ownershipService,
+				aiUsageService,
 			),
 			license,
 		};

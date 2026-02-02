@@ -98,6 +98,7 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
@@ -613,6 +614,31 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				component: SettingsAIView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'aiAssistant:manage',
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
 							};
 						},
 					},

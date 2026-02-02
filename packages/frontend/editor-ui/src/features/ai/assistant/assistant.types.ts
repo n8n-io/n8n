@@ -11,6 +11,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -58,6 +59,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+		context?: Pick<UserContext, 'aiUsageSettings'>;
 	}
 
 	export interface InitSupportChat {
@@ -124,6 +126,7 @@ export namespace ChatRequest {
 			name: VIEWS;
 			description?: string;
 		};
+		aiUsageSettings?: FrontendSettings['ai'];
 	}
 
 	export type AssistantContext = UserContext & WorkflowContext;
@@ -240,6 +243,10 @@ export namespace AskAiRequest {
 		forNode: 'code' | 'transform';
 	}
 }
+
+export type AssistantProcessOptions = {
+	trimParameterValues?: boolean;
+};
 
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
