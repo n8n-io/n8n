@@ -1,15 +1,20 @@
-import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
-import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import type { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
+import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -17,6 +22,11 @@ describe('ChatHubWorkflowService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
+	const chatHubAgentService = mock<ChatHubAgentService>();
+	const chatHubSettingsService = mock<ChatHubSettingsService>();
+	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+
 	const mockCipher = mock<Cipher>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
@@ -45,6 +55,10 @@ describe('ChatHubWorkflowService', () => {
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
+			chatHubAgentService,
+			chatHubSettingsService,
+			chatHubCredentialsService,
+			workflowFinderService,
 			mockCipher,
 		);
 

@@ -4,9 +4,6 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { saveCredential } from '@test-integration/db/credentials';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
@@ -18,9 +15,13 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
+import { saveCredential } from '@test-integration/db/credentials';
+import { createAdmin, createMember } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
+
 import { ActiveExecutions } from '../../../active-executions';
-import { ExecutionPersistence } from '../../../executions/execution-persistence';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
+import { ExecutionPersistence } from '../../../executions/execution-persistence';
 import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
