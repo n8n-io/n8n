@@ -34,6 +34,8 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'webhook-response-mode-missing-respond-node',
 	'webhook-response-mode-mismatch',
 	'data-table-missing-set-node',
+	'node-missing-required-parameter',
+	'node-invalid-options-value',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -62,6 +64,7 @@ export interface ProgrammaticChecksResult {
 	fromAi: ProgrammaticViolation[];
 	credentials: ProgrammaticViolation[];
 	nodeUsage: ProgrammaticViolation[];
+	parameters: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -74,6 +77,7 @@ export interface ProgrammaticEvaluationResult {
 	fromAi: SingleEvaluatorResult;
 	credentials: SingleEvaluatorResult;
 	nodeUsage: SingleEvaluatorResult;
+	parameters: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
 }
 

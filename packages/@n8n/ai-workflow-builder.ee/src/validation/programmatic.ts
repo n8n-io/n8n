@@ -6,6 +6,7 @@ import {
 	validateCredentials,
 	validateFromAi,
 	validateNodes,
+	validateParameters,
 	validateTools,
 	validateTrigger,
 	validateWebhookResponse,
@@ -27,6 +28,7 @@ export function programmaticValidation(
 	const fromAiValidationResult = validateFromAi(generatedWorkflow, nodeTypes);
 	const credentialsValidationResult = validateCredentials(generatedWorkflow);
 	const nodeUsageValidationResult = validateWebhookResponse(generatedWorkflow);
+	const parametersValidationResult = validateParameters(generatedWorkflow, nodeTypes);
 
 	return {
 		connections: connectionsValidationResult,
@@ -37,5 +39,6 @@ export function programmaticValidation(
 		fromAi: fromAiValidationResult,
 		credentials: credentialsValidationResult,
 		nodeUsage: nodeUsageValidationResult,
+		parameters: parametersValidationResult,
 	};
 }

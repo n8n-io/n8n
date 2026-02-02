@@ -1,40 +1,61 @@
 import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '@/validation/types';
 
+/**
+ * Importance tiers for score weighting.
+ * Higher tier = more impact on overall score.
+ */
+const IMPORTANCE_TIER = {
+	high: 3,
+	medium: 2,
+	low: 1,
+} as const;
+
+type ImportanceTier = keyof typeof IMPORTANCE_TIER;
+
+/**
+ * Category importance assignments.
+ * - high: Critical for workflow correctness (connections, trigger, parameters)
+ * - medium: Important for quality (agentPrompt, tools, similarity)
+ * - low: Nice to have (fromAi, nodeUsage)
+ */
+const CATEGORY_IMPORTANCE: Record<string, ImportanceTier> = {
+	connections: 'high',
+	trigger: 'high',
+	parameters: 'high',
+	agentPrompt: 'medium',
+	tools: 'medium',
+	similarity: 'medium',
+	fromAi: 'low',
+	nodeUsage: 'low',
+};
+
+/**
+ * Calculate weights from importance tiers.
+ * Each category gets a weight proportional to its tier value.
+ */
+function calculateWeightsFromTiers(categories: string[]): Record<string, number> {
+	const tierValues = categories.map((cat) => IMPORTANCE_TIER[CATEGORY_IMPORTANCE[cat] ?? 'low']);
+	const totalTierValue = tierValues.reduce((sum, val) => sum + val, 0);
+
+	const weights: Record<string, number> = {};
+	for (const category of categories) {
+		const tierValue = IMPORTANCE_TIER[CATEGORY_IMPORTANCE[category] ?? 'low'];
+		weights[category] = tierValue / totalTierValue;
+	}
+
+	return weights;
+}
+
 export function calculateOverallScore(
 	evaluatorResults: Omit<ProgrammaticEvaluationResult, 'overallScore'>,
 ): number {
-	// Base weights for when similarity is not available
-	const baseWeights = {
-		connections: 0.22,
-		trigger: 0.22,
-		agentPrompt: 0.18,
-		tools: 0.18,
-		fromAi: 0.08,
-		nodeUsage: 0.12,
-	};
+	// Determine which categories to include
+	const applicableCategories = Object.keys(evaluatorResults).filter(
+		(k) => k !== 'similarity' || evaluatorResults.similarity !== null,
+	);
 
-	// If similarity is available, adjust weights to include it
-	let weights: Record<string, number>;
-	let applicableCategories: string[];
-
-	if (evaluatorResults.similarity) {
-		// Rebalance weights to include similarity (20% weight)
-		weights = {
-			connections: 0.18,
-			trigger: 0.18,
-			agentPrompt: 0.14,
-			tools: 0.14,
-			fromAi: 0.06,
-			nodeUsage: 0.1,
-			similarity: 0.2,
-		};
-		applicableCategories = Object.keys(evaluatorResults).filter(
-			(k) => k !== 'similarity' || evaluatorResults.similarity !== null,
-		);
-	} else {
-		weights = baseWeights;
-		applicableCategories = Object.keys(evaluatorResults).filter((k) => k !== 'similarity');
-	}
+	// Calculate weights based on importance tiers
+	const weights = calculateWeightsFromTiers(applicableCategories);
 
 	const total = applicableCategories.reduce((acc, category) => {
 		const result = evaluatorResults[category as keyof typeof evaluatorResults];
