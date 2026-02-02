@@ -154,6 +154,7 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	workflowsAutosaveDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;

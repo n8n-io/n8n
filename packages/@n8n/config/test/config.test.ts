@@ -202,6 +202,7 @@ describe('GlobalConfig', () => {
 			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {

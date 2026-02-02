@@ -30,4 +30,8 @@ export class WorkflowsConfig {
 	/** Whether to use the workflow publication service. Still under development. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
 	useWorkflowPublicationService: boolean = false;
+
+	/** Whether to disable automatic workflow saving in the editor */
+	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
+	autosaveDisabled: boolean = false;
 }
