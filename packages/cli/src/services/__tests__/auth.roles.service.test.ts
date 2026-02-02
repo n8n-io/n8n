@@ -520,7 +520,7 @@ describe('AuthRolesService', () => {
 
 			// Verify each namespace's roles were created with correct roleType
 			roleRepository.create.mock.calls.forEach((call) => {
-				const roleData = call[0] as any;
+				const roleData = call[0];
 				expect(roleData.roleType).toBeDefined();
 				expect(roleNamespaces).toContain(roleData.roleType);
 			});

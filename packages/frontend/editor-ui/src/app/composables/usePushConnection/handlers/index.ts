@@ -1,3 +1,4 @@
+export * from './browserApi';
 export * from './builderCreditsUpdated';
 export * from './executionFinished';
 export * from './executionRecovered';

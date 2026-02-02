@@ -155,6 +155,7 @@ import IconLucideLogOut from '~icons/lucide/log-out';
 import IconLucideMail from '~icons/lucide/mail';
 import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
+import IconLucideMegaphone from '~icons/lucide/megaphone';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
 import IconLucideMessageSquare from '~icons/lucide/message-square';
@@ -612,6 +613,7 @@ export const updatedIconSet = {
 	'minimize-2': IconLucideMinimize2,
 	maximize: IconLucideMaximize,
 	'maximize-2': IconLucideMaximize2,
+	megaphone: IconLucideMegaphone,
 	menu: IconLucideMenu,
 	'message-circle': IconLucideMessageCircle,
 	'message-square': IconLucideMessageSquare,

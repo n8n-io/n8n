@@ -21,6 +21,7 @@ describe('eligibleModules', () => {
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'browser-api',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -40,6 +41,7 @@ describe('eligibleModules', () => {
 	it('should consider a module eligible if it was enabled via env var', () => {
 		process.env.N8N_ENABLED_MODULES = 'data-table';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'browser-api',
 			'insights',
 			'external-secrets',
 			'community-packages',

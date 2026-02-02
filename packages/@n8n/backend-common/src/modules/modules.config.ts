@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'browser-api',
 	'insights',
 	'external-secrets',
 	'community-packages',

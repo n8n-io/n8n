@@ -2609,6 +2609,31 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Browser API data set by nodes that need to trigger browser-side functionality.
+	 * Processed by BrowserApiService to send push messages to connected browser sessions.
+	 * The `type` field determines which browser API to invoke on the frontend.
+	 */
+	browserApi?:
+		| {
+				type: 'notification';
+				notification: {
+					title: string;
+					body?: string;
+					icon?: string;
+				};
+		  }
+		| {
+				type: 'playSound';
+				playSound: {
+					sound: 'success' | 'error' | 'warning' | 'info' | 'custom';
+					/** Custom sound URL (required when sound is 'custom') */
+					url?: string;
+					/** Volume level from 0.0 to 1.0 (default: 1.0) */
+					volume?: number;
+				};
+		  };
 }
 
 /** The data that gets returned when a node execution starts */
