@@ -867,6 +867,9 @@ importers:
       '@n8n/typeorm':
         specifier: 'catalog:'
         version: 0.3.20-15(@sentry/node@10.36.0)(mysql2@3.15.0)(pg@8.17.0)(sqlite3@5.1.7)
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       class-validator:
         specifier: 0.14.0
         version: 0.14.0
@@ -1647,6 +1650,13 @@ importers:
   packages/@n8n/typescript-config: {}
 
   packages/@n8n/utils:
+    dependencies:
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*

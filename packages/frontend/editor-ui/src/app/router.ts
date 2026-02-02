@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { nanoid } from 'nanoid';
+import { generateNanoId } from '@n8n/utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -371,9 +371,9 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		beforeEnter: (to) => {
-			// Generate a unique workflow ID using nanoid and redirect to it
+			// Generate a unique workflow ID using 16-character nanoid and redirect to it
 			// Preserve existing query params (e.g., templateId, projectId) and add new=true
-			const newWorkflowId = nanoid();
+			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
 				params: { name: newWorkflowId },
