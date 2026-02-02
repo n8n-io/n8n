@@ -8,6 +8,7 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
+export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
