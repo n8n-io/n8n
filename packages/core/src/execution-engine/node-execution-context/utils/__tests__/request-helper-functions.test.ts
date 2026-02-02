@@ -419,7 +419,7 @@ describe('Request Helper Functions', () => {
 
 			test('on regular requests', async () => {
 				const axiosOptions = await parseRequestObject(requestObject);
-				expect((axiosOptions.httpsAgent as HttpsAgent).options).toMatchObject({
+				expect((axiosOptions.httpsAgent as HttpsAgent).options).toEqual({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -438,7 +438,7 @@ describe('Request Helper Functions', () => {
 				};
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
-				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
+				expect((redirectOptions.agent as HttpsAgent).options).toEqual({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
