@@ -182,6 +182,8 @@ export class ErrorReporter {
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
+			ignoreTransactions: ['GET /healthz', 'GET /metrics'],
+			ignoreSpans: ['GET /healthz', 'GET /metrics'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),
