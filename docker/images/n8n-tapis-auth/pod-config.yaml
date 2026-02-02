@@ -15,7 +15,13 @@
     "N8N_ENCRYPTION_KEY": "",
     "AI_CREDENTIALS": "https://ai.tejas.tacc.utexas.edu/v1/chat/completions",
     "AI_TOKEN": "",
-    "AI_MODEL": "Llama-4-Maverick-17B-128E-Instruct"
+    "AI_MODEL": "Llama-4-Maverick-17B-128E-Instruct",
+    "DB_TYPE": "postgresdb",
+    "DB_POSTGRESDB_DATABASE": "<name_bd>",
+    "DB_POSTGRESDB_HOST": "<host_postgres>",
+    "DB_POSTGRESDB_PORT": "5432",
+    "DB_POSTGRESDB_USER": "<user_postgres>", # Must be strong
+    "DB_POSTGRESDB_PASSWORD": "<password_postgres>"
   },
   "status_requested": "ON",
   "volume_mounts": {},
@@ -55,3 +61,5 @@
   "creation_ts": "2026-01-28T10:27:36.661Z",
   "update_ts": "2026-01-28T10:27:36.661Z"
 }
+
+# N8N_ENCRYPTION_KEY obtained with: https://generate-random.org/salts
