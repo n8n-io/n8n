@@ -57,17 +57,17 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
-export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
-	'063_empty_state_builder_prompt',
-);
-
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
 	control: 'control',
 	variantResources: 'variant-resources',
 	variantInspiration: 'variant-inspiration',
 });
 
-export const DYNAMIC_TEMPLATES_EXPERIMENT = createExperiment('068_dynamic_templates');
+export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
+	control: 'control',
+	variantBuilderPrompt: 'variant-builder-prompt',
+	variantTemplates: 'variant-templates',
+});
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -81,6 +81,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
-	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
-	DYNAMIC_TEMPLATES_EXPERIMENT.name,
+	EMPTY_STATE_EXPERIMENT.name,
 ];
