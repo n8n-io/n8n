@@ -64,6 +64,12 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	}
 }
 
+export interface UpdateExecutionConditions {
+	requireStatus?: ExecutionStatus;
+	requireNotFinished?: boolean;
+	requireNotCanceled?: boolean;
+}
+
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
 	finished?: boolean;
@@ -390,13 +396,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 *
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
-	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
-	 * @returns true if update succeeded, false if no execution was found or requireStatus condition was not met
+	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireNotFinished`: only update if `finished = false`.
+	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
+	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
+	 *   so combining them is not supported.
+	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
-		requireStatus?: ExecutionStatus,
+		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
 		const {
 			id,
@@ -416,13 +427,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
-				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
-				if (requireStatus) whereCondition.status = requireStatus;
+				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireNotFinished) whereCondition.finished = false;
+				if (conditions?.requireNotCanceled)
+					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
 
-				// If requireStatus was set and the update failed, abort the
+				// If conditions were set and the update failed, abort the
 				// transaction early and return false.
 				if (executionTableAffectedRows === 0) {
 					return false;

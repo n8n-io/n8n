@@ -417,10 +417,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
+				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ data: runExecutionData, status: 'running' },
+					{ requireNotFinished: true, requireNotCanceled: true },
+				);
 			});
 
 			it('should not save execution progress when disabled', async () => {
