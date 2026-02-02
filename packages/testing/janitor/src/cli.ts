@@ -39,7 +39,16 @@ import {
 	formatImpactJSON,
 	formatTestList,
 } from './core/impact-analyzer.js';
-import { InventoryAnalyzer, formatInventoryJSON } from './core/inventory-analyzer.js';
+import {
+	InventoryAnalyzer,
+	formatInventoryJSON,
+	formatInventorySummaryJSON,
+	formatInventoryCategoryJSON,
+	toSummary,
+	toCategory,
+	filterByFile,
+	type InventoryCategory,
+} from './core/inventory-analyzer.js';
 import {
 	MethodUsageAnalyzer,
 	formatMethodImpactConsole,
@@ -88,11 +97,55 @@ async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	return defineConfig({ rootDir: cwd });
 }
 
-function runInventory(): void {
+const VALID_CATEGORIES: InventoryCategory[] = [
+	'pages',
+	'components',
+	'composables',
+	'services',
+	'fixtures',
+	'helpers',
+	'factories',
+	'testData',
+];
+
+function runInventory(options: CliOptions): void {
 	const config = getConfig();
 	const { project } = createProject(config.rootDir);
 	const analyzer = new InventoryAnalyzer(project);
 	const report = analyzer.generate();
+
+	// Summary mode - minimal output for AI
+	if (options.summary) {
+		console.log(formatInventorySummaryJSON(toSummary(report)));
+		return;
+	}
+
+	// Category filter - single category with method names only
+	if (options.category) {
+		if (!VALID_CATEGORIES.includes(options.category as InventoryCategory)) {
+			console.error(`Invalid category: ${options.category}`);
+			console.error(`Valid categories: ${VALID_CATEGORIES.join(', ')}`);
+			process.exit(1);
+		}
+		console.log(
+			formatInventoryCategoryJSON(toCategory(report, options.category as InventoryCategory)),
+		);
+		return;
+	}
+
+	// File filter - detailed info for single file
+	if (options.files && options.files.length === 1) {
+		const result = filterByFile(report, options.files[0]);
+		if (result) {
+			console.log(JSON.stringify(result, null, 2));
+		} else {
+			console.error(`File not found in inventory: ${options.files[0]}`);
+			process.exit(1);
+		}
+		return;
+	}
+
+	// Default: full inventory
 	console.log(formatInventoryJSON(report));
 }
 
@@ -402,7 +455,7 @@ async function main(): Promise<void> {
 			runBaseline(options);
 			break;
 		case 'inventory':
-			runInventory();
+			runInventory(options);
 			break;
 		case 'impact':
 			await runImpact(options);

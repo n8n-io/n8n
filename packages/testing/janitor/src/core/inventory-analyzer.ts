@@ -135,6 +135,40 @@ export interface InventoryReport {
 	testData: TestDataInfo[];
 }
 
+/** Compact summary for AI consumption - minimal tokens */
+export interface InventorySummary {
+	counts: {
+		pages: number;
+		components: number;
+		composables: number;
+		services: number;
+		helpers: number;
+		testData: number;
+	};
+	facade: string[] | null;
+	categories: string[];
+}
+
+export type InventoryCategory =
+	| 'pages'
+	| 'components'
+	| 'composables'
+	| 'services'
+	| 'fixtures'
+	| 'helpers'
+	| 'factories'
+	| 'testData';
+
+/** Filtered view of a single category - method names only */
+export interface InventoryCategoryView {
+	category: InventoryCategory;
+	items: Array<{
+		name: string;
+		file: string;
+		methods?: string[];
+	}>;
+}
+
 export class InventoryAnalyzer {
 	private root: string;
 	private facade: FacadeResolver;
@@ -680,4 +714,115 @@ export class InventoryAnalyzer {
 
 export function formatInventoryJSON(inventory: InventoryReport): string {
 	return JSON.stringify(inventory, null, 2);
+}
+
+export function formatInventorySummaryJSON(summary: InventorySummary): string {
+	return JSON.stringify(summary, null, 2);
+}
+
+export function formatInventoryCategoryJSON(view: InventoryCategoryView): string {
+	return JSON.stringify(view, null, 2);
+}
+
+/** Extract compact summary from full report */
+export function toSummary(report: InventoryReport): InventorySummary {
+	return {
+		counts: {
+			pages: report.summary.pages,
+			components: report.summary.components,
+			composables: report.summary.composables,
+			services: report.summary.services,
+			helpers: report.summary.helpers,
+			testData: report.summary.testData,
+		},
+		facade: report.facade?.exposedPages.map((p) => p.property) ?? null,
+		categories: ['pages', 'components', 'composables', 'services', 'helpers', 'testData'],
+	};
+}
+
+/** Extract single category with method names only */
+export function toCategory(
+	report: InventoryReport,
+	category: InventoryCategory,
+): InventoryCategoryView {
+	const extractMethods = (
+		items: Array<{ name: string; file: string; methods?: MethodInfo[] }>,
+	): InventoryCategoryView['items'] =>
+		items.map((item) => ({
+			name: item.name,
+			file: item.file,
+			methods: item.methods?.map((m) => m.name),
+		}));
+
+	switch (category) {
+		case 'pages':
+			return { category, items: extractMethods(report.pages) };
+		case 'components':
+			return { category, items: extractMethods(report.components) };
+		case 'composables':
+			return { category, items: extractMethods(report.composables) };
+		case 'services':
+			return { category, items: extractMethods(report.services) };
+		case 'helpers':
+			return {
+				category,
+				items: report.helpers.map((h) => ({
+					name: h.name,
+					file: h.file,
+					methods: h.functions.map((f) => f.name),
+				})),
+			};
+		case 'fixtures':
+			return {
+				category,
+				items: report.fixtures.map((f) => ({ name: f.name, file: f.file })),
+			};
+		case 'factories':
+			return { category, items: extractMethods(report.factories) };
+		case 'testData':
+			return {
+				category,
+				items: report.testData.map((t) => ({ name: t.name, file: t.file })),
+			};
+	}
+}
+
+/** All possible return types from filterByFile */
+export type InventoryItem =
+	| PageInfo
+	| ComponentInfo
+	| ComposableInfo
+	| ServiceInfo
+	| HelperInfo
+	| FixtureInfo
+	| FactoryInfo
+	| TestDataInfo;
+
+/** Filter report to single file - returns detailed info for that file only */
+export function filterByFile(report: InventoryReport, fileName: string): InventoryItem | null {
+	const normalizedName = fileName
+		.replace(/^.*\//, '')
+		.replace(/\.ts$/, '')
+		.replace(/\.json$/, '');
+
+	const collections: Array<{ items: Array<{ name: string; file: string }> }> = [
+		{ items: report.pages },
+		{ items: report.components },
+		{ items: report.composables },
+		{ items: report.services },
+		{ items: report.helpers },
+		{ items: report.fixtures },
+		{ items: report.factories },
+		{ items: report.testData },
+	];
+
+	for (const { items } of collections) {
+		for (const item of items) {
+			if (item.file.includes(fileName) || item.name === normalizedName) {
+				return item as InventoryItem;
+			}
+		}
+	}
+
+	return null;
 }

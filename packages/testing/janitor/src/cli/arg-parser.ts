@@ -41,6 +41,9 @@ export interface CliOptions {
 	allowInExpect: boolean;
 	// Baseline options
 	ignoreBaseline: boolean;
+	// Inventory-specific options
+	summary: boolean;
+	category?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -102,6 +105,12 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	'--ignore-baseline': (opts) => {
 		opts.ignoreBaseline = true;
 	},
+	'--summary': (opts) => {
+		opts.summary = true;
+	},
+	'-s': (opts) => {
+		opts.summary = true;
+	},
 };
 
 const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) => void> = {
@@ -138,6 +147,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--test-command=': (opts, value) => {
 		opts.testCommand = value;
 	},
+	'--category=': (opts, value) => {
+		opts.category = value;
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -163,6 +175,8 @@ function createDefaultOptions(): CliOptions {
 		methodIndex: false,
 		allowInExpect: false,
 		ignoreBaseline: false,
+		summary: false,
+		category: undefined,
 	};
 }
 

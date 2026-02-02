@@ -55,12 +55,25 @@ export function showInventoryHelp(): void {
 	console.log(`
 Inventory - Generate JSON inventory of codebase structure
 
-Usage: playwright-janitor inventory
+Usage: playwright-janitor inventory [options]
 
-Outputs JSON containing: pages, components, composables, services,
-fixtures, helpers, factories, and test data files.
+Options:
+  --summary, -s        Compact output (~500 tokens) - counts, facade props, categories
+  --category=<name>    Filter to single category with method names only
+  --file=<path>        Detailed info for a single file (full method signatures)
 
-Example: playwright-janitor inventory > inventory.json
+Categories: pages, components, composables, services, fixtures, helpers, factories, testData
+
+Examples:
+  playwright-janitor inventory --summary              # AI-friendly overview
+  playwright-janitor inventory --category=pages       # All pages, method names only
+  playwright-janitor inventory --file=CanvasPage.ts   # Full details for one file
+  playwright-janitor inventory                        # Full inventory (verbose)
+
+Progressive disclosure for AI:
+  1. --summary to understand the landscape
+  2. --category=X to explore a specific area
+  3. --file=X.ts for detailed method signatures
 `);
 }
 

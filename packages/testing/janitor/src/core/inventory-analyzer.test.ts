@@ -4,7 +4,13 @@ import * as path from 'node:path';
 import { Project } from 'ts-morph';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { InventoryAnalyzer, formatInventoryJSON } from './inventory-analyzer.js';
+import {
+	InventoryAnalyzer,
+	formatInventoryJSON,
+	toSummary,
+	toCategory,
+	filterByFile,
+} from './inventory-analyzer.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 
 /**
@@ -247,6 +253,169 @@ describe('InventoryAnalyzer', () => {
 			const parsed = JSON.parse(json) as { pages?: unknown; summary?: unknown };
 			expect(parsed.pages).toBeDefined();
 			expect(parsed.summary).toBeDefined();
+		});
+	});
+
+	describe('toSummary', () => {
+		it('produces compact output with counts and categories', () => {
+			const project = createTestProject(tempDir, {
+				'pages/PageA.ts': 'export class PageA { method1() {} }',
+				'pages/PageB.ts': 'export class PageB { method1() {} }',
+				'composables/FlowA.ts': 'export class FlowA { method1() {} }',
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const summary = toSummary(report);
+
+			expect(summary.counts.pages).toBe(2);
+			expect(summary.counts.composables).toBe(1);
+			expect(summary.categories).toContain('pages');
+			expect(summary.categories).toContain('composables');
+		});
+
+		it('includes facade property names when facade exists', () => {
+			const project = createTestProject(tempDir, {
+				'pages/AppPage.ts': `
+					import { CanvasPage } from './CanvasPage';
+					export class AppPage {
+						canvas = new CanvasPage();
+						settings = new SettingsPage();
+					}
+				`,
+				'pages/CanvasPage.ts': 'export class CanvasPage {}',
+				'pages/SettingsPage.ts': 'export class SettingsPage {}',
+			});
+
+			// Update config to use this facade
+			const config = defineConfig({
+				rootDir: tempDir,
+				patterns: {
+					pages: ['pages/**/*.ts'],
+					components: ['pages/components/**/*.ts'],
+					flows: ['composables/**/*.ts'],
+					tests: ['tests/**/*.spec.ts'],
+					services: ['services/**/*.ts'],
+					fixtures: ['fixtures/**/*.ts'],
+					helpers: ['helpers/**/*.ts'],
+					factories: ['factories/**/*.ts'],
+					testData: ['workflows/**/*'],
+				},
+				excludeFromPages: ['AppPage.ts'],
+				facade: {
+					file: 'pages/AppPage.ts',
+					className: 'AppPage',
+					excludeTypes: ['Page'],
+				},
+				fixtureObjectName: 'app',
+			});
+			setConfig(config);
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const summary = toSummary(report);
+
+			expect(summary.facade).toContain('canvas');
+			expect(summary.facade).toContain('settings');
+		});
+	});
+
+	describe('toCategory', () => {
+		it('returns category items with method names only', () => {
+			const project = createTestProject(tempDir, {
+				'pages/CanvasPage.ts': `
+					export class CanvasPage {
+						async addNode(type: string) {}
+						async deleteNode(id: string) {}
+						private helperMethod() {}
+					}
+				`,
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const view = toCategory(report, 'pages');
+
+			expect(view.category).toBe('pages');
+			expect(view.items.length).toBe(1);
+			expect(view.items[0].name).toBe('CanvasPage');
+			expect(view.items[0].methods).toEqual(['addNode', 'deleteNode']);
+		});
+
+		it('handles testData category without methods', () => {
+			fs.writeFileSync(
+				path.join(tempDir, 'workflows', 'test-workflow.json'),
+				JSON.stringify({ name: 'Test' }),
+			);
+
+			const project = new Project({ useInMemoryFileSystem: true });
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const view = toCategory(report, 'testData');
+
+			expect(view.category).toBe('testData');
+			expect(view.items.length).toBe(1);
+			expect(view.items[0].name).toBe('test-workflow.json');
+			expect(view.items[0].methods).toBeUndefined();
+		});
+	});
+
+	describe('filterByFile', () => {
+		it('finds page by filename', () => {
+			const project = createTestProject(tempDir, {
+				'pages/CanvasPage.ts': `
+					export class CanvasPage {
+						async addNode(type: string) {}
+					}
+				`,
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const result = filterByFile(report, 'CanvasPage.ts');
+
+			expect(result).not.toBeNull();
+			expect(result?.name).toBe('CanvasPage');
+			// Page objects have methods array
+			expect((result as { methods?: unknown[] })?.methods?.length).toBe(1);
+		});
+
+		it('finds page by class name', () => {
+			const project = createTestProject(tempDir, {
+				'pages/CanvasPage.ts': 'export class CanvasPage { method1() {} }',
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const result = filterByFile(report, 'CanvasPage');
+
+			expect(result).not.toBeNull();
+			expect(result?.name).toBe('CanvasPage');
+		});
+
+		it('returns null for non-existent file', () => {
+			const project = createTestProject(tempDir, {
+				'pages/CanvasPage.ts': 'export class CanvasPage {}',
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const result = filterByFile(report, 'NonExistent.ts');
+
+			expect(result).toBeNull();
+		});
+
+		it('finds composables', () => {
+			const project = createTestProject(tempDir, {
+				'composables/WorkflowComposer.ts': 'export class WorkflowComposer { create() {} }',
+			});
+
+			const analyzer = new InventoryAnalyzer(project);
+			const report = analyzer.generate();
+			const result = filterByFile(report, 'WorkflowComposer');
+
+			expect(result).not.toBeNull();
+			expect(result?.name).toBe('WorkflowComposer');
 		});
 	});
 });
