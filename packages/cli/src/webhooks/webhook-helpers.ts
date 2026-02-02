@@ -567,9 +567,14 @@ export async function executeWebhook(
 			return;
 		}
 
-		// For "onReceived" mode, we need to defer response sending until after the execution
-		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
+		// Now that we know that the workflow should run we can return the default response
+		// directly if responseMode it set to "onReceived" and a response should be sent
+		if (responseMode === 'onReceived' && !didSendResponse) {
+			const responseBody = extractWebhookOnReceivedResponse(responseData, webhookResultData);
+			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
+			responseCallback(null, webhookResponse);
+			didSendResponse = true;
+		}
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -626,7 +631,7 @@ export async function executeWebhook(
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
-			!didSendResponse && !shouldDeferOnReceivedResponse,
+			!didSendResponse,
 			executionId,
 			responsePromise,
 		);
@@ -636,32 +641,6 @@ export async function executeWebhook(
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 */
 		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
-
-		if (shouldDeferOnReceivedResponse) {
-			additionalKeys.$executionId = executionId;
-			additionalKeys.$execution = {
-				id: executionId,
-				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
-			};
-			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseData,
-				executionMode,
-				additionalKeys,
-				undefined,
-				'firstEntryJson',
-			) as string | undefined;
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
-				webhookResultData,
-			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responseCallback(null, webhookResponse);
-			didSendResponse = true;
-		}
 
 		Container.get(EventService).emit('workflow-executed', {
 			workflowId: workflowData.id,
