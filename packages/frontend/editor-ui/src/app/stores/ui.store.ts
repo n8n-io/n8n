@@ -265,7 +265,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
+	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);

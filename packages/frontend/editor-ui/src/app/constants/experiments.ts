@@ -63,6 +63,7 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantInspiration: 'variant-inspiration',
 });
 
+export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
 	control: 'control',
 	variantBuilderPrompt: 'variant-builder-prompt',
@@ -81,5 +82,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
+	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	EMPTY_STATE_EXPERIMENT.name,
 ];
