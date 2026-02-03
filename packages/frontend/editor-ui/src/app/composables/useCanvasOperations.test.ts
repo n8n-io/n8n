@@ -1611,7 +1611,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('renameNode', () => {
-		it('should rename node and return true on success', async () => {
+		it('should rename node and return the actual new name on success', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
@@ -1627,7 +1627,7 @@ describe('useCanvasOperations', () => {
 			const { renameNode } = useCanvasOperations();
 			const result = await renameNode(oldName, newName);
 
-			expect(result).toBe(true);
+			expect(result).toBe(newName);
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
 			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(newName, expect.any(String));
 		});

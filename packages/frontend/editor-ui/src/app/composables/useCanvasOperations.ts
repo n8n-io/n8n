@@ -327,13 +327,13 @@ export function useCanvasOperations() {
 
 	/**
 	 * Rename a node and update all references (connections, expressions, pinData, etc.)
-	 * @returns `true` if rename succeeded, `false` if it failed or was skipped
+	 * @returns The actual new name used (after uniquification) if rename succeeded, `false` if it failed or was skipped
 	 */
 	async function renameNode(
 		currentName: string,
 		newName: string,
 		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
-	): Promise<boolean> {
+	): Promise<string | false> {
 		if (currentName === newName) {
 			return false;
 		}
@@ -378,7 +378,7 @@ export function useCanvasOperations() {
 			historyStore.stopRecordingUndo();
 		}
 
-		return true;
+		return newName;
 	}
 
 	async function revertRenameNode(currentName: string, previousName: string) {

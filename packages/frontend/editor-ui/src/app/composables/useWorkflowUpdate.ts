@@ -83,19 +83,19 @@ export function useWorkflowUpdate() {
 	): Promise<void> {
 		if (nodesToUpdate.length === 0) return;
 
-		// Track successful renames (nodeId -> newName)
+		// Track successful renames (nodeId -> actualNewName after uniquification)
 		const renamedNodes = new Map<string, string>();
 
 		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
 		for (const { existing, updated } of nodesToUpdate) {
 			if (existing.name !== updated.name) {
-				const success = await canvasOperations.renameNode(existing.name, updated.name, {
+				const actualNewName = await canvasOperations.renameNode(existing.name, updated.name, {
 					trackHistory: true,
 					trackBulk: false,
 					showErrorToast: false,
 				});
-				if (success) {
-					renamedNodes.set(existing.id, updated.name);
+				if (actualNewName) {
+					renamedNodes.set(existing.id, actualNewName);
 				}
 			}
 		}
