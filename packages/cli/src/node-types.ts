@@ -39,9 +39,13 @@ export class NodeTypes implements INodeTypes {
 	): Promise<INodeTypeDescription> {
 		const { description, sourcePath } = this.getWithSourcePath(nodeTypeName, version);
 
+		const nodeModule = nodeTypeName.substring(0, nodeTypeName.lastIndexOf('.'));
+		const nodeDist = dirname(require.resolve(nodeModule));
+		const nodePath = join(nodeDist, sourcePath);
+
 		if (locale !== 'en') {
 			const translationPath = await this.getNodeTranslationPath({
-				nodeSourcePath: sourcePath,
+				nodeSourcePath: nodePath,
 				longNodeType: description.name,
 				locale,
 			});
