@@ -74,7 +74,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const result = await this.find({
 			select: { id: true },
 			where: { activeVersionId: Not(IsNull()) },
-			relations: { shared: { project: { projectRelations: true } } },
 		});
 
 		return result.map(({ id }) => id);
@@ -114,7 +113,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: { shared: { project: { projectRelations: true } }, activeVersion: true },
+			relations: { shared: { project: true }, activeVersion: true },
 		});
 	}
 

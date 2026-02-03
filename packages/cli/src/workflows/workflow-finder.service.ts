@@ -107,7 +107,7 @@ export class WorkflowFinderService {
 			where,
 			relations: {
 				workflow: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			},
 		});
