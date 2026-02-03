@@ -201,7 +201,7 @@ export const projectFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'authors',
+						property: 'author',
 					},
 				},
 				description: 'Filter by commit author names (comma-separated)',
@@ -214,7 +214,7 @@ export const projectFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'branches',
+						property: 'branch',
 					},
 				},
 				description: 'Filter by branch names (comma-separated)',
@@ -227,7 +227,7 @@ export const projectFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'groups',
+						property: 'group',
 					},
 				},
 				description: 'Filter by group names (comma-separated)',
@@ -258,7 +258,7 @@ export const projectFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'tags',
+						property: 'tag',
 					},
 				},
 				description: 'Filter by tags (comma-separated)',

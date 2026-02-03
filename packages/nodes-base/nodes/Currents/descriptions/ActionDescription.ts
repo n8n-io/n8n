@@ -228,7 +228,7 @@ export const actionFields: INodeProperties[] = [
 		],
 		routing: {
 			send: {
-				type: 'body',
+				type: 'query',
 				property: 'projectId',
 				value: '={{ $value }}',
 			},
@@ -271,7 +271,9 @@ export const actionFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{ name: 'Active', value: 'active' },
+					{ name: 'Archived', value: 'archived' },
 					{ name: 'Disabled', value: 'disabled' },
+					{ name: 'Expired', value: 'expired' },
 				],
 				default: [],
 				routing: {
@@ -328,7 +330,8 @@ export const actionFields: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'action.type',
+				property: 'action',
+				value: '={{ [{ "op": $value }] }}',
 			},
 		},
 	},
@@ -347,8 +350,9 @@ export const actionFields: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'action.tags',
-				value: '={{ $value.split(",").map(t => t.trim()).filter(t => t) }}',
+				property: 'action',
+				value:
+					'={{ [{ "op": "tag", "details": { "tags": $value.split(",").map(t => t.trim()).filter(t => t) } }] }}',
 			},
 		},
 		description: 'Comma-separated list of tags to apply',
@@ -372,12 +376,7 @@ export const actionFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'matcher.type',
-			},
-		},
+		// No routing - matcherValue will build the complete matcher object
 		description: 'How to match tests for this action',
 	},
 	{
@@ -395,7 +394,9 @@ export const actionFields: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'matcher.value',
+				property: 'matcher',
+				value:
+					'={{ { "op": "AND", "cond": [{ "type": { "signature": "testId", "titleContains": "title", "titleEquals": "title", "specContains": "file", "specEquals": "file" }[$parameter.matcherType] || "title", "op": { "signature": "eq", "titleContains": "inc", "titleEquals": "eq", "specContains": "inc", "specEquals": "eq" }[$parameter.matcherType] || "inc", "value": $value }] } }}',
 			},
 		},
 		description: 'The value to match against (test title, spec file path, or signature)',

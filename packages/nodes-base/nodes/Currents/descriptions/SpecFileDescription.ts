@@ -159,7 +159,7 @@ export const specFileFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'authors',
+						property: 'author',
 					},
 				},
 				description: 'Filter by git author names (comma-separated for multiple)',
@@ -172,7 +172,7 @@ export const specFileFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'branches',
+						property: 'branch',
 					},
 				},
 				description: 'Filter by branch names (comma-separated for multiple)',
@@ -185,7 +185,7 @@ export const specFileFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'groups',
+						property: 'group',
 					},
 				},
 				description: 'Filter by group names (comma-separated for multiple)',
@@ -211,7 +211,7 @@ export const specFileFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'tags',
+						property: 'tag',
 					},
 				},
 				description: 'Filter by tags (comma-separated for multiple)',

@@ -155,7 +155,7 @@ export const testResultFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'git_author',
+						property: 'gitAuthor',
 					},
 				},
 				description: 'Filter by git author names (comma-separated for multiple)',

@@ -159,7 +159,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'authors',
+						property: 'author',
 					},
 				},
 				description: 'Filter by git author names (comma-separated for multiple)',
@@ -172,7 +172,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'branches',
+						property: 'branch',
 					},
 				},
 				description: 'Filter by branch names (comma-separated for multiple)',
@@ -185,7 +185,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'groups',
+						property: 'group',
 					},
 				},
 				description: 'Filter by group names (comma-separated for multiple)',
@@ -227,7 +227,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'tags',
+						property: 'tag',
 					},
 				},
 				description: 'Filter by tags (comma-separated for multiple)',
@@ -246,7 +246,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'test_state',
+						property: 'testState',
 					},
 				},
 				description: 'Filter by test state',
@@ -285,13 +285,14 @@ export const testFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{ name: 'Duration', value: 'duration' },
-					{ name: 'Duration (Weighted)', value: 'duration_x_samples' },
+					{ name: 'Duration Impact', value: 'durationXSamples' },
 					{ name: 'Executions', value: 'executions' },
-					{ name: 'Failure Rate Delta', value: 'failure_rate_delta' },
+					{ name: 'Failure Impact', value: 'failRateXSamples' },
+					{ name: 'Failure Rate Delta', value: 'failureRateDelta' },
 					{ name: 'Failures', value: 'failures' },
 					{ name: 'Flakiness', value: 'flakiness' },
-					{ name: 'Flakiness (Weighted)', value: 'flakiness_x_samples' },
-					{ name: 'Flakiness Rate Delta', value: 'flakiness_rate_delta' },
+					{ name: 'Flakiness Impact', value: 'flakinessXSamples' },
+					{ name: 'Flakiness Rate Delta', value: 'flakinessRateDelta' },
 					{ name: 'Passes', value: 'passes' },
 					{ name: 'Title', value: 'title' },
 				],
