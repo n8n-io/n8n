@@ -68,6 +68,7 @@ export { GenerateCredentialNameRequestQuery } from './credentials/generate-crede
 export { TransferCredentialBodyDto } from './credentials/transfer-credential-body.dto';
 export { ShareCredentialsBodyDto } from './credentials/share-credentials-body.dto';
 export { CredentialsForWorkflowQueryDto } from './credentials/credentials-for-workflow-query.dto';
+export { UpdateCredentialDto } from './credentials/update-credential.dto';
 
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
