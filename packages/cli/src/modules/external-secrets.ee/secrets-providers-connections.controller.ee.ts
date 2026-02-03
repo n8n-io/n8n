@@ -36,6 +36,7 @@ export class SecretProvidersConnectionsController {
 	@Middleware()
 	checkFeatureFlag(_req: Request, _res: Response, next: NextFunction) {
 		if (!this.config.externalSecretsForProjects) {
+			this.logger.warn('External secrets for projects feature is not enabled');
 			throw new BadRequestError('External secrets for projects feature is not enabled');
 		}
 		next();

@@ -56,10 +56,11 @@ describe('ExternalSecretsModule', () => {
 
 			const settingsRepository = Container.get(SettingsRepository);
 			const cipher = Container.get(Cipher);
-			const config = Container.get(ExternalSecretsConfig);
-			module = Container.get(ExternalSecretsModule);
 
-			(config as any).externalSecretsForProjects = false;
+			const config = Container.get(ExternalSecretsConfig);
+			config.externalSecretsForProjects = false;
+
+			module = Container.get(ExternalSecretsModule);
 
 			const settings = {
 				dummy: {
@@ -137,10 +138,11 @@ describe('ExternalSecretsModule', () => {
 
 			connectionRepository = Container.get(SecretsProviderConnectionRepository);
 			cipher = Container.get(Cipher);
-			const config = Container.get(ExternalSecretsConfig);
-			module = Container.get(ExternalSecretsModule);
 
-			(config as any).externalSecretsForProjects = true;
+			const config = Container.get(ExternalSecretsConfig);
+			config.externalSecretsForProjects = true;
+
+			module = Container.get(ExternalSecretsModule);
 
 			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
 			await connectionRepository.save({
