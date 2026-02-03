@@ -549,7 +549,12 @@ export class FrontendService {
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: {
+				authenticationMethod,
+				// In preview mode, skip the setup redirect to allow accessing demo routes
+				showSetupOnFirstLoad: previewMode ? false : showSetupOnFirstLoad,
+				smtpSetup,
+			},
 			sso: {
 				saml: {
 					loginEnabled: ssoSaml.loginEnabled,
