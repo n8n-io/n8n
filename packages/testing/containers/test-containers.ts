@@ -40,6 +40,7 @@ const DEFAULT_IMAGES = {
 	ngrok: 'ngrok/ngrok:alpine',
 	kafka: 'confluentinc/cp-kafka:8.0.3',
 	mysql: 'mysql:9.6.0',
+	localstack: 'localstack/localstack:latest',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -115,4 +116,5 @@ export const TEST_CONTAINER_IMAGES = {
 	kafka: getImage('kafka'),
 	mysql: getImage('mysql'),
 	ngrok: getImage('ngrok'),
+	localstack: getImage('localstack'),
 } as const;

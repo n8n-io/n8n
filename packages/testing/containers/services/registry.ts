@@ -3,6 +3,7 @@ import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
+import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
@@ -35,6 +36,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	ngrok,
 	kafka,
 	mysql: mysqlService,
+	localstack,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
@@ -44,4 +46,5 @@ export const helperFactories: Partial<HelperFactories> = {
 	observability: createObservabilityHelper,
 	tracing: createTracingHelper,
 	kafka: createKafkaHelper,
+	localstack: createLocalStackHelper,
 };

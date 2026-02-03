@@ -25,6 +25,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@aws-sdk/client-secrets-manager": "3.808.0",
     "@testcontainers/kafka": "^11.11.0",
     "@testcontainers/mysql": "^11.11.0",
     "@testcontainers/postgresql": "^11.0.3",

@@ -14,6 +14,14 @@ export const CAPABILITIES = {
 	oidc: { services: ['keycloak'] },
 	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
 	kafka: { services: ['kafka'] },
+	'external-secrets': {
+		services: ['localstack'],
+		env: {
+			// Enable project-scoped external secrets feature at startup
+			// (required for secret-providers-connections API)
+			N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS: 'true',
+		},
+	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;
