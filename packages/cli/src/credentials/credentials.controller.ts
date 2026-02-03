@@ -1,5 +1,6 @@
 import {
 	CreateCredentialDto,
+	CredentialsForWorkflowQueryDto,
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
@@ -32,7 +33,6 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
@@ -87,11 +87,12 @@ export class CredentialsController {
 	}
 
 	@Get('/for-workflow')
-	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const options = z
-			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
-			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+	async getProjectCredentials(
+		req: CredentialRequest.ForWorkflow,
+		_res: unknown,
+		@Query query: CredentialsForWorkflowQueryDto,
+	) {
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, query);
 	}
 
 	@Get('/new')
