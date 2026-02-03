@@ -5,6 +5,7 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 	ShareCredentialsBodyDto,
+	TestCredentialsBodyDto,
 	TransferCredentialBodyDto,
 	UpdateCredentialDto,
 } from '@n8n/api-types';
@@ -138,8 +139,12 @@ export class CredentialsController {
 
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
-	async testCredentials(req: CredentialRequest.Test) {
-		const { credentials } = req.body;
+	async testCredentials(
+		req: CredentialRequest.Test,
+		_res: unknown,
+		@Body payload: TestCredentialsBodyDto,
+	) {
+		const { credentials } = payload;
 
 		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentials.id,
