@@ -145,7 +145,7 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
-        run: npx tsx packages/testing/containers/pull-test-images.ts || true
+        run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Run Tests
         # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
