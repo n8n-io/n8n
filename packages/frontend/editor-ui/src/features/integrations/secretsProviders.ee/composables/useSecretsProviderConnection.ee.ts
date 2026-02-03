@@ -7,12 +7,6 @@ import {
 	updateSecretProviderConnection,
 	testSecretProviderConnection,
 } from '@n8n/rest-api-client';
-import {
-	mockGetSecretProviderConnectionByKey,
-	mockCreateSecretProviderConnection,
-	mockUpdateSecretProviderConnection,
-	mockTestSecretProviderConnection,
-} from './useSecretsProviders.mock';
 
 /**
  * Low-level composable for secrets provider connection API operations.
@@ -20,8 +14,7 @@ import {
  * UI feedback (toasts, errors) should be handled by the caller.
  */
 
-export function useSecretsProviderConnection(options?: { useMockApi?: boolean }) {
-	const USE_MOCK_API = options?.useMockApi ?? true;
+export function useSecretsProviderConnection() {
 	const rootStore = useRootStore();
 
 	const connectionState = ref<SecretProviderConnection['state']>('initializing');
@@ -33,12 +26,6 @@ export function useSecretsProviderConnection(options?: { useMockApi?: boolean })
 		// POST /rest/secret-providers/connections/:connectionId/test
 		isTesting.value = true;
 		try {
-			if (USE_MOCK_API) {
-				const { testState } = await mockTestSecretProviderConnection();
-				connectionState.value = testState;
-				return testState;
-			}
-
 			const { testState } = await testSecretProviderConnection(
 				rootStore.restApiContext,
 				connectionId,
@@ -59,9 +46,10 @@ export function useSecretsProviderConnection(options?: { useMockApi?: boolean })
 		// GET /rest/secret-providers/connections/:providerKey
 		isLoading.value = true;
 		try {
-			const connection = USE_MOCK_API
-				? await mockGetSecretProviderConnectionByKey(providerKey)
-				: await getSecretProviderConnectionByKey(rootStore.restApiContext, providerKey);
+			const connection = await getSecretProviderConnectionByKey(
+				rootStore.restApiContext,
+				providerKey,
+			);
 
 			await testConnection(connection.id);
 			return connection;
@@ -77,15 +65,10 @@ export function useSecretsProviderConnection(options?: { useMockApi?: boolean })
 		projectIds: string[];
 	}): Promise<SecretProviderConnection> {
 		// PUT /rest/secret-providers/connections/:providerKey
-		const connection = USE_MOCK_API
-			? await mockCreateSecretProviderConnection({
-					...connectionData,
-					isGlobal: true,
-				})
-			: await createSecretProviderConnection(rootStore.restApiContext, {
-					...connectionData,
-					isGlobal: true,
-				});
+		const connection = await createSecretProviderConnection(rootStore.restApiContext, {
+			...connectionData,
+			isGlobal: true,
+		});
 
 		return connection;
 	}
@@ -99,9 +82,11 @@ export function useSecretsProviderConnection(options?: { useMockApi?: boolean })
 		},
 	): Promise<SecretProviderConnection> {
 		// PATCH /rest/secret-providers/connections/:providerKey
-		const connection = USE_MOCK_API
-			? await mockUpdateSecretProviderConnection(providerKey, connectionData)
-			: await updateSecretProviderConnection(rootStore.restApiContext, providerKey, connectionData);
+		const connection = await updateSecretProviderConnection(
+			rootStore.restApiContext,
+			providerKey,
+			connectionData,
+		);
 
 		return connection;
 	}

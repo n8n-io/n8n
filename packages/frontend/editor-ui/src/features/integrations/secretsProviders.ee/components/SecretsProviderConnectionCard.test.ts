@@ -1,9 +1,35 @@
 import { screen } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
-import type { SecretProviderConnection } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
-import { MOCK_PROVIDER_TYPES } from '../composables/useSecretsProviders.mock';
+
+export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
+	{
+		type: 'awsSecretsManager',
+		displayName: 'AWS Secrets Manager',
+		icon: 'aws-secrets-manager',
+		properties: [],
+	},
+	{
+		type: 'gcpSecretsManager',
+		displayName: 'GCP Secrets Manager',
+		icon: 'gcp-secrets-manager',
+		properties: [],
+	},
+	{
+		type: 'azureKeyVault',
+		displayName: 'Azure Key Vault',
+		icon: 'azure-key-vault',
+		properties: [],
+	},
+	{
+		type: 'vault',
+		displayName: 'HashiCorp Vault',
+		icon: 'vault',
+		properties: [],
+	},
+];
 
 const renderComponent = createComponentRenderer(SecretsProviderConnectionCard);
 

@@ -35,9 +35,7 @@ describe('useSecretsProvidersList', () => {
 
 	describe('initialization', () => {
 		it('should initialize with empty state', () => {
-			const { providerTypes, activeProviders, isLoading, secrets } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { providerTypes, activeProviders, isLoading, secrets } = useSecretsProvidersList();
 
 			expect(providerTypes.value).toEqual([]);
 			expect(activeProviders.value).toEqual([]);
@@ -50,7 +48,7 @@ describe('useSecretsProvidersList', () => {
 		it('should return true when enterprise feature is enabled', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 
-			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList({ useMockApi: false });
+			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList();
 
 			expect(isEnterpriseExternalSecretsEnabled.value).toBe(true);
 		});
@@ -58,7 +56,7 @@ describe('useSecretsProvidersList', () => {
 		it('should return false when enterprise feature is disabled', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = false;
 
-			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList({ useMockApi: false });
+			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList();
 
 			expect(isEnterpriseExternalSecretsEnabled.value).toBe(false);
 		});
@@ -79,9 +77,7 @@ describe('useSecretsProvidersList', () => {
 				mockProviderTypes as SecretProviderTypeResponse[],
 			);
 
-			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList();
 
 			expect(isLoading.value).toBe(false);
 
@@ -100,7 +96,7 @@ describe('useSecretsProvidersList', () => {
 				new Error('API error'),
 			);
 
-			const { fetchProviderTypes, isLoading } = useSecretsProvidersList({ useMockApi: false });
+			const { fetchProviderTypes, isLoading } = useSecretsProvidersList();
 
 			expect(isLoading.value).toBe(false);
 
@@ -149,9 +145,7 @@ describe('useSecretsProvidersList', () => {
 		it('should not fetch if user lacks required scope', async () => {
 			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
 
-			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 
@@ -165,9 +159,7 @@ describe('useSecretsProvidersList', () => {
 				new Error('Network error'),
 			);
 
-			const { fetchActiveConnections, activeProviders, isLoading } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders, isLoading } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 
@@ -226,9 +218,7 @@ describe('useSecretsProvidersList', () => {
 
 			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
 
-			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 
