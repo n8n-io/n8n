@@ -131,6 +131,73 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('findWebhookConflicts', () => {
+		test('should return conflicting webhooks', async () => {
+			const method = 'GET';
+			const path = 'user/profile';
+			const mockWebhooks = [
+				createWebhook(method, path),
+				createWebhook('POST', path),
+				createWebhook('GET', 'user/:id'),
+			];
+
+			const node1 = {
+				id: '1',
+				webhookId: 'webhook1',
+				name: 'Webhook1',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				parameters: {
+					path: 'conflicting-path',
+				},
+			} as unknown as INode;
+
+			const node2 = {
+				id: '2',
+				webhookId: 'webhook2',
+				name: 'Webhook2',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				parameters: {
+					path: 'conflicting-path',
+				},
+			} as unknown as INode;
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [node1, node2],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
+
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: '/webhook',
+							isFullPath: true,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			webhookRepository.find.mockResolvedValue(mockWebhooks);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const conflicts = await webhookService.findWebhookConflicts(workflow, additionalData);
+
+			expect(conflicts).toHaveLength(1);
+		});
+	});
+
 	describe('getWebhookMethods()', () => {
 		test('should return all methods for webhook', async () => {
 			const path = 'user/profile';

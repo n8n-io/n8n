@@ -252,9 +252,13 @@ export class LmOpenAi implements INodeType {
 		};
 
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1'),
+				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
 			defaultHeaders,
 		};
@@ -268,7 +272,7 @@ export class LmOpenAi implements INodeType {
 			model: modelName,
 			...options,
 			configuration,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),

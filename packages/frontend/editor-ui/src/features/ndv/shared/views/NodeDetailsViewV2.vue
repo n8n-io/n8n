@@ -44,7 +44,6 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
@@ -348,17 +347,8 @@ const setSelectedInput = (value: string | undefined) => {
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
+		e.preventDefault();
 	}
-};
-
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {

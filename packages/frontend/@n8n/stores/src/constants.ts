@@ -5,6 +5,7 @@ export const STORES = {
 	UI: 'ui',
 	USERS: 'users',
 	WORKFLOWS: 'workflows',
+	WORKFLOWS_LIST: 'workflowsList',
 	WORKFLOWS_V2: 'workflowsV2',
 	WORKFLOWS_EE: 'workflowsEE',
 	EXECUTIONS: 'executions',
@@ -44,4 +45,7 @@ export const STORES = {
 	TEMPLATES_DATA_QUALITY: 'templatesDataQuality',
 	BANNERS: 'banners',
 	CONSENT: 'consent',
+	CHAT_HUB: 'chatHub',
+	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
+	SETUP_PANEL: 'setupPanel',
 } as const;

@@ -1,6 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -31,6 +31,11 @@ describe('MeController', () => {
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
+	beforeEach(() => {
+		// Default: user has no SSO identities (email-based auth)
+		userService.findSsoIdentity.mockResolvedValue(undefined);
+	});
+
 	describe('updateCurrentUser', () => {
 		it('should update the user in the DB, and issue a new cookie', async () => {
 			const user = mock<User>({
@@ -49,7 +54,7 @@ describe('MeController', () => {
 			const req = mock<AuthenticatedRequest>({ user, browserId });
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			userService.findUserWithAuthIdentities.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -107,6 +112,126 @@ describe('MeController', () => {
 					mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
 				),
 			).rejects.toThrowError(new BadRequestError('Invalid email address'));
+		});
+
+		describe('when user is authenticated via LDAP or OIDC', () => {
+			it('should throw BadRequestError when LDAP user tries to change their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'ldap@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'ldap' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'ldap@email.com',
+							firstName: 'Jane',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('LDAP user may not change their profile information'),
+				);
+			});
+
+			it('should throw BadRequestError when OIDC user tries to change their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'oidc@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'oidc' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'new-oidc@email.com',
+							firstName: 'John',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('OIDC user may not change their profile information'),
+				);
+			});
+
+			it('should allow non-LDAP/OIDC users to update their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'valid@email.com',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const payload = new UserUpdateRequestDto({
+					email: 'valid@email.com',
+					firstName: 'John',
+					lastName: 'Potato',
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				await controller.updateCurrentUser(req, res, payload);
+
+				expect(userService.update).toHaveBeenCalled();
+			});
+
+			it('should block user with multiple identities if one is LDAP', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'multi@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				// User has multiple identities, one of which is LDAP - findSsoIdentity returns the SSO one
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'ldap' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'multi@email.com',
+							firstName: 'Jane',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('LDAP user may not change their profile information'),
+				);
+			});
 		});
 
 		describe('when mfa is enabled', () => {
@@ -173,7 +298,7 @@ describe('MeController', () => {
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userRepository.findOneOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 				mockMfaService.validateMfa.mockResolvedValue(true);
@@ -273,7 +398,7 @@ describe('MeController', () => {
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userRepository.findOneOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -301,7 +426,7 @@ describe('MeController', () => {
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userRepository.findOneOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 

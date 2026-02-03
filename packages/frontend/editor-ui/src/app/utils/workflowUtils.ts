@@ -1,4 +1,18 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
+
+/**
+ * Converts workflow tags from ITag[] (API response format) to string[] (store format)
+ * Or keeps original value if already in string[] format
+ */
+export function convertWorkflowTagsToIds(tags: ITag[] | string[] | undefined): string[] {
+	if (!tags || !Array.isArray(tags)) return [];
+	if (tags.length === 0) return tags as string[];
+	if (typeof tags[0] === 'object' && 'id' in tags[0]) {
+		return (tags as ITag[]).map((tag) => tag.id);
+	}
+	return tags as string[];
+}
 
 /**
  * Removes execution data from workflow nodes and workflow-level execution data

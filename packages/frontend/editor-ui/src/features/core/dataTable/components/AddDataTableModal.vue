@@ -59,7 +59,7 @@ const uploadedFileName = ref<string>('');
 const csvColumns = ref<CsvColumn[]>([]);
 const csvRowCount = ref<number>(0);
 const csvColumnCount = ref<number>(0);
-const isUploading = ref(false);
+const isLoading = ref(false);
 const hasHeaders = ref(true);
 const isUploadHovered = ref(false);
 
@@ -137,7 +137,7 @@ onMounted(() => {
 const selectedOption = ref<'scratch' | 'import'>('scratch');
 
 const proceedFromSelect = async () => {
-	if (!selectedOption.value || !dataTableName.value) return;
+	if (!selectedOption.value || !dataTableName.value || isLoading.value) return;
 
 	if (selectedOption.value === 'scratch') {
 		await onSubmit();
@@ -199,7 +199,7 @@ const handleFileChange = (uploadFile: UploadFile) => {
 const uploadFile = async () => {
 	if (!selectedFile.value) return;
 
-	isUploading.value = true;
+	isLoading.value = true;
 	creationMode.value = 'import';
 
 	try {
@@ -229,11 +229,12 @@ const uploadFile = async () => {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();
 	} finally {
-		isUploading.value = false;
+		isLoading.value = false;
 	}
 };
 
 const onSubmit = async () => {
+	isLoading.value = true;
 	try {
 		let newDataTable;
 
@@ -269,6 +270,8 @@ const onSubmit = async () => {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.add.error'));
+	} finally {
+		isLoading.value = false;
 	}
 };
 
@@ -308,6 +311,7 @@ const redirectToDataTables = () => {
 						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
 						data-test-id="data-table-name-input-select"
 						name="dataTableNameSelect"
+						@keydown.enter="proceedFromSelect"
 					/>
 				</N8nInputLabel>
 				<ElRadioGroup v-model="selectedOption" :class="$style.radioGroup">
@@ -353,7 +357,7 @@ const redirectToDataTables = () => {
 			</div>
 
 			<div v-else-if="creationMode === 'import'" :class="$style.content">
-				<div v-if="isUploading" :class="$style.uploadingMessage">
+				<div v-if="isLoading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
 				</div>
 
@@ -429,6 +433,7 @@ const redirectToDataTables = () => {
 				/>
 				<N8nButton
 					v-if="creationMode === 'select'"
+					:loading="isLoading"
 					size="large"
 					:disabled="
 						!dataTableName || !selectedOption || (selectedOption === 'import' && !selectedFile)
@@ -448,6 +453,7 @@ const redirectToDataTables = () => {
 				/>
 				<N8nButton
 					v-if="creationMode === 'import'"
+					:loading="isLoading"
 					size="large"
 					:disabled="isCreateDisabled"
 					:label="i18n.baseText('generic.create')"

@@ -111,6 +111,7 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			bothTriggers: randomUUID(),
 			disabledExecuteWorkflowTrigger: randomUUID(),
 			disabledErrorTrigger: randomUUID(),
+			invalidJson: randomUUID(),
 		};
 
 		beforeAll(async () => {
@@ -394,6 +395,32 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 				updatedAt: new Date(),
 			});
 
+			// Insert workflow with invalid JSON containing unescaped control characters
+			const tableName = context.escape.tableName('workflow_entity');
+			const idColumn = context.escape.columnName('id');
+			const nameColumn = context.escape.columnName('name');
+			const nodesColumn = context.escape.columnName('nodes');
+			const connectionsColumn = context.escape.columnName('connections');
+			const activeColumn = context.escape.columnName('active');
+			const versionIdColumn = context.escape.columnName('versionId');
+			const createdAtColumn = context.escape.columnName('createdAt');
+			const updatedAtColumn = context.escape.columnName('updatedAt');
+
+			await context.queryRunner.query(
+				`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				[
+					workflowIds.invalidJson,
+					'Test Invalid JSON with Control Characters',
+					// Invalid JSON with unescaped newline (simulating the production issue)
+					'[{"id":"test","type":"n8n-nodes-base.executeWorkflowTrigger","parameters":{"inputSource":"passthrough","description":"MEASUREMENT DETAILS: \\"N/A\\"\\nMEASUREMENT TYPE: \\"N/A\\"\n"},"typeVersion":1,"position":[0,0]}]',
+					'{}',
+					false,
+					randomUUID(),
+					new Date(),
+					new Date(),
+				],
+			);
+
 			await runSingleMigration(MIGRATION_NAME);
 			await context.queryRunner.release();
 		});
@@ -523,6 +550,20 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 
 			expect(workflow?.active).toBeFalsy();
 			expect(workflow?.activeVersionId).toBeNull();
+
+			await context.queryRunner.release();
+		});
+
+		it('should skip workflows with invalid JSON containing unescaped control characters', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const workflow = await getWorkflowById(context, workflowIds.invalidJson);
+
+			// Workflow should remain inactive and unchanged
+			expect(workflow?.active).toBeFalsy();
+			expect(workflow?.activeVersionId).toBeNull();
+
+			// Verify the invalid JSON is still in the database (unchanged)
+			expect(workflow?.nodes).toContain('MEASUREMENT DETAILS');
 
 			await context.queryRunner.release();
 		});

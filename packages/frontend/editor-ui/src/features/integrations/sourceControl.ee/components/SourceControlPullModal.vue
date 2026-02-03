@@ -3,7 +3,10 @@ import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
-import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
+import {
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
+} from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -15,7 +18,9 @@ import {
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
+import { useUIStore } from '@/app/stores/ui.store';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
@@ -33,11 +38,16 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
+	N8nOption,
+	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 type SourceControlledFileType = SourceControlledFile['type'];
-type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
+type SourceControlledFileWithProject = SourceControlledFile & {
+	project?: ProjectListItem;
+	willBeAutoPublished?: boolean;
+};
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
@@ -52,6 +62,7 @@ const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 
 const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
@@ -59,9 +70,44 @@ const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.
 const status = ref<SourceControlledFile[]>(props.data.status || []);
 const isLoading = ref(false);
 
-const responseStatuses = {
-	CONFLICT: 409,
-};
+// Auto-publish selection
+const autoPublish = ref<AutoPublishMode>('none');
+
+const autoPublishOptions = computed(() => {
+	const workflows = status.value.filter((f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow);
+	const hasPublishedWorkflows = workflows.some((w) => w.isLocalPublished && w.status !== 'created');
+
+	return [
+		{
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.off'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.off.description',
+			),
+			value: 'none',
+		},
+		{
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.published'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.published.description',
+			),
+			value: 'published',
+			disabled: !hasPublishedWorkflows,
+		},
+		{
+			label: i18n.baseText('settings.sourceControl.modals.pull.autoPublish.options.on'),
+			description: i18n.baseText(
+				'settings.sourceControl.modals.pull.autoPublish.options.on.description',
+			),
+			value: 'all',
+		},
+	];
+});
+
+const hasModifiedWorkflows = computed(() => {
+	return status.value.some(
+		(f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow && f.status === 'modified',
+	);
+});
 
 // Load fresh source control status when modal opens
 async function loadSourceControlStatus() {
@@ -72,20 +118,25 @@ async function loadSourceControlStatus() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 
 	try {
-		const freshStatus = await sourceControlStore.pullWorkfolder(false);
-		await notifyUserAboutPullWorkFolderOutcome(freshStatus, toast, router);
-		sourceControlEventBus.emit('pull');
-		close();
-	} catch (error) {
-		// only show the modal when there are conflicts
-		const errorResponse = error.response;
+		// Use aggregated status API to preview what will be pulled (doesn't import)
+		const freshStatus = await sourceControlStore.getAggregatedStatus({
+			direction: 'pull',
+			preferLocalVersion: false,
+			verbose: false,
+		});
+		status.value = freshStatus || [];
 
-		if (errorResponse?.status === responseStatuses.CONFLICT) {
-			status.value = errorResponse.data.data || [];
-		} else {
-			toast.showError(error, 'Error');
+		// Close modal if there are no changes to pull
+		if (status.value.length === 0) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
+			});
 			close();
 		}
+	} catch (error) {
+		toast.showError(error, 'Error');
+		close();
 	} finally {
 		isLoading.value = false;
 		loadingService.stopLoading();
@@ -120,13 +171,27 @@ const filteredWorkflows = computed(() => {
 	return workflows;
 });
 
-const sortedWorkflows = computed(() =>
-	orderBy(
+const sortedWorkflows = computed(() => {
+	const sorted = orderBy(
 		filteredWorkflows.value,
 		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
 		['asc', 'desc'],
-	),
-);
+	);
+
+	// Add willBeAutoPublished property to each workflow
+	return sorted.map((file) => ({
+		...file,
+		willBeAutoPublished:
+			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+			file.status !== 'deleted' &&
+			shouldAutoPublishWorkflow({
+				isNewWorkflow: file.status === 'created',
+				isLocalPublished: file.isLocalPublished ?? false,
+				isRemoteArchived: file.isRemoteArchived ?? false,
+				autoPublish: autoPublish.value,
+			}),
+	}));
+});
 
 // Filtered credentials
 const filteredCredentials = computed(() => {
@@ -208,18 +273,39 @@ function close() {
 
 async function pullWorkfolder() {
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
-	close();
+
+	const workflowsToAutoPublish = sortedWorkflows.value.filter((w) => w.willBeAutoPublished);
 
 	try {
-		const pullStatus = await sourceControlStore.pullWorkfolder(true);
+		const pullStatus = await sourceControlStore.pullWorkfolder(true, autoPublish.value);
 
 		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast, router);
 
 		sourceControlEventBus.emit('pull');
+
+		// Show result modal if any workflows were auto-published
+		if (workflowsToAutoPublish.length > 0) {
+			// Filter to only show workflows that were intended to be auto-published
+			const workflowResults = pullStatus.filter(
+				(file) =>
+					file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+					workflowsToAutoPublish.some((w) => w.id === file.id),
+			);
+
+			if (workflowResults.length > 0) {
+				uiStore.openModalWithData({
+					name: SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
+					data: {
+						workflows: workflowResults,
+					},
+				});
+			}
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
 		loadingService.stopLoading();
+		close();
 	}
 }
 
@@ -284,8 +370,8 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
 			</N8nHeading>
 
-			<div :class="[$style.filtersRow]" class="mt-l">
-				<N8nText tag="div" class="mb-xs">
+			<div :class="[$style.filtersRow]" class="mt-xs">
+				<N8nText tag="div">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
@@ -294,98 +380,142 @@ onMounted(() => {
 			</div>
 		</template>
 		<template #content>
-			<div style="display: flex; height: 100%">
-				<div :class="$style.tabs">
-					<template v-for="tab in tabs" :key="tab.value">
-						<button
-							type="button"
-							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
-							:data-test-id="`source-control-pull-modal-tab-${tab.value}`"
-							@click="activeTab = tab.value"
+			<div style="display: flex; flex-direction: column; height: 100%">
+				<div :class="$style.autoPublishSection">
+					<N8nText tag="div" bold size="medium" color="text-dark">
+						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
+					</N8nText>
+					<N8nSelect
+						v-model="autoPublish"
+						size="medium"
+						:class="$style.select"
+						data-test-id="auto-publish-select"
+					>
+						<N8nOption
+							v-for="option in autoPublishOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+							:disabled="option.disabled"
 						>
-							<div>{{ tab.label }}</div>
-							<N8nText tag="div" color="text-light">
-								{{ tab.total }} {{ tab.total === 1 ? 'item' : 'items' }}
-							</N8nText>
-						</button>
-					</template>
-				</div>
-				<div style="flex: 1">
-					<div :class="[$style.table]">
-						<div :class="[$style.tableHeader]">
-							<div :class="$style.headerTitle">
-								<N8nText>Title</N8nText>
+							<div :class="$style.listOption">
+								<N8nText bold>{{ option.label }}</N8nText>
+								<N8nText v-if="option.description" size="small" color="text-light">
+									{{ option.description }}
+								</N8nText>
 							</div>
-						</div>
-						<div style="flex: 1; overflow: hidden">
-							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
-								{{ filtersNoResultText }}
-							</N8nInfoTip>
-							<DynamicScroller
-								v-if="activeDataSourceFiltered.length"
-								:class="[$style.scroller]"
-								:items="activeDataSourceFiltered"
-								:min-item-size="57"
-								item-class="scrollerItem"
+						</N8nOption>
+					</N8nSelect>
+				</div>
+				<div style="display: flex; flex: 1; min-height: 0">
+					<div :class="$style.tabs">
+						<template v-for="tab in tabs" :key="tab.value">
+							<button
+								type="button"
+								:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
+								:data-test-id="`source-control-pull-modal-tab-${tab.value}`"
+								@click="activeTab = tab.value"
 							>
-								<template #default="{ item: file, active, index }">
-									<DynamicScrollerItem
-										:item="file"
-										:active="active"
-										:size-dependencies="[file.name, file.id]"
-										:data-index="index"
-									>
-										<div :class="[$style.listItem]" data-test-id="pull-modal-item">
-											<div :class="[$style.itemContent]">
-												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
-													<RouterLink
-														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
-														target="_blank"
-														:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: file.id } }"
-													>
-														{{ file.name }}
-													</RouterLink>
-													<RouterLink
-														v-else-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														target="_blank"
-														:to="{ name: VIEWS.WORKFLOW, params: { name: file.id } }"
-													>
-														{{ file.name }}
-													</RouterLink>
-													<span v-else>{{ file.name }}</span>
-												</N8nText>
-												<N8nText
-													v-if="file.updatedAt"
-													tag="p"
-													class="mt-0"
-													color="text-light"
-													size="small"
-												>
-													{{ renderUpdatedAt(file) }}
-												</N8nText>
+								<div>{{ tab.label }}</div>
+								<N8nText tag="div" color="text-light">
+									{{ tab.total }} {{ tab.total === 1 ? 'item' : 'items' }}
+								</N8nText>
+							</button>
+						</template>
+					</div>
+					<div style="flex: 1">
+						<div :class="[$style.table]">
+							<div :class="[$style.tableHeader]">
+								<div :class="$style.headerTitle">
+									<N8nText>Title</N8nText>
+								</div>
+							</div>
+							<div style="flex: 1; overflow: hidden">
+								<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
+									{{ filtersNoResultText }}
+								</N8nInfoTip>
+								<DynamicScroller
+									v-if="activeDataSourceFiltered.length"
+									:class="[$style.scroller]"
+									:items="activeDataSourceFiltered"
+									:min-item-size="57"
+									item-class="scrollerItem"
+								>
+									<template #default="{ item: file, active, index }">
+										<DynamicScrollerItem
+											:item="file"
+											:active="active"
+											:size-dependencies="[file.name, file.id]"
+											:data-index="index"
+										>
+											<div :class="[$style.listItem]" data-test-id="pull-modal-item">
+												<div :class="[$style.itemContent]">
+													<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
+														<RouterLink
+															v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
+															target="_blank"
+															rel="noopener noreferrer"
+															:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: file.id } }"
+														>
+															{{ file.name }}
+														</RouterLink>
+														<RouterLink
+															v-else-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+															target="_blank"
+															rel="noopener noreferrer"
+															:to="{ name: VIEWS.WORKFLOW, params: { name: file.id } }"
+														>
+															{{ file.name }}
+														</RouterLink>
+														<span v-else>{{ file.name }}</span>
+													</N8nText>
+													<div :class="$style.statusLine">
+														<N8nText v-if="file.updatedAt" color="text-light" size="small">
+															{{ renderUpdatedAt(file) }}
+														</N8nText>
+														<N8nText
+															v-if="file.willBeAutoPublished"
+															color="success"
+															size="small"
+															bold
+														>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
+															}}
+														</N8nText>
+														<N8nText v-if="file.isRemoteArchived" color="warning" size="small" bold>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
+															}}
+														</N8nText>
+													</div>
+												</div>
+												<span :class="[$style.badges]">
+													<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
+														{{ getStatusText(file.status) }}
+													</N8nBadge>
+													<template v-if="isWorkflowDiffsEnabled">
+														<N8nTooltip
+															v-if="
+																file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+																file.status === 'modified'
+															"
+															:content="i18n.baseText('workflowDiff.compare')"
+															placement="top"
+														>
+															<N8nIconButton
+																icon="file-diff"
+																type="secondary"
+																@click="openDiffModal(file.id)"
+															/>
+														</N8nTooltip>
+													</template>
+												</span>
 											</div>
-											<span :class="[$style.badges]">
-												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-													{{ getStatusText(file.status) }}
-												</N8nBadge>
-												<template v-if="isWorkflowDiffsEnabled">
-													<N8nTooltip
-														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														:content="i18n.baseText('workflowDiff.compare')"
-														placement="top"
-													>
-														<N8nIconButton
-															icon="file-diff"
-															type="secondary"
-															@click="openDiffModal(file.id)"
-														/>
-													</N8nTooltip>
-												</template>
-											</span>
-										</div>
-									</DynamicScrollerItem>
-								</template>
-							</DynamicScroller>
+										</DynamicScrollerItem>
+									</template>
+								</DynamicScroller>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -415,7 +545,11 @@ onMounted(() => {
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
 				</N8nButton>
 				<N8nButton type="primary" data-test-id="force-pull" @click="pullWorkfolder">
-					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.save') }}
+					{{
+						hasModifiedWorkflows
+							? i18n.baseText('settings.sourceControl.modals.pull.buttons.save')
+							: i18n.baseText('settings.sourceControl.modals.pull.buttons.pull')
+					}}
 				</N8nButton>
 			</div>
 		</template>
@@ -564,5 +698,32 @@ onMounted(() => {
 .tabActive {
 	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
+}
+
+.autoPublishSection {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	padding: var(--spacing--4xs) 0;
+	margin-bottom: var(--spacing--xs);
+}
+
+.select {
+	width: 250px;
+}
+
+.statusLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.listOption {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	margin: var(--spacing--3xs) 0;
+	white-space: normal;
+	padding-right: var(--spacing--md);
 }
 </style>

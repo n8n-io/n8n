@@ -1,4 +1,4 @@
-name: Trigger build/unit tests on PR comment
+name: 'Build: Unit Test PR Comment'
 
 on:
   issue_comment:
@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Validate user permissions and collect PR data
         id: check_permissions
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -94,7 +94,7 @@ jobs:
           HEAD_SHA: ${{ steps.check_permissions.outputs.headSha }}
           PR_NUMBER: ${{ steps.check_permissions.outputs.prNumber }}
         run: |
-          gh workflow run ci-manual-build-unit-tests.yml \
+          gh workflow run ci-manual-unit-tests.yml \
             --repo "${{ github.repository }}" \
             -f ref="${HEAD_SHA}" \
             -f pr_number="${PR_NUMBER}"

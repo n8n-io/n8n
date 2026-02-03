@@ -69,22 +69,6 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 
 #### Code Node (n8n-nodes-base.code)
 
-**Built-in Nodes vs. Code Node**
-- Prefer basic built-in nodes (Edit Fields, Filter, Split Out, Summarize, Aggregate, etc.) over Code node. Use Code only for complex logic that can't be achieved otherwise.
-- Rule of thumb: if the goal can be achieved with fewer than 5 basic nodes, use basic nodes
-
-**When NOT to Use**: Code node may be slower than core nodes (like Edit Fields, If, Switch, Split Out, Aggregate, etc.) as Code nodes run in a sandboxed environment. Avoid the code node where possible — it should only be used for complex transformations that can't be done with other nodes. For example, DO NOT use it for:
-- Adding or removing fields from items (use the 'edit fields' node instead)
-- Single-line data transformations of item fields (use the 'edit fields' node instead)
-- Filtering items based on their fields (use the 'filter' node instead)
-- Pivoting or summarizing data across multiple items (use the 'summarize' node instead)
-- Splitting arrays inside items out into multiple items (use the 'split out' node instead)
-- Aggregating multiple items into a single item (use the 'aggregate' node instead)
-- Sorting items in an array based on their fields (use the 'Sort' node instead)
-- Generating HTML from text or formatting text as HTML (use the 'HTML' node set to operation 'Generate HTML Template' or 'Convert to HTML Table' instead)
-
-**When to Use**: Complex transformations impossible with built-in nodes
-
 **Execution Modes**:
 - "Run Once per Item": Process each item independently
 - "Run Once for All Items": Access entire dataset (for aggregation)

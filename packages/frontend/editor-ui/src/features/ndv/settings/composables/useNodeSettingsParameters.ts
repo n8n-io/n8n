@@ -165,13 +165,13 @@ export function useNodeSettingsParameters() {
 		}
 	}
 
-	function shouldDisplayNodeParameter(
+	async function shouldDisplayNodeParameter(
 		nodeParameters: INodeParameters,
 		node: INodeUi | null,
 		parameter: INodeProperties,
 		path: string | undefined = '',
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-	): boolean {
+	): Promise<boolean> {
 		// Fast path: hidden parameters are never displayed
 		if (parameter.type === 'hidden') {
 			return false;
@@ -297,10 +297,10 @@ export function useNodeSettingsParameters() {
 
 				// Resolve expression
 				try {
-					nodeParams[key] = workflowHelpers.resolveExpression(
+					nodeParams[key] = (await workflowHelpers.resolveExpression(
 						value,
 						nodeParams,
-					) as NodeParameterValue;
+					)) as NodeParameterValue;
 				} catch {
 					nodeParams[key] = '';
 				}
@@ -337,10 +337,10 @@ export function useNodeSettingsParameters() {
 			}
 
 			try {
-				nodeParams[key] = workflowHelpers.resolveExpression(
+				nodeParams[key] = (await workflowHelpers.resolveExpression(
 					value,
 					nodeParams,
-				) as NodeParameterValue;
+				)) as NodeParameterValue;
 			} catch {
 				nodeParams[key] = '';
 			}
@@ -352,10 +352,10 @@ export function useNodeSettingsParameters() {
 		for (let i = pendingIndex; i < pendingKeys.length; i++) {
 			const key = pendingKeys[i];
 			try {
-				nodeParams[key] = workflowHelpers.resolveExpression(
+				nodeParams[key] = (await workflowHelpers.resolveExpression(
 					rawValues[key] as string,
 					nodeParams,
-				) as NodeParameterValue;
+				)) as NodeParameterValue;
 			} catch {
 				nodeParams[key] = '';
 			}

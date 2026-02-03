@@ -271,7 +271,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.locator('.param-options').click();
+		await this.page.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
@@ -514,6 +514,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterTextInput(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('input[type="text"]');
+	}
+
+	/**
+	 * Get the N8nInput container element for a parameter.
+	 * Use this for checking border styles since N8nInput has border on container, not input.
+	 */
+	getParameterInputContainer(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('input[type="text"]').locator('..');
 	}
 
 	getInlineExpressionEditorContent() {
@@ -771,14 +779,20 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 

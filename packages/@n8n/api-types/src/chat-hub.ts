@@ -1,9 +1,9 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
 	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
+	type ChunkType,
 	INodeSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -228,6 +228,7 @@ export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file'
 
 export interface ChatModelMetadataDto {
 	inputModalities: ChatHubInputModality[];
+	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
 	};
@@ -243,6 +244,8 @@ export interface ChatModelDto {
 	updatedAt: string | null;
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
+	groupName: string | null;
+	groupIcon: AgentIconOrEmoji | null;
 }
 
 /**
@@ -367,7 +370,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled' | 'waiting';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -468,8 +471,11 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	tools: z.array(INodeSchema).optional(),
 }) {}
 
-export interface EnrichedStructuredChunk extends StructuredChunk {
-	metadata: StructuredChunk['metadata'] & {
+export interface MessageChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		timestamp: number;
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;
@@ -502,4 +508,37 @@ export class UpdateChatSettingsRequest extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+}
+
+/**
+ * Response returned immediately when sending a message via WebSocket streaming.
+ * Message IDs are not included as they come via WebSocket events (chatHubStreamBegin).
+ */
+export interface ChatSendMessageResponse {
+	/** Status indicating streaming has started */
+	status: 'streaming';
+}
+
+/**
+ * Request query parameters for reconnecting to a chat stream
+ */
+export class ChatReconnectRequest extends Z.class({
+	lastSequence: z.coerce.number().int().min(0).optional(),
+}) {}
+
+/**
+ * Response containing pending chunks for reconnection replay
+ */
+export interface ChatReconnectResponse {
+	/** Whether there is an active stream for this session */
+	hasActiveStream: boolean;
+	/** Current message ID being streamed, if any */
+	currentMessageId: ChatMessageId | null;
+	/** Pending chunks that were missed during disconnection */
+	pendingChunks: Array<{
+		sequenceNumber: number;
+		content: string;
+	}>;
+	/** Last sequence number received by client (for gap detection) */
+	lastSequenceNumber: number;
 }

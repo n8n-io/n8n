@@ -1,225 +1,438 @@
-# n8n Test Containers - Usage Guide
+# n8n Test Containers
 
-A simple way to spin up n8n container stacks for development and testing.
+A composable container stack for n8n testing. Describe what you need, it builds the environment.
 
 ## Quick Start
 
 ```bash
-# Start a basic n8n instance (SQLite database)
+#build the container
+pnpm build:docker
+```
+alternatively, you can set `N8N_DOCKER_IMAGE=n8nio/n8n:latest`
+
+
+```bash
+# Basic n8n (SQLite)
 pnpm stack
 
-# Start with PostgreSQL database
+# With PostgreSQL
 pnpm stack --postgres
 
-# Start in queue mode (with Redis + PostgreSQL)
+# Queue mode (Redis + PostgreSQL + worker)
 pnpm stack --queue
 
-# Start with starter performance plan constraints
-pnpm stack:starter
+# Multi-main cluster
+pnpm stack --mains 2 --workers 1
+
+# Cloud plan simulation
+pnpm stack --plan starter
+
+# Public tunnel for webhook testing
+pnpm stack --tunnel
 ```
 
-When started, you'll see:
-- **URL**: http://localhost:[random-port]
+When started, you'll see the URL: `http://localhost:[port]`
 
+## Using in Playwright Tests
 
-## Common Usage Patterns
-
-### Development with Container Reuse
-```bash
-# Enable container reuse (faster restarts)
-pnpm run stack              # SQLite
-pnpm run stack:postgres     # PostgreSQL
-pnpm run stack:queue        # Queue mode
-pnpm run stack:multi-main   # Multiple main instances
-pnpm run stack:starter      # Starter performance plan
-```
-
-### Performance Plan Presets
-```bash
-# Use predefined performance plans (simulates cloud constraints, differs from cloud CPU wise due to non burstable docker)
-pnpm stack --plan trial        # Trial: 0.75GB RAM, 0.2 CPU (SQLite only)
-pnpm stack --plan starter      # Starter: 0.75GB RAM, 0.2 CPU (SQLite only)
-pnpm stack --plan pro-1       # Pro-1: 1.25GB RAM, 0.5 CPU (SQLite only)
-pnpm stack --plan pro-2       # Pro-2: 2.5GB RAM, 0.75 CPU (SQLite only)
-pnpm stack --plan enterprise  # Enterprise: 8GB RAM, 1.0 CPU (SQLite only)
-```
-
-### Queue Mode with Scaling
-```bash
-# Custom scaling: 3 main instances, 5 workers
-pnpm stack --queue --mains 3 --workers 5
-
-# Single main, 2 workers
-pnpm stack --queue --workers 2
-```
-
-### Environment Variables
-```bash
-# Set custom environment variables
-pnpm run stack --postgres --env N8N_LOG_LEVEL=info --env N8N_ENABLED_MODULES=insights
-```
-
-### Parallel Testing
-```bash
-# Run multiple stacks in parallel with unique names
-pnpm run stack --name test-1 --postgres
-pnpm run stack --name test-2 --queue
-```
-
-
-## Custom Container Config
-
-### Via Command Line
-```bash
-# Pass any n8n env vars to containers
-N8N_TEST_ENV='{"N8N_METRICS":"true"}' npm run stack:standard
-N8N_TEST_ENV='{"N8N_LOG_LEVEL":"debug","N8N_METRICS":"true","N8N_ENABLED_MODULES":"insights"}' npm run stack:postgres
-```
-
-## Programmatic Usage
+### Basic Test
 
 ```typescript
-import { createN8NStack } from './containers/n8n-test-containers';
+import { test, expect } from '../fixtures/base';
 
-// Simple SQLite instance
-const stack = await createN8NStack();
-
-// PostgreSQL with custom environment
-const stack = await createN8NStack({
-  postgres: true,
-  env: { N8N_LOG_LEVEL: 'debug' }
+test('my test', async ({ n8n }) => {
+  await n8n.page.goto('/workflow/new');
+  // ...
 });
-
-// Queue mode with scaling
-const stack = await createN8NStack({
-  queueMode: { mains: 2, workers: 3 }
-});
-
-// Resource-constrained container (simulating cloud plans)
-const stack = await createN8NStack({
-  resourceQuota: {
-    memory: 0.375,  // 384MB RAM
-    cpu: 0.25       // 250 millicore CPU
-  }
-});
-
-// Use the stack
-console.log(`n8n available at: ${stack.baseUrl}`);
-
-// Clean up when done
-await stack.stop();
 ```
 
-## Configuration Options
+### Enabling Services
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--postgres` | Use PostgreSQL instead of SQLite | `npm run stack -- --postgres` |
-| `--queue` | Enable queue mode with Redis | `npm run stack -- --queue` |
-| `--mains <n>` | Number of main instances (requires queue mode) | `--mains 3` |
-| `--workers <n>` | Number of worker instances (requires queue mode) | `--workers 5` |
-| `--name <name>` | Custom project name for parallel runs | `--name my-test` |
-| `--env KEY=VALUE` | Set environment variables | `--env N8N_LOG_LEVEL=debug` |
-| `--plan <plan>` | Use performance plan preset | `--plan starter` |
+Use `test.use()` to request services:
 
-## Performance Plans
+```typescript
+// Single service
+test.use({
+  capability: {
+    services: ['mailpit'],
+  },
+});
 
-Simulate cloud plan resource constraints for testing. **Performance plans are SQLite-only** (like cloud n8n):
+// Multiple services
+test.use({
+  capability: {
+    services: ['mailpit', 'keycloak', 'victoriaLogs', 'victoriaMetrics', 'vector'],
+  },
+});
+
+// Queue mode with services
+test.use({
+  capability: {
+    mains: 2,
+    workers: 1,
+    services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
+  },
+});
+```
+
+### Using Service Helpers
+
+Services provide type-safe helpers via `n8nContainer.services.*`:
+
+```typescript
+test('email test', async ({ n8nContainer }) => {
+  // Wait for email
+  const email = await n8nContainer.services.mailpit.waitForMessage({
+    to: 'test@example.com',
+  });
+  expect(email.subject).toBe('Welcome');
+});
+
+test('source control', async ({ n8nContainer }) => {
+  // Create git repo
+  const repo = await n8nContainer.services.gitea.createRepo('my-repo');
+  await repo.createBranch('develop');
+});
+
+test('metrics', async ({ n8nContainer }) => {
+  // Query Prometheus metrics
+  const result = await n8nContainer.services.observability.metrics.query('up');
+  expect(result[0].value).toBe(1);
+});
+```
+
+### Capability Shortcuts
+
+Common combinations have shortcuts in `fixtures/capabilities.ts`:
+
+```typescript
+// Instead of: { services: ['mailpit'] }
+test.use({ capability: 'email' });
+
+// Instead of: { services: ['keycloak'] }
+test.use({ capability: 'oidc' });
+
+// Instead of: { services: ['gitea'] }
+test.use({ capability: 'source-control' });
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Test Code                             │
+│   n8nContainer.services.gitea.createRepo('my-repo')         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         N8NStack                             │
+│   services: ServiceHelpers  ← Proxy with lazy instantiation │
+│   baseUrl, stop(), findContainers()                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+      ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+      │ GiteaHelper │ │MailpitHelper│ │ Observability│
+      └─────────────┘ └─────────────┘ └─────────────┘
+              │               │               │
+              ▼               ▼               ▼
+      ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+      │  Container  │ │  Container  │ │  Container  │
+      └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Service** | Container definition with `start()`, optional `env()`, optional helper |
+| **Registry** | Central manifest of all services (`services/registry.ts`) |
+| **Stack** | Orchestrator that builds the environment from config |
+| **Helper** | Type-safe API for interacting with a service in tests |
+
+### Service Activation
+
+Services activate in two ways:
+
+| Mode | When | Example |
+|------|------|---------|
+| **Auto-start** | Service has `shouldStart()` returning true | Redis auto-starts in queue mode |
+| **User-enabled** | Listed in `services: []` array | `services: ['mailpit']` |
+
+## Adding a New Service
+
+### Do I Need a Helper?
+
+Helpers let tests interact with a service **outside of the n8n UI**. Ask yourself:
+
+> "Will tests need to arrange or assert data in this service directly?"
+
+| Scenario | Helper Needed? | Example |
+|----------|---------------|---------|
+| **Test arrangement** - Set up data before test | Yes | Create a git repo before testing source control sync |
+| **Test assertion** - Verify side effects | Yes | Check an email was sent after workflow execution |
+| **Infrastructure only** - n8n connects, tests don't | No | PostgreSQL, Redis - n8n uses them, tests don't touch them |
+| **Observability** - Query metrics/logs | Yes | Assert memory usage, check for error logs |
+
+**Examples:**
+
+```typescript
+// Mailpit helper - ARRANGE: no emails exist, ASSERT: email was sent
+const emails = await n8nContainer.services.mailpit.getMessages();
+expect(emails).toHaveLength(1);
+
+// Gitea helper - ARRANGE: create repo before test
+const repo = await n8nContainer.services.gitea.createRepo('test-repo');
+// Now test source control connection via UI
+
+// Observability helper - ASSERT: check metrics after load test
+const memory = await n8nContainer.services.observability.metrics.query('process_resident_memory_bytes');
+expect(memory[0].value).toBeLessThan(500_000_000);
+
+// Redis/Postgres - no helper needed, n8n connects automatically
+// Tests don't need to interact with these directly
+```
+
+**Rule of thumb:** If you'd otherwise need `docker exec` or raw HTTP calls in your test, you need a helper.
+
+### Minimal Service (No Helper)
+
+**1. Create `services/my-service.ts`:**
+
+```typescript
+import { GenericContainer, Wait } from 'testcontainers';
+import type { Service, ServiceResult } from './types';
+
+const HOSTNAME = 'myservice';
+const PORT = 8080;
+
+export interface MyServiceMeta {
+  host: string;
+  port: number;
+}
+
+export type MyServiceResult = ServiceResult<MyServiceMeta>;
+
+export const myService: Service<MyServiceResult> = {
+  description: 'My service description',
+
+  async start(network, projectName) {
+    const container = await new GenericContainer('myimage:latest')
+      .withNetwork(network)
+      .withNetworkAliases(HOSTNAME)
+      .withExposedPorts(PORT)
+      .withWaitStrategy(Wait.forListeningPorts())
+      .withLabels({
+        'com.docker.compose.project': projectName,
+        'com.docker.compose.service': HOSTNAME,
+      })
+      .withName(`${projectName}-${HOSTNAME}`)
+      .withReuse()
+      .start();
+
+    return {
+      container,
+      meta: { host: HOSTNAME, port: PORT },
+    };
+  },
+
+  // Optional: env vars for n8n
+  env(result) {
+    return {
+      MY_SERVICE_HOST: result.meta.host,
+      MY_SERVICE_PORT: String(result.meta.port),
+    };
+  },
+};
+```
+
+**2. Register in `services/types.ts` and `services/registry.ts`:**
+
+```typescript
+// types.ts - add to SERVICE_NAMES array
+export const SERVICE_NAMES = [
+  // ...existing
+  'myService',
+] as const;
+
+// registry.ts - add to services object
+import { myService } from './my-service';
+
+export const services: Record<ServiceName, Service<ServiceResult>> = {
+  // ...existing
+  myService,
+};
+```
+
+**Done.** Use with `services: ['myService']` in tests.
+
+> **Note:** The `ServiceName` type is derived from `SERVICE_NAMES`, and `Record<ServiceName, ...>` ensures the registry includes all services. TypeScript will error if they're out of sync.
+
+### Service With Helper
+
+Add a helper class and factory to the service file:
+
+```typescript
+// ... service definition from above ...
+
+// Helper class
+export class MyServiceHelper {
+  constructor(
+    private readonly container: StartedTestContainer,
+    private readonly meta: MyServiceMeta,
+  ) {}
+
+  async doSomething(): Promise<string> {
+    // Interact with the service
+    const response = await fetch(`http://${this.container.getHost()}:${this.container.getMappedPort(PORT)}/api`);
+    return response.text();
+  }
+}
+
+// Factory function
+export function createMyServiceHelper(ctx: HelperContext): MyServiceHelper {
+  const result = ctx.serviceResults.myService;
+  if (!result) {
+    throw new Error('MyService not running. Add services: ["myService"] to test.use()');
+  }
+  return new MyServiceHelper(result.container, result.meta as MyServiceMeta);
+}
+
+// Type registration (enables autocomplete)
+declare module './types' {
+  interface ServiceHelpers {
+    myService: MyServiceHelper;
+  }
+}
+```
+
+**Register in `services/types.ts` and `services/registry.ts`:**
+
+```typescript
+// types.ts - add to SERVICE_NAMES array
+export const SERVICE_NAMES = [
+  // ...existing
+  'myService',
+] as const;
+
+// registry.ts - add service and helper factory
+import { myService, createMyServiceHelper } from './my-service';
+
+export const services = { ...existing, myService };
+export const helperFactories = { ...existing, myService: createMyServiceHelper };
+```
+
+**Use in tests:**
+
+```typescript
+test('my test', async ({ n8nContainer }) => {
+  const result = await n8nContainer.services.myService.doSomething();
+});
+```
+
+### Optional: Add Capability Shortcut
+
+In `fixtures/capabilities.ts`:
+
+```typescript
+export const CAPABILITIES = {
+  // ...existing
+  'my-capability': { services: ['myService'] },
+};
+```
+
+Now usable as `test.use({ capability: 'my-capability' })`.
+
+## Available Services
+
+| Service | Helper | Description |
+|---------|--------|-------------|
+| `postgres` | - | PostgreSQL database |
+| `redis` | - | Redis for queue mode |
+| `mailpit` | ✓ | Email testing (SMTP + UI) |
+| `gitea` | ✓ | Git server for source control |
+| `keycloak` | ✓ | OIDC/SSO provider |
+| `victoriaLogs` | - | VictoriaLogs for log storage |
+| `victoriaMetrics` | - | VictoriaMetrics for metrics |
+| `vector` | - | Vector log collector (depends on victoriaLogs) |
+| `tracing` | ✓ | Jaeger for distributed tracing |
+| `kafka` | ✓ | Kafka broker for message queue testing |
+| `proxy` | - | HTTP proxy (MockServer) |
+| `taskRunner` | - | External task runner |
+| `loadBalancer` | - | Caddy for multi-main |
+| `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
+
+**Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
+The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
+
+## CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--postgres` | Use PostgreSQL instead of SQLite |
+| `--queue` | Enable queue mode (adds Redis + PostgreSQL) |
+| `--mains <n>` | Number of main instances |
+| `--workers <n>` | Number of worker instances |
+| `--plan <name>` | Cloud plan preset (trial, starter, pro-1, pro-2, enterprise) |
+| `--name <name>` | Custom project name for parallel runs |
+| `--env KEY=VALUE` | Set environment variables |
+| `--observability` | Enable metrics/logs stack |
+| `--tracing` | Enable tracing stack (Jaeger) |
+| `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
+| `--oidc` | Enable Keycloak |
+| `--source-control` | Enable Gitea |
+| `--mailpit` | Enable email testing (Mailpit) |
+
+## Telemetry
+
+Container stack telemetry tracks startup timing, configuration, and runner info. Useful for monitoring CI performance and debugging slow stacks.
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `CONTAINER_TELEMETRY_WEBHOOK` | POST telemetry JSON to this URL |
+| `CONTAINER_TELEMETRY_VERBOSE` | Set to `1` for JSON output to console |
+
+### What's Collected
+
+```typescript
+{
+  timestamp: string;              // ISO timestamp
+  git: { sha, branch, pr? };      // Git context from CI env vars
+  ci: { runId, job, workflow };   // GitHub Actions context
+  runner: { provider, cpuCores, memoryGb };  // github | blacksmith | local
+  stack: { type, mains, workers, postgres, services };
+  timing: { total, network, n8nStartup, services: Record<string, number> };
+  containers: { total, services, n8n };
+  success: boolean;
+  errorMessage?: string;
+}
+```
+
+### Usage
 
 ```bash
-# CLI usage
-pnpm stack --plan trial        # 0.375GB RAM, 0.2 CPU cores
-pnpm stack --plan starter      # 0.375GB RAM, 0.2 CPU cores
-pnpm stack --plan pro-1       # 0.625GB RAM, 0.5 CPU cores
-pnpm stack --plan pro-2       # 1.25GB RAM, 0.75 CPU cores
-pnpm stack --plan enterprise  # 4GB RAM, 1.0 CPU cores
-```
+# Verbose output locally
+CONTAINER_TELEMETRY_VERBOSE=1 pnpm stack
 
-**Common Cloud Plan Quotas:**
-- **Trial/Starter**: 0.375GB RAM, 0.2 CPU cores
-- **Pro-1**: 0.625GB RAM, 0.5 CPU cores
-- **Pro-2**: 1.25GB RAM, 0.75 CPU cores
-- **Enterprise**: 4GB RAM, 1.0 CPU cores
-
-Resource quotas are applied using Docker's `--memory` and `--cpus` flags for realistic cloud simulation.
-
-## Package.json Scripts
-
-| Script | Description | Equivalent CLI |
-|--------|-------------|----------------|
-| `stack` | Basic SQLite instance | `pnpm stack` |
-| `stack:postgres` | PostgreSQL database | `pnpm stack --postgres` |
-| `stack:queue` | Queue mode | `pnpm stack --queue` |
-| `stack:multi-main` | Multi-main setup | `pnpm stack --mains 2 --workers 1` |
-| `stack:starter` | Starter performance plan (SQLite only) | `pnpm stack --plan starter` |
-
-## Container Architecture
-
-### Single Instance (Default)
-```
-┌─────────────┐
-│    n8n      │ ← SQLite database
-│  (SQLite)   │
-└─────────────┘
-```
-
-### With PostgreSQL
-```
-┌─────────────┐    ┌──────────────┐
-│    n8n      │────│ PostgreSQL   │
-│             │    │              │
-└─────────────┘    └──────────────┘
-```
-
-### Queue Mode
-```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│  n8n-main   │────│ PostgreSQL   │    │   Redis     │
-└─────────────┘    └──────────────┘    └─────────────┘
-┌─────────────┐                        │             │
-│ n8n-worker  │────────────────────────┘             │
-└─────────────┘                                      │
-┌─────────────┐                                      │
-│ n8n-worker  │──────────────────────────────────────┘
-└─────────────┘
-```
-
-### Multi-Main with Load Balancer
-```
-                    ┌──────────────┐
-                ────│              │ ← Entry point
-               /    │ Load Balancer│
-┌─────────────┐     └──────────────┘
-│ n8n-main-1  │────┐
-└─────────────┘    │ ┌──────────────┐    ┌─────────────┐
-┌─────────────┐    ├─│ PostgreSQL   │    │   Redis     │
-│ n8n-main-2  │────┤ └──────────────┘    └─────────────┘
-└─────────────┘    │                     │             │
-┌─────────────┐    │ ┌─────────────────────────────────┤
-│ n8n-worker  │────┘ │                                 │
-└─────────────┘      └─────────────────────────────────┘
+# Send to webhook (CI)
+CONTAINER_TELEMETRY_WEBHOOK=https://n8n.example.com/webhook/telemetry
 ```
 
 ## Cleanup
 
 ```bash
-# Remove all n8n containers and networks
-pnpm run stack:clean:all
-
+# Remove all containers and networks
+pnpm stack:clean:all
+```
 
 ## Tips
 
-- **Container Reuse**: Set `TESTCONTAINERS_REUSE_ENABLE=true` for faster development cycles
-- **Parallel Testing**: Use `--name` parameter to run multiple stacks without conflicts
-- **Queue Mode**: Automatically enables PostgreSQL (required for queue mode)
-- **Multi-Main**: Requires queue mode and special licensing read from N8N_LICENSE_ACTIVATION_KEY environment variable
-- **Performance Plans**: Use `--plan` for quick cloud plan simulation
-- **Log Monitoring**: Use the `ContainerTestHelpers` class for advanced log monitoring in tests
-
-## Docker Image
-
-By default, uses the `n8nio/n8n:local` image. Override with:
-```bash
-export N8N_DOCKER_IMAGE=n8nio/n8n:dev
-pnpm run stack
-```
+- **Container Reuse**: Set `TESTCONTAINERS_REUSE_ENABLE=true` for faster restarts
+- **Parallel Testing**: Use `--name` to run multiple stacks without conflicts
+- **Custom Image**: Set `TEST_IMAGE_N8N=n8nio/n8n:dev` to use a different image
+- **Multi-Main**: Requires queue mode and license key in `N8N_LICENSE_ACTIVATION_KEY`
+- **Using podman**: This does not work with podman out of the box - you need to ensure testcontainers is set correctly [https://podman-desktop.io/tutorial/testcontainers-with-podman](https://podman-desktop.io/tutorial/testcontainers-with-podman)

@@ -6,6 +6,7 @@ import type {
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
 import { assert, type IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '../constants';
@@ -18,6 +19,7 @@ export class AiService {
 	constructor(
 		private readonly licenseService: License,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -38,6 +40,7 @@ export class AiService {
 			n8nVersion: N8N_VERSION,
 			baseUrl,
 			logLevel,
+			instanceId: this.instanceSettings.instanceId,
 		});
 
 		// Register for license certificate updates

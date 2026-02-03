@@ -1,24 +1,27 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessage, BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
 
 import {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
-} from '@/prompts/agents/responder.prompt';
+	buildDataTableCreationGuidance,
+} from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import { isAIMessage } from '../types/langchain';
 import type { SimpleWorkflow } from '../types/workflow';
 import {
 	getErrorEntry,
 	getBuilderOutput,
-	getConfiguratorOutput,
 	hasRecursionErrorsCleared,
 } from '../utils/coordination-log';
+import { extractDataTableInfo } from '../utils/data-table-helpers';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -125,7 +128,7 @@ export class ResponderAgent {
 			);
 		}
 
-		// Builder output
+		// Builder output (handles both node creation and parameter configuration)
 		const builderOutput = getBuilderOutput(context.coordinationLog);
 		if (builderOutput) {
 			contextParts.push(`**Builder:** ${builderOutput}`);
@@ -133,10 +136,12 @@ export class ResponderAgent {
 			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
 		}
 
-		// Configurator output
-		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
-		if (configuratorOutput) {
-			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
+		// Data Table creation guidance
+		// If the workflow contains Data Table nodes, inform user they need to create tables manually
+		const dataTableInfo = extractDataTableInfo(context.workflowJSON);
+		if (dataTableInfo.length > 0) {
+			const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
+			contextParts.push(dataTableGuidance);
 		}
 
 		if (contextParts.length === 0) {
@@ -150,8 +155,10 @@ export class ResponderAgent {
 
 	/**
 	 * Invoke the responder agent with the given context
+	 * @param context - Responder context with messages and workflow state
+	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
-	async invoke(context: ResponderContext): Promise<AIMessage> {
+	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
 		const agent = systemPrompt.pipe(this.llm);
 
 		const contextMessage = this.buildContextMessage(context);
@@ -159,6 +166,12 @@ export class ResponderAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return (await agent.invoke({ messages: messagesToSend })) as AIMessage;
+		const result = await agent.invoke({ messages: messagesToSend }, config);
+		if (!isAIMessage(result)) {
+			return new AIMessage({
+				content: 'I encountered an issue generating a response. Please try again.',
+			});
+		}
+		return result;
 	}
 }

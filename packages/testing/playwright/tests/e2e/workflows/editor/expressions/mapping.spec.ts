@@ -160,9 +160,10 @@ test.describe('Data Mapping', () => {
 		await expect(firstHeader).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
-		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'bottom');
+		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'center');
 
-		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible();
+		// Wait for expression editor to appear after drop
+		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible({ timeout: 15000 });
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{ $json.timestamp }}');
 
 		await n8n.page.keyboard.press('Escape');
@@ -258,8 +259,7 @@ test.describe('Data Mapping', () => {
 	});
 
 	// There is an issue here sometimes, when dragging to the target it prepends the last value that was in the window even if it was cleared
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('maps expressions to updated fields correctly', async ({ n8n }) => {
+	test.fixme('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
 		await n8n.canvas.openNode('Set');
 
@@ -332,6 +332,7 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
+		// Check border on input element (N8nInput has border on input, not container)
 		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
 		await expect(includeOtherFieldsInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 

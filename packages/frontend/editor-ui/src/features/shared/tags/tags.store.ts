@@ -4,8 +4,8 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),
@@ -24,7 +24,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			const fetchedUsageCount = ref(false);
 
 			const rootStore = useRootStore();
-			const workflowsStore = useWorkflowsStore();
+			const workflowState = injectWorkflowState();
 
 			// Computed
 
@@ -123,7 +123,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 
 				if (deleted) {
 					deleteTag(id);
-					workflowsStore.removeWorkflowTagId(id);
+					workflowState.removeWorkflowTagId(id);
 				}
 
 				return deleted;

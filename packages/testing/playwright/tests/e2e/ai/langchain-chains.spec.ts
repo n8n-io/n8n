@@ -82,7 +82,10 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		});
 
 		test('should not auto-add nodes if ChatTrigger is already present', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
+				closeNDV: true,
+				trigger: 'On new Chat event',
+			});
 
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 

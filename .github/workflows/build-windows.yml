@@ -1,4 +1,4 @@
-name: Windows CI
+name: 'Build: Windows'
 
 on:
   workflow_dispatch:
@@ -24,6 +24,7 @@ on:
       - '**/package.json'
       - '**/turbo.json'
       - '.github/workflows/build-windows.yml'
+      - '.github/actions/setup-nodejs/**'
 
 jobs:
   build:

@@ -44,7 +44,7 @@ const popOutWindow = inject(PopOutWindowKey, undefined);
 const keyboardEventTarget = computed(() => popOutWindow?.value?.document ?? window.document);
 const focusReturnTo = ref<Element | null>(null);
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const search = ref(props.modelValue ?? '');
 const opened = ref(!!search.value);
 const placeholder = computed(() => {
@@ -163,25 +163,27 @@ watch(
 </script>
 
 <template>
-	<N8nInput
-		ref="inputRef"
-		data-test-id="ndv-search"
-		:class="{
-			[$style.ioSearch]: true,
-			[$style.ioSearchOpened]: opened,
-		}"
-		:style="style"
-		:model-value="search"
-		:placeholder="placeholder"
-		size="small"
-		@update:model-value="onSearchUpdate"
-		@focus="onFocus"
-		@blur="onBlur"
-	>
-		<template #prefix>
-			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
-		</template>
-	</N8nInput>
+	<div data-test-id="ndv-search-container">
+		<N8nInput
+			ref="inputRef"
+			data-test-id="ndv-search"
+			:class="{
+				[$style.ioSearch]: true,
+				[$style.ioSearchOpened]: opened,
+			}"
+			:style="style"
+			:model-value="search"
+			:placeholder="placeholder"
+			size="small"
+			@update:model-value="onSearchUpdate"
+			@focus="onFocus"
+			@blur="onBlur"
+		>
+			<template #prefix>
+				<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
+			</template>
+		</N8nInput>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -194,14 +196,6 @@ watch(
 		color: var(--color--foreground--shade-2);
 		cursor: pointer;
 		vertical-align: middle;
-	}
-
-	:global(.el-input__prefix) {
-		left: 8px;
-	}
-
-	&:global(.el-input--prefix .el-input__inner) {
-		padding-left: 30px;
 	}
 
 	input {

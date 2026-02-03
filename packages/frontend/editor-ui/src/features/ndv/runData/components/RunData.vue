@@ -56,6 +56,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
@@ -226,6 +227,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
@@ -292,7 +294,11 @@ const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
 const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
-	() => isReadOnlyRoute.value || readOnlyEnv.value || isArchivedWorkflow.value,
+	() =>
+		isReadOnlyRoute.value ||
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value ||
+		collaborationStore.shouldBeReadOnly,
 );
 
 const shouldShowSchemaView = computed(() => {
@@ -366,16 +372,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const subworkflowExecutionError = computed(() => {
-	if (!node.value) return null;
-	return {
-		node: node.value,
-		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
-	} as NodeError;
-});
-
-const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
-
 const parentNodeError = computed(() => {
 	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
@@ -383,10 +379,13 @@ const parentNodeError = computed(() => {
 
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) return null;
-	if (isSubNodeType.value && isPaneTypeInput.value) {
+
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+
+	if (!selfTaskData && isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error as NodeError;
+	return selfTaskData?.error as NodeError;
 });
 
 const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
@@ -1741,18 +1740,6 @@ defineExpose({ enterEditMode });
 						</N8nLink>
 					</N8nInfoTip>
 				</div>
-			</div>
-
-			<div
-				v-else-if="isPaneTypeOutput && hasSubworkflowExecutionError && subworkflowExecutionError"
-				:class="$style.stretchVertically"
-			>
-				<NodeErrorView
-					:compact="compact"
-					:error="subworkflowExecutionError"
-					:class="$style.errorDisplay"
-					show-details
-				/>
 			</div>
 
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">

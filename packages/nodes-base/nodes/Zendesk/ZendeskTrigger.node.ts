@@ -13,6 +13,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { conditionFields } from './ConditionDescription';
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { triggerPlaceholders } from './TriggerPlaceholders';
+import { verifySignature } from './ZendeskTriggerHelpers';
 
 export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -397,6 +398,17 @@ export class ZendeskTrigger implements INodeType {
 							.webhook as IDataObject;
 					}
 
+					// Fetch the signing secret for webhook signature verification
+					// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#show-webhook-signing-secret
+					const signingSecretResponse = (await zendeskApiRequest.call(
+						this,
+						'GET',
+						`/webhooks/${target.id as string}/signing_secret`,
+					)) as { signing_secret?: { secret?: string } };
+					if (signingSecretResponse.signing_secret?.secret) {
+						webhookData.webhookSecret = signingSecretResponse.signing_secret.secret;
+					}
+
 					((bodyTrigger.trigger as IDataObject).actions as IDataObject[])[0].value = [
 						target.id,
 						JSON.stringify(message),
@@ -416,14 +428,24 @@ export class ZendeskTrigger implements INodeType {
 				} catch (error) {
 					return false;
 				}
-				delete webhookData.triggerId;
+				delete webhookData.webhookId;
 				delete webhookData.targetId;
+				delete webhookData.webhookSecret;
 				return true;
 			},
 		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify the webhook signature before processing
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const req = this.getRequestObject();
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],

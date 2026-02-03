@@ -503,6 +503,20 @@ describe('useCredentialNavigationCommands', () => {
 			expect(isLoading.value).toBe(true);
 		});
 
+		it('should reset loading state when navigating back to root', () => {
+			const { isLoading, handlers } = useCredentialNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+				currentProjectName: ref('Team Project'),
+			});
+
+			handlers.onCommandBarNavigateTo('open-credential');
+			expect(isLoading.value).toBe(true);
+
+			handlers.onCommandBarNavigateTo(null);
+			expect(isLoading.value).toBe(false);
+		});
+
 		it('should clear credential results when navigating back to root', async () => {
 			(mockCredentialsStore.allCredentials as unknown) = [
 				createMockCredential('cred-1', 'Gmail Account', 'gmailOAuth2', 'project-1', 'Team Project'),
@@ -574,7 +588,7 @@ describe('useCredentialNavigationCommands', () => {
 
 			handlers.onCommandBarChange('gma');
 
-			expect(isLoading.value).toBe(false); // Not in parent node, so shouldn't be loading
+			expect(isLoading.value).toBe(true); // Should show loading during fetch
 		});
 	});
 

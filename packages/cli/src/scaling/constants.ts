@@ -26,4 +26,5 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
+	'relay-chat-stream-event',
 ]);

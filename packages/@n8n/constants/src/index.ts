@@ -120,3 +120,9 @@ export { Time } from './time';
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+/**
+ * Character set used for generating nanoid IDs across n8n.
+ * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
+ */
+export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';

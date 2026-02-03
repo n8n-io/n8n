@@ -113,6 +113,22 @@ export class ExecutionsController {
 		return await this.executionService.stop(executionId, workflowIds);
 	}
 
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns { stopped: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+
+		// Return early to avoid expensive db query
+		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
+
+		const stopped = await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return { stopped };
+	}
+
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');

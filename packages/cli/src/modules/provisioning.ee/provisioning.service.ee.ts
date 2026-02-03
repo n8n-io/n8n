@@ -16,7 +16,7 @@ import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { EventService } from '@/events/event.service';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';

@@ -51,16 +51,25 @@ export class ExternalSecretsService {
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				continue;
 			}
+
 			const prop = properties.find((v) => v.name === dataKey);
+
 			if (!prop) {
 				continue;
 			}
 
-			if (
-				prop.typeOptions?.password &&
-				(!(copiedData[dataKey] as string).startsWith('=') || prop.noDataExpression)
-			) {
+			if (!prop.typeOptions?.password) {
+				continue;
+			}
+
+			if (prop.noDataExpression) {
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				continue;
+			}
+
+			if (typeof copiedData[dataKey] === 'string' && !copiedData[dataKey].startsWith('=')) {
+				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				continue;
 			}
 		}
 

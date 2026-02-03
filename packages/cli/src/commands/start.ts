@@ -43,12 +43,6 @@ const open = require('open');
 
 const flagsSchema = z.object({
 	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
-	tunnel: z
-		.boolean()
-		.describe(
-			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		)
-		.optional(),
 });
 
 @Command({
@@ -255,6 +249,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Initialize auth handler registry after modules are loaded
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		await Container.get(AuthHandlerRegistry).init();
+
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
@@ -304,15 +302,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		if (this.globalConfig.database.isLegacySqlite) {
-			// Employ lazy loading to avoid unnecessary imports in the CLI
-			// and to ensure that the legacy recovery service is only used when needed.
-			const { LegacySqliteExecutionRecoveryService } = await import(
-				'@/executions/legacy-sqlite-execution-recovery.service'
-			);
-			await Container.get(LegacySqliteExecutionRecoveryService).cleanupWorkflowExecutions();
-		}
-
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
@@ -324,6 +313,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		const editorUrl = this.getEditorUrl();
 

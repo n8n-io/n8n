@@ -1,7 +1,9 @@
-import type { Align, Side } from './DropdownMenu.types';
+import type { DropdownMenuAlign, DropdownMenuSide } from './DropdownMenu.types';
 
-const VALID_SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
-const VALID_ALIGNS: Align[] = ['start', 'end', 'center'];
+const VALID_SIDES: DropdownMenuSide[] = ['top', 'bottom', 'left', 'right'];
+const VALID_ALIGNS: DropdownMenuAlign[] = ['start', 'end', 'center'];
 
-export const isSide = (value: string): value is Side => VALID_SIDES.includes(value as Side);
-export const isAlign = (value: string): value is Align => VALID_ALIGNS.includes(value as Align);
+export const isSide = (value: string): value is DropdownMenuSide =>
+	VALID_SIDES.includes(value as DropdownMenuSide);
+export const isAlign = (value: string): value is DropdownMenuAlign =>
+	VALID_ALIGNS.includes(value as DropdownMenuAlign);

@@ -62,7 +62,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 				isListLoading: true,
 			},
 		});
@@ -82,7 +82,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -114,7 +114,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -132,7 +132,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -169,13 +169,42 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: 1,
+				evaluatedPruneTimeInHours: 1,
 				shouldUpgrade: true,
 			},
 		});
 
 		expect(getByRole('link', { name: /upgrade/i })).toBeInTheDocument();
 	});
+
+	it.each([
+		{ hours: 1, expectedValue: '1', expectedUnit: 'hour' },
+		{ hours: 5, expectedValue: '5', expectedUnit: 'hours' },
+		{ hours: 24, expectedValue: '1', expectedUnit: 'day' },
+		{ hours: 48, expectedValue: '2', expectedUnit: 'days' },
+	])(
+		'should correctly format the prune time display for $hours hours',
+		async ({ hours, expectedValue, expectedUnit }) => {
+			const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
+
+			const { queryByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: items[0],
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneTimeInHours: hours,
+					shouldUpgrade: true,
+				},
+			});
+
+			const pruneTimeDisplay = queryByTestId('prune-time-display')?.textContent;
+			expect(pruneTimeDisplay).toContain(expectedValue);
+			expect(pruneTimeDisplay).toContain(expectedUnit);
+		},
+	);
 
 	it('should not show upgrade message when shouldUpgrade is false', async () => {
 		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
@@ -188,7 +217,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: 1,
+				evaluatedPruneTimeInHours: 1,
 				shouldUpgrade: false,
 			},
 		});
@@ -213,7 +242,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -241,7 +270,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -268,7 +297,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -296,7 +325,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -319,7 +348,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 

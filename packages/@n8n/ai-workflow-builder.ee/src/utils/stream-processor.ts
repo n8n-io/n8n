@@ -47,12 +47,8 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'remove_node',
 ];
 
-/**
- * Parent graph nodes that should emit user-facing messages
- * - agent: V1 single agent (backward compatibility)
- * - responder: The ONLY node that should emit in multi-agent mode
- */
-const EMITTING_NODES = ['agent', 'responder'];
+/** Parent graph node that emits user-facing messages */
+const EMITTING_NODES = ['responder'];
 
 /** Parent graph nodes to skip entirely (internal coordination) */
 const SKIPPED_NODES = [
@@ -61,20 +57,15 @@ const SKIPPED_NODES = [
 	'cleanup_dangling_tool_calls',
 	'create_workflow_name',
 	'auto_compact_messages',
-	'configurator_subgraph',
-	'discovery_subgraph',
 	'builder_subgraph',
+	'discovery_subgraph',
 ];
 
 /**
  * Subgraph namespace prefixes that should not emit message events
  * Note: Actual namespaces have UUIDs appended like "builder_subgraph:612f4bc3-..."
  */
-const SKIPPED_SUBGRAPH_PREFIXES = [
-	'discovery_subgraph',
-	'builder_subgraph',
-	'configurator_subgraph',
-];
+const SKIPPED_SUBGRAPH_PREFIXES = ['discovery_subgraph', 'builder_subgraph'];
 
 // ============================================================================
 // FILTERING LOGIC

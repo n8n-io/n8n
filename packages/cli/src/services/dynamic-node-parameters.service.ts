@@ -210,8 +210,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -224,8 +225,9 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the result of the action handler */
@@ -336,5 +338,20 @@ export class DynamicNodeParametersService {
 			path,
 			this.workflowLoaderService,
 		);
+	}
+
+	private removeDuplicateResourceMappingFields(fields: ResourceMapperFields) {
+		const uniqueFieldIds = new Set<string>();
+		return {
+			...fields,
+			fields: fields.fields?.filter((field) => {
+				if (uniqueFieldIds.has(field.id)) {
+					return false;
+				}
+
+				uniqueFieldIds.add(field.id);
+				return true;
+			}),
+		};
 	}
 }

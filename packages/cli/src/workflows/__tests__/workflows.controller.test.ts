@@ -1,22 +1,26 @@
-import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { CreateWorkflowDto, ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	IExecutionResponse,
+	CredentialsEntity,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { WorkflowsController } from '../workflows.controller';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { License } from '@/license';
-import type { WorkflowRequest } from '../workflow.request';
 import type { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowsController } from '../workflows.controller';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('axios');
 
@@ -190,13 +194,13 @@ describe('WorkflowsController', () => {
 				 * Arrange
 				 */
 				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
 					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
 				});
 
 				const mockGlobalCredential = mock<CredentialsEntity>({
@@ -243,7 +247,9 @@ describe('WorkflowsController', () => {
 				/**
 				 * Act & Assert
 				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
 
 				/**
 				 * Assert - Verify credentials were fetched with includeGlobal: true
@@ -262,13 +268,13 @@ describe('WorkflowsController', () => {
 				 * Arrange
 				 */
 				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
 					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
 				});
 
 				const mockGlobalCredential = mock<CredentialsEntity>({
@@ -303,8 +309,10 @@ describe('WorkflowsController', () => {
 				/**
 				 * Act & Assert
 				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
-				await expect(controller.create(mockRequest)).rejects.toThrow(
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
 

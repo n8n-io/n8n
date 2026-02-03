@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 
 import { RunDataPanel } from './RunDataPanel';
+import type { ClipboardHelper } from '../../helpers/ClipboardHelper';
 
 /**
  * Page object for the log view with configurable root element.
@@ -64,14 +65,6 @@ export class LogsPanel {
 	}
 
 	/**
-	 * Returns the session ID tooltip locator.
-	 * Filters by "click to copy" text to avoid matching other tooltips in the header.
-	 */
-	getSessionIdTooltip(): Locator {
-		return this.root.page().locator('.n8n-tooltip').filter({ hasText: 'click to copy' });
-	}
-
-	/**
 	 * Actions
 	 */
 
@@ -107,17 +100,14 @@ export class LogsPanel {
 	}
 
 	/**
-	 * Clicks the session ID button to show the tooltip and extracts the full session ID.
+	 * Clicks the session ID button to copy the session ID to clipboard and returns it.
+	 * @param clipboard - ClipboardHelper instance for reading clipboard
 	 * @returns The full session ID string
 	 */
-	async getSessionId(): Promise<string> {
+	async getSessionId(clipboard: ClipboardHelper): Promise<string> {
+		await clipboard.grant();
 		await this.getSessionIdButton().click();
-		const tooltipText = await this.getSessionIdTooltip().textContent();
-		if (!tooltipText) {
-			throw new Error('Session ID tooltip text is empty');
-		}
-		// Extract session ID before "(click to copy)"
-		return tooltipText.split('(')[0].trim();
+		return await clipboard.readText();
 	}
 
 	/**

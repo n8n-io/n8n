@@ -3,23 +3,29 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
-	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
+import { AiController, type FlushableResponse } from '../ai.controller';
+
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
-
-import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
-	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
+	const aiUsageService = mock<AiUsageService>();
+	const controller = new AiController(
+		aiService,
+		workflowBuilderService,
+		mock(),
+		mock(),
+		aiUsageService,
+	);
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },
@@ -424,57 +430,6 @@ describe('AiController', () => {
 				InternalServerError,
 			);
 			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
-		});
-	});
-
-	describe('getSessionsMetadata', () => {
-		const payload: AiSessionRetrievalRequestDto = {
-			workflowId: 'workflow123',
-		};
-
-		it('should return sessions metadata successfully when messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: true,
-			};
-
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
-
-			const result = await controller.getSessionsMetadata(request, response, payload);
-
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
-			expect(result).toEqual(expectedMetadata);
-		});
-
-		it('should return sessions metadata successfully when no messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: false,
-			};
-
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
-
-			const result = await controller.getSessionsMetadata(request, response, payload);
-
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
-			expect(result).toEqual(expectedMetadata);
-		});
-
-		it('should throw InternalServerError if getting sessions metadata fails', async () => {
-			const mockError = new Error('Failed to get sessions metadata');
-			workflowBuilderService.getSessionsMetadata.mockRejectedValue(mockError);
-
-			await expect(controller.getSessionsMetadata(request, response, payload)).rejects.toThrow(
-				InternalServerError,
-			);
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
 		});
 	});
 

@@ -4,9 +4,38 @@
         "created_at": {
             "type": "string"
         },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "etag": {
+            "type": "string"
+        },
         "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "sequence_id": {
+            "type": "string"
+        },
+        "type": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

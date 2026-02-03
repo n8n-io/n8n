@@ -1,4 +1,4 @@
-import { SecretsManager, type SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
+import type { SecretsManager, SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
@@ -115,6 +115,7 @@ export class AwsSecretsManager extends SecretsProvider {
 			clientConfig.credentials = { accessKeyId, secretAccessKey };
 		}
 
+		const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
 		this.client = new SecretsManager(clientConfig);
 
 		this.logger.debug('AWS Secrets Manager provider initialized');

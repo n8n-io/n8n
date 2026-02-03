@@ -90,7 +90,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .middle {
 	flex-grow: 0;
 	flex-basis: 160px;
-	padding-top: var(--parameter-input-options--height);
 }
 
 .item:first-of-type {

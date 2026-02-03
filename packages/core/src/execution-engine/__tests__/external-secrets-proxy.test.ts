@@ -11,21 +11,6 @@ describe('ExternalSecretsProxy', () => {
 		proxy = new ExternalSecretsProxy();
 	});
 
-	describe('update', () => {
-		it('should update secrets when manager is set', async () => {
-			manager.updateSecrets.mockResolvedValue();
-			proxy.setManager(manager);
-
-			await proxy.update();
-
-			expect(manager.updateSecrets).toHaveBeenCalledTimes(1);
-		});
-
-		it('should not throw when updating without a manager', async () => {
-			await expect(proxy.update()).resolves.not.toThrow();
-		});
-	});
-
 	describe('getSecret', () => {
 		it('should get secret from manager', () => {
 			const secretValue = { key: 'value' };

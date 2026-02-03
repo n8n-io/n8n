@@ -5,10 +5,12 @@ import { ApplicationError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,
+	IBinaryData,
 	INodePropertyOptions,
 	ValidationResult,
 } from './interfaces';
 import { jsonParse } from './utils';
+import { isBinaryValue } from './type-guards';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -155,6 +157,14 @@ export const tryToParseObject = (value: unknown): object => {
 	} catch (e) {
 		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
+};
+
+export const tryToParseBinary = (value: unknown): IBinaryData => {
+	if (!value || typeof value !== 'object' || Array.isArray(value) || !isBinaryValue(value)) {
+		throw new ApplicationError('Value is not a valid binary data object', { extra: { value } });
+	}
+
+	return value;
 };
 
 const ALLOWED_FORM_FIELDS_KEYS = [
@@ -393,6 +403,14 @@ export function validateFieldType(
 					valid: false,
 					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
+			}
+		}
+		case 'binary': {
+			try {
+				return { valid: true, newValue: tryToParseBinary(value) };
+			} catch (e) {
+				const errorMessage = `${defaultErrorMessage}. Make sure the value is a valid binary data object with 'mimeType' and 'data' or 'id' property.`;
+				return { valid: false, errorMessage };
 			}
 		}
 		case 'object': {

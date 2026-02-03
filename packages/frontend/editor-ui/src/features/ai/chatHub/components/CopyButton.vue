@@ -31,6 +31,7 @@ async function handleCopy() {
 			text
 			:class="$style.button"
 			tabindex="0"
+			:aria-label="copyTooltip"
 			@click="handleCopy"
 		/>
 		<template #content>{{ copyTooltip }}</template>

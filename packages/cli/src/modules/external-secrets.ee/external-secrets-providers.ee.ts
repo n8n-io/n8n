@@ -1,3 +1,4 @@
+import type { SecretProviderTypeResponse, SecretsProviderType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { AwsSecretsManager } from './providers/aws-secrets-manager';
@@ -27,5 +28,14 @@ export class ExternalSecretsProviders {
 
 	getAllProviders() {
 		return this.providers;
+	}
+
+	toProviderTypeResponse(provider: SecretsProvider): SecretProviderTypeResponse {
+		return {
+			type: provider.name as SecretsProviderType,
+			displayName: provider.displayName,
+			icon: provider.name,
+			properties: provider.properties,
+		};
 	}
 }

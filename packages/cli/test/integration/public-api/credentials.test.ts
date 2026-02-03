@@ -881,57 +881,6 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
 	});
-
-	test('should preserve oauthTokenData when updating other fields', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
-
-		// Manually add oauthTokenData to the credential
-		const credentialsService = Container.get(CredentialsService);
-		const existingData = credentialsService.decrypt(
-			await Container.get(CredentialsRepository).findOneByOrFail({ id: savedCredential.id }),
-			true,
-		);
-		const dataWithOAuth = {
-			...existingData,
-			oauthTokenData: {
-				access_token: 'test_access_token',
-				refresh_token: 'test_refresh_token',
-			},
-		};
-
-		// Update the credential with oauthTokenData
-		const encryptedWithOAuth = credentialsService.createEncryptedData({
-			id: savedCredential.id,
-			name: savedCredential.name,
-			type: savedCredential.type,
-			data: dataWithOAuth,
-		});
-		await Container.get(CredentialsRepository).update(savedCredential.id, encryptedWithOAuth);
-
-		// Update without including oauthTokenData in the payload
-		const updatePayload = {
-			data: {
-				accessToken: 'newToken',
-				user: 'test',
-				server: 'testServer',
-			},
-		};
-
-		const response = await authOwnerAgent
-			.patch(`/credentials/${savedCredential.id}`)
-			.send(updatePayload);
-
-		expect(response.statusCode).toBe(200);
-
-		// Verify oauthTokenData was preserved
-		const updatedData = await getDecryptedCredentialData(savedCredential.id);
-		expect(updatedData.oauthTokenData).toEqual({
-			access_token: 'test_access_token',
-			refresh_token: 'test_refresh_token',
-		});
-		// And other fields should be updated
-		expect(updatedData.accessToken).toBe('newToken');
-	});
 });
 
 describe('GET /credentials/schema/:credentialType', () => {

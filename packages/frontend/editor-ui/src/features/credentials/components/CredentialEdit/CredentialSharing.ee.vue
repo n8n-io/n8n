@@ -122,7 +122,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
+	await projectsStore.getAllProjects();
 });
 
 function goToUpgrade() {

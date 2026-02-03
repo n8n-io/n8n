@@ -1,7 +1,6 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
-import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
 import type { SimpleWorkflow } from './workflow';
 
@@ -148,10 +147,13 @@ export interface RemoveConnectionOutput {
 }
 
 /**
- * Output type for categorize prompt tool
+ * Output type for rename node tool
  */
-export interface CategorizePromptOutput {
-	categorization: PromptCategorization;
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
 }
 
 /**

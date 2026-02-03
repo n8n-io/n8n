@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -9,13 +10,14 @@ import { EventService } from '@/events/event.service';
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
 
+// Placeholder key for workflows with no dependencies.
+const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
+
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
  * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
  * and updates it in response to workflow-related events.
  *
- * TODO(CAT-1595): Build the index on startup.
- * TODO(CAT-1597): Update the index in realtime.
  */
 @Service()
 export class WorkflowIndexService {
@@ -34,23 +36,51 @@ export class WorkflowIndexService {
 			await this.buildIndex().catch((e) => this.errorReporter.error(e));
 		});
 		this.eventService.on('workflow-created', async ({ workflow }) => {
-			await this.updateIndexFor(workflow);
+			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
-			await this.updateIndexFor(workflow);
+			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
+		this.eventService.on('workflow-activated', async ({ workflow }) => {
+			if (workflow.activeVersionId === null) {
+				this.logger.warn(
+					`Workflow ${workflow.id} activated with null activeVersionId. Skipping index update.`,
+				);
+				return;
+			}
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
+		});
 	}
 
 	async buildIndex() {
+		const draftCount = await this.buildIndexInternal(
+			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
+			'draft',
+		);
+
+		const publishedCount = await this.buildIndexInternal(
+			async (batchSize) =>
+				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
+			'published',
+		);
+
+		this.logger.info(
+			`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+		);
+	}
+
+	private async buildIndexInternal(
+		unindexedWorkflowFinder: (batchSize: number) => Promise<IWorkflowDb[]>,
+		dependencyType: 'draft' | 'published',
+	): Promise<number> {
 		const batchSize = this.batchSize;
 		let processedCount = 0;
 
 		while (processedCount < LOOP_LIMIT) {
-			// Get only workflows that need indexing (unindexed or outdated).
-			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize);
+			const workflows = await unindexedWorkflowFinder(batchSize);
 
 			if (workflows.length === 0) {
 				break;
@@ -58,11 +88,17 @@ export class WorkflowIndexService {
 
 			// Build the index for each workflow in the batch.
 			for (const workflow of workflows) {
-				await this.updateIndexFor(workflow);
+				if (dependencyType === 'draft') {
+					await this.updateIndexForDraft(workflow);
+				} else {
+					// We know activeVersionId is not null here because the finder only returns workflows
+					// that have a published version.
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+				}
 			}
 
 			processedCount += workflows.length;
-			this.logger.debug(`Indexed ${processedCount} workflows so far`);
+			this.logger.debug(`Indexed ${processedCount} ${dependencyType} workflows so far`);
 
 			// If we got fewer workflows than the batch size, we're done.
 			if (workflows.length < batchSize) {
@@ -71,16 +107,31 @@ export class WorkflowIndexService {
 		}
 
 		if (processedCount >= LOOP_LIMIT) {
-			const message = `Stopping workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
+			const message = `Stopping ${dependencyType} workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
 			this.logger.warn(message);
 			this.errorReporter.warn(new Error(message));
 		}
 
-		this.logger.info(
-			`Finished building workflow dependency index. Processed ${processedCount} workflows.`,
-		);
+		return processedCount;
 	}
 
+	async updateIndexForDraft(workflow: IWorkflowBase) {
+		const dependencyUpdates = new WorkflowDependencies(
+			workflow.id,
+			workflow.versionCounter,
+			/*publishedVersionId=*/ null,
+		);
+		return await this.updateIndexInternal(workflow, dependencyUpdates);
+	}
+
+	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+		const dependencyUpdates = new WorkflowDependencies(
+			workflow.id,
+			workflow.versionCounter,
+			publishedVersionId,
+		);
+		return await this.updateIndexInternal(workflow, dependencyUpdates);
+	}
 	/**
 	 * Update the dependency index for a given workflow.
 	 *
@@ -88,17 +139,25 @@ export class WorkflowIndexService {
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
 	 */
-	async updateIndexFor(workflow: IWorkflowBase) {
-		// TODO: input validation.
-		// Generate the dependency updates for the given workflow.
-		const dependencyUpdates = new WorkflowDependencies(workflow.id, workflow.versionCounter);
-
+	private async updateIndexInternal(
+		workflow: IWorkflowBase,
+		dependencyUpdates: WorkflowDependencies,
+	) {
 		workflow.nodes.forEach((node) => {
 			this.addNodeTypeDependencies(node, dependencyUpdates);
 			this.addCredentialDependencies(node, dependencyUpdates);
 			this.addWorkflowCallDependencies(node, dependencyUpdates);
 			this.addWebhookPathDependencies(node, dependencyUpdates);
 		});
+
+		// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
+		if (dependencyUpdates.dependencies.length === 0) {
+			dependencyUpdates.add({
+				dependencyType: 'workflowIndexed',
+				dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
+				dependencyInfo: null,
+			});
+		}
 
 		let updated: boolean;
 		try {
@@ -109,13 +168,13 @@ export class WorkflowIndexService {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(
-				`Failed to update workflow dependency index for workflow ${workflow.id}: ${error.message}`,
+				`Failed to update workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index for workflow ${workflow.id}: ${error.message}`,
 			);
 			this.errorReporter.error(error);
 			return;
 		}
 		this.logger.debug(
-			`Workflow dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+			`Workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
 		);
 	}
 

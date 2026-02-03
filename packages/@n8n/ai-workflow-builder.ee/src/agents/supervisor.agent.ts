@@ -2,9 +2,10 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
+import { buildSupervisorPrompt } from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
@@ -30,9 +31,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
  */
 export const supervisorRoutingSchema = z.object({
 	reasoning: z.string().describe('One sentence explaining why this agent should act next'),
-	next: z
-		.enum(['responder', 'discovery', 'builder', 'configurator'])
-		.describe('The next agent to call'),
+	next: z.enum(['responder', 'discovery', 'builder']).describe('The next agent to call'),
 });
 
 export type SupervisorRouting = z.infer<typeof supervisorRoutingSchema>;
@@ -59,7 +58,7 @@ export interface SupervisorContext {
  * Supervisor Agent
  *
  * Coordinates the multi-agent workflow building process.
- * Routes to Discovery, Builder, or Configurator agents based on current state.
+ * Routes to Discovery or Builder agents based on current state.
  */
 export class SupervisorAgent {
 	private llm: BaseChatModel;
@@ -104,8 +103,10 @@ export class SupervisorAgent {
 
 	/**
 	 * Invoke the supervisor to get routing decision
+	 * @param context - Supervisor context with messages and workflow state
+	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
-	async invoke(context: SupervisorContext): Promise<SupervisorRouting> {
+	async invoke(context: SupervisorContext, config?: RunnableConfig): Promise<SupervisorRouting> {
 		const agent = systemPrompt.pipe<SupervisorRouting>(
 			this.llm.withStructuredOutput(supervisorRoutingSchema, {
 				name: 'routing_decision',
@@ -117,6 +118,6 @@ export class SupervisorAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return await agent.invoke({ messages: messagesToSend });
+		return await agent.invoke({ messages: messagesToSend }, config);
 	}
 }

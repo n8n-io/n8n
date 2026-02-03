@@ -262,6 +262,56 @@ describe('ExecutionContextService', () => {
 			expect(mockRegistry.getHookByName).not.toHaveBeenCalled();
 		});
 
+		it('should handle node with contextEstablishmentHooks but undefined hooks array', async () => {
+			// Temporarily use real parsing function
+			const realModule = jest.requireActual('n8n-workflow');
+			toExecutionContextEstablishmentHookParameter.mockImplementationOnce(
+				realModule.toExecutionContextEstablishmentHookParameter,
+			);
+
+			// Node parameters with executionsHooksVersion but no hooks array
+			const startItem: IExecuteData = {
+				node: {
+					name: 'Webhook',
+					parameters: {
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							// hooks array is undefined - should default to []
+						},
+					},
+				} as unknown as INode,
+				data: { main: [[{ json: {} }]] },
+				source: { main: [{ previousNode: 'test' }] },
+			};
+
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+
+			// Mock workflow.getNode to return null (service handles this gracefully)
+			mockWorkflow.getNode = jest.fn().mockReturnValue(null);
+
+			const result = await service.augmentExecutionContextWithHooks(
+				mockWorkflow,
+				startItem,
+				context,
+			);
+
+			// Should return original context unchanged
+			expect(result).toEqual({
+				context,
+				triggerItems: startItem.data.main[0],
+			});
+
+			// No hooks should be called since array defaults to empty
+			expect(mockRegistry.getHookByName).not.toHaveBeenCalled();
+
+			// No warning should be logged (valid schema with optional hooks)
+			expect(mockLogger.warn).not.toHaveBeenCalled();
+		});
+
 		it('should execute hooks sequentially and merge context updates', async () => {
 			const triggerItems: INodeExecutionData[] = [{ json: { data: 'value' } }];
 			const hookConfig = {

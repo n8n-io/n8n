@@ -1,0 +1,53 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "folders": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

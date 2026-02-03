@@ -1,641 +1,646 @@
-# AI Workflow Builder Evaluations
+# Evaluations (v2 harness)
 
-This module provides a evaluation framework for testing the AI Workflow Builder's ability to generate correct n8n workflows from natural language prompts.
+Internal evaluation harness for the AI Workflow Builder. Supports local CLI runs and LangSmith-backed runs, using the same evaluators.
 
-## Architecture Overview
+## Quick Start
 
-The evaluation system is split into three distinct modes with a **parallel evaluation architecture** for optimal performance:
-1. **CLI Evaluation** - Runs predefined test cases locally with progress tracking and parallel metric evaluation
-2. **Langsmith Evaluation** - Integrates with Langsmith for dataset-based evaluation and experiment tracking
-3. **Pairwise Evaluation** - Evaluates workflows against custom do/don't criteria from a dataset
+Run from the package directory:
 
-### Directory Structure
+```bash
+pushd packages/@n8n/ai-workflow-builder.ee
+
+# Local: run against default prompts (fixtures/default-prompts.csv)
+pnpm eval --verbose
+
+# Local: single prompt
+pnpm eval --prompt "Create a workflow that..." --verbose
+
+# Local: custom CSV file
+pnpm eval --prompts-csv path/to/prompts.csv --verbose
+
+# Local: pairwise + programmatic
+pnpm eval:pairwise --prompt "Create a workflow that..." --dos "Must use Slack" --donts "No HTTP Request node" --verbose
+
+# LangSmith: LLM-judge + programmatic
+pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "my-exp" --concurrency 10 --max-examples 20 --verbose
+
+# LangSmith: pairwise + programmatic
+pnpm eval:pairwise:langsmith --dataset "notion-pairwise-workflows" --name "pairwise-exp" --filter "technique:content_generation" --max-examples 50 --verbose
+
+popd
+```
+
+## Prerequisites
+
+- **LLM key** (required for generation and any LLM-based evaluators):
+  - `N8N_AI_ANTHROPIC_KEY` (see `evaluations/support/environment.ts`)
+- **Node definitions** (required for workflow generation, and used by evaluators):
+  - `evaluations/.data/nodes.json` (see `evaluations/support/load-nodes.ts`)
+  - Optional: `N8N_EVALS_DISABLED_NODES="n8n-nodes-base.httpRequest,..."` to exclude specific nodes from generation.
+- **LangSmith** (only for `--backend langsmith` runs):
+  - `LANGSMITH_API_KEY`
+  - `LANGSMITH_TRACING=true` (the harness sets this in LangSmith mode, but exporting it is fine)
+  - Optional: `LANGSMITH_MINIMAL_TRACING=false` to disable trace filtering (useful when debugging traces; default is filtered)
+
+## Mental Model
+
+```mermaid
+flowchart TB
+    subgraph Config["runEvaluation(config)"]
+        direction LR
+        C1["mode: 'local' | 'langsmith'"]
+        C2["dataset: TestCase[] | string"]
+        C3["generateWorkflow: (prompt) => workflow"]
+        C4["evaluators: Evaluator[]"]
+    end
+
+    Config --> Loop
+
+    subgraph Loop["For each test case"]
+        G["1. generateWorkflow(prompt)"]
+        E["2. evaluateWithPlugins (parallel)"]
+        A["3. Aggregate feedback"]
+        G --> E --> A
+    end
+
+    Loop --> Evaluators
+
+    subgraph Evaluators["Evaluators (run in parallel)"]
+        direction LR
+        LLM["LLM-Judge"]
+        Pair["Pairwise"]
+        Prog["Programmatic"]
+    end
+
+    Evaluators --> Feedback
+
+    subgraph Feedback["Feedback[]"]
+        F1["evaluator: string"]
+        F2["metric: string"]
+        F3["score: 0-1"]
+        F4["kind: 'score' | 'metric' | 'detail'"]
+        F5["comment?: string"]
+    end
+```
+
+## Key Concepts
+
+### Evaluator
+
+A function that takes a workflow and returns feedback:
+
+```typescript
+interface Evaluator<TContext = EvaluationContext> {
+  name: string;
+  evaluate(workflow: SimpleWorkflow, ctx: TContext): Promise<Feedback[]>;
+}
+```
+
+Evaluators are:
+- **Independent** - no dependencies between evaluators
+- **Parallel** - all evaluators run concurrently
+- **Error-tolerant** - if one fails, others continue
+
+### Feedback
+
+The universal output format from all evaluators:
+
+```typescript
+interface Feedback {
+  evaluator: string; // e.g., "llm-judge", "pairwise"
+  metric: string;    // e.g., "functionality", "judge1", "efficiency.nodeCountEfficiency"
+  score: number;    // 0.0 to 1.0
+  comment?: string; // Optional explanation/violations
+  kind: 'score' | 'metric' | 'detail';
+}
+```
+
+`kind` is used by the harness scoring logic:
+- `score`: the evaluator’s single overall score (preferred for scoring)
+- `metric`: stable per-category metrics (useful to show, but not necessarily used for scoring if a `score` exists)
+- `detail`: verbose/unstable metrics and details (never used for scoring when a `score` is present)
+
+### Lifecycle Hooks
+
+Centralized logging via hooks (not per-evaluator logging):
+
+```typescript
+interface EvaluationLifecycle {
+  onStart(config): void;
+  onExampleStart(index, total, prompt): void;
+  onWorkflowGenerated(workflow, durationMs): void;
+  onEvaluatorComplete(name, feedback): void;
+  onEvaluatorError(name, error): void;
+  onExampleComplete(index, result): void;
+  onEnd(summary): void;
+}
+```
+
+### Context
+
+Evaluators receive context from multiple sources:
+
+```
+globalContext (from RunConfig.context)
+       +
+testCase.context (per-test-case overrides)
+       +
+prompt (always included)
+       =
+Final context passed to evaluators
+```
+
+## Local vs LangSmith Mode
+
+### Local Mode
+
+```typescript
+import { createLogger } from './harness/logger';
+
+const logger = createLogger(true); // verbose output
+
+const config: RunConfig = {
+  mode: 'local',
+  dataset: [
+    { prompt: 'Create a workflow...', context: { dos: '...' } },
+  ],
+  generateWorkflow,
+  evaluators: [llmJudge, programmatic],
+  lifecycle: createConsoleLifecycle({ verbose: true, logger }),
+  logger,
+};
+
+await runEvaluation(config);
+```
+
+- Processes test cases sequentially (examples), but LLM-bound work is capped via `llmCallLimiter` (see `evaluations/harness/runner.ts`)
+- Results logged to console via lifecycle hooks
+- The harness returns a `RunSummary`; the CLI decides exit codes
+
+### LangSmith Mode
+
+```typescript
+import { createLogger } from './harness/logger';
+
+const logger = createLogger(false); // non-verbose output
+
+const config: RunConfig = {
+  mode: 'langsmith',
+  dataset: 'my-dataset-name',  // LangSmith dataset
+  generateWorkflow,
+  evaluators: [llmJudge, programmatic],
+  logger,
+  langsmithOptions: {
+    experimentName: 'experiment-1',
+    repetitions: 1,
+    concurrency: 4,
+  },
+};
+
+await runEvaluation(config);
+```
+
+If you want *no output* (e.g. unit tests), use `createQuietLifecycle()` (or pass a stub logger) instead of relying on a "silent logger".
+
+**Architecture:** The target function does ALL work (generation + evaluation). The LangSmith evaluator just extracts pre-computed feedback.
+The runner flushes pending trace batches before returning, so traces/results reliably show up in LangSmith.
+
+```typescript
+// Inside runLangsmith():
+
+// IMPORTANT: Create traceable wrapper ONCE outside the target function
+// to avoid context leaking in concurrent scenarios. Pass params explicitly.
+const traceableGenerateWorkflow = traceable(
+  async (args: { prompt: string; genFn: Function }) => {
+    return await args.genFn(args.prompt);
+  },
+  { name: 'workflow_generation', run_type: 'chain', client: lsClient }
+);
+
+const target = async (inputs) => {
+  const { prompt } = inputs;
+  // Call the pre-created wrapper with explicit params (no closures)
+  const workflow = await traceableGenerateWorkflow({
+    prompt,
+    genFn: generateWorkflow,
+  });
+  const feedback = await evaluateWithPlugins(workflow, evaluators);
+  return { workflow, prompt, feedback };  // Pre-computed!
+};
+
+// LangSmith evaluator converts internal `{ evaluator, metric }` into `{ key, score, comment? }`:
+const feedbackExtractor = (run) => run.outputs.feedback.map(toLangsmithEvaluationResult);
+```
+
+## LangSmith Tracing
+
+- **Do not** wrap the `target` function with `traceable()` — `evaluate()` handles that automatically
+- **Do** create `traceable` wrappers **once** outside the target function (not inside concurrent code)
+- **Do** pass all parameters explicitly to avoid closure-based context leaking
+- **Do** use `getTracingCallbacks()` to bridge traceable context to LangChain calls (pass callbacks to `agent.chat()` or chain's `invoke()`)
+
+## Available Evaluators
+
+### LLM-Judge
+
+Uses an LLM to evaluate workflow quality across multiple dimensions:
+
+```typescript
+import { createLLMJudgeEvaluator } from './evaluators';
+
+const evaluator = createLLMJudgeEvaluator(llm, nodeTypes);
+```
+
+**Evaluator:** `llm-judge`
+
+**Metrics:** `functionality`, `connections`, `expressions`, `nodeConfiguration`, `efficiency`, `dataFlow`, `maintainability`, `overallScore`
+
+**Context required:** `{ prompt: string }`
+
+### Pairwise
+
+Uses a panel of judges to evaluate against dos/donts criteria:
+
+```typescript
+import { createPairwiseEvaluator } from './evaluators';
+
+const evaluator = createPairwiseEvaluator(llm, { numJudges: 3 });
+```
+
+**Evaluator:** `pairwise`
+
+**Metrics:**
+`pairwise_primary`, `pairwise_diagnostic`, `pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`
+
+Additional per-judge details may also be emitted (e.g. `judge1`, `judge2`).
+
+**Context required:** `{ dos?: string, donts?: string }`
+
+### Programmatic
+
+Rule-based checks without LLM calls:
+
+```typescript
+import { createProgrammaticEvaluator } from './evaluators';
+
+const evaluator = createProgrammaticEvaluator(nodeTypes);
+```
+
+**Evaluator:** `programmatic`
+
+**Metrics:** `overall`, `connections`, `trigger`, `agentPrompt`, `tools`, `fromAi` (optional: `similarity`)
+
+**Context required:** None
+
+## Metric Naming (LangSmith compatibility)
+
+LangSmith metric keys are derived from `Feedback` in `evaluations/harness/feedback.ts`:
+- `llm-judge`: **unprefixed** (e.g. `overallScore`, `maintainability.workflowOrganization`)
+- `programmatic`: **prefixed** (e.g. `programmatic.trigger`)
+- `pairwise`: v1-compatible keys stay **unprefixed** (e.g. `pairwise_primary`); non-v1 details are namespaced (e.g. `pairwise.judge1`)
+
+## CLI Usage
+
+### NPM Scripts
+
+```bash
+# Local mode with LLM-judge evaluator
+pnpm eval --prompt "Create a workflow..." --verbose
+
+# LangSmith mode (results in LangSmith dashboard)
+pnpm eval:langsmith --name "my-experiment" --verbose
+
+# Pairwise mode (local)
+pnpm eval:pairwise --prompt "..." --dos "Must use Slack" --donts "No HTTP"
+
+# Pairwise mode with LangSmith
+pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
+```
+
+Notes:
+- In `--backend langsmith` mode, the CLI requires `--dataset` and rejects `--prompt`, `--prompts-csv`, and `--test-case`.
+- `--output-dir` only applies to local mode (it writes artifacts to disk).
+
+### Common Flags
+
+```bash
+--suite <llm-judge|pairwise|programmatic|similarity>
+--backend <local|langsmith>   # Or `--langsmith` as a shortcut
+--verbose, -v       # Enable verbose output
+--name <name>       # Experiment name (LangSmith mode)
+--dataset <name>    # LangSmith dataset name
+--max-examples <n>  # Limit number of examples to evaluate
+--concurrency <n>   # Max concurrent evaluations (default: 5)
+--repetitions <n>   # Number of repetitions per example
+--test-case <id>    # Run a predefined test case (local)
+--prompts-csv <path># Load prompts from CSV (local)
+--prompt <text>     # Single prompt for local testing
+--dos <text>        # Pairwise: things the workflow should do
+--donts <text>      # Pairwise: things the workflow should not do
+--output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
+--template-examples # Enable template examples feature flag
+--webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
+--webhook-secret <s> # HMAC-SHA256 secret for webhook authentication (min 16 chars)
+```
+
+### CSV Format
+
+`--prompts-csv` supports optional headers. Recognized columns:
+- `prompt` (required)
+- `id` (optional)
+- `dos` / `do` (optional)
+- `donts` / `dont` (optional)
+
+Example:
+
+```csv
+id,prompt,dos,donts
+pw-001,"Create a workflow to sync Gmail to Notion","Must use Notion","No HTTP Request node"
+```
+
+### Direct Usage
+
+```bash
+# Local mode (default)
+tsx evaluations/cli/index.ts --prompt "Create a workflow..." --verbose
+
+# LangSmith mode
+tsx evaluations/cli/index.ts --backend langsmith --name "my-experiment" --verbose
+
+# Pairwise mode
+tsx evaluations/cli/index.ts --suite pairwise --prompt "..." --dos "Must use Slack"
+```
+
+## Components & Where Things Live
+
+This directory is intentionally split by responsibility:
+
+- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`, `cli/webhook.ts`)
+- `evaluations/harness/`: orchestration, scoring, logging, and artifact writing (`harness/runner.ts`, `harness/lifecycle.ts`, `harness/score-calculator.ts`, `harness/output.ts`)
+- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity)
+- `evaluations/judge/`: the LLM-judge “engine” (schemas + category evaluators + `judge/workflow-evaluator.ts`)
+- `evaluations/langsmith/`: LangSmith-specific helpers (`langsmith/trace-filters.ts`, `langsmith/types.ts`)
+- `evaluations/support/`: environment setup, node loading, report generation, and test-case generation
+- `evaluations/programmatic/`: programmatic evaluator implementation (TypeScript) + `programmatic/python/` (kept separate)
+
+## Extending
+
+### Adding a new evaluator
+
+Add an evaluator by implementing the `Evaluator` interface and returning `Feedback[]`:
+- Put evaluator factories under `evaluations/evaluators/<name>/`
+- Make sure you emit at least one `kind: 'score'` item (the harness scoring prefers this)
+- If you need custom context, extend via `Evaluator<MyContext>` and validate required fields at runtime (keep the base context cast-free)
+- If you want stable LangSmith keys, update `evaluations/harness/feedback.ts`
+
+### Adding a new “runner” (backend)
+
+The harness runner is `evaluations/harness/runner.ts`. Today it supports:
+- `mode: 'local'` (local dataset array + optional artifacts)
+- `mode: 'langsmith'` (LangSmith dataset or preloaded examples)
+
+To add a new backend, keep evaluators backend-agnostic and extend the runner with a new `RunConfig['mode']` branch.
+
+## File Structure
 
 ```
 evaluations/
-├── cli/                 # CLI evaluation implementation
-│   ├── runner.ts       # Main CLI evaluation orchestrator
-│   └── display.ts      # Console output and progress tracking
-├── langsmith/          # Langsmith integration (non-pairwise)
-│   ├── evaluator.ts    # Langsmith-compatible evaluator function
-│   └── runner.ts       # Langsmith evaluation orchestrator
-├── pairwise/           # Pairwise evaluation (local + LangSmith modes)
-│   ├── runner.ts       # Orchestration for both local and LangSmith modes
-│   ├── generator.ts    # Target function + workflow generation
-│   ├── metrics-builder.ts # LangSmith metric builders
-│   ├── judge-chain.ts  # LLM judge chain
-│   ├── judge-panel.ts  # Multi-judge execution and aggregation
-│   └── types.ts        # Dataset input/output types
-├── core/               # Shared evaluation logic
-│   ├── environment.ts  # Test environment setup and configuration
-│   └── test-runner.ts  # Core test execution logic
-├── types/              # Type definitions
-│   ├── evaluation.ts   # Evaluation result schemas
-│   ├── test-result.ts  # Test result interfaces
-│   └── langsmith.ts    # Langsmith-specific types and guards
-├── chains/             # LLM evaluation chains
-│   ├── test-case-generator.ts    # Dynamic test case generation
-│   ├── workflow-evaluator.ts     # Main orchestrator for parallel evaluation
-│   └── evaluators/               # Individual metric evaluators
-│       ├── index.ts              # Evaluator exports
-│       ├── functionality-evaluator.ts      # Functional correctness evaluation
-│       ├── connections-evaluator.ts        # Node connection evaluation
-│       ├── expressions-evaluator.ts        # n8n expression syntax evaluation
-│       ├── node-configuration-evaluator.ts # Node parameter evaluation
-│       ├── efficiency-evaluator.ts         # Workflow efficiency evaluation
-│       ├── data-flow-evaluator.ts          # Data flow logic evaluation
-│       └── maintainability-evaluator.ts    # Code maintainability evaluation
-├── utils/              # Utility functions
-│   ├── evaluation-calculator.ts  # Metrics calculation
-│   ├── evaluation-helpers.ts     # Common helper functions
-│   ├── evaluation-reporter.ts    # Report generation
-└── index.ts            # Main entry point
+├── __tests__/               # Unit tests
+├── cli/                     # CLI entry + arg parsing + CSV loader
+├── evaluators/              # Evaluator factories
+│   ├── llm-judge/
+│   ├── pairwise/
+│   ├── programmatic/
+│   └── similarity/
+├── harness/                 # Runner + lifecycle + scoring + artifacts
+├── fixtures/                # Local fixtures (tracked)
+│   └── reference-workflows/
+├── judge/                   # LLM-judge internals (schemas + judge evaluators)
+├── langsmith/               # LangSmith-specific helpers (types + trace filters)
+├── programmatic/            # Programmatic evaluation logic
+├── support/                 # Environment + node loading + reports + test case gen
+├── index.ts                 # Public exports
+└── README.md                # This file
 ```
 
-## Implementation Details
-### Core Components
+## Error Handling
 
-#### 1. Test Runner (`core/test-runner.ts`)
+The harness uses "skip and continue" error handling:
 
-The core test runner handles individual test execution:
-- Generates workflows using the WorkflowBuilderAgent
-- Validates generated workflows using type guards
-- Evaluates workflows against test criteria
-- Returns structured test results with error handling
+- If an evaluator throws, it returns error feedback and continues
+- If workflow generation fails, the example is marked as error and continues
+- Other evaluators still run even if one fails
 
-#### 2. Environment Setup (`core/environment.ts`)
-
-Centralizes environment configuration:
-- LLM initialization with API key validation
-- Langsmith client setup
-- Node types loading
-- Concurrency and test generation settings
-
-#### 3. Workflow Evaluator (`chains/workflow-evaluator.ts`)
-
-The main orchestrator that coordinates parallel evaluation across all metric categories:
-- **Parallel Execution**: Runs all 7 evaluators concurrently using `Promise.all()` for optimal performance
-- **Score Calculation**: Computes weighted overall score using the weight distribution
-- **Summary Generation**: Creates evaluation summaries based on all metric results
-- **Critical Issues Identification**: Aggregates critical violations from all evaluator categories
-
-#### 4. Individual Evaluators (`chains/evaluators/`)
-
-Each metric category has its own specialized evaluator chain with tailored prompts and scoring logic:
-
-**Functionality Evaluator**: Focuses on whether the workflow achieves explicitly requested goals
-**Connections Evaluator**: Analyzes node connections and data flow paths
-**Expressions Evaluator**: Validates n8n expression syntax and data references
-**Node Configuration Evaluator**: Checks parameter configuration and required fields
-**Efficiency Evaluator**: Evaluates redundancy, path optimization, and node count efficiency
-**Data Flow Evaluator**: Analyzes data transformations and validation logic
-**Maintainability Evaluator**: Assesses naming, organization, and structural quality
-
-#### 5. Langsmith Integration
-
-The Langsmith integration provides two key components:
-
-**Evaluator (`langsmith/evaluator.ts`):**
-- Converts Langsmith Run objects to evaluation inputs
-- Validates all data using type guards before processing
-- Safely extracts usage metadata without type coercion
-- Returns structured evaluation results from the parallel evaluation system
-
-**Runner (`langsmith/runner.ts`):**
-- Creates workflow generation functions compatible with Langsmith
-- Validates message content before processing
-- Extracts usage metrics safely from message metadata
-- Handles dataset verification and error reporting
-
-#### 6. Pairwise Evaluation
-
-Pairwise evaluation provides a criteria-based approach to workflow evaluation with hierarchical scoring and multi-judge consensus. It evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset. All pairwise-related code is consolidated in the `pairwise/` directory.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           EVALUATION FLOW                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  Dataset (LangSmith)           Local Mode                                    │
-│  ┌──────────────────┐         ┌──────────────────┐                          │
-│  │ prompt           │         │ --prompt "..."   │                          │
-│  │ evals.dos        │         │ --dos "..."      │                          │
-│  │ evals.donts      │         │ --donts "..."    │                          │
-│  └────────┬─────────┘         └────────┬─────────┘                          │
-│           │                            │                                     │
-│           ▼                            ▼                                     │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         GENERATION PHASE                             │    │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │    │
-│  │  │ Generation 1 │  │ Generation 2 │  │ Generation N │  (in parallel) │    │
-│  │  │             │  │             │  │             │                  │    │
-│  │  │ Agent.chat()│  │ Agent.chat()│  │ Agent.chat()│                  │    │
-│  │  │     ↓       │  │     ↓       │  │     ↓       │                  │    │
-│  │  │  Workflow   │  │  Workflow   │  │  Workflow   │                  │    │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘                  │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                    │                                         │
-│                                    ▼                                         │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         JUDGE PANEL PHASE                            │    │
-│  │                     (per generation, in parallel)                    │    │
-│  │                                                                      │    │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐                              │    │
-│  │  │ Judge 1 │  │ Judge 2 │  │ Judge 3 │  (default: 3 judges)         │    │
-│  │  │         │  │         │  │         │                              │    │
-│  │  │ LLM     │  │ LLM     │  │ LLM     │  Same prompt, independent    │    │
-│  │  │ Eval    │  │ Eval    │  │ Eval    │  calls for variance          │    │
-│  │  └────┬────┘  └────┬────┘  └────┬────┘                              │    │
-│  │       │            │            │                                    │    │
-│  │       ▼            ▼            ▼                                    │    │
-│  │  ┌─────────────────────────────────────────────────────────┐        │    │
-│  │  │              AGGREGATION                                 │        │    │
-│  │  │  • primaryPass: ALL criteria passed (no violations)?     │        │    │
-│  │  │  • diagnosticScore: passes / total criteria              │        │    │
-│  │  │  • majorityPass: ≥50% judges have primaryPass=true       │        │    │
-│  │  └─────────────────────────────────────────────────────────┘        │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                    │                                         │
-│                                    ▼                                         │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                    MULTI-GENERATION AGGREGATION                      │    │
-│  │  (only if numGenerations > 1)                                        │    │
-│  │                                                                      │    │
-│  │  • generationCorrectness: (# passing gens) / total gens             │    │
-│  │  • aggregatedDiagnosticScore: avg across all generations            │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+```typescript
+// Error feedback format:
+{ evaluator: 'evaluator-name', metric: 'error', score: 0, kind: 'score', comment: 'Error message' }
 ```
 
-**Judge Chain (`pairwise/judge-chain.ts`):**
-- Evaluates workflows against a checklist of criteria (dos and don'ts)
-- Uses an LLM to determine if each criterion passes or fails
-- Requires evidence-based justification for each decision
-- Returns `primaryPass` (true only if ALL criteria pass) and `diagnosticScore` (ratio of passes)
+## Testing
 
-**Runner (`pairwise/runner.ts`):**
-- Generates workflows from prompts in the dataset
-- Runs multiple LLM judges in parallel for each evaluation (configurable via `--judges`)
-- Aggregates judge results using majority vote
-- Supports filtering by `notion_id` metadata for single-example runs
-- Reports five metrics to Langsmith:
-  - `pairwise_primary`: Majority vote result (0 or 1)
-  - `pairwise_diagnostic`: Average diagnostic score across judges
-  - `pairwise_judges_passed`: Count of judges that passed
-  - `pairwise_total_violations`: Sum of all violations
-  - `pairwise_total_passes`: Sum of all passes
+From `packages/@n8n/ai-workflow-builder.ee`:
 
-**Logger (`utils/logger.ts`):**
-- Simple evaluation logger with verbose mode support
-- Controls output verbosity via `--verbose` flag
+```bash
+pnpm test:eval
+```
 
-**Dataset Format:**
-The pairwise evaluation expects a Langsmith dataset with examples containing:
+## CI Integration
+
+### Automated Eval Runs
+
+Evaluations run automatically via GitHub Actions:
+
+| Trigger | Reps | Judges | Dataset | When |
+|---------|------|--------|---------|------|
+| Push to master | 1 | 1 | `workflow-builder-canvas-prompts` | On changes to `ai-workflow-builder.ee/` |
+| Scheduled | 3 | 3 | `prompts-v2` | Saturdays 22:00 UTC |
+| Minor release | 2 | 3 | `workflow-builder-canvas-prompts` | On `vX.Y.0` releases |
+| Manual dispatch | Configurable | Configurable | Configurable | Via GitHub Actions UI |
+
+### Skipping Evals on Merge
+
+To skip eval runs when merging a PR that doesn't affect prompts/AI behavior, use any of:
+
+- **PR label**: Add `no-prompt-changes` label to the PR
+- **PR title**: Include `(no-prompt-changes)` in the PR title
+- **Commit message**: Include `(no-prompt-changes)` in the merge commit message
+
+### Experiment Naming Convention
+
+LangSmith experiments follow this naming pattern:
+
+| Source | Format | Example |
+|--------|--------|---------|
+| Branch with ticket | `{TICKET-ID}_{YYYY_MM_DD}` | `AI-1234_2026_01_20` |
+| Branch without ticket | `CI_{branch}_{YYYY_MM_DD}` | `CI_master_2026_01_20` |
+| Scheduled run | `CI_scheduled_{YYYY_MM_DD}` | `CI_scheduled_2026_01_20` |
+| Minor release | `CI_vX.Y_{YYYY_MM_DD}` | `CI_v1.70_2026_01_20` |
+| Manual dispatch | `CI_manual_{YYYY_MM_DD}` | `CI_manual_2026_01_20` |
+
+### CI Metadata
+
+All LangSmith experiments include metadata to distinguish CI runs from local development:
+
 ```json
 {
-  "inputs": {
-    "prompt": "Create a workflow that...",
-    "evals": {
-      "dos": "Use HTTP Request node for API calls\nInclude error handling",
-      "donts": "Don't use deprecated nodes\nDon't hardcode credentials"
-    }
+  "source": "ci",
+  "trigger": "push",
+  "commitSha": "abc123...",
+  "branch": "master",
+  "runId": "12345678"
+}
+```
+
+Local runs show `"source": "local"` with no other CI fields.
+
+### Webhook Notifications
+
+The CLI supports sending evaluation results to a webhook URL when evaluations complete. This enables integrations with Slack, Discord, or custom notification systems.
+
+```bash
+pnpm eval:langsmith --dataset "my-dataset" --webhook-url "https://hooks.slack.com/services/..."
+```
+
+**Why custom webhooks?**
+
+LangSmith's `evaluate()` function does not provide native webhook support for experiment run notifications. LangSmith offers webhooks via:
+- **Trace Rules** — triggered on individual traces, not experiment completions
+- **API endpoint webhooks** — for specific API events, but not for `evaluate()` completions
+- **API polling** — requires external orchestration to detect when experiments finish
+
+Since none of these approaches support the "notify on experiment completion" use case for the `evaluate()` SDK function, we implemented a custom webhook system that fires after all evaluations complete, sending a summary payload with experiment metadata.
+
+**Payload format:**
+
+```json
+{
+  "suite": "llm-judge",
+  "summary": {
+    "totalExamples": 50,
+    "passed": 45,
+    "failed": 5,
+    "errors": 0,
+    "averageScore": 0.87
+  },
+  "evaluatorAverages": {
+    "llm-judge": 0.85,
+    "programmatic": 0.92
+  },
+  "totalDurationMs": 120000,
+  "metadata": {
+    "source": "ci",
+    "trigger": "push",
+    "runId": "12345678"
+  },
+  "langsmith": {
+    "experimentName": "AI-1234_2026_01_20",
+    "experimentId": "48660e0e-0ed5-4e32-9e04-88803d7c161f",
+    "datasetId": "b04d1ce8-8e3f-455a-818c-ee2c7e14c458",
+    "datasetName": "workflow-builder-canvas-prompts"
   }
 }
 ```
-Note: `dos` and `donts` are newline-separated strings, not arrays.
 
-#### 7. CLI Evaluation
+The `langsmith` object (only present in LangSmith mode) contains IDs and names for constructing comparison URLs.
 
-The CLI evaluation provides local testing capabilities:
+**Security:**
+- Only HTTPS URLs are allowed
+- Localhost and private/internal IPs are blocked (SSRF prevention)
+- DNS resolution validates that hostnames don't resolve to private IPs
+- Webhook URLs are masked in logs to protect embedded tokens
+- HMAC-SHA256 signature for request authentication (optional but recommended)
 
-**Runner (`cli/runner.ts`):**
-- Orchestrates parallel test execution with concurrency control
-- Manages test case generation when enabled
-- Generates detailed reports and saves results
+#### Webhook Authentication (HMAC Signature)
 
-**Display (`cli/display.ts`):**
-- Progress bar management for real-time feedback
-- Console output formatting
-- Error display and reporting
-
-### Evaluation Metrics
-
-The system evaluates workflows across seven categories, with each category having its own specialized evaluator chain that runs in parallel:
-
-1. **Functionality** (25% weight)
-   - Does the workflow achieve the intended goal?
-   - Are the right nodes selected?
-   - Is core functionality explicitly requested implemented?
-
-2. **Connections** (15% weight)
-   - Are nodes properly connected?
-   - Is data flow logical?
-   - Are connection paths optimized?
-
-3. **Expressions** (15% weight)
-   - Are n8n expressions syntactically correct?
-   - Do they reference valid data paths?
-   - Are expressions efficient and maintainable?
-
-4. **Node Configuration** (15% weight)
-   - Are node parameters properly set?
-   - Are required fields populated?
-   - Are configurations appropriate for the use case?
-
-5. **Efficiency** (10% weight)
-   - **Redundancy Score**: Avoiding duplicate operations that could be consolidated
-   - **Path Optimization**: Using optimal execution paths
-   - **Node Count Efficiency**: Using minimal necessary nodes
-   - Are backup/fallback paths intentional vs. wasteful?
-
-6. **Data Flow** (10% weight)
-   - Is data flowing correctly between nodes?
-   - Are data transformations logical and necessary?
-   - Is data validation properly implemented?
-
-7. **Maintainability** (5% weight)
-   - **Node Naming Quality**: Are nodes descriptively named?
-   - **Workflow Organization**: Is the structure logically organized?
-   - **Modularity**: Are components reusable and well-structured?
-
-8. **Structural Similarity** (5% weight, optional)
-   - How closely does the structure match a reference workflow?
-   - Only evaluated when reference workflow is provided
-
-### Violation Severity Levels
-
-Violations are categorized by severity:
-- **Critical** (-40 to -50 points): Workflow-breaking issues
-- **Major** (-15 to -25 points): Significant problems affecting functionality
-- **Minor** (-5 to -15 points): Non-critical issues or inefficiencies
-
-## Running Evaluations
-
-### CLI Evaluation
+For production use, authenticate webhook requests using HMAC-SHA256 signatures:
 
 ```bash
-# Run with default settings
-pnpm eval
+# Generate a secret (run once, store securely)
+openssl rand -hex 32
 
-# Run a specific test case
-pnpm eval --test-case google-sheets-processing
-pnpm eval --test-case extract-from-file
-
-# With additional generated test cases
-GENERATE_TEST_CASES=true pnpm eval
-
-# With custom concurrency
-EVALUATION_CONCURRENCY=10 pnpm eval
-
-# With feature flags enabled
-pnpm eval --multi-agent --template-examples
+# Use with the CLI
+pnpm eval:langsmith --dataset "my-dataset" \
+  --webhook-url "https://your.endpoint/webhook" \
+  --webhook-secret "your-64-char-hex-secret"
 ```
 
-### Langsmith Evaluation
+When a secret is provided, requests include:
+- `X-Signature-256`: HMAC-SHA256 signature (`sha256=<hex>`)
+- `X-Timestamp`: Unix timestamp in milliseconds
 
-```bash
-# Set required environment variables
-export LANGSMITH_API_KEY=your_api_key
-# Optionally specify dataset
-export LANGSMITH_DATASET_NAME=your_dataset_name
+**How it works:**
 
-# Run evaluation
-pnpm eval:langsmith
+```
+Sender:
+1. payload = JSON.stringify(body)
+2. signatureInput = `${timestamp}.${payload}`
+3. signature = HMAC-SHA256(signatureInput, secret)
+4. Send with headers: X-Signature-256, X-Timestamp
 
-# With feature flags enabled
-pnpm eval:langsmith --multi-agent
+Receiver:
+1. Extract X-Signature-256 and X-Timestamp headers
+2. Check timestamp is recent (< 5 minutes old)
+3. Recreate: signatureInput = `${timestamp}.${rawBody}`
+4. Compute expected = HMAC-SHA256(signatureInput, secret)
+5. Compare signatures (timing-safe)
 ```
 
-### Pairwise Evaluation
+**Verifying in an n8n workflow:**
 
-Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt. It implements a hierarchical scoring system with multiple LLM judges per evaluation.
+Use a Code node after the Webhook trigger:
 
-#### CLI Options
+```javascript
+const crypto = require('crypto');
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--prompt <text>` | Run local evaluation with this prompt (no LangSmith required) | - |
-| `--dos <rules>` | Newline-separated "do" rules for local evaluation | - |
-| `--donts <rules>` | Newline-separated "don't" rules for local evaluation | - |
-| `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
-| `--technique <name>` | Filter examples by technique (must be in metadata `categories` field) | (all examples) |
-| `--max-examples <n>` | Limit number of examples to evaluate (useful for testing) | (no limit) |
-| `--repetitions <n>` | Number of times to repeat the entire evaluation | 1 |
-| `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
-| `--judges <n>` | Number of LLM judges per evaluation | 3 |
-| `--concurrency <n>` | Number of prompts to evaluate in parallel | 5 |
-| `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
-| `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
-| `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
-| `--multi-agent` | Enable multi-agent architecture (see [Feature Flags](#feature-flags)) | false |
-| `--template-examples` | Enable template-based examples (see [Feature Flags](#feature-flags)) | false |
+// Get from webhook input (adjust based on your webhook node config)
+const signature = $input.first().json.headers['x-signature-256'];
+const timestamp = $input.first().json.headers['x-timestamp'];
+const rawBody = $input.first().json.rawBody ?? $input.first().json.body;
+const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
 
-#### Local Mode (No LangSmith Required)
+// Your secret (use n8n credentials or environment variable)
+const secret = $env.WEBHOOK_SECRET;
 
-Run a single pairwise evaluation locally without needing a LangSmith account:
+// Verify timestamp (reject requests older than 5 minutes)
+const MAX_AGE_MS = 5 * 60 * 1000;
+const age = Date.now() - parseInt(timestamp, 10);
+if (!signature || !timestamp) throw new Error('Missing signature headers');
+if (age > MAX_AGE_MS) throw new Error('Request too old');
 
-```bash
-# Basic local evaluation
-pnpm eval:pairwise --prompt "Create a workflow that sends Slack messages" --dos "Use Slack node"
+// Compute and compare signature
+const payload = `${timestamp}.${body}`;
+const expected = 'sha256=' + crypto.createHmac('sha256', secret)
+  .update(payload, 'utf8').digest('hex');
 
-# With don'ts and multiple judges
-pnpm eval:pairwise \
-  --prompt "Create a workflow that fetches data from an API" \
-  --dos "Use HTTP Request node\nHandle errors" \
-  --donts "Don't hardcode URLs" \
-  --judges 5 \
-  --verbose
-```
-
-Local mode is useful for:
-- Testing prompts before adding them to a dataset
-- Quick iteration on evaluation criteria
-- Running evaluations without LangSmith setup
-
-#### LangSmith Mode
-
-For dataset-based evaluation with experiment tracking:
-
-```bash
-# Set required environment variables
-export LANGSMITH_API_KEY=your_api_key
-
-# Run pairwise evaluation (uses default dataset: notion-pairwise-workflows)
-pnpm eval:pairwise
-
-# Run a single example by notion_id
-pnpm eval:pairwise --notion-id 30d29454-b397-4a35-8e0b-74a2302fa81a
-
-# Filter examples by technique (from metadata.categories field)
-pnpm eval:pairwise --technique "1-technique-data"
-
-# Run with 3 repetitions and 5 judges, custom experiment name
-pnpm eval:pairwise --repetitions 3 --judges 5 --name "my-experiment"
-
-# Enable verbose logging to see all judge details
-pnpm eval:pairwise --notion-id abc123 --verbose
-
-# Use a custom dataset
-LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
-
-# Limit to specific number of examples (useful for testing)
-pnpm eval:pairwise --max-examples 2
-```
-
-#### Multi-Generation Evaluation
-
-The `--generations` flag enables multiple workflow generations per prompt, providing a **Generation Correctness** metric:
-
-```bash
-# Run 3 generations per prompt with 3 judges each
-pnpm eval:pairwise --generations 3 --judges 3 --verbose
-
-# Example output:
-# Gen 1: 2/3 judges → ✓ PASS (diag=85%)
-# Gen 2: 1/3 judges → ✗ FAIL (diag=60%)
-# Gen 3: 3/3 judges → ✓ PASS (diag=95%)
-# 📊 [#1] 2/3 gens → PASS (gen_corr=0.67, diag=80%)
-```
-
-**Generation Correctness** = (# passing generations) / total generations:
-- With `--generations 3`: Values are 0, 0.33, 0.67, or 1
-- With `--generations 5`: Values are 0, 0.2, 0.4, 0.6, 0.8, or 1
-
-#### Hierarchical Scoring System
-
-The pairwise evaluation uses a multi-level scoring hierarchy:
-
-| Level | Primary Score | Secondary Score |
-|-------|--------------|-----------------|
-| Individual do/don't | Binary (true/false) | 0 or 1 |
-| 1 LLM judge | false if ANY criterion fails | Average of criteria scores |
-| N judges on 1 generation | Majority vote (≥50% pass) | Average diagnostic across judges |
-| N generations on 1 prompt | (# passing gens) / N | Average diagnostic across generations |
-| Full dataset | Average across prompts | Average diagnostic across all |
-
-This approach reduces variance from LLM non-determinism by using multiple judges and generations.
-
-#### Saving Artifacts with --output-dir
-
-The `--output-dir` flag saves all generated workflows and evaluation results to disk:
-
-```bash
-# Save artifacts to ./eval-output directory
-pnpm eval:pairwise --generations 3 --output-dir ./eval-output --verbose
-```
-
-**Output structure:**
-```
-eval-output/
-├── prompt-1/
-│   ├── prompt.txt              # Original prompt text
-│   ├── criteria.json           # dos/donts criteria
-│   ├── gen-1/
-│   │   ├── workflow.json       # Importable n8n workflow
-│   │   └── evaluation.json     # Judge results for this generation
-│   ├── gen-2/
-│   │   ├── workflow.json
-│   │   └── evaluation.json
-│   └── gen-3/
-│       ├── workflow.json
-│       └── evaluation.json
-├── prompt-2/
-│   └── ...
-└── summary.json                # Overall results summary
-```
-
-**workflow.json**: Directly importable into n8n (File → Import from file)
-
-**evaluation.json**: Contains per-judge results including violations and passes:
-```json
-{
-  "generationIndex": 1,
-  "majorityPass": false,
-  "primaryPasses": 1,
-  "numJudges": 3,
-  "diagnosticScore": 0.35,
-  "judges": [
-    {
-      "judgeIndex": 1,
-      "primaryPass": false,
-      "diagnosticScore": 0.30,
-      "violations": [{"rule": "...", "justification": "..."}],
-      "passes": [{"rule": "...", "justification": "..."}]
-    }
-  ]
+if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  throw new Error('Invalid signature');
 }
+
+// Valid! Return parsed payload
+return [{ json: JSON.parse(body) }];
 ```
 
-## Configuration
+**CI Configuration:**
 
-### Required Files
+Add secrets to GitHub:
+- `EVALS_WEBHOOK_URL`: Your webhook endpoint
+- `EVALS_WEBHOOK_SECRET`: The HMAC secret (64-char hex string)
 
-#### nodes.json
-**IMPORTANT**: The evaluation framework requires a `nodes.json` file in the evaluations root directory (`evaluations/nodes.json`).
+### Debug Dataset
 
-This file contains all n8n node type definitions and is used by the AI Workflow Builder agent to:
-- Know what nodes are available in n8n
-- Understand node parameters and their schemas
-- Generate valid workflows with proper node configurations
+For faster iteration during development, use a minimal dataset:
 
-**Why is this required?**
-The AI Workflow Builder agent needs access to node definitions to generate workflows. In a normal n8n runtime, these definitions are loaded automatically. However, since the evaluation framework instantiates the agent without a running n8n instance, we must provide the node definitions manually via `nodes.json`.
-
-**How to generate nodes.json:**
-1. Run your n8n instance
-2. Download the node definitions from locally running n8n instance(http://localhost:5678/types/nodes.json)
-3. Save the node definitions to `evaluations/nodes.json`
-` curl -o evaluations/nodes.json http://localhost:5678/types/nodes.json`
-
-The evaluation will fail with a clear error message if `nodes.json` is missing.
-
-### Environment Variables
-
-- `N8N_AI_ANTHROPIC_KEY` - Required for LLM access
-- `LANGSMITH_API_KEY` - Required for Langsmith evaluation
-- `USE_LANGSMITH_EVAL` - Set to "true" to use Langsmith mode
-- `USE_PAIRWISE_EVAL` - Set to "true" to use pairwise evaluation mode
-- `LANGSMITH_DATASET_NAME` - Override default dataset name
-- `EVALUATION_CONCURRENCY` - Number of parallel test executions (default: 5)
-- `GENERATE_TEST_CASES` - Set to "true" to generate additional test cases
-- `LLM_MODEL` - Model identifier for metadata tracking
-- `EVAL_FEATURE_MULTI_AGENT` - Set to "true" to enable multi-agent mode
-- `EVAL_FEATURE_TEMPLATE_EXAMPLES` - Set to "true" to enable template examples
-- `N8N_EVALS_DISABLED_NODES` - Comma-separated list of node types to disable (e.g., `n8n-nodes-base.slack,@n8n/n8n-nodes-langchain.agent`)
-
-### Feature Flags
-
-Feature flags control experimental or optional behaviors in the AI Workflow Builder agent during evaluations. They can be set via environment variables or CLI arguments.
-
-#### Available Flags
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `multiAgent` | Enables multi-agent architecture with specialized sub-agents (supervisor, builder, configurator, discovery) | `false` |
-| `templateExamples` | Enables template-based examples in agent prompts | `false` |
-
-#### Setting Feature Flags
-
-**Via Environment Variables:**
 ```bash
-# Enable multi-agent mode
-EVAL_FEATURE_MULTI_AGENT=true pnpm eval
-
-# Enable template examples
-EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:pairwise
-
-# Enable both
-EVAL_FEATURE_MULTI_AGENT=true EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:langsmith
+# Use the debug dataset with a single example
+pnpm eval:langsmith --dataset "workflow-builder-debug-single" --name "debug-run" --verbose
 ```
 
-**Via CLI Arguments:**
-```bash
-# Enable multi-agent mode
-pnpm eval --multi-agent
+To create your own debug dataset in LangSmith:
+1. Go to LangSmith → Datasets
+2. Create a new dataset with 1-3 representative examples
+3. Use it with `--dataset "your-debug-dataset"`
 
-# Enable template examples
-pnpm eval:pairwise --template-examples
-
-# Enable both
-pnpm eval:langsmith --multi-agent --template-examples
-```
-
-#### Usage Across Evaluation Modes
-
-Feature flags work consistently across all evaluation modes:
-
-**CLI Evaluation:**
-```bash
-pnpm eval --multi-agent --template-examples
-```
-
-**Langsmith Evaluation:**
-```bash
-pnpm eval:langsmith --multi-agent
-```
-
-**Pairwise Evaluation (LangSmith mode):**
-```bash
-pnpm eval:pairwise --multi-agent --template-examples
-```
-
-**Pairwise Evaluation (Local mode):**
-```bash
-pnpm eval:pairwise --prompt "Create a Slack workflow" --dos "Use Slack node" --multi-agent
-```
-
-When feature flags are enabled, they are logged at the start of the evaluation:
-```
-➔ Feature flags enabled: multiAgent, templateExamples
-```
-
-## Output
-
-### CLI Evaluation Output
-
-- **Console Display**: Real-time progress, test results, and summary statistics
-- **Markdown Report**: `results/evaluation-report-[timestamp].md`
-- **JSON Results**: `results/evaluation-results-[timestamp].json`
-
-### Langsmith Evaluation Output
-
-- Results are stored in Langsmith dashboard
-- Experiment name format: `workflow-builder-evaluation-[date]`
-- Includes detailed metrics for each evaluation category
-
-### Pairwise Evaluation Output
-
-- Results are stored in Langsmith dashboard
-- Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-[uuid]`)
-- Metrics reported (single generation mode):
-  - `pairwise_primary`: Binary pass/fail based on majority vote (0 or 1)
-  - `pairwise_diagnostic`: Average diagnostic score across judges (0-1)
-  - `pairwise_judges_passed`: Number of judges that returned primaryPass=true
-  - `pairwise_total_violations`: Sum of violations across all judges
-  - `pairwise_total_passes`: Sum of passes across all judges
-- Additional metrics reported (multi-generation mode with `--generations N`):
-  - `pairwise_generation_correctness`: (# passing generations) / N (0, 0.33, 0.67, 1 for N=3)
-  - `pairwise_aggregated_diagnostic`: Average diagnostic score across all generations
-  - `pairwise_generations_passed`: Count of generations that passed majority vote
-  - `pairwise_total_judge_calls`: Total judge invocations (generations × judges)
-- Each result includes detailed comments with:
-  - Majority vote summary
-  - List of violations with justifications (per judge)
-  - List of passes (per judge)
-
-## Design Decisions
-
-### Why Multiple Judges?
-
-LLM outputs are stochastic. Running multiple judges (default: 3) and using majority voting reduces variance and provides more stable evaluation results.
-
-### Why Multiple Generations?
-
-The workflow builder itself is stochastic. Running multiple generations tests whether it can *consistently* produce correct workflows, not just once.
-
-### Why Pre-compute in Target?
-
-LangSmith's evaluator context has restrictions on making API calls. By doing all LLM work (generation + judging) in the target function and passing pre-computed metrics, we avoid 403 errors and ensure clean trace structure.
-
-### Why Parallel Execution?
-
-Both generations and judges run in parallel (using `Promise.all`) for speed. A typical 3-judge, 3-generation evaluation would otherwise take 9× longer.
-
-## Adding New Test Cases
-
-Test cases are defined in `chains/test-case-generator.ts`. Each test case requires:
-- `id`: Unique identifier
-- `name`: Descriptive name
-- `prompt`: Natural language description of the workflow to generate
-- `referenceWorkflow` (optional): Expected workflow structure for comparison
-
-## Extending the Framework
-
-To add new evaluation metrics:
-1. Create a new evaluator file in `chains/evaluators/` following the existing pattern
-2. Update the `EvaluationResult` schema in `types/evaluation.ts` to include the new metric
-3. Add the new evaluator to the exports in `chains/evaluators/index.ts`
-4. Import and call the new evaluator in `chains/workflow-evaluator.ts`'s `Promise.all()` array
-5. Adjust weight calculations in the `calculateWeightedScore` function
-6. Update the evaluator in `langsmith/evaluator.ts` to include new metrics
+This is useful for:
+- Testing workflow changes quickly
+- Debugging evaluator issues
+- Validating CI workflow changes locally

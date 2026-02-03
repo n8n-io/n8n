@@ -7,9 +7,11 @@ import type {
 	INode,
 	INodeExecutionData,
 	IWebhookFunctions,
+	IWorkflowSettings,
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -19,11 +21,13 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	sanitizeCustomCss,
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
 } from '../utils/utils';
+import { isIpAllowed } from '../../Webhook/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -345,6 +349,55 @@ describe('FormTrigger, sanitizeHtml', () => {
 	});
 });
 
+describe('sanitizeCustomCss', () => {
+	it('should return undefined for undefined input', () => {
+		expect(sanitizeCustomCss(undefined)).toBeUndefined();
+	});
+
+	it('should return undefined for empty string', () => {
+		expect(sanitizeCustomCss('')).toBeUndefined();
+	});
+
+	it('should preserve CSS child combinator selectors (>)', () => {
+		const css = '#n8n-form > div.form-header > p { text-align: left; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS adjacent sibling selectors (+)', () => {
+		const css = 'h1 + p { margin-top: 0; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS general sibling selectors (~)', () => {
+		const css = 'h1 ~ p { color: gray; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should remove script tags from CSS', () => {
+		const css = '.container { color: red; }<script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should remove style closing tags that could break out of style block', () => {
+		const css = '.container { color: red; }</style><script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should preserve url() in CSS', () => {
+		const css = '.bg { background-image: url(https://example.com/image.png); }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve complex CSS with multiple selectors and properties', () => {
+		const css = `
+			#n8n-form > div.form-header > p { text-align: left; }
+			.form-container > .input-group + .input-group { margin-top: 1rem; }
+			button:hover { background-color: #0056b3; }
+		`;
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+});
+
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
 	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
@@ -354,6 +407,7 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -554,6 +608,7 @@ describe('FormTrigger, formWebhook', () => {
 			contentType: 'multipart/form-data',
 		} as any);
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
+		executeFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 
 		const result = await formWebhook(executeFunctions);
 
@@ -1473,6 +1528,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getTimezone.mockReturnValue('UTC');
 		mockContext.getNode.mockReturnValue(formNode);
 		mockContext.getWorkflowStaticData.mockReturnValue({});
+		mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	it('should handle empty form submission', async () => {
@@ -1798,6 +1854,367 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json.greeting).toBe('<div>hi</div>');
 		expect(result.json.formMode).toBe('production');
+	});
+
+	describe('binaryMode feature', () => {
+		describe('binaryMode === "combined"', () => {
+			beforeEach(() => {
+				mockContext.getWorkflowSettings.mockReturnValue(
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
+				);
+			});
+
+			it('should place single file binary data in bodyData when binaryMode is "combined"', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test-file.pdf',
+					originalFilename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+					newFilename: 'document.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-binary-data',
+					mimeType: 'application/pdf',
+					fileName: 'document.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Document', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Document).toEqual(mockBinaryData);
+				expect(result.binary).toEqual({});
+			});
+
+			it('should place multiple files binary data in bodyData array when binaryMode is "combined"', async () => {
+				const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+					{
+						filepath: '/tmp/file1.jpg',
+						originalFilename: 'photo1.jpg',
+						mimetype: 'image/jpeg',
+						size: 1024,
+						newFilename: 'photo1.jpg',
+					},
+					{
+						filepath: '/tmp/file2.jpg',
+						originalFilename: 'photo2.jpg',
+						mimetype: 'image/jpeg',
+						size: 2048,
+						newFilename: 'photo2.jpg',
+					},
+				];
+
+				const mockBinaryData1 = {
+					data: 'mock-binary-data-1',
+					mimeType: 'image/jpeg',
+					fileName: 'photo1.jpg',
+				};
+
+				const mockBinaryData2 = {
+					data: 'mock-binary-data-2',
+					mimeType: 'image/jpeg',
+					fileName: 'photo2.jpg',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFiles },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock)
+					.mockResolvedValueOnce(mockBinaryData1)
+					.mockResolvedValueOnce(mockBinaryData2);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Photos', fieldType: 'file', multipleFiles: true },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Photos).toEqual([mockBinaryData1, mockBinaryData2]);
+				expect(result.binary).toEqual({});
+			});
+
+			it('should handle mixed form data with files in combined mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/resume.pdf',
+					originalFilename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+					newFilename: 'resume.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-resume-data',
+					mimeType: 'application/pdf',
+					fileName: 'resume.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {
+						'field-0': 'John Doe',
+						'field-1': 'john@example.com',
+					},
+					files: { 'field-2': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Name', fieldType: 'text' },
+					{ fieldLabel: 'Email', fieldType: 'email' },
+					{ fieldLabel: 'Resume', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Name).toBe('John Doe');
+				expect(result.json.Email).toBe('john@example.com');
+				expect(result.json.Resume).toEqual(mockBinaryData);
+				expect(result.binary).toEqual({});
+			});
+		});
+
+		describe('binaryMode !== "combined" (separate mode)', () => {
+			beforeEach(() => {
+				mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+			});
+
+			it('should place single file in returnItem.binary when binaryMode is not "combined"', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test-file.pdf',
+					originalFilename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+					newFilename: 'document.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-binary-data',
+					mimeType: 'application/pdf',
+					fileName: 'document.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Document', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Document).toEqual({
+					filename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+				});
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Document).toEqual(mockBinaryData);
+			});
+
+			it('should place multiple files in returnItem.binary with indexed names when binaryMode is not "combined"', async () => {
+				const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+					{
+						filepath: '/tmp/file1.jpg',
+						originalFilename: 'photo1.jpg',
+						mimetype: 'image/jpeg',
+						size: 1024,
+						newFilename: 'photo1.jpg',
+					},
+					{
+						filepath: '/tmp/file2.jpg',
+						originalFilename: 'photo2.jpg',
+						mimetype: 'image/jpeg',
+						size: 2048,
+						newFilename: 'photo2.jpg',
+					},
+				];
+
+				const mockBinaryData1 = {
+					data: 'mock-binary-data-1',
+					mimeType: 'image/jpeg',
+					fileName: 'photo1.jpg',
+				};
+
+				const mockBinaryData2 = {
+					data: 'mock-binary-data-2',
+					mimeType: 'image/jpeg',
+					fileName: 'photo2.jpg',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFiles },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock)
+					.mockResolvedValueOnce(mockBinaryData1)
+					.mockResolvedValueOnce(mockBinaryData2);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Photos', fieldType: 'file', multipleFiles: true },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Photos).toEqual([
+					{ filename: 'photo1.jpg', mimetype: 'image/jpeg', size: 1024 },
+					{ filename: 'photo2.jpg', mimetype: 'image/jpeg', size: 2048 },
+				]);
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Photos_0).toEqual(mockBinaryData1);
+				expect(result.binary!.Photos_1).toEqual(mockBinaryData2);
+			});
+
+			it('should handle mixed form data with files in separate mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/resume.pdf',
+					originalFilename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+					newFilename: 'resume.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-resume-data',
+					mimeType: 'application/pdf',
+					fileName: 'resume.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {
+						'field-0': 'John Doe',
+						'field-1': 'john@example.com',
+					},
+					files: { 'field-2': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Name', fieldType: 'text' },
+					{ fieldLabel: 'Email', fieldType: 'email' },
+					{ fieldLabel: 'Resume', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Name).toBe('John Doe');
+				expect(result.json.Email).toBe('john@example.com');
+				expect(result.json.Resume).toEqual({
+					filename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+				});
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Resume).toEqual(mockBinaryData);
+			});
+
+			it('should sanitize field labels for binary property names in separate mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test.pdf',
+					originalFilename: 'test.pdf',
+					mimetype: 'application/pdf',
+					size: 1024,
+					newFilename: 'test.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-data',
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'User Resume (2024)', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.User_Resume__2024_).toEqual(mockBinaryData);
+			});
+		});
+
+		describe('binaryMode comparison tests', () => {
+			it('should produce different structures for combined vs separate mode with single file', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test.txt',
+					originalFilename: 'test.txt',
+					mimetype: 'text/plain',
+					size: 512,
+					newFilename: 'test.txt',
+				};
+
+				const mockBinaryData = {
+					data: 'file-content',
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+				};
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'File', fieldType: 'file', multipleFiles: false },
+				];
+
+				// Test combined mode
+				mockContext.getWorkflowSettings.mockReturnValue(
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
+				);
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const resultCombined = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				// Test separate mode
+				mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const resultSeparate = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				// Combined mode: binary data in json
+				expect(resultCombined.json.File).toEqual(mockBinaryData);
+				expect(resultCombined.binary).toEqual({});
+
+				// Separate mode: metadata in json, binary data in binary property
+				expect(resultSeparate.json.File).toEqual({
+					filename: 'test.txt',
+					mimetype: 'text/plain',
+					size: 512,
+				});
+				expect(resultSeparate.binary!.File).toEqual(mockBinaryData);
+			});
+		});
 	});
 });
 
@@ -2356,5 +2773,44 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 		});
 
 		expect(result.formFields[0].defaultValue).toBe('');
+	});
+});
+
+describe('FormTrigger IP Whitelist', () => {
+	describe('isIpAllowed (reused from Webhook)', () => {
+		it('should return true if whitelist is undefined', () => {
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should return true if whitelist is an empty string', () => {
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should allow IP in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.1')).toBe(true);
+		});
+
+		it('should block IP not in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.2')).toBe(false);
+		});
+
+		it('should support CIDR notation', () => {
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support comma-separated mixed entries', () => {
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
+		});
+
+		it('should handle IPv6 addresses', () => {
+			expect(isIpAllowed('::1', [], '::1')).toBe(true);
+			expect(isIpAllowed('::1', [], '::2')).toBe(false);
+		});
+
+		it('should check both direct IP and proxy IPs', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
+		});
 	});
 });

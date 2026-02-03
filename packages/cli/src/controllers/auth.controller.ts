@@ -1,13 +1,21 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
-import { Container } from '@n8n/di';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
 import { handleEmailLogin } from '@/auth';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -21,7 +29,6 @@ import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
@@ -37,11 +44,25 @@ export class AuthController {
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly authHandlerRegistry: AuthHandlerRegistry,
 		private readonly postHog?: PostHogClient,
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true, rateLimit: true })
+	@Post('/login', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can login from the same
+		// IP address but aggressive per email limit.
+		ipRateLimit: {
+			limit: 1000,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
+		keyedRateLimit: createBodyKeyedRateLimiter<LoginRequestDto>({
+			limit: 5,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+			field: 'emailOrLdapLoginId',
+		}),
+	})
 	async login(
 		req: AuthlessRequest,
 		res: Response,
@@ -70,14 +91,17 @@ export class AuthController {
 			} else {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
-		} else if (isLdapCurrentAuthenticationMethod()) {
+		} else if (usedAuthenticationMethod !== 'email') {
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			if (preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
+				// Check if an auth handler is registered for the current auth method
+				const authHandler = this.authHandlerRegistry.get(usedAuthenticationMethod, 'password');
+				if (authHandler) {
+					user = await authHandler.handleLogin(emailOrLdapLoginId, password);
+				}
 			}
 		} else {
 			user = await handleEmailLogin(emailOrLdapLoginId, password);
@@ -126,7 +150,10 @@ export class AuthController {
 		allowSkipMFA: true,
 	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
-		return await this.userService.toPublic(req.user, {
+		// We need auth identities to determine signInType in toPublic method
+		const user = await this.userService.findUserWithAuthIdentities(req.user.id);
+
+		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
 			mfaAuthenticated: req.authInfo?.usedMfa,
@@ -149,7 +176,8 @@ export class AuthController {
 			);
 		}
 
-		const { inviterId, inviteeId } = payload;
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(payload);
+
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {

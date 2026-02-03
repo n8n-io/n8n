@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
@@ -25,7 +25,9 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
@@ -39,14 +41,15 @@ export class WorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly testWebhooks: TestWebhooks,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
-		private readonly executionDataService: ExecutionDataService,
+		private readonly failedRunFactory: FailedRunFactory,
+		private readonly eventService: EventService,
 	) {}
 
 	async runWorkflow(
@@ -249,23 +252,31 @@ export class WorkflowExecutionService {
 	}
 
 	async executeChatWorkflow(
+		user: User,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
-		user: User,
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		const data: IWorkflowExecutionDataProcess = {
+			userId: user.id,
 			executionMode,
 			workflowData,
-			userId: user.id,
 			executionData,
 			streamingEnabled,
 			httpResponse,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
+
+		this.eventService.emit('workflow-executed', {
+			user: { id: user.id },
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'chat',
+		});
 
 		return {
 			executionId,
@@ -332,7 +343,7 @@ export class WorkflowExecutionService {
 					);
 
 					// Create a fake execution and save it to DB.
-					const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
+					const fakeExecution = this.failedRunFactory.generateFailedExecutionFromError(
 						'error',
 						errorWorkflowPermissionError,
 						initialNode,
@@ -349,7 +360,7 @@ export class WorkflowExecutionService {
 						workflowId: workflowData.id,
 					};
 
-					await this.executionRepository.createNewExecution(fullExecutionData);
+					await this.executionPersistence.create(fullExecutionData);
 				}
 				this.logger.info('Error workflow execution blocked due to subworkflow settings', {
 					erroredWorkflowId: workflowErrorData.workflow.id,
@@ -419,7 +430,14 @@ export class WorkflowExecutionService {
 				projectId: runningProject.id,
 			};
 
-			await this.workflowRunner.run(runData);
+			const executionId = await this.workflowRunner.run(runData);
+
+			this.eventService.emit('workflow-executed', {
+				workflowId,
+				workflowName: workflowData.name,
+				executionId,
+				source: 'error',
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(

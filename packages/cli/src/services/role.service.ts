@@ -1,5 +1,5 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -14,6 +14,7 @@ import {
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	Scope,
@@ -34,8 +35,9 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleCacheService } from './role-cache.service';
 import { isUniqueConstraintError } from '@/response-helper';
+
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {
@@ -44,6 +46,7 @@ export class RoleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
+		private readonly logger: Logger,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
@@ -294,12 +297,16 @@ export class RoleService {
 	 * Enhanced rolesWithScope function that combines static roles with database roles
 	 * This replaces the original rolesWithScope function from @n8n/permissions
 	 */
-	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+	async rolesWithScope(
+		namespace: RoleNamespace,
+		scopes: Scope | Scope[],
+		trx?: EntityManager,
+	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {
@@ -324,5 +331,47 @@ export class RoleService {
 				// TODO: handle custom roles licensing
 				return true;
 		}
+	}
+
+	async addScopeToRole(roleSlug: Role['slug'], scopeSlug: Scope): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		const scope = await this.scopeRepository.findOne({ where: { slug: scopeSlug } });
+
+		if (!scope) {
+			this.logger.error(
+				`Scope ${scopeSlug} not found - unable to add this scope to role ${roleSlug}`,
+			);
+			throw new NotFoundError(`Scope ${scopeSlug} not found`);
+		}
+
+		if (role.scopes.find((s) => s.slug === scopeSlug)) {
+			this.logger.debug(`Scope ${scopeSlug} is already assigned on role ${roleSlug}`);
+			return;
+		}
+
+		this.logger.debug(`Adding scope ${scopeSlug} to role ${roleSlug}`);
+		role.scopes.push(scope);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Added scope ${scopeSlug} to role ${roleSlug}`);
+	}
+
+	async removeScopeFromRole(roleSlug: string, scopeSlug: string): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		this.logger.debug(`Removing scope ${scopeSlug} from role ${roleSlug}`);
+		role.scopes = role.scopes.filter((s) => s.slug !== scopeSlug);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Removed scope ${scopeSlug} from role ${roleSlug}`);
 	}
 }
