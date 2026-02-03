@@ -21,6 +21,7 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
+	restartExecutionId?: string;
 };
 
 export type JobResult = {

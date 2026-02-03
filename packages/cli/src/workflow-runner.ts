@@ -175,7 +175,14 @@ export class WorkflowRunner {
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
-			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
+			await this.enqueueExecution(
+				executionId,
+				workflowId,
+				data,
+				loadStaticData,
+				realtime,
+				restartExecutionId,
+			);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
@@ -254,7 +261,6 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 
@@ -375,6 +381,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
+		restartExecutionId?: string,
 	): Promise<void> {
 		const jobData: JobData = {
 			workflowId,
@@ -382,6 +389,7 @@ export class WorkflowRunner {
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
+			restartExecutionId,
 		};
 
 		if (!this.scalingService) {

@@ -128,6 +128,7 @@ export class JobProcessor {
 			workflowSettings: execution.workflowData.settings,
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
+		additionalData.restartExecutionId = job.data.restartExecutionId;
 
 		const { pushRef } = job.data;
 

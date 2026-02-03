@@ -228,6 +228,42 @@ describe('JobProcessor', () => {
 		);
 	});
 
+	it('should set restartExecutionId on additionalData when provided in job data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [] },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+			}),
+		});
+		executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const executionId = 'execution-id';
+		const restartExecutionId = 'restart-execution-id';
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId, loadStaticData: false, restartExecutionId } }),
+		);
+
+		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
+	});
+
 	it.each(['manual', 'evaluation', 'trigger'] satisfies WorkflowExecuteMode[])(
 		'should use workflowExecute to process a job with mode %p with execution data',
 		async (mode) => {
