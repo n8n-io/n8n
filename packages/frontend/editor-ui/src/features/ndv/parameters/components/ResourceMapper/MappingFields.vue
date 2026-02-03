@@ -21,14 +21,15 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '../../composables/useNodeSpecificationValues';
 import {
+	N8nButton,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	path: string;
@@ -117,15 +118,18 @@ const removedFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => field.removed === true && field.display);
 });
 
-const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
+const addFieldOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	return removedFields.value.map((field) => {
 		return {
-			name: field.displayName,
-			value: field.id,
+			id: field.id,
+			label: field.displayName,
 			disabled: false,
 		};
 	});
 });
+
+const hasSingleFieldOption = computed(() => addFieldOptions.value.length === 1);
+const hasMultipleFieldOptions = computed(() => addFieldOptions.value.length > 1);
 
 const parameterActions = computed<Array<{ label: string; value: string; disabled?: boolean }>>(
 	() => {
@@ -419,27 +423,41 @@ defineExpose({
 				:class="[$style.parameterIssues, 'ml-5xs']"
 			/>
 		</div>
-		<div :class="['add-option', $style.addOption]" data-test-id="add-fields-select">
-			<N8nSelect
-				:placeholder="
+		<div
+			v-if="!isReadOnly && addFieldOptions.length > 0"
+			:class="['add-option', $style.addOption]"
+			data-test-id="add-fields-select"
+		>
+			<N8nButton
+				v-if="hasSingleFieldOption"
+				type="highlightFill"
+				icon="plus"
+				:label="
 					locale.baseText('resourceMapper.addFieldToSend', {
 						interpolate: { fieldWord: singularFieldWord },
 					})
 				"
-				size="small"
-				:teleported="teleported"
-				:disabled="addFieldOptions.length == 0 || isReadOnly"
-				@update:model-value="addField"
+				@click="addField(addFieldOptions[0].id)"
+			/>
+			<N8nDropdownMenu
+				v-else-if="hasMultipleFieldOptions"
+				:items="addFieldOptions"
+				:class="$style.dropdown"
+				:extra-popper-class="$style.dropdownContent"
+				@select="addField"
 			>
-				<N8nOption
-					v-for="item in addFieldOptions"
-					:key="item.value"
-					:label="item.name"
-					:value="item.value"
-					:disabled="item.disabled"
-				>
-				</N8nOption>
-			</N8nSelect>
+				<template #trigger>
+					<N8nButton
+						type="highlightFill"
+						icon="plus"
+						:label="
+							locale.baseText('resourceMapper.addFieldToSend', {
+								interpolate: { fieldWord: singularFieldWord },
+							})
+						"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</div>
 	</div>
 </template>
@@ -488,5 +506,13 @@ defineExpose({
 	height: var(--spacing--md);
 	align-items: baseline;
 	gap: var(--spacing--5xs);
+}
+
+.dropdown {
+	display: inline-flex;
+}
+
+.dropdownContent {
+	z-index: var(--ndv--z);
 }
 </style>
