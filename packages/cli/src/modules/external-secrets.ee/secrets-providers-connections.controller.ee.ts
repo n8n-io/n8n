@@ -103,15 +103,14 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/test')
-	@GlobalScope('externalSecretsProvider:read')
-	testConnection(
+	@GlobalScope('externalSecretsProvider:update')
+	async testConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') _providerKey: string,
-	) {
-		this.logger.debug('Testing provider connnection');
-		//TODO implement
-		return;
+		@Param('providerKey') providerKey: string,
+	): SecretsProvidersResponses.TestConnectionResult {
+		this.logger.debug('Testing provider connection', { providerKey });
+		return await this.connectionsService.testConnection(providerKey);
 	}
 
 	@Post('/:providerKey/connect')

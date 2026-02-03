@@ -156,7 +156,26 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
+	async testConnection(providerKey: string): Promise<{ success: boolean; error?: string }> {
+		const connection = await this.getConnection(providerKey);
+		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
+
+		const testResult = await this.externalSecretsManager.testProviderSettings(
+			connection.type,
+			decryptedSettings,
+		);
+
+		return {
+			success: testResult.success,
+			error: (testResult as Record<string, unknown>).error as string | undefined,
+		};
+	}
+
 	private encryptConnectionSettings(settings: IDataObject): string {
 		return this.cipher.encrypt(settings);
+	}
+
+	private decryptConnectionSettings(encryptedSettings: string): IDataObject {
+		return JSON.parse(this.cipher.decrypt(encryptedSettings));
 	}
 }

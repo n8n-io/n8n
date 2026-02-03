@@ -5,4 +5,5 @@ export declare namespace SecretsProvidersResponses {
 
 	type PublicConnection = Promise<StrippedConnection>;
 	type PublicConnectionList = Promise<StrippedConnection[]>;
+	type TestConnectionResult = Promise<{ success: boolean; error?: string }>;
 }
