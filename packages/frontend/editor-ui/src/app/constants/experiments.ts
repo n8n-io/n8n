@@ -70,6 +70,11 @@ export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout'
 	variantTemplates: 'variant-templates',
 });
 
+export const SETUP_PANEL = createExperiment('069_setup_panel', {
+	control: 'control',
+	variant: 'variant',
+});
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -84,4 +89,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	TAMPER_PROOF_INVITE_LINKS.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	EMPTY_STATE_EXPERIMENT.name,
+	SETUP_PANEL.name,
 ];

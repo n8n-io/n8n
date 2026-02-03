@@ -17,7 +17,7 @@ import {
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
-import FocusPanel from '@/app/components/FocusPanel.vue';
+import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -2284,7 +2284,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel
+		<FocusSidebar
 			v-if="
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
 			"
