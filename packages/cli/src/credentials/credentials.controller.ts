@@ -94,7 +94,11 @@ export class CredentialsController {
 		_res: unknown,
 		@Query query: CredentialsForWorkflowQueryDto,
 	) {
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, query);
+		// The DTO's refine validation ensures at least one is present
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			req.user,
+			query as { workflowId: string } | { projectId: string },
+		);
 	}
 
 	@Get('/new')
