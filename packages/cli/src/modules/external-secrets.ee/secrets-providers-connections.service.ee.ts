@@ -1,4 +1,4 @@
-import type { SecretsProviderType } from '@n8n/api-types';
+import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import { CreateSecretsProviderConnectionDto } from '@n8n/api-types/src';
 import type { SecretsProviderConnection } from '@n8n/db';
 import {
@@ -11,6 +11,7 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 @Service()
@@ -19,6 +20,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
 		private readonly cipher: Cipher,
+		private readonly externalSecretsManager: ExternalSecretsManager,
 	) {}
 
 	async createConnection(
@@ -118,6 +120,23 @@ export class SecretsProvidersConnectionsService {
 
 	async listConnections(): Promise<SecretsProviderConnection[]> {
 		return await this.repository.findAll();
+	}
+
+	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
+		return await this.repository.findGlobalConnections();
+	}
+
+	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
+		return await this.repository.findByProjectId(projectId);
+	}
+
+	toSecretCompletionsResponse(connections: SecretsProviderConnection[]): SecretCompletionsResponse {
+		return Object.fromEntries(
+			connections.map((connection) => [
+				connection.providerKey,
+				this.externalSecretsManager.getSecretNames(connection.providerKey),
+			]),
+		);
 	}
 
 	toPublicConnection(

@@ -13,10 +13,10 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 
-import { MockProviders } from '../shared/external-secrets/utils';
-import { createAdmin, createMember, createOwner } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils';
+import { MockProviders } from '../../shared/external-secrets/utils';
+import { createAdmin, createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);

@@ -130,7 +130,6 @@ export class AnotherDummyProvider extends SecretsProvider {
 		return Object.keys(this.secrets);
 	}
 }
-
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
@@ -252,36 +251,6 @@ export class TestFailProvider extends SecretsProvider {
 	}
 }
 
-/**
- * Factory function to create a fresh provider class with a custom name.
- * Each call returns a new class with its own implementation, allowing you to spy on instance methods.
- *
- * @param name - The name for the provider (used as the provider's identifier)
- * @param secrets - Optional secrets list to use as default secrets (used in both initial state and update)
- * @returns A new SecretsProvider class constructor with its own implementation
- *
- * @example
- * // Create a fresh provider class
- * const TestProvider = createDummyProvider({ name: 'test_provider' });
- * const provider = new TestProvider();
- *
- * // Create with pre-populated secrets
- * const ProviderWithSecrets = createDummyProvider({
- *   name: 'my_provider',
- *   secrets: { key1: 'value1', key2: 'value2' }
- * });
- *
- * // Spy on instance methods
- * jest.spyOn(provider, 'update');
- * jest.spyOn(provider, 'getSecret');
- *
- * // Use with MockProviders
- * const mockProviders = new MockProviders();
- * mockProviders.setProviders({
- *   provider1: createDummyProvider({ name: 'provider1' }),
- *   provider2: createDummyProvider({ name: 'provider2', secrets: { foo: 'bar' } }),
- * });
- */
 export function createDummyProvider({
 	name,
 	secrets,

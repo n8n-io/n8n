@@ -182,6 +182,6 @@ export type {
 	SecretsProviderConnectionTestState,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
-	AutocompletionSecretsResponse,
+	SecretCompletionsResponse,
 	TestSecretProviderConnectionResponse,
 } from './schemas/secrets-provider.schema';
