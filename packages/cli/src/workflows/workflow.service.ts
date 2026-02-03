@@ -285,12 +285,9 @@ export class WorkflowService {
 			aiBuilderAssisted = false,
 			autosaved = false,
 		} = options;
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:update'],
-			{ includeActiveVersion: true },
-		);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update a workflow without permissions', {
@@ -595,12 +592,9 @@ export class WorkflowService {
 		},
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:publish'],
-			{ includeActiveVersion: true },
-		);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to activate a workflow without permissions', {
@@ -722,12 +716,9 @@ export class WorkflowService {
 		workflowId: string,
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:publish'],
-			{ includeActiveVersion: true },
-		);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to deactivate a workflow without permissions', {
