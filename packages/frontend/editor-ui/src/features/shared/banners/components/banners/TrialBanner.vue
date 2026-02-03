@@ -6,6 +6,16 @@ import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TRIAL_BANNER_PERMANENT_EXPERIMENT } from '@/app/constants';
+
+const posthog = usePostHog();
+const WITH_TRIAL_BANNER_PERMANENT = computed(() =>
+	posthog.isVariantEnabled(
+		TRIAL_BANNER_PERMANENT_EXPERIMENT.name,
+		TRIAL_BANNER_PERMANENT_EXPERIMENT.variant,
+	),
+);
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -17,6 +27,16 @@ const shouldShowTrialBanner = computed(() => cloudPlanStore.shouldShowDynamicTri
 const trialBannerText = computed(() => cloudPlanStore.dynamicTrialBannerText);
 
 const trialTimeLeft = computed(() => cloudPlanStore.trialTimeLeft);
+const trialDaysLeft = computed(() => cloudPlanStore.trialDaysLeft);
+const trialTotalDays = computed(() => {
+	return cloudPlanStore.currentPlanData?.metadata?.trial?.length;
+});
+const trialProgressValue = computed(() => {
+	if (!trialTotalDays.value || !trialDaysLeft.value) return 0;
+
+	const maxDays = trialTotalDays.value;
+	return maxDays - trialDaysLeft.value;
+});
 
 const messageText = computed(() => {
 	const { count, unit } = trialTimeLeft.value;
@@ -66,12 +86,15 @@ function onUpdatePlanClick() {
 </script>
 
 <template>
-	<BaseBanner name="TRIAL" theme="custom">
+	<BaseBanner name="TRIAL" theme="custom" :dismissible="WITH_TRIAL_BANNER_PERMANENT ? false : true">
 		<template #mainContent>
 			<div :class="$style.content">
-				<span>{{ messageText }}</span>
-				<span :class="$style.pipe"> | </span>
-				<div :class="$style.usageCounter">
+				<span v-if="!WITH_TRIAL_BANNER_PERMANENT">{{ messageText }}</span>
+				<span v-if="!WITH_TRIAL_BANNER_PERMANENT" :class="$style.pipe"> | </span>
+				<div
+					v-if="WITH_TRIAL_BANNER_PERMANENT ? currentExecutions !== 0 : true"
+					:class="$style.usageCounter"
+				>
 					<div :class="$style.progressBarDiv">
 						<progress
 							:class="[
@@ -95,6 +118,15 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
+			<progress
+				v-if="WITH_TRIAL_BANNER_PERMANENT && trialProgressValue > 0"
+				:class="$style.trialProgressBar"
+				:value="trialProgressValue"
+				:max="trialTotalDays"
+			></progress>
+			<span v-if="WITH_TRIAL_BANNER_PERMANENT">{{
+				messageText.replace('in your n8n trial', '')
+			}}</span>
 			<div :class="$style.trailingContentWrapper">
 				<N8nBadge
 					v-if="shouldShowTrialBanner"
@@ -104,9 +136,14 @@ function onUpdatePlanClick() {
 					:bold="true"
 					>{{ trialBannerText }}</N8nBadge
 				>
-				<N8nButton type="success" icon="zap" size="small" @click="onUpdatePlanClick">{{
-					locale.baseText('generic.upgradeNow')
-				}}</N8nButton>
+				<N8nButton
+					:wiggle-icon="WITH_TRIAL_BANNER_PERMANENT ? true : false"
+					type="success"
+					icon="zap"
+					:size="WITH_TRIAL_BANNER_PERMANENT ? 'medium' : 'small'"
+					@click="onUpdatePlanClick"
+					>{{ locale.baseText('generic.upgradeNow') }}</N8nButton
+				>
 			</div>
 		</template>
 	</BaseBanner>
@@ -204,6 +241,29 @@ function onUpdatePlanClick() {
 	color: var(--color--foreground--tint-2);
 	border: none;
 	background: var(--color--foreground--shade-2);
+
+	.trialProgressBar {
+		width: 80px;
+		height: 6px;
+		border: 0;
+		border-radius: 20px;
+		background-color: var(--color--foreground);
+
+		&::-webkit-progress-bar {
+			border-radius: 20px;
+			background-color: var(--color--foreground);
+		}
+
+		&::-webkit-progress-value {
+			background: var(--color--success);
+			border-radius: 20px;
+		}
+
+		&::-moz-progress-bar {
+			background: var(--color--success);
+			border-radius: 20px;
+		}
+	}
 	border-radius: var(--radius);
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 }
