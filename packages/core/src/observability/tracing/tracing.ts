@@ -1,10 +1,8 @@
 import { Service } from '@n8n/di';
-import {
-	SPAN_STATUS_ERROR,
-	SPAN_STATUS_OK,
-	type StartSpanOptions as SentryStartSpanOptions,
-	type SpanContextData as SentrySpanContextData,
-	type SpanAttributes as SentrySpanAttributes,
+import type {
+	StartSpanOptions as SentryStartSpanOptions,
+	SpanContextData as SentrySpanContextData,
+	SpanAttributes as SentrySpanAttributes,
 } from '@sentry/core';
 import type Sentry from '@sentry/node';
 import type { INode, Workflow } from 'n8n-workflow';
@@ -37,8 +35,8 @@ const COMMON_TRACE_ATTRIBUTES = {
 } as const;
 
 export const enum SpanStatus {
-	ok = SPAN_STATUS_OK,
-	error = SPAN_STATUS_ERROR,
+	ok = 1,
+	error = 2,
 }
 
 /**
