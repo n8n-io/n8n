@@ -242,7 +242,7 @@
     "ignore": "^5.2.0",
     "js-tiktoken": "^1.0.12",
     "jsdom": "23.0.1",
-    "langchain": "1.2.3",
+    "langchain": "catalog:",
     "@langchain/classic": "1.0.5",
     "lodash": "catalog:",
     "mammoth": "1.11.0",

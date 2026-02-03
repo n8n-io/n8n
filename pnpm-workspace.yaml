@@ -56,6 +56,7 @@ catalog:
   jsonrepair: 3.13.1
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
+  langchain: 1.2.3
   lodash: 4.17.23
   luxon: 3.7.2
   mime-types: 3.0.2
