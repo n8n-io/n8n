@@ -11,11 +11,11 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
 import { handleEmailLogin } from '@/auth';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -29,7 +29,6 @@ import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
@@ -45,6 +44,7 @@ export class AuthController {
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly authHandlerRegistry: AuthHandlerRegistry,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -91,14 +91,17 @@ export class AuthController {
 			} else {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
-		} else if (isLdapCurrentAuthenticationMethod()) {
+		} else if (usedAuthenticationMethod !== 'email') {
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			if (preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
-				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
+				// Check if an auth handler is registered for the current auth method
+				const authHandler = this.authHandlerRegistry.get(usedAuthenticationMethod, 'password');
+				if (authHandler) {
+					user = await authHandler.handleLogin(emailOrLdapLoginId, password);
+				}
 			}
 		} else {
 			user = await handleEmailLogin(emailOrLdapLoginId, password);
