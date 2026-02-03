@@ -3,6 +3,7 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	TransferCredentialBodyDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -396,13 +397,15 @@ export class CredentialsController {
 
 	@Put('/:credentialId/transfer')
 	@ProjectScope('credential:move')
-	async transfer(req: CredentialRequest.Transfer) {
-		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
+	async transfer(
+		req: CredentialRequest.Transfer,
+		_res: unknown,
+		@Body payload: TransferCredentialBodyDto,
+	) {
 		return await this.enterpriseCredentialsService.transferOne(
 			req.user,
 			req.params.credentialId,
-			body.destinationProjectId,
+			payload.destinationProjectId,
 		);
 	}
 }
